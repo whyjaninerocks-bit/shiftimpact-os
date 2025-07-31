@@ -7,7 +7,7 @@
 
 import { useState, useTransition, useCallback } from "react";
 import { createStageBrief, updateStageBrief } from "@/lib/actions";
-import type { StageBrief, Stage, IdeaOrSpend } from "@/lib/types";
+import type { StageBrief, Stage, IdeaOrSpend, PhaseGate } from "@/lib/types";
 import {
   Badge,
   Card,
@@ -30,14 +30,26 @@ const STATUS_TONE: Record<string, "neutral" | "blue" | "green" | "amber" | "red"
   Complete: "neutral",
 };
 
+// ─── Stage gate guard helper ──────────────────────────────────────────────────
+
+// Returns true if the "Live" status is allowed for this stage given current gate states
+function canGoLive(stage: Stage, openGateTypes: Set<string>): boolean {
+  if (stage === "Demand") return true; // first stage — no prior gate required
+  if (stage === "Conversion") return openGateTypes.has("Gate 1: Demand");
+  if (stage === "Retention") return openGateTypes.has("Gate 2: Conversion");
+  return true;
+}
+
 // ─── Stage Brief card ─────────────────────────────────────────────────────────
 
 interface BriefCardProps {
   brief: StageBrief;
   campaignId: string;
+  liveAllowed: boolean;
+  clarityStatement: string;
 }
 
-function BriefCard({ brief, campaignId }: BriefCardProps) {
+function BriefCard({ brief, campaignId, liveAllowed, clarityStatement }: BriefCardProps) {
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -81,10 +93,15 @@ function BriefCard({ brief, campaignId }: BriefCardProps) {
               <select name="status" defaultValue={brief.status} className={inputClass}>
                 <option value="Draft">Draft</option>
                 <option value="Ready">Ready</option>
-                <option value="Live">Live</option>
+                <option value="Live" disabled={!liveAllowed}>
+                  {liveAllowed ? "Live" : "Live (gate not Open)"}
+                </option>
                 <option value="Paused">Paused</option>
                 <option value="Complete">Complete</option>
               </select>
+              {!liveAllowed && (
+                <p className="text-[10px] text-amber-600 mt-1">Open the prerequisite gate first.</p>
+              )}
             </div>
           </div>
           <div className="flex gap-2">
@@ -102,6 +119,26 @@ function BriefCard({ brief, campaignId }: BriefCardProps) {
 
   return (
     <Card>
+      {/* FRAME Anchor strip — drift check at a glance */}
+      {(brief.frame_anchor || clarityStatement) && (
+        <div className="mb-3 pb-2 border-b border-neutral-100 flex flex-wrap gap-3">
+          {clarityStatement && (
+            <span className="text-[10px] text-neutral-400 italic truncate max-w-full">
+              <span className="font-semibold not-italic text-neutral-500">Idea: </span>{clarityStatement}
+            </span>
+          )}
+          {brief.frame_anchor && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-neutral-100 text-[10px] font-medium text-neutral-500">
+              Anchor: {brief.frame_anchor}
+            </span>
+          )}
+          {brief.mood_register && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-neutral-100 text-[10px] font-medium text-neutral-500">
+              Mood: {brief.mood_register}
+            </span>
+          )}
+        </div>
+      )}
       <div className="flex items-start justify-between gap-2 mb-2">
         <p className="text-sm font-semibold text-neutral-800">{brief.channel}</p>
         <div className="flex items-center gap-2 shrink-0">
@@ -134,11 +171,21 @@ interface AddFormProps {
   defaultStage: Stage;
   frameAnchor: string;
   moodRegister: string;
+  frameLocked: boolean;
+  liveAllowed: boolean;
 }
 
-function AddForm({ campaignId, defaultStage, frameAnchor, moodRegister }: AddFormProps) {
+function AddForm({ campaignId, defaultStage, frameAnchor, moodRegister, frameLocked, liveAllowed }: AddFormProps) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  if (!frameLocked) {
+    return (
+      <button disabled className={`${buttonSecondaryClass} opacity-40 cursor-not-allowed`} title="Lock FRAME Brief first">
+        + Add {defaultStage} Brief
+      </button>
+    );
+  }
 
   if (!open) {
     return (
@@ -191,7 +238,9 @@ function AddForm({ campaignId, defaultStage, frameAnchor, moodRegister }: AddFor
             <select name="status" defaultValue="Draft" className={inputClass}>
               <option value="Draft">Draft</option>
               <option value="Ready">Ready</option>
-              <option value="Live">Live</option>
+              <option value="Live" disabled={!liveAllowed}>
+                {liveAllowed ? "Live" : "Live (gate not Open)"}
+              </option>
             </select>
           </div>
         </div>
@@ -292,7 +341,9 @@ interface StageBriefsSectionProps {
   frameLocked: boolean;
   frameAnchor: string;
   moodRegister: string;
+  clarityStatement: string;
   stageBriefs: StageBrief[];
+  phaseGates: PhaseGate[];
   activeChannels?: string[];
 }
 
@@ -301,7 +352,9 @@ export function StageBriefsSection({
   frameLocked,
   frameAnchor,
   moodRegister,
+  clarityStatement,
   stageBriefs,
+  phaseGates,
   activeChannels = [],
 }: StageBriefsSectionProps) {
   const byStage = STAGE_ORDER.reduce<Record<Stage, StageBrief[]>>(
@@ -310,6 +363,11 @@ export function StageBriefsSection({
       return acc;
     },
     { Demand: [], Conversion: [], Retention: [] }
+  );
+
+  // Build set of open gate types for gate guard
+  const openGateTypes = new Set(
+    phaseGates.filter((g) => g.gate_decision === "Open").map((g) => g.gate_type)
   );
 
   // Channels from brief that don't yet have a stage brief
@@ -322,7 +380,8 @@ export function StageBriefsSection({
 
       {!frameLocked && (
         <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-          <p className="text-xs text-amber-700">Lock the FRAME Brief before writing Stage Briefs.</p>
+          <p className="text-xs font-semibold text-amber-700">Lock the FRAME Brief before writing Stage Briefs.</p>
+          <p className="text-xs text-amber-600 mt-0.5">Add buttons are disabled until the FRAME is locked.</p>
         </div>
       )}
 
@@ -336,22 +395,40 @@ export function StageBriefsSection({
       )}
 
       <div className="space-y-6">
-        {STAGE_ORDER.map((stage) => (
-          <div key={stage}>
-            <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-2">{stage} Stage</p>
-            <div className="space-y-2">
-              {byStage[stage].map((brief) => (
-                <BriefCard key={brief.id} brief={brief} campaignId={campaignId} />
-              ))}
-              <AddForm
-                campaignId={campaignId}
-                defaultStage={stage}
-                frameAnchor={frameAnchor}
-                moodRegister={moodRegister}
-              />
+        {STAGE_ORDER.map((stage) => {
+          const liveAllowed = canGoLive(stage, openGateTypes);
+          return (
+            <div key={stage}>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">{stage} Stage</p>
+                {!liveAllowed && (
+                  <span className="text-[10px] text-amber-500 font-medium">
+                    {stage === "Conversion" ? "Gate 1: Demand" : "Gate 2: Conversion"} not Open
+                  </span>
+                )}
+              </div>
+              <div className="space-y-2">
+                {byStage[stage].map((brief) => (
+                  <BriefCard
+                    key={brief.id}
+                    brief={brief}
+                    campaignId={campaignId}
+                    liveAllowed={liveAllowed}
+                    clarityStatement={clarityStatement}
+                  />
+                ))}
+                <AddForm
+                  campaignId={campaignId}
+                  defaultStage={stage}
+                  frameAnchor={frameAnchor}
+                  moodRegister={moodRegister}
+                  frameLocked={frameLocked}
+                  liveAllowed={liveAllowed}
+                />
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

@@ -388,6 +388,18 @@ export async function deleteKillSwitch(campaignId: string, killSwitchId: string)
 
 export async function createStageBrief(campaignId: string, formData: FormData) {
   const supabase = createAdminClient();
+
+  // Server-side FRAME lock guard — FRAME must be locked before any Stage Brief can be created
+  const { data: frameBrief } = await supabase
+    .from("frame_briefs")
+    .select("lock_status")
+    .eq("campaign_id", campaignId)
+    .single();
+
+  if (!frameBrief || frameBrief.lock_status !== "Locked") {
+    redirect(`/campaigns/${campaignId}?error=${encodeURIComponent("Lock the FRAME Brief before creating Stage Briefs.")}#stage-briefs`);
+  }
+
   const { error } = await supabase.from("stage_briefs").insert({
     campaign_id: campaignId,
     stage: str(formData, "stage"),

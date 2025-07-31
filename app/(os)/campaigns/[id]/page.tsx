@@ -283,7 +283,9 @@ export default async function CampaignDetailPage({
         frameLocked={frame.lock_status === "Locked"}
         frameAnchor={frame.anchor}
         moodRegister={frame.mood}
+        clarityStatement={frame.clarity_statement ?? ""}
         stageBriefs={stageBriefs}
+        phaseGates={phaseGates}
         activeChannels={frame.active_channels ?? []}
       />
       <PhaseGatesSection campaignId={id} phaseGates={phaseGates} />

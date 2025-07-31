@@ -15,6 +15,15 @@ const NAV = [
     ),
   },
   {
+    href: "/campaigns",
+    label: "Campaigns",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" />
+      </svg>
+    ),
+  },
+  {
     href: "/prospects",
     label: "Prospects",
     icon: (
@@ -102,8 +111,11 @@ export function OsNav() {
     return () => { document.body.style.overflow = ""; };
   }, [open]);
 
-  const isActive = (href: string) =>
-    href === "/clients" ? pathname === "/clients" : pathname.startsWith(href);
+  const isActive = (href: string) => {
+    if (href === "/clients") return pathname === "/clients";
+    if (href === "/campaigns") return pathname === "/campaigns"; // exact match only — /campaigns/[id] uses client nav
+    return pathname.startsWith(href);
+  };
 
   return (
     <>

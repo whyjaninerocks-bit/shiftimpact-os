@@ -85,8 +85,9 @@ export default async function ClientPortalPage({
   const activeChannels: string[] = frame?.active_channels ?? [];
   const readyBriefs = extensions.filter((e) => e.status === "Ready" || e.status === "Approved");
   const label = getPhaseLabel(campaign.industry_profile, campaign.current_phase);
-  const completedGates = phaseGates.filter((g) => g.gate_outcome === "Passed");
-  const nextGate = phaseGates.find((g) => g.gate_outcome !== "Passed");
+  const completedGates = phaseGates.filter((g) => g.gate_decision === "Open");
+  const nextGate = phaseGates.find((g) => g.gate_decision !== "Open");
+  const clarityStatement = frame?.clarity_statement ?? null;
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -108,6 +109,12 @@ export default async function ClientPortalPage({
 
         {/* ── Status ── */}
         <PortalSection title="Where things stand">
+          {clarityStatement && (
+            <div className="px-4 py-3 rounded-xl bg-neutral-900 text-white">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1">What we&apos;re here to do</p>
+              <p className="text-sm leading-relaxed">{clarityStatement}</p>
+            </div>
+          )}
           <Card>
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -249,13 +256,13 @@ export default async function ClientPortalPage({
               {completedGates.map((g) => (
                 <div key={g.id} className="flex items-center gap-2">
                   <span className="text-emerald-500">✓</span>
-                  <span className="text-sm text-neutral-600">{g.gate_name}</span>
+                  <span className="text-sm text-neutral-600">{g.gate_type}</span>
                 </div>
               ))}
               {nextGate && (
                 <div className="flex items-center gap-2 pt-2 border-t border-neutral-100">
                   <span className="text-neutral-300">○</span>
-                  <span className="text-sm text-neutral-400">Next: {nextGate.gate_name}</span>
+                  <span className="text-sm text-neutral-400">Next: {nextGate.gate_type}</span>
                 </div>
               )}
             </Card>
