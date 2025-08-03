@@ -83,12 +83,14 @@ import { MessageSequenceSection } from "./_components/MessageSequenceSection";
 import { AudienceReplenishmentSection } from "./_components/AudienceReplenishmentSection";
 import { CampaignLearningSection } from "./_components/CampaignLearningSection";
 import { SignalHealthSection } from "./_components/SignalHealthSection";
+import CampaignOsDigestSection from "./_components/CampaignOsDigestSection";
 
 const sectionGroups = [
   {
     label: "Overview",
     links: [
       { href: "#dashboard", label: "Dashboard" },
+      { href: "#campaign-digest", label: "OS Digest ✦" },
       { href: "#campaign-report", label: "Campaign Report ✦" },
       { href: "#intelligence-query", label: "Campaign Intelligence ✦" },
       { href: "#business-outcomes", label: "Business Outcomes" },
@@ -264,6 +266,7 @@ export default async function CampaignDetailPage({
         <div className="flex-1 h-px bg-neutral-200" />
       </div>
       <DashboardSection campaignId={id} dashboards={dashboards} />
+      <CampaignOsDigestSection campaignId={id} />
       <CampaignReportSection campaignId={id} campaignName={campaign.name} />
       <IntelligenceQuerySection campaignId={id} campaignName={campaign.name} />
       <BusinessOutcomesSection campaignId={id} campaign={campaign} outcomes={businessOutcomes} />
