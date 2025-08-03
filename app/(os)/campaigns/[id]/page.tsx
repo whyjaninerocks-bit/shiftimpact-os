@@ -309,6 +309,7 @@ export default async function CampaignDetailPage({
       <StageBriefsSection
         campaignId={id}
         frameLocked={frame.lock_status === "Locked"}
+        frameBriefId={frame.id}
         frameAnchor={frame.anchor}
         moodRegister={frame.mood}
         clarityStatement={frame.clarity_statement ?? ""}

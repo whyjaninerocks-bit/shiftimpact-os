@@ -366,6 +366,7 @@ function GenerateChannelBriefsButton({
 interface StageBriefsSectionProps {
   campaignId: string;
   frameLocked: boolean;
+  frameBriefId?: string;
   frameAnchor: string;
   moodRegister: string;
   clarityStatement: string;
@@ -377,6 +378,7 @@ interface StageBriefsSectionProps {
 export function StageBriefsSection({
   campaignId,
   frameLocked,
+  frameBriefId,
   frameAnchor,
   moodRegister,
   clarityStatement,
@@ -385,6 +387,51 @@ export function StageBriefsSection({
   activeChannels = [],
 }: StageBriefsSectionProps) {
   const [deptFilter, setDeptFilter] = useState<Department | typeof DEPT_FILTER_ALL>(DEPT_FILTER_ALL);
+  const [autoDrafting, setAutoDrafting] = useState(false);
+  const [autoDrafts, setAutoDrafts] = useState<Array<{
+    id: string; stage_name: string; channel: string; stage_objective: string;
+    idea_led: string; department: string; draft_rationale: string; promoted?: boolean;
+  }>>([]);
+  const [autoDraftError, setAutoDraftError] = useState<string | null>(null);
+  const [promotingId, setPromotingId] = useState<string | null>(null);
+
+  async function handleAutoDraft() {
+    if (!frameBriefId) return;
+    setAutoDrafting(true);
+    setAutoDraftError(null);
+    try {
+      const res = await fetch("/api/stage-brief-autodraft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaign_id: campaignId, frame_brief_id: frameBriefId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Auto-draft failed");
+      setAutoDrafts(data.drafts ?? []);
+    } catch (err) {
+      setAutoDraftError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setAutoDrafting(false);
+    }
+  }
+
+  async function handlePromote(autodraftId: string) {
+    setPromotingId(autodraftId);
+    try {
+      const res = await fetch("/api/stage-brief-autodraft/promote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ autodraft_id: autodraftId }),
+      });
+      if (res.ok) {
+        setAutoDrafts(prev => prev.map(d => d.id === autodraftId ? { ...d, promoted: true } : d));
+      }
+    } catch {
+      // silent
+    } finally {
+      setPromotingId(null);
+    }
+  }
 
   // Build set of open gate types for gate guard
   const openGateTypes = new Set(
@@ -442,6 +489,63 @@ export function StageBriefsSection({
           activeChannels={activeChannels}
           existingCount={existingCount}
         />
+      )}
+
+      {/* Stage Brief auto-draft — only when FRAME locked */}
+      {frameLocked && frameBriefId && (
+        <div className="mb-4 space-y-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <button
+              onClick={handleAutoDraft}
+              disabled={autoDrafting}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-white border border-gray-300 rounded hover:border-gray-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            >
+              <span className="text-purple-500">✦</span>
+              {autoDrafting ? "Generating stage briefs…" : "Auto-draft from FRAME"}
+            </button>
+            {autoDrafts.length > 0 && (
+              <span className="text-xs text-gray-400">{autoDrafts.filter(d => !d.promoted).length} drafts ready</span>
+            )}
+          </div>
+          {autoDraftError && (
+            <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded p-2">{autoDraftError}</p>
+          )}
+          {autoDrafts.length > 0 && (
+            <div className="bg-purple-50 border border-purple-100 rounded-lg p-4 space-y-3">
+              <p className="text-xs font-semibold text-purple-700 uppercase tracking-wide">
+                Auto-generated Stage Brief Drafts — review and promote
+              </p>
+              <div className="space-y-2">
+                {autoDrafts.map(d => (
+                  <div key={d.id} className={`bg-white border rounded p-3 space-y-1.5 ${d.promoted ? "border-green-200 opacity-60" : "border-purple-100"}`}>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-semibold text-gray-800">{d.stage_name}</span>
+                        <span className="text-gray-300">·</span>
+                        <span className="text-xs text-gray-600">{d.channel}</span>
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{d.department}</span>
+                      </div>
+                      {d.promoted ? (
+                        <span className="text-xs text-green-600 font-medium">Promoted to Draft</span>
+                      ) : (
+                        <button
+                          onClick={() => handlePromote(d.id)}
+                          disabled={promotingId === d.id}
+                          className="text-xs px-2.5 py-1 bg-gray-900 text-white rounded hover:bg-gray-700 disabled:opacity-60"
+                        >
+                          {promotingId === d.id ? "Promoting…" : "Promote to Draft"}
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-700"><span className="font-medium">Objective:</span> {d.stage_objective}</p>
+                    <p className="text-xs text-gray-600"><span className="font-medium">Idea led:</span> {d.idea_led}</p>
+                    <p className="text-xs text-gray-400 italic">{d.draft_rationale}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Department filter tabs — only show when there are tagged briefs */}

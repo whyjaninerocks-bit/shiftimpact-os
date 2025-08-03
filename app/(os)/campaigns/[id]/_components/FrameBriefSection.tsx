@@ -168,6 +168,30 @@ export function FrameBriefSection({
 }) {
   const [enemyOpen, setEnemyOpen] = useState(frame.enemy_active);
   const [elevationOn, setElevationOn] = useState(frame.elevation_mode_enabled);
+  const [prefilling, setPrefilling] = useState(false);
+  const [prefillResult, setPrefillResult] = useState<Record<string, { suggestion: unknown; rationale: string; confidence: string }> | null>(null);
+  const [prefillSummary, setPrefillSummary] = useState<string | null>(null);
+  const [prefillError, setPrefillError] = useState<string | null>(null);
+
+  async function handlePrefill() {
+    setPrefilling(true);
+    setPrefillError(null);
+    try {
+      const res = await fetch("/api/frame-prefill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaign_id: campaignId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Prefill failed");
+      setPrefillResult(data.suggestions ?? {});
+      setPrefillSummary(data.suggestions?.summary ?? null);
+    } catch (err) {
+      setPrefillError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setPrefilling(false);
+    }
+  }
 
   const locked = frame.lock_status === "Locked";
   const updateAction = updateFrameBrief.bind(null, campaignId, frame.id);
@@ -195,9 +219,49 @@ export function FrameBriefSection({
         </div>
       </div>
 
-      <div className="mb-3">
+      <div className="mb-3 flex items-center justify-between gap-3 flex-wrap">
         <Gate1Badge frame={frame} />
+        <button
+          onClick={handlePrefill}
+          disabled={prefilling}
+          className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-white border border-gray-300 rounded hover:border-gray-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+        >
+          <span className="text-purple-500">✦</span>
+          {prefilling ? "Reading learning data…" : "Pre-fill from Learning"}
+        </button>
       </div>
+
+      {/* Pre-fill result panel */}
+      {prefillError && (
+        <div className="mb-4 text-xs text-red-600 bg-red-50 border border-red-200 rounded p-2">{prefillError}</div>
+      )}
+      {prefillResult && (
+        <div className="mb-4 bg-purple-50 border border-purple-100 rounded-lg p-4 space-y-3">
+          <p className="text-xs font-semibold text-purple-700 uppercase tracking-wide">Learning-Based Suggestions</p>
+          {prefillSummary && <p className="text-xs text-purple-800">{prefillSummary}</p>}
+          <div className="space-y-2">
+            {Object.entries(prefillResult)
+              .filter(([k]) => k !== "summary")
+              .map(([field, val]) => (
+                <div key={field} className="bg-white border border-purple-100 rounded p-2.5 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-gray-700 capitalize">{field.replace(/_/g, " ")}</span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                      val.confidence === "High" ? "bg-green-100 text-green-700"
+                      : val.confidence === "Medium" ? "bg-amber-100 text-amber-700"
+                      : "bg-gray-100 text-gray-500"
+                    }`}>{val.confidence}</span>
+                  </div>
+                  <p className="text-xs text-gray-800 font-medium">
+                    {Array.isArray(val.suggestion) ? val.suggestion.join(", ") : String(val.suggestion)}
+                  </p>
+                  <p className="text-xs text-gray-500">{val.rationale}</p>
+                </div>
+              ))}
+          </div>
+          <p className="text-xs text-purple-600 italic">Apply suggestions manually to the fields below.</p>
+        </div>
+      )}
 
       {/* Active channels from client brief */}
       {(frame.active_channels ?? []).length > 0 && (

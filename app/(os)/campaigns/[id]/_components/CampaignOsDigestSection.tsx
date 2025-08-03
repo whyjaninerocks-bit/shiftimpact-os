@@ -1,6 +1,6 @@
 "use client";
 
-// CampaignOsDigestSection.tsx — Sprint 7
+// CampaignOsDigestSection.tsx — Sprint 7 + 8 (decision capture)
 // Campaign OS Digest: cross-signal intelligence engine
 // INTERNAL ONLY — Janine-operated. Not surfaced to client portal.
 //
@@ -56,6 +56,15 @@ interface DigestData {
   data_weeks: number;
   model_used: string;
   generated_at: string;
+}
+
+type Decision = "Acted" | "Overriding" | "Monitoring";
+
+interface DecisionState {
+  decision: Decision;
+  note: string;
+  saving: boolean;
+  saved: boolean;
 }
 
 interface Props {
@@ -148,6 +157,8 @@ export default function CampaignOsDigestSection({ campaignId }: Props) {
   const [generating, setGenerating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // decision capture: keyed by recommendation index
+  const [decisions, setDecisions] = useState<Record<number, DecisionState>>({});
 
   // Load latest saved digest on mount
   useEffect(() => {
@@ -191,6 +202,39 @@ export default function CampaignOsDigestSection({ campaignId }: Props) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setGenerating(false);
+    }
+  }
+
+  function setDecisionField(idx: number, field: keyof DecisionState, value: unknown) {
+    setDecisions(prev => ({
+      ...prev,
+      [idx]: { ...{ decision: "Acted" as Decision, note: "", saving: false, saved: false }, ...prev[idx], [field]: value },
+    }));
+  }
+
+  async function saveDecision(idx: number, rec: Recommendation) {
+    if (!digest?.id) return;
+    const d = decisions[idx];
+    if (!d?.decision) return;
+    setDecisionField(idx, "saving", true);
+    try {
+      await fetch("/api/digest-decision", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          digest_id: digest.id,
+          campaign_id: campaignId,
+          recommendation_index: idx,
+          recommendation_action: rec.action,
+          decision: d.decision,
+          decision_note: d.note ?? "",
+        }),
+      });
+      setDecisionField(idx, "saved", true);
+    } catch {
+      // silent
+    } finally {
+      setDecisionField(idx, "saving", false);
     }
   }
 
@@ -339,22 +383,65 @@ export default function CampaignOsDigestSection({ campaignId }: Props) {
                 Recommendations ({digest.recommendations.length})
               </h3>
               <div className="space-y-3">
-                {digest.recommendations.map((r, i) => (
-                  <div key={i} className="border border-gray-100 rounded p-3 space-y-2">
-                    <div className="flex items-start gap-2 flex-wrap">
-                      <span className="text-xs font-bold text-gray-400 flex-shrink-0 mt-0.5">#{i + 1}</span>
-                      <p className="text-sm font-semibold text-gray-800 flex-1">{r.action}</p>
-                    </div>
-                    <p className="text-sm text-gray-600 pl-5">{r.rationale}</p>
-                    <div className="flex items-center gap-2 flex-wrap pl-5">
-                      {urgencyBadge(r.urgency)}
-                      {confidenceBadge(r.confidence)}
-                      {r.signal_source && (
-                        <span className="text-xs text-gray-400">via {r.signal_source}</span>
+                {digest.recommendations.map((r, i) => {
+                  const d = decisions[i];
+                  return (
+                    <div key={i} className="border border-gray-100 rounded p-3 space-y-2">
+                      <div className="flex items-start gap-2 flex-wrap">
+                        <span className="text-xs font-bold text-gray-400 flex-shrink-0 mt-0.5">#{i + 1}</span>
+                        <p className="text-sm font-semibold text-gray-800 flex-1">{r.action}</p>
+                      </div>
+                      <p className="text-sm text-gray-600 pl-5">{r.rationale}</p>
+                      <div className="flex items-center gap-2 flex-wrap pl-5">
+                        {urgencyBadge(r.urgency)}
+                        {confidenceBadge(r.confidence)}
+                        {r.signal_source && (
+                          <span className="text-xs text-gray-400">via {r.signal_source}</span>
+                        )}
+                      </div>
+                      {/* Decision capture */}
+                      {d?.saved ? (
+                        <div className="pl-5 text-xs text-green-600 font-medium">Decision captured: {d.decision}</div>
+                      ) : (
+                        <div className="pl-5 pt-1 space-y-2">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {(["Acted", "Overriding", "Monitoring"] as Decision[]).map(opt => (
+                              <button
+                                key={opt}
+                                onClick={() => setDecisionField(i, "decision", opt)}
+                                className={`text-xs px-2 py-0.5 rounded border transition-colors ${
+                                  d?.decision === opt
+                                    ? "bg-gray-800 text-white border-gray-800"
+                                    : "bg-white text-gray-500 border-gray-200 hover:border-gray-400"
+                                }`}
+                              >
+                                {opt}
+                              </button>
+                            ))}
+                            {d?.decision && (
+                              <button
+                                onClick={() => saveDecision(i, r)}
+                                disabled={d.saving}
+                                className="text-xs px-2 py-0.5 rounded bg-gray-900 text-white hover:bg-gray-700 disabled:opacity-60 ml-1"
+                              >
+                                {d.saving ? "Saving…" : "Capture"}
+                              </button>
+                            )}
+                          </div>
+                          {d?.decision && (
+                            <input
+                              type="text"
+                              placeholder="Optional note (why / what instead)"
+                              value={d.note ?? ""}
+                              onChange={e => setDecisionField(i, "note", e.target.value)}
+                              className="w-full text-xs border border-gray-200 rounded px-2 py-1 text-gray-700 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                            />
+                          )}
+                        </div>
                       )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
