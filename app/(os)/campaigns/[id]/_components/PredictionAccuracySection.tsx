@@ -203,6 +203,34 @@ export function PredictionAccuracySection({
   const [showAdd, setShowAdd] = useState(false);
   const [adding, startAdd] = useTransition();
   const [deleting, startDelete] = useTransition();
+  const [reconciling, setReconciling] = useState(false);
+  const [reconcileResult, setReconcileResult] = useState<{ reconciled: number; verdicts: Record<string, number> } | null>(null);
+
+  async function handleReconcile() {
+    setReconciling(true);
+    setReconcileResult(null);
+    try {
+      const res = await fetch("/api/prediction-reconcile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaign_id: campaignId }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setReconcileResult(data);
+        // Reload records to show updated verdicts
+        const reloadRes = await fetch(`/api/prediction-accuracy?campaign_id=${campaignId}`);
+        if (reloadRes.ok) {
+          const reloaded = await reloadRes.json();
+          if (Array.isArray(reloaded)) setRecords(reloaded);
+        }
+      }
+    } catch {
+      // silent
+    } finally {
+      setReconciling(false);
+    }
+  }
 
   // Add form state
   const [category, setCategory] = useState<(typeof CATEGORY_OPTIONS)[number]>("Signal");
@@ -258,14 +286,31 @@ export function PredictionAccuracySection({
             Blind Mirror Test — record predictions before outcomes are known, then log actuals.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowAdd((p) => !p)}
-          className="px-3 py-1 rounded-full border border-neutral-200 bg-white text-xs font-medium text-neutral-600 hover:bg-neutral-50 hover:border-neutral-400 transition-colors"
-        >
-          {showAdd ? "Cancel" : "+ Add prediction"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleReconcile}
+            disabled={reconciling}
+            className="flex items-center gap-1 px-3 py-1 rounded-full border border-neutral-200 bg-white text-xs font-medium text-neutral-600 hover:bg-neutral-50 hover:border-neutral-400 disabled:opacity-60 transition-colors"
+          >
+            <span className="text-purple-500">✦</span>
+            {reconciling ? "Reconciling…" : "Auto-Reconcile"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowAdd((p) => !p)}
+            className="px-3 py-1 rounded-full border border-neutral-200 bg-white text-xs font-medium text-neutral-600 hover:bg-neutral-50 hover:border-neutral-400 transition-colors"
+          >
+            {showAdd ? "Cancel" : "+ Add prediction"}
+          </button>
+        </div>
       </div>
+      {reconcileResult && (
+        <div className="mb-3 px-3 py-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
+          Reconciled {reconcileResult.reconciled} prediction{reconcileResult.reconciled !== 1 ? "s" : ""}.
+          {Object.entries(reconcileResult.verdicts ?? {}).map(([v, n]) => ` ${n} ${v}`).join(",")}
+        </div>
+      )}
 
       {/* Add form */}
       {showAdd && (

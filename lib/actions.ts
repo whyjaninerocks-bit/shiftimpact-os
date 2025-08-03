@@ -273,6 +273,13 @@ export async function setFrameLockStatus(campaignId: string, frameBriefId: strin
   if (lock) {
     void fireOrchestration(campaignId, "BRIEF_SUBMITTED", { source: "frame_lock", frame_brief_id: frameBriefId });
 
+    // Sprint 9: auto-snapshot predictions on FRAME lock (non-blocking)
+    void fetch(`${process.env.NEXT_PUBLIC_APP_URL ?? "https://shiftimpact-os.vercel.app"}/api/prediction-snapshot`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ campaign_id: campaignId, frame_brief_id: frameBriefId }),
+    }).catch(() => { /* non-critical */ });
+
     // Sprint 31: fire email notifications to team member + client contact (non-blocking)
     void (async () => {
       try {
