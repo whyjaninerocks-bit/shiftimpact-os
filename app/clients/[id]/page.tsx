@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCampaignsForClient, getClient, getAllTeamMembers } from "@/lib/data";
+import { getCampaignsForClient, getClient, getAllTeamMembers, getClientChannels, getClientSignalSources } from "@/lib/data";
+import { ChannelRegistrySection } from "./_components/ChannelRegistrySection";
+import { SignalSourcesSection } from "./_components/SignalSourcesSection";
 import { createCampaign, updateClient } from "@/lib/actions";
 import {
   Badge,
@@ -28,9 +30,11 @@ export default async function ClientDetailPage({
   const client = await getClient(id);
   if (!client) notFound();
 
-  const [campaigns, teamMembers] = await Promise.all([
+  const [campaigns, teamMembers, clientChannels, signalSources] = await Promise.all([
     getCampaignsForClient(id),
     getAllTeamMembers(),
+    getClientChannels(id),
+    getClientSignalSources(id),
   ]);
 
   const updateClientWithId = updateClient.bind(null, id);
@@ -124,6 +128,11 @@ export default async function ClientDetailPage({
             <button type="submit" className={buttonSecondaryClass}>Save</button>
           </form>
         </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ChannelRegistrySection clientId={id} channels={clientChannels} />
+        <SignalSourcesSection clientId={id} sources={signalSources} />
       </div>
     </div>
   );

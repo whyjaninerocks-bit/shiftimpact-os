@@ -438,3 +438,131 @@ export async function toggleOsRule(ruleId: string, active: boolean) {
   revalidatePath("/os-rules");
   redirect("/os-rules");
 }
+
+// ───────────────────────────────────────────────────────────────────────
+// Gate Signal Log
+// ───────────────────────────────────────────────────────────────────────
+
+export async function createSignalLog(campaignId: string, formData: FormData) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("gate_signal_log").insert({
+    campaign_id: campaignId,
+    gate_id: str(formData, "gate_id") || null,
+    logged_at: str(formData, "logged_at") || new Date().toISOString().slice(0, 10),
+    signal_type: str(formData, "signal_type"),
+    signal_label: str(formData, "signal_label"),
+    actual_value: numOrNull(formData, "actual_value"),
+    threshold_value: numOrNull(formData, "threshold_value"),
+    unit: str(formData, "unit") || null,
+    notes: str(formData, "notes") || null,
+  });
+
+  if (error) {
+    redirect(`/campaigns/${campaignId}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath(`/campaigns/${campaignId}`);
+  redirect(`/campaigns/${campaignId}#signal-log`);
+}
+
+export async function deleteSignalLog(logId: string, campaignId: string) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("gate_signal_log").delete().eq("id", logId);
+
+  if (error) {
+    redirect(`/campaigns/${campaignId}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath(`/campaigns/${campaignId}`);
+  redirect(`/campaigns/${campaignId}#signal-log`);
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Client Channel Registry
+// ───────────────────────────────────────────────────────────────────────
+
+export async function createClientChannel(clientId: string, formData: FormData) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("client_channels").insert({
+    client_id: clientId,
+    channel_name: str(formData, "channel_name"),
+    channel_category: str(formData, "channel_category") || "Custom",
+    translation_hint: str(formData, "translation_hint") || "",
+  });
+  if (error) redirect(`/clients/${clientId}?error=${encodeURIComponent(error.message)}`);
+  revalidatePath(`/clients/${clientId}`);
+  redirect(`/clients/${clientId}#channels`);
+}
+
+export async function deleteClientChannel(channelId: string, clientId: string) {
+  const supabase = createAdminClient();
+  await supabase.from("client_channels").update({ active: false }).eq("id", channelId);
+  revalidatePath(`/clients/${clientId}`);
+  redirect(`/clients/${clientId}#channels`);
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Client Signal Source Library
+// ───────────────────────────────────────────────────────────────────────
+
+export async function createClientSignalSource(clientId: string, formData: FormData) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("client_signal_sources").insert({
+    client_id: clientId,
+    source_name: str(formData, "source_name"),
+    source_type: str(formData, "source_type"),
+    unit: str(formData, "unit") || "%",
+    description: str(formData, "description") || "",
+  });
+  if (error) redirect(`/clients/${clientId}?error=${encodeURIComponent(error.message)}`);
+  revalidatePath(`/clients/${clientId}`);
+  redirect(`/clients/${clientId}#signal-sources`);
+}
+
+export async function deleteClientSignalSource(sourceId: string, clientId: string) {
+  const supabase = createAdminClient();
+  await supabase.from("client_signal_sources").update({ active: false }).eq("id", sourceId);
+  revalidatePath(`/clients/${clientId}`);
+  redirect(`/clients/${clientId}#signal-sources`);
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Idea Extensions
+// ───────────────────────────────────────────────────────────────────────
+
+export async function createIdeaExtension(campaignId: string, formData: FormData) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("idea_extensions").insert({
+    campaign_id: campaignId,
+    channel_name: str(formData, "channel_name"),
+    channel_category: str(formData, "channel_category") || "Custom",
+    brief_body: str(formData, "brief_body") || "",
+    frame_anchor: str(formData, "frame_anchor") || "",
+    mood_register: str(formData, "mood_register") || "",
+    clarity_statement: str(formData, "clarity_statement") || "",
+    propagation_mechanism: str(formData, "propagation_mechanism") || "",
+    ai_generated: false,
+  });
+  if (error) redirect(`/campaigns/${campaignId}?error=${encodeURIComponent(error.message)}`);
+  revalidatePath(`/campaigns/${campaignId}`);
+  redirect(`/campaigns/${campaignId}#idea-extensions`);
+}
+
+export async function updateIdeaExtension(extensionId: string, campaignId: string, formData: FormData) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("idea_extensions").update({
+    brief_body: str(formData, "brief_body"),
+    propagation_mechanism: str(formData, "propagation_mechanism"),
+    status: str(formData, "status") || "Draft",
+  }).eq("id", extensionId);
+  if (error) redirect(`/campaigns/${campaignId}?error=${encodeURIComponent(error.message)}`);
+  revalidatePath(`/campaigns/${campaignId}`);
+  redirect(`/campaigns/${campaignId}#idea-extensions`);
+}
+
+export async function deleteIdeaExtension(extensionId: string, campaignId: string) {
+  const supabase = createAdminClient();
+  await supabase.from("idea_extensions").delete().eq("id", extensionId);
+  revalidatePath(`/campaigns/${campaignId}`);
+  redirect(`/campaigns/${campaignId}#idea-extensions`);
+}

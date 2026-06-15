@@ -13,6 +13,10 @@ import type {
   StageBrief,
   TeamMember,
   TeamMemberWithRollups,
+  GateSignalLog,
+  ClientChannel,
+  ClientSignalSource,
+  IdeaExtension,
 } from "@/lib/types";
 
 export async function getClients(): Promise<ClientWithRollups[]> {
@@ -178,4 +182,53 @@ export async function getAllClientsBasic(): Promise<Client[]> {
   const { data, error } = await supabase.from("clients").select("*").order("name");
   if (error) throw error;
   return data as Client[];
+}
+
+export async function getSignalLogs(campaignId: string): Promise<GateSignalLog[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("gate_signal_log")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .order("logged_at", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data as GateSignalLog[];
+}
+
+export async function getClientChannels(clientId: string): Promise<ClientChannel[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("client_channels")
+    .select("*")
+    .eq("client_id", clientId)
+    .eq("active", true)
+    .order("channel_category")
+    .order("channel_name");
+  if (error) throw error;
+  return data as ClientChannel[];
+}
+
+export async function getClientSignalSources(clientId: string): Promise<ClientSignalSource[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("client_signal_sources")
+    .select("*")
+    .eq("client_id", clientId)
+    .eq("active", true)
+    .order("source_name");
+  if (error) throw error;
+  return data as ClientSignalSource[];
+}
+
+export async function getIdeaExtensions(campaignId: string): Promise<IdeaExtension[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("idea_extensions")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .order("channel_category")
+    .order("channel_name");
+  if (error) throw error;
+  return data as IdeaExtension[];
 }

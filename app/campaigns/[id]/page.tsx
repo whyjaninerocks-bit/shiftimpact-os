@@ -9,6 +9,9 @@ import {
   getKillSwitches,
   getPhaseGates,
   getStageBriefs,
+  getSignalLogs,
+  getIdeaExtensions,
+  getClientChannels,
 } from "@/lib/data";
 import { Badge, ErrorBanner, gateSignalTone, phaseTone } from "@/app/_components/ui";
 import { CampaignInfoSection } from "./_components/CampaignInfoSection";
@@ -18,6 +21,9 @@ import { StageBriefsSection } from "./_components/StageBriefsSection";
 import { PhaseGatesSection } from "./_components/PhaseGatesSection";
 import { DashboardSection } from "./_components/DashboardSection";
 import { BusinessOutcomesSection } from "./_components/BusinessOutcomesSection";
+import { SignalLogSection } from "./_components/SignalLogSection";
+import { DiagnosticsSection } from "./_components/DiagnosticsSection";
+import { IdeaExtensionsSection } from "./_components/IdeaExtensionsSection";
 
 const sectionLinks = [
   { href: "#info", label: "Campaign" },
@@ -27,6 +33,9 @@ const sectionLinks = [
   { href: "#phase-gates", label: "Phase Gates" },
   { href: "#dashboard", label: "Dashboard" },
   { href: "#business-outcomes", label: "Business Outcomes" },
+  { href: "#signal-log", label: "Signal Log" },
+  { href: "#idea-extensions", label: "Idea Extensions" },
+  { href: "#diagnostics", label: "Diagnostics" },
 ];
 
 export default async function CampaignDetailPage({
@@ -45,13 +54,17 @@ export default async function CampaignDetailPage({
   const frame = await getFrameBrief(id);
   if (!frame) notFound();
 
-  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers] = await Promise.all([
+  const clientChannels = await getClientChannels(campaign.client_id);
+
+  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions] = await Promise.all([
     getKillSwitches(frame.id),
     getStageBriefs(id),
     getPhaseGates(id),
     getDashboards(id),
     getBusinessOutcomes(id),
     getAllTeamMembers(),
+    getSignalLogs(id),
+    getIdeaExtensions(id),
   ]);
 
   return (
@@ -103,6 +116,22 @@ export default async function CampaignDetailPage({
       <PhaseGatesSection campaignId={id} phaseGates={phaseGates} />
       <DashboardSection campaignId={id} dashboards={dashboards} />
       <BusinessOutcomesSection campaignId={id} campaign={campaign} outcomes={businessOutcomes} />
+      <SignalLogSection campaignId={id} signalLogs={signalLogs} phaseGates={phaseGates} />
+      <IdeaExtensionsSection
+        campaignId={id}
+        frame={frame}
+        extensions={ideaExtensions}
+        clientChannels={clientChannels}
+      />
+      <DiagnosticsSection
+        campaign={campaign}
+        frame={frame}
+        phaseGates={phaseGates}
+        stageBriefs={stageBriefs}
+        killSwitches={killSwitches}
+        signalLogs={signalLogs}
+        dashboards={dashboards}
+      />
     </div>
   );
 }

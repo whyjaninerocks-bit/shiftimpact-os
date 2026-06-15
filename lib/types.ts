@@ -45,14 +45,14 @@ export type CampaignOverview = Campaign & {
   frame_brief_id: string | null;
   frame_lock_status: "Draft" | "Locked" | null;
   ics_weighted_total: number | null;
-  ics_threshold: "Advance" | "Fix" | "Rework" | "Stop" | null;
+  ics_threshold: "Advance" | "Conditional" | "Rework" | "Stop" | null;
   frame_anchor: string | null;
   frame_mood: string | null;
   clarity_statement: string | null;
 };
 
 export type LockStatus = "Draft" | "Locked";
-export type IcsThreshold = "Advance" | "Fix" | "Rework" | "Stop";
+export type IcsThreshold = "Advance" | "Conditional" | "Rework" | "Stop";
 
 export type FrameBrief = {
   id: string;
@@ -186,4 +186,66 @@ export type OsRule = {
   config: Record<string, unknown>;
   active: boolean;
   created_at: string;
+};
+
+export type GateSignalLog = {
+  id: string;
+  campaign_id: string;
+  gate_id: string | null;
+  logged_at: string;
+  signal_type: string;
+  signal_label: string;
+  actual_value: number | null;
+  threshold_value: number | null;
+  unit: string | null;
+  pass: boolean | null;
+  notes: string | null;
+  created_at: string;
+};
+
+// ─── Client Channel Registry ───────────────────────────────────────────────
+
+export type ChannelCategory = "Radio" | "KOL" | "Retail" | "Digital" | "PR" | "CRM" | "Custom";
+
+export type ClientChannel = {
+  id: string;
+  client_id: string;
+  channel_name: string;
+  channel_category: ChannelCategory;
+  translation_hint: string;
+  active: boolean;
+  created_at: string;
+};
+
+// ─── Client Signal Source Library ──────────────────────────────────────────
+
+export type ClientSignalSource = {
+  id: string;
+  client_id: string;
+  source_name: string;
+  source_type: string;
+  unit: string;
+  description: string;
+  active: boolean;
+  created_at: string;
+};
+
+// ─── Idea Extensions ───────────────────────────────────────────────────────
+
+export type IdeaExtensionStatus = "Draft" | "Ready" | "Approved";
+
+export type IdeaExtension = {
+  id: string;
+  campaign_id: string;
+  channel_name: string;
+  channel_category: ChannelCategory;
+  brief_body: string;
+  frame_anchor: string;
+  mood_register: string;
+  clarity_statement: string;
+  propagation_mechanism: string;
+  status: IdeaExtensionStatus;
+  ai_generated: boolean;
+  created_at: string;
+  updated_at: string;
 };
