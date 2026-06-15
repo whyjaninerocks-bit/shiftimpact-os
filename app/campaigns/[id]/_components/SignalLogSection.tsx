@@ -1,4 +1,3 @@
-"use server";
 import { createSignalLog, deleteSignalLog } from "@/lib/actions";
 import { Badge, Card, SectionTitle, buttonClass, buttonSecondaryClass, inputClass, labelClass } from "@/app/_components/ui";
 import type { GateSignalLog, PhaseGate } from "@/lib/types";
