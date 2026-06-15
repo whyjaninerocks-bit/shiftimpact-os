@@ -566,3 +566,90 @@ export async function deleteIdeaExtension(extensionId: string, campaignId: strin
   revalidatePath(`/campaigns/${campaignId}`);
   redirect(`/campaigns/${campaignId}#idea-extensions`);
 }
+
+// ───────────────────────────────────────────────────────────────────────
+// Quick Audit — creates client + campaign + frame brief in one shot
+// ───────────────────────────────────────────────────────────────────────
+
+export async function createQuickAudit(formData: FormData) {
+  const supabase = createAdminClient();
+
+  // 1. Create client
+  const { data: client, error: clientError } = await supabase
+    .from("clients")
+    .insert({
+      name: str(formData, "brand_name"),
+      industry_profile: (str(formData, "industry_profile") || "Other") as "QSR" | "B2B" | "Retail" | "Other",
+      business_outcome_label: str(formData, "business_outcome_label") || "Business Outcome",
+      retention_metric_label: "Retention Metric",
+    })
+    .select("id")
+    .single();
+
+  if (clientError) redirect(`/audit?error=${encodeURIComponent(clientError.message)}`);
+
+  // 2. Create campaign
+  const { data: campaign, error: campaignError } = await supabase
+    .from("campaigns")
+    .insert({
+      client_id: client.id,
+      name: str(formData, "campaign_name") || "Campaign Audit",
+      current_phase: (str(formData, "current_phase") || "Demand") as "Demand" | "Conversion" | "Retention" | "Complete",
+    })
+    .select("id")
+    .single();
+
+  if (campaignError) redirect(`/audit?error=${encodeURIComponent(campaignError.message)}`);
+
+  // 3. Create frame brief with ICS scores
+  const { error: frameError } = await supabase
+    .from("frame_briefs")
+    .insert({
+      campaign_id: campaign.id,
+      force: str(formData, "context_notes") || "[Quick Audit]",
+      anchor: `[Quick Audit] ${str(formData, "brand_name")} — ${str(formData, "campaign_name") || "Campaign Audit"}`,
+      ics_cultural_fit: numOrNull(formData, "ics_cultural_fit") ?? 3,
+      ics_business_alignment: numOrNull(formData, "ics_business_alignment") ?? 3,
+      ics_audience_tension: numOrNull(formData, "ics_audience_tension") ?? 3,
+      ics_executional_coherence: numOrNull(formData, "ics_executional_coherence") ?? 3,
+      ics_measurability: numOrNull(formData, "ics_measurability") ?? 3,
+      ics_scalability: numOrNull(formData, "ics_scalability") ?? 3,
+    });
+
+  if (frameError) redirect(`/audit?error=${encodeURIComponent(frameError.message)}`);
+
+  // 4. Seed phase gates from templates
+  const { data: templates } = await supabase
+    .from("gate_templates")
+    .select("id, gate_type, sequence_order, required_signal_template")
+    .order("sequence_order");
+
+  const gateRows = (templates ?? []).map((t) => ({
+    campaign_id: campaign.id,
+    gate_template_id: t.id,
+    gate_type: t.gate_type,
+    sequence_order: t.sequence_order,
+    required_signal: t.required_signal_template,
+  }));
+
+  if (gateRows.length > 0) {
+    await supabase.from("phase_gates").insert(gateRows);
+  }
+
+  // 5. Seed standard client channels
+  const standardChannels = [
+    { channel_name: "Digital / Social", channel_category: "Digital" as const, translation_hint: "Platform-native brand mechanics. Idea drives format, not the reverse." },
+    { channel_name: "KOL / Influencer", channel_category: "KOL" as const, translation_hint: "Creator-native storytelling. Must feel earned, not scripted." },
+    { channel_name: "PR / Earned Media", channel_category: "PR" as const, translation_hint: "Journalist angle, not brand angle. What makes this worth covering?" },
+    { channel_name: "Radio", channel_category: "Radio" as const, translation_hint: "Audio-only hook. Human tension in 15 seconds." },
+    { channel_name: "Retail / In-Store", channel_category: "Retail" as const, translation_hint: "Last-mile conversion trigger. Same cultural tension, different format." },
+  ];
+  await supabase.from("client_channels").insert(
+    standardChannels.map((ch) => ({ client_id: client.id, ...ch }))
+  );
+
+  revalidatePath("/audit");
+  revalidatePath("/clients");
+  revalidatePath("/");
+  redirect(`/campaigns/${campaign.id}#diagnostics`);
+}
