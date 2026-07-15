@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   getAllTeamMembers,
+  getBigIdeaPlatform,
   getBusinessOutcomes,
   getCampaign,
   getDashboards,
@@ -12,6 +13,14 @@ import {
   getSignalLogs,
   getIdeaExtensions,
   getClientChannels,
+  getSignalThreshold,
+  getSignalWeeklyReports,
+  getAllChannelProfiles,
+  getCampaignChannels,
+  getCrossChannelReports,
+  getConsumerBehaviourStates,
+  getSignalMarketContexts,
+  getAttributionRecords,
 } from "@/lib/data";
 import { Badge, ErrorBanner, gateSignalTone, phaseTone } from "@/app/_components/ui";
 import { CampaignInfoSection } from "./_components/CampaignInfoSection";
@@ -24,13 +33,29 @@ import { BusinessOutcomesSection } from "./_components/BusinessOutcomesSection";
 import { SignalLogSection } from "./_components/SignalLogSection";
 import { DiagnosticsSection } from "./_components/DiagnosticsSection";
 import { IdeaExtensionsSection } from "./_components/IdeaExtensionsSection";
+import { BigIdeaPlatformSection } from "./_components/BigIdeaPlatformSection";
+import { SignalIntelligenceSection } from "./_components/SignalIntelligenceSection";
+import { CrossChannelSection } from "./_components/CrossChannelSection";
+import { ConsumerBehaviourSection } from "./_components/ConsumerBehaviourSection";
+import { MarketContextSection } from "./_components/MarketContextSection";
+import { AttributionSection } from "./_components/AttributionSection";
+import { IntelligenceQuerySection } from "./_components/IntelligenceQuerySection";
+import { CampaignReportSection } from "./_components/CampaignReportSection";
 
 const sectionLinks = [
   { href: "#info", label: "Campaign" },
   { href: "#frame", label: "FRAME Brief" },
+  { href: "#bip", label: "Big Idea Platform" },
   { href: "#kill-switches", label: "Kill Switches" },
   { href: "#stage-briefs", label: "STAGE Briefs" },
   { href: "#phase-gates", label: "Phase Gates" },
+  { href: "#signal-intelligence", label: "Signal Intelligence ⚿" },
+  { href: "#cross-channel", label: "Cross-Channel Hub ⚿" },
+  { href: "#behaviour-state", label: "Behaviour State ⚿" },
+  { href: "#market-context", label: "Market Context ⚿" },
+  { href: "#attribution", label: "Attribution ⚿" },
+  { href: "#intelligence-query", label: "Intelligence Query ✦" },
+  { href: "#campaign-report", label: "Campaign Report ✦" },
   { href: "#dashboard", label: "Dashboard" },
   { href: "#business-outcomes", label: "Business Outcomes" },
   { href: "#signal-log", label: "Signal Log" },
@@ -56,7 +81,7 @@ export default async function CampaignDetailPage({
 
   const clientChannels = await getClientChannels(campaign.client_id);
 
-  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions] = await Promise.all([
+  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions, bip, signalThreshold, signalReports, campaignChannels, crossChannelReports, allChannelProfiles, behaviourStates, marketContexts, attributionRecords] = await Promise.all([
     getKillSwitches(frame.id),
     getStageBriefs(id),
     getPhaseGates(id),
@@ -65,7 +90,18 @@ export default async function CampaignDetailPage({
     getAllTeamMembers(),
     getSignalLogs(id),
     getIdeaExtensions(id),
+    getBigIdeaPlatform(id),
+    getSignalThreshold(id),
+    getSignalWeeklyReports(id),
+    getCampaignChannels(id),
+    getCrossChannelReports(id),
+    getAllChannelProfiles(),
+    getConsumerBehaviourStates(id),
+    getSignalMarketContexts(id),
+    getAttributionRecords(id),
   ]);
+
+  const latestSignalWeek = signalReports[0]?.week_number ?? null;
 
   return (
     <div className="space-y-6">
@@ -105,6 +141,7 @@ export default async function CampaignDetailPage({
 
       <CampaignInfoSection campaign={campaign} teamMembers={teamMembers} />
       <FrameBriefSection campaignId={id} frame={frame} />
+      {bip && <BigIdeaPlatformSection campaignId={id} frame={frame} bip={bip} />}
       <KillSwitchesSection campaignId={id} frameBriefId={frame.id} killSwitches={killSwitches} />
       <StageBriefsSection
         campaignId={id}
@@ -114,6 +151,32 @@ export default async function CampaignDetailPage({
         stageBriefs={stageBriefs}
       />
       <PhaseGatesSection campaignId={id} phaseGates={phaseGates} />
+      <SignalIntelligenceSection
+        campaignId={id}
+        threshold={signalThreshold}
+        reports={signalReports}
+      />
+      <CrossChannelSection
+        campaignId={id}
+        campaignChannels={campaignChannels}
+        channelReports={crossChannelReports}
+        allChannelProfiles={allChannelProfiles}
+      />
+      <ConsumerBehaviourSection
+        campaignId={id}
+        behaviourStates={behaviourStates}
+      />
+      <MarketContextSection
+        campaignId={id}
+        marketContexts={marketContexts}
+        latestSignalWeek={latestSignalWeek}
+      />
+      <AttributionSection
+        campaignId={id}
+        attributionRecords={attributionRecords}
+      />
+      <IntelligenceQuerySection campaignId={id} campaignName={campaign.name} />
+      <CampaignReportSection campaignId={id} campaignName={campaign.name} />
       <DashboardSection campaignId={id} dashboards={dashboards} />
       <BusinessOutcomesSection campaignId={id} campaign={campaign} outcomes={businessOutcomes} />
       <SignalLogSection campaignId={id} signalLogs={signalLogs} phaseGates={phaseGates} />
