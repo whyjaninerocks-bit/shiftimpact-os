@@ -31,6 +31,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </Link>
               <Link
                 className="px-3 py-1.5 rounded-md text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100"
+                href="/knowledge"
+              >
+                Knowledge
+              </Link>
+              <Link
+                className="px-3 py-1.5 rounded-md text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100"
                 href="/team"
               >
                 Team
