@@ -24,7 +24,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
-import { v4 as uuidv4 } from "uuid";
+import { randomUUID } from "crypto";
 
 function getSupabase() {
   return createClient(
@@ -372,7 +372,7 @@ export async function POST(req: NextRequest) {
     .map(b => b.component);
 
   const result = {
-    query_id: uuidv4(),
+    query_id: randomUUID(),
     campaign_id,
     query_text,
     // ── 4-part client-safe finding ──
