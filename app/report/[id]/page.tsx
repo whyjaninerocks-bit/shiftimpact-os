@@ -115,20 +115,15 @@ export default async function ClientReportPage({
           </div>
         </div>
 
-        {/* ── Big Idea ─────────────────────────────────────────────────── */}
-        {(bip?.topline_idea || frame?.force) && (
+        {/* ── Big Idea — only shown when BIP topline_idea is set ──────── */}
+        {bip?.topline_idea && (
           <div className="rounded-xl border border-neutral-200 bg-white px-6 py-5 shadow-sm">
             <p className="text-xs text-neutral-400 uppercase tracking-wide font-medium mb-3">
               Campaign Idea
             </p>
-            {bip?.topline_idea && (
-              <blockquote className="text-base font-semibold text-neutral-900 leading-snug border-l-4 border-neutral-900 pl-4 mb-3">
-                {bip.topline_idea}
-              </blockquote>
-            )}
-            {frame?.force && (
-              <p className="text-sm text-neutral-600 leading-relaxed">{frame.force}</p>
-            )}
+            <blockquote className="text-base font-semibold text-neutral-900 leading-snug border-l-4 border-neutral-900 pl-4 mb-3">
+              {bip.topline_idea}
+            </blockquote>
             {bip?.brand_role && (
               <p className="text-xs text-neutral-400 mt-2">
                 <span className="font-medium text-neutral-500">Brand role:</span> {bip.brand_role}
@@ -183,8 +178,8 @@ export default async function ClientReportPage({
               <p className="text-xs text-neutral-400 uppercase tracking-wide font-medium">
                 Intelligence Summary
               </p>
-              {cir.report_label && (
-                <span className="text-xs text-neutral-400">{cir.report_label}</span>
+              {cir.report_week > 0 && (
+                <span className="text-xs text-neutral-400">Week {cir.report_week}</span>
               )}
             </div>
             <p className="text-sm text-neutral-700 leading-relaxed whitespace-pre-line">
