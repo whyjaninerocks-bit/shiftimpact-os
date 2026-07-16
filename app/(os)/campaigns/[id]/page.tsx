@@ -43,6 +43,7 @@ import { AttributionSection } from "./_components/AttributionSection";
 import { IntelligenceQuerySection } from "./_components/IntelligenceQuerySection";
 import { CampaignReportSection } from "./_components/CampaignReportSection";
 import { ConsumerPulseSection } from "./_components/ConsumerPulseSection";
+import { ShareBriefWidget } from "./_components/ShareBriefWidget";
 
 const sectionLinks = [
   { href: "#info", label: "Campaign" },
@@ -125,12 +126,7 @@ export default async function CampaignDetailPage({
             <Badge tone={gateSignalTone(campaign.gate_signal_status)}>{campaign.gate_signal_status}</Badge>
           </div>
         </div>
-        <Link
-          href={`/portal/${campaign.id}`}
-          className="inline-block mt-2 text-xs font-medium text-neutral-500 hover:text-neutral-900 underline"
-        >
-          View Client Interface →
-        </Link>
+        <ShareBriefWidget campaignId={id} />
       </div>
 
       <ErrorBanner message={error} />

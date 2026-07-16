@@ -56,8 +56,8 @@ export default async function ClientDetailPage({
         <div className="lg:col-span-2 space-y-3">
           <SectionTitle>Campaigns</SectionTitle>
           {campaigns.map((c) => (
-            <Link key={c.id} href={`/campaigns/${c.id}`}>
-              <Card className="hover:border-neutral-400 transition-colors flex items-center justify-between">
+            <Card key={c.id} className="hover:border-neutral-400 transition-colors">
+              <Link href={`/campaigns/${c.id}`} className="flex items-center justify-between">
                 <div>
                   <p className="font-semibold">{c.name}</p>
                   <p className="text-xs text-neutral-400 mt-0.5">
@@ -71,8 +71,18 @@ export default async function ClientDetailPage({
                   <Badge tone={gateSignalTone(c.gate_signal_status)}>{c.gate_signal_status}</Badge>
                   <Badge tone={phaseTone(c.current_phase)}>{c.current_phase}</Badge>
                 </div>
-              </Card>
-            </Link>
+              </Link>
+              <div className="mt-2 pt-2 border-t border-neutral-100">
+                <a
+                  href={`/brief/${c.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                >
+                  Share Brief with Client →
+                </a>
+              </div>
+            </Card>
           ))}
           {campaigns.length === 0 && (
             <Card><p className="text-sm text-neutral-500">No campaigns yet for this client.</p></Card>
