@@ -25,6 +25,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "crypto";
+import { getModel } from "@/lib/ai-model";
 
 function getSupabase() {
   return createClient(
@@ -102,8 +103,9 @@ Rules:
 
 Question: "${query_text}"`;
 
+  const routerModel = await getModel("model_intelligence_router", "claude-haiku-4-5-20251001");
   const msg = await anthropic.messages.create({
-    model: "claude-haiku-4-5",
+    model: routerModel,
     max_tokens: 100,
     messages: [{ role: "user", content: routerPrompt }],
   });
@@ -284,8 +286,9 @@ ${dataContext}
 
 Produce the 4-part client-safe finding as JSON.`;
 
+  const queryModel = await getModel("model_intelligence_query", "claude-sonnet-4-6");
   const msg = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
+    model: queryModel,
     max_tokens: 600,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],

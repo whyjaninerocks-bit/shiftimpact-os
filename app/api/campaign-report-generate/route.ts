@@ -26,6 +26,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
+import { getModel } from "@/lib/ai-model";
 
 function getSupabase() {
   return createClient(
@@ -202,8 +203,9 @@ Produce JSON with:
   "executive_summary": "<2 paragraphs — client-safe. What is happening, what it means, what happens next. No state codes, no internal names, no metric numbers unless from attribution.>"
 }`;
 
+  const reportModel = await getModel("model_campaign_report", "claude-sonnet-4-6");
   const msg = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
+    model: reportModel,
     max_tokens: 1200,
     system: systemPrompt,
     messages: [{ role: "user", content: `Campaign data:\n${dataStr}\n\nProduce the report JSON.` }],

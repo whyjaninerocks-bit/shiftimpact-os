@@ -48,6 +48,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 OS Rules
               </Link>
               <Link
+                className="px-3 py-1.5 rounded-md text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100"
+                href="/settings"
+              >
+                Settings
+              </Link>
+              <Link
                 className="ml-2 px-3 py-1.5 rounded-md text-sm font-medium bg-neutral-900 text-white hover:bg-neutral-700 transition-colors"
                 href="/audit"
               >

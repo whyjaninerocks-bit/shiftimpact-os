@@ -21,6 +21,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
+import { getModel } from "@/lib/ai-model";
 
 function getSupabase() {
   return createClient(
@@ -339,8 +340,9 @@ Examples:
 - "Brand intelligence refreshed — risk posture and activation playbook updated."
 - "Brief intelligence evaluated and media mix updated."`;
 
+  const orchModel = await getModel("model_orchestration", "claude-haiku-4-5-20251001");
   const msg = await anthropic.messages.create({
-    model: "claude-haiku-4-5",
+    model: orchModel,
     max_tokens: 80,
     messages: [{ role: "user", content: prompt }],
   });

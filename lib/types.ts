@@ -974,3 +974,25 @@ export type IntelligenceQueryResult = {
   scopes_resolved: QueryScope[];
   generated_at: string;
 };
+
+// ─── Consumer Intelligence Snapshot — F34 ─────────────────────────────────────
+// INTERNAL ONLY. Live consumer pulse pulled at campaign start / end or on demand.
+// ai_synthesis is never shown to clients.
+
+export type ConsumerPulseTriggerType = "manual" | "campaign_start" | "campaign_end";
+export type ConsumerPulseStatus = "pending" | "complete" | "error";
+
+export type ConsumerIntelligenceSnapshot = {
+  id: string;
+  campaign_id: string;
+  trigger_type: ConsumerPulseTriggerType;
+  status: ConsumerPulseStatus;
+  cultural_context: string | null;
+  industry_category: string | null;
+  tiktok_trends: unknown[] | null;
+  google_trends: unknown[] | null;
+  thestar_news: unknown[] | null;
+  ai_synthesis: string | null;
+  error_detail: string | null;
+  created_at: string;
+};

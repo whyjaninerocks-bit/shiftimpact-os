@@ -6,6 +6,7 @@ import type {
   BusinessOutcome,
   CampaignDashboard,
   ConsumerBehaviourState,
+  ConsumerIntelligenceSnapshot,
   SignalMarketContext,
   CampaignOverview,
   Client,
@@ -452,4 +453,23 @@ export async function getConsumerBehaviourStates(
     .order("week_number", { ascending: false });
   if (error) throw error;
   return (data ?? []) as ConsumerBehaviourState[];
+}
+
+// ─── Consumer Intelligence Snapshot (Feature 34 — Sprint 12) ─────────────────
+// Returns the most recent snapshot for this campaign.
+// Returns null if no pulse has been run yet.
+// INTERNAL ONLY — never passed to /brief/[id] or any client route.
+export async function getConsumerSnapshot(
+  campaignId: string
+): Promise<ConsumerIntelligenceSnapshot | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("consumer_intelligence_snapshots")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data as ConsumerIntelligenceSnapshot | null;
 }
