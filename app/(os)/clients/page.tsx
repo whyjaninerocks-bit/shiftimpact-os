@@ -22,19 +22,14 @@ export default async function ClientsPage() {
   return (
     <div className="space-y-8">
 
-      {/* ── Branded home header ─────────────────────────────────────────── */}
-      <div className="rounded-xl border border-neutral-200 bg-white px-6 py-5 flex items-center justify-between shadow-sm">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            ShiftImpact <span className="text-neutral-400 font-normal">OS</span>
-          </h1>
-          <p className="text-sm text-neutral-500 mt-0.5">
-            Signal-led campaign intelligence. Select a client to view their campaigns.
-          </p>
-        </div>
+      {/* ── Tagline bar ─────────────────────────────────────────────────── */}
+      <div className="rounded-xl border border-neutral-200 bg-white px-6 py-4 flex items-center justify-between shadow-sm">
+        <p className="text-sm text-neutral-500">
+          Signal-led campaign intelligence. Select a client to view their campaigns.
+        </p>
         <Link
           href="/audit"
-          className="shrink-0 px-5 py-2.5 rounded-lg bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-700 transition-colors"
+          className="shrink-0 ml-6 px-5 py-2.5 rounded-lg bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-700 transition-colors"
         >
           Quick Audit →
         </Link>
