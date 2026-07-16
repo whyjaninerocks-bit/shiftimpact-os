@@ -129,14 +129,19 @@ async function collectCampaignData(
     .order("week_number", { ascending: false })
     .limit(8);
 
-  // Activation playbook entries (most recent)
-  const { data: activation_playbook } = await supabase
-    .from("activation_playbook_entries")
-    .select("*")
-    .eq("campaign_id", campaign_id)
-    .order("created_at", { ascending: false })
-    .limit(5)
-    .catch(() => ({ data: [] }));
+  // Activation playbook entries (most recent) — table may not exist yet, swallow error
+  let activation_playbook: unknown[] = [];
+  try {
+    const { data: apData } = await supabase
+      .from("activation_playbook_entries")
+      .select("*")
+      .eq("campaign_id", campaign_id)
+      .order("created_at", { ascending: false })
+      .limit(5);
+    activation_playbook = apData ?? [];
+  } catch {
+    activation_playbook = [];
+  }
 
   // Latest orchestration chain summary
   const { data: latestRun } = await supabase
@@ -156,7 +161,7 @@ async function collectCampaignData(
     consumer_state_readings: consumer_state_readings ?? [],
     brand_momentum_scores,
     attribution_records: attribution_records ?? [],
-    activation_playbook: (activation_playbook as { data?: unknown[] } | null)?.data ?? activation_playbook ?? [],
+    activation_playbook,
     orchestration_chain_summary: latestRun?.chain_summary ?? null,
     report_week: latestWeek,
     campaign_name: campaignName,
