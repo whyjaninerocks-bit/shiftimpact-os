@@ -256,7 +256,7 @@ function FrameSection({
           value={fields.clarity_statement}
           onChange={set("clarity_statement")}
           rows={2}
-          placeholder="e.g. "Yeo's gets how I actually cook — it's part of my kitchen, not just a backup plan.""
+          placeholder={`e.g. "Yeo's gets how I actually cook — it's part of my kitchen, not just a backup plan."`}
         />
 
         <FieldRow
