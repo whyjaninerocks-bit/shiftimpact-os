@@ -44,6 +44,7 @@ import { IntelligenceQuerySection } from "./_components/IntelligenceQuerySection
 import { CampaignReportSection } from "./_components/CampaignReportSection";
 import { ConsumerPulseSection } from "./_components/ConsumerPulseSection";
 import { ShareBriefWidget } from "./_components/ShareBriefWidget";
+import { ShareReportWidget } from "./_components/ShareReportWidget";
 
 const sectionLinks = [
   { href: "#info", label: "Campaign" },
@@ -127,6 +128,7 @@ export default async function CampaignDetailPage({
           </div>
         </div>
         <ShareBriefWidget campaignId={id} />
+        <ShareReportWidget campaignId={id} />
       </div>
 
       <ErrorBanner message={error} />
