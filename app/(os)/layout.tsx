@@ -32,12 +32,6 @@ export default function OsLayout({ children }: { children: React.ReactNode }) {
             >
               OS Rules
             </Link>
-            <Link
-              className="ml-2 px-3 py-1.5 rounded-md text-sm font-medium bg-neutral-900 text-white hover:bg-neutral-700 transition-colors"
-              href="/audit"
-            >
-              Quick Audit
-            </Link>
           </nav>
         </div>
       </header>

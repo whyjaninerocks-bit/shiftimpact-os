@@ -516,7 +516,7 @@ The system scores this against the 6 ICS dimensions you set in your FRAME brief.
           disabled={loading}
           className={`${buttonClass} w-full py-3 text-base disabled:opacity-60 disabled:cursor-not-allowed`}
         >
-          {loading ? "Scoring your idea against your FRAME criteria…" : "Score Against My Brief →"}
+          {loading ? "Scoring your idea against your FRAME criteria…" : "Run Campaign Audit →"}
         </button>
 
         {loading && (
