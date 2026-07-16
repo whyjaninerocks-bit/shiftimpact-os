@@ -99,7 +99,7 @@ function AuditResultView({ result, onReset }: { result: AuditResult; onReset: ()
     <div className="max-w-2xl">
       <div className="mb-5">
         <h1 className="text-2xl font-bold tracking-tight">Audit Complete</h1>
-        <p className="text-sm text-neutral-500 mt-1">AI-generated diagnosis based on collected campaign signals.</p>
+        <p className="text-sm text-neutral-500 mt-1">Your idea scored against the criteria you set in your FRAME brief — not an AI opinion, a mirror of your own standards.</p>
       </div>
 
       <Card className="mb-4">
@@ -109,7 +109,7 @@ function AuditResultView({ result, onReset }: { result: AuditResult; onReset: ()
             {result.big_idea_read && (
               <blockquote className="border-l-2 border-neutral-200 pl-3 text-sm italic text-neutral-600 mt-1.5">
                 &ldquo;{result.big_idea_read}&rdquo;
-                <p className="text-xs text-neutral-400 mt-0.5 not-italic">AI read of the Big Idea</p>
+                <p className="text-xs text-neutral-400 mt-0.5 not-italic">Your stated Big Idea — scored against your own FRAME criteria</p>
               </blockquote>
             )}
           </div>
@@ -149,13 +149,13 @@ function AuditResultView({ result, onReset }: { result: AuditResult; onReset: ()
 
       {(result.overall_diagnosis || result.recommendation) && (
         <Card className="mb-4">
-          <SectionTitle>OS Diagnosis</SectionTitle>
+          <SectionTitle>What Your Brief Shows</SectionTitle>
           {result.overall_diagnosis && (
             <p className="text-sm text-neutral-700 mb-3 leading-relaxed">{result.overall_diagnosis}</p>
           )}
           {result.recommendation && (
             <div className="bg-neutral-900 text-white rounded px-3 py-2.5 text-sm">
-              <span className="text-neutral-400 text-xs font-medium block mb-0.5">Recommendation</span>
+              <span className="text-neutral-400 text-xs font-medium block mb-0.5">What to fix — based on your own brief criteria</span>
               {result.recommendation}
             </div>
           )}
@@ -175,7 +175,7 @@ function AuditResultView({ result, onReset }: { result: AuditResult; onReset: ()
         </button>
       </div>
       <p className="text-xs text-neutral-400 text-center mt-2">
-        Full diagnostic includes gate status, budget release recommendations, and AI channel briefs.
+        Full diagnostic shows gate status and budget release decisions based on the signals you pre-agreed.
       </p>
     </div>
   );
@@ -403,12 +403,6 @@ export default function QuickAuditPage() {
 
   return (
     <div className="max-w-2xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">Quick Campaign Audit</h1>
-        <p className="text-sm text-neutral-500 mt-1">
-          Auto-fetch live signals from Facebook Ads, Instagram, TikTok, KOL posts, press coverage, and radio partnerships — or paste campaign info directly. AI scores against the ShiftImpact OS framework.
-        </p>
-      </div>
 
       {error && (
         <div className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</div>
@@ -511,7 +505,7 @@ export default function QuickAuditPage() {
 • Radio scripts or partnership details
 • Your own field notes: "Campaign ran on TikTok + in-store. KOL content showed family iftar moments. Tagline was 'Manisnya Berbuka'. Retailer sell-through not in yet."
 
-The AI reads all of this and scores across the 6 ICS dimensions.`}
+The system scores this against the 6 ICS dimensions you set in your FRAME brief. You define the standard — this shows whether your idea clears it.`}
               required
             />
           </div>
@@ -522,12 +516,12 @@ The AI reads all of this and scores across the 6 ICS dimensions.`}
           disabled={loading}
           className={`${buttonClass} w-full py-3 text-base disabled:opacity-60 disabled:cursor-not-allowed`}
         >
-          {loading ? "Analysing against ShiftImpact OS framework…" : "Analyse & Generate Audit Report →"}
+          {loading ? "Scoring your idea against your FRAME criteria…" : "Score Against My Brief →"}
         </button>
 
         {loading && (
           <p className="text-xs text-neutral-400 text-center">
-            Reading all collected signals and scoring 6 ICS dimensions… ~15 seconds.
+            Scoring your idea against your FRAME brief across 6 dimensions… ~15 seconds.
           </p>
         )}
       </form>
