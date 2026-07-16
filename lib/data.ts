@@ -473,3 +473,65 @@ export async function getConsumerSnapshot(
   if (error) throw error;
   return data as ConsumerIntelligenceSnapshot | null;
 }
+
+// ── Campaign Intelligence Report (F31) — client-safe view ─────────────────────
+// Returns executive_summary + client-safe findings only.
+// NEVER exposes: findings[].confidence, findings[].components_used,
+//               findings[].scopes_resolved, or report_data internals.
+
+export interface CampaignReportClientFinding {
+  query_id: string;
+  headline: string;
+  context: string;
+  implication: string;
+  recommendation: string;
+  generated_at: string;
+}
+
+export interface CampaignReportClientView {
+  id: string;
+  report_label: string;
+  executive_summary: string;
+  findings: CampaignReportClientFinding[];
+  status: string;
+  report_week: number;
+  created_at: string;
+}
+
+export async function getLatestCampaignReport(
+  campaignId: string
+): Promise<CampaignReportClientView | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("campaign_reports")
+    .select("id, report_label, executive_summary, findings, status, report_week, created_at")
+    .eq("campaign_id", campaignId)
+    .in("status", ["ready", "exported"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+
+  // Strip internal fields — confidence, components_used, scopes_resolved are INTERNAL ONLY
+  const clientFindings: CampaignReportClientFinding[] = (
+    (data.findings as Record<string, unknown>[]) ?? []
+  ).map((f) => ({
+    query_id: String(f.query_id ?? ""),
+    headline: String(f.headline ?? ""),
+    context: String(f.context ?? ""),
+    implication: String(f.implication ?? ""),
+    recommendation: String(f.recommendation ?? ""),
+    generated_at: String(f.generated_at ?? ""),
+  }));
+
+  return {
+    id: data.id,
+    report_label: data.report_label,
+    executive_summary: data.executive_summary ?? "",
+    findings: clientFindings,
+    status: data.status,
+    report_week: data.report_week ?? 0,
+    created_at: data.created_at,
+  };
+}
