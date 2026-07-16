@@ -21,6 +21,7 @@ import {
   getConsumerBehaviourStates,
   getSignalMarketContexts,
   getAttributionRecords,
+  getConsumerSnapshot,
 } from "@/lib/data";
 import { Badge, ErrorBanner, gateSignalTone, phaseTone } from "@/app/_components/ui";
 import { CampaignInfoSection } from "./_components/CampaignInfoSection";
@@ -41,6 +42,7 @@ import { MarketContextSection } from "./_components/MarketContextSection";
 import { AttributionSection } from "./_components/AttributionSection";
 import { IntelligenceQuerySection } from "./_components/IntelligenceQuerySection";
 import { CampaignReportSection } from "./_components/CampaignReportSection";
+import { ConsumerPulseSection } from "./_components/ConsumerPulseSection";
 
 const sectionLinks = [
   { href: "#info", label: "Campaign" },
@@ -55,6 +57,7 @@ const sectionLinks = [
   { href: "#market-context", label: "Market Context ⚿" },
   { href: "#attribution", label: "Attribution ⚿" },
   { href: "#intelligence-query", label: "Intelligence Query ✦" },
+  { href: "#consumer-pulse", label: "Consumer Pulse ⚿" },
   { href: "#campaign-report", label: "Campaign Report ✦" },
   { href: "#dashboard", label: "Dashboard" },
   { href: "#business-outcomes", label: "Business Outcomes" },
@@ -81,7 +84,7 @@ export default async function CampaignDetailPage({
 
   const clientChannels = await getClientChannels(campaign.client_id);
 
-  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions, bip, signalThreshold, signalReports, campaignChannels, crossChannelReports, allChannelProfiles, behaviourStates, marketContexts, attributionRecords] = await Promise.all([
+  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions, bip, signalThreshold, signalReports, campaignChannels, crossChannelReports, allChannelProfiles, behaviourStates, marketContexts, attributionRecords, consumerSnapshot] = await Promise.all([
     getKillSwitches(frame.id),
     getStageBriefs(id),
     getPhaseGates(id),
@@ -99,6 +102,7 @@ export default async function CampaignDetailPage({
     getConsumerBehaviourStates(id),
     getSignalMarketContexts(id),
     getAttributionRecords(id),
+    getConsumerSnapshot(id),
   ]);
 
   const latestSignalWeek = signalReports[0]?.week_number ?? null;
@@ -174,6 +178,12 @@ export default async function CampaignDetailPage({
       <AttributionSection
         campaignId={id}
         attributionRecords={attributionRecords}
+      />
+      <ConsumerPulseSection
+        campaignId={id}
+        culturalContext={frame.primary_cultural_context}
+        industryCategory={frame.industry_category}
+        initialSnapshot={consumerSnapshot}
       />
       <IntelligenceQuerySection campaignId={id} campaignName={campaign.name} />
       <CampaignReportSection campaignId={id} campaignName={campaign.name} />
