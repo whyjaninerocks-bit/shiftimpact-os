@@ -266,15 +266,20 @@ export async function POST(req: NextRequest) {
     let overall_assessment = "";
 
     try {
-      const cleaned = rawText.text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      // Find the JSON object boundaries directly — handles any code fence variation
+      const text = rawText.text;
+      const jsonStart = text.indexOf("{");
+      const jsonEnd = text.lastIndexOf("}");
+      if (jsonStart === -1 || jsonEnd === -1) throw new Error("No JSON object found in response");
+      const cleaned = text.substring(jsonStart, jsonEnd + 1);
       const parsed = JSON.parse(cleaned);
       dimensions = Array.isArray(parsed.dimensions) ? parsed.dimensions : [];
       red_flags = Array.isArray(parsed.red_flags) ? parsed.red_flags : [];
       elevation_brief = parsed.elevation_brief ?? "";
       overall_assessment = parsed.overall_assessment ?? "";
-    } catch {
-      // If JSON fails, store raw as overall_assessment and keep empty dimensions
-      overall_assessment = rawText.text;
+    } catch (parseErr) {
+      console.error("/api/iq-evaluate JSON parse error:", parseErr);
+      overall_assessment = "Evaluation completed but results could not be parsed. Please re-run IQ Evaluate.";
     }
 
     // 6. Compute IQ score percentage
