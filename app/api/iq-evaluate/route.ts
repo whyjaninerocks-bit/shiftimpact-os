@@ -138,42 +138,38 @@ Return ONLY valid JSON in this exact format. No prose before or after.
   "overall_assessment": "2-3 sentences. What kind of idea this is right now, and what it would take to become genuinely excellent."
 }`;
 
-// ─── JSON Extraction ─────────────────────────────────────────────────────────
-// Claude sometimes wraps output in ```json fences and/or adds trailing prose.
-// This extracts the first balanced JSON object regardless of surrounding text.
+// ─── Tool Schema ─────────────────────────────────────────────────────────────
+// Force structured output via tool use — eliminates all text parsing.
 
-function extractFirstJsonObject(text: string): string {
-  // Try code fence first (handles ```json\n...\n```)
-  const fenceMatch = text.match(/```(?:json)?\r?\n?([\s\S]*?)\r?\n?```/);
-  if (fenceMatch) {
-    const candidate = fenceMatch[1].trim();
-    JSON.parse(candidate); // throws if invalid — let caller catch
-    return candidate;
-  }
-
-  // Brace-balanced extraction — handles trailing prose after closing }
-  const start = text.indexOf("{");
-  if (start === -1) throw new Error("No JSON object found in response");
-
-  let depth = 0;
-  let inString = false;
-  let escape = false;
-
-  for (let i = start; i < text.length; i++) {
-    const ch = text[i];
-    if (escape)         { escape = false; continue; }
-    if (ch === "\\")    { escape = true;  continue; }
-    if (ch === '"')     { inString = !inString; continue; }
-    if (inString)       continue;
-    if (ch === "{")     depth++;
-    if (ch === "}") {
-      depth--;
-      if (depth === 0)  return text.substring(start, i + 1);
-    }
-  }
-
-  throw new Error("Unbalanced braces in JSON response");
-}
+const IQ_TOOL = {
+  name: "submit_iq_evaluation",
+  description: "Submit the complete 8-dimension IQ evaluation result.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      dimensions: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            name:            { type: "string" },
+            level:           { type: "string", enum: ["Foundational", "Developing", "World-Class"] },
+            score:           { type: "number", enum: [1, 2, 3] },
+            rationale:       { type: "string" },
+            elevation_move:  { type: "string" },
+          },
+          required: ["name", "level", "score", "rationale", "elevation_move"],
+        },
+        minItems: 8,
+        maxItems: 8,
+      },
+      red_flags:           { type: "array", items: { type: "string" } },
+      elevation_brief:     { type: "string" },
+      overall_assessment:  { type: "string" },
+    },
+    required: ["dimensions", "red_flags", "elevation_brief", "overall_assessment"],
+  },
+} as const;
 
 // ─── User Prompt Builder ──────────────────────────────────────────────────────
 
@@ -272,14 +268,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Run IQ evaluation via Claude Sonnet
+    // 4. Run IQ evaluation via Claude — forced structured output via tool use
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
     const iqModel = await getModel("model_iq_evaluate", "claude-sonnet-4-6");
 
     const aiResponse = await anthropic.messages.create({
       model: iqModel,
-      max_tokens: 2000,
+      max_tokens: 4000,
       system: IQ_SYSTEM_PROMPT,
+      tools: [IQ_TOOL],
+      tool_choice: { type: "tool", name: "submit_iq_evaluation" },
       messages: [
         {
           role: "user",
@@ -293,27 +291,23 @@ export async function POST(req: NextRequest) {
       ],
     });
 
-    const rawText = aiResponse.content[0];
-    if (rawText.type !== "text") throw new Error("Unexpected AI response type");
-
-    // 5. Parse JSON output
-    let dimensions: unknown[] = [];
-    let red_flags: string[] = [];
-    let elevation_brief = "";
-    let overall_assessment = "";
-
-    try {
-      const cleaned = extractFirstJsonObject(rawText.text);
-      const parsed = JSON.parse(cleaned);
-      dimensions = Array.isArray(parsed.dimensions) ? parsed.dimensions : [];
-      red_flags = Array.isArray(parsed.red_flags) ? parsed.red_flags : [];
-      elevation_brief = parsed.elevation_brief ?? "";
-      overall_assessment = parsed.overall_assessment ?? "";
-    } catch (parseErr) {
-      console.error("/api/iq-evaluate JSON parse error:", parseErr);
-      console.error("/api/iq-evaluate raw response (first 500 chars):", rawText.text.slice(0, 500));
-      overall_assessment = "Evaluation completed but results could not be parsed. Please re-run IQ Evaluate.";
+    // 5. Extract structured result from tool use block — no text parsing needed
+    const toolBlock = aiResponse.content.find((b) => b.type === "tool_use");
+    if (!toolBlock || toolBlock.type !== "tool_use") {
+      throw new Error("Claude did not return a tool_use block");
     }
+
+    const result = toolBlock.input as {
+      dimensions: { name: string; level: string; score: number; rationale: string; elevation_move: string }[];
+      red_flags: string[];
+      elevation_brief: string;
+      overall_assessment: string;
+    };
+
+    const dimensions  = Array.isArray(result.dimensions)  ? result.dimensions  : [];
+    const red_flags   = Array.isArray(result.red_flags)    ? result.red_flags   : [];
+    const elevation_brief    = result.elevation_brief    ?? "";
+    const overall_assessment = result.overall_assessment ?? "";
 
     // 6. Compute IQ score percentage
     const scoreSum = (dimensions as { score?: number }[]).reduce(
