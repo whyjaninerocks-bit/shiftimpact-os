@@ -186,6 +186,24 @@ async function synthesiseReport(
     orchestration_chain_summary: data.orchestration_chain_summary,
   }, null, 2);
 
+  const REPORT_TOOL = {
+    name: "submit_campaign_report",
+    description: "Submit the synthesised Campaign Intelligence Report.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        signal_summary:         { type: "string", description: "2–3 sentences on delivery health trend." },
+        consumer_state_summary: { type: "string", description: "2–3 sentences on audience behaviour and velocity. No state codes." },
+        bms_summary:            { type: "string", description: "2 sentences on brand momentum direction." },
+        risk_summary:           { type: "string", description: "2 sentences on current risk posture." },
+        activation_summary:     { type: "string", description: "2 sentences on priority actions." },
+        attribution_summary:    { type: "string", description: "2 sentences on what attribution data shows." },
+        executive_summary:      { type: "string", description: "2 paragraphs — CLIENT SAFE. What is happening, what it means, what happens next. No state codes, no internal names, no metric numbers unless from attribution." },
+      },
+      required: ["signal_summary", "consumer_state_summary", "bms_summary", "risk_summary", "activation_summary", "attribution_summary", "executive_summary"],
+    },
+  } as const;
+
   const systemPrompt = `You are synthesising a Campaign Intelligence Report for a strategy lead.
 
 BOUNDARY RULES — STRICT:
@@ -193,62 +211,54 @@ BOUNDARY RULES — STRICT:
 2. No competitor names — directional language only.
 3. No internal system names (MDH, CSTR, BMS, ICS, FRAME, BIP, orchestration_runs, etc.)
 4. The executive_summary is CLIENT SAFE — write it as if presenting to the brand team.
-5. The section_summaries in report_data are INTERNAL — can use more technical framing.
-
-Produce JSON with:
-{
-  "report_data": {
-    "signal_summary": "<2-3 sentences summarising delivery health trend>",
-    "consumer_state_summary": "<2-3 sentences on audience behaviour and velocity>",
-    "bms_summary": "<2 sentences on brand momentum direction>",
-    "risk_summary": "<2 sentences on current risk posture>",
-    "activation_summary": "<2 sentences on priority actions>",
-    "attribution_summary": "<2 sentences on what attribution data shows>"
-  },
-  "executive_summary": "<2 paragraphs — client-safe. What is happening, what it means, what happens next. No state codes, no internal names, no metric numbers unless from attribution.>"
-}`;
+5. The section summaries are INTERNAL — can use more technical framing.`;
 
   const reportModel = await getModel("model_campaign_report", "claude-sonnet-4-6");
   const msg = await anthropic.messages.create({
     model: reportModel,
     max_tokens: 1200,
     system: systemPrompt,
-    messages: [{ role: "user", content: `Campaign data:\n${dataStr}\n\nProduce the report JSON.` }],
+    tools: [REPORT_TOOL],
+    tool_choice: { type: "tool", name: "submit_campaign_report" },
+    messages: [{ role: "user", content: `Campaign data:\n${dataStr}\n\nSynthesise the Campaign Intelligence Report.` }],
   });
 
-  const text = msg.content[0].type === "text" ? msg.content[0].text.trim() : "{}";
-  const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "");
-
-  try {
-    const parsed = JSON.parse(cleaned) as {
-      report_data?: Record<string, string>;
-      executive_summary?: string;
-    };
+  const toolBlock = msg.content.find((b) => b.type === "tool_use");
+  if (!toolBlock || toolBlock.type !== "tool_use") {
     return {
       report_data: {
-        ...(parsed.report_data ?? {}),
-        generated_components: {
-          signal_weeks: data.signal_reports.length,
-          consumer_state_weeks: data.consumer_state_readings.length,
-          bms_periods: data.brand_momentum_scores.length,
-          attribution_records: data.attribution_records.length,
-        },
-      },
-      executive_summary: parsed.executive_summary ?? "",
-    };
-  } catch {
-    return {
-      report_data: {
-        error: "Synthesis failed — check data availability",
-        raw_data_counts: {
-          signal_weeks: data.signal_reports.length,
-          consumer_state_weeks: data.consumer_state_readings.length,
-          bms_periods: data.brand_momentum_scores.length,
-        },
+        error: "Synthesis failed — AI did not return structured output",
       },
       executive_summary: data.orchestration_chain_summary ?? "",
     };
   }
+  const r = toolBlock.input as {
+    signal_summary?: string;
+    consumer_state_summary?: string;
+    bms_summary?: string;
+    risk_summary?: string;
+    activation_summary?: string;
+    attribution_summary?: string;
+    executive_summary?: string;
+  };
+
+  return {
+    report_data: {
+      signal_summary:         r.signal_summary         ?? "",
+      consumer_state_summary: r.consumer_state_summary ?? "",
+      bms_summary:            r.bms_summary            ?? "",
+      risk_summary:           r.risk_summary           ?? "",
+      activation_summary:     r.activation_summary     ?? "",
+      attribution_summary:    r.attribution_summary     ?? "",
+      generated_components: {
+        signal_weeks:          data.signal_reports.length,
+        consumer_state_weeks:  data.consumer_state_readings.length,
+        bms_periods:           data.brand_momentum_scores.length,
+        attribution_records:   data.attribution_records.length,
+      },
+    },
+    executive_summary: r.executive_summary ?? "",
+  };
 }
 
 // ─── DB helpers ──────────────────────────────────────────────────────────────

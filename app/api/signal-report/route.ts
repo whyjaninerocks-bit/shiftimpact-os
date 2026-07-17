@@ -107,6 +107,32 @@ function computeNumericHealth(
   }
 }
 
+// ─── Tool schema ─────────────────────────────────────────────────────────────
+
+const SIGNAL_REPORT_TOOL = {
+  name: "submit_signal_report",
+  description: "Submit the weekly signal intelligence report narrative and recommended actions.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      narrative: {
+        type: "string",
+        description: "1–2 paragraphs. Plain language. What the signal combination means for this campaign right now.",
+      },
+      recommended_actions: {
+        type: "array",
+        items: { type: "string" },
+        description: "Numbered, specific actions actionable within 48 hours. 2–4 items.",
+      },
+      phase_context: {
+        type: "string",
+        description: "One sentence on what this phase means for decision-making.",
+      },
+    },
+    required: ["narrative", "recommended_actions", "phase_context"],
+  },
+} as const;
+
 // ─── System prompt ────────────────────────────────────────────────────────────
 
 function buildSystemPrompt(): string {
@@ -123,14 +149,7 @@ CRITICAL RULES:
 3. Phase 1 reports always say: "Campaign in baseline phase — signal baselines are being established. No flags generated this week."
 4. In Phase 4, all Demand and Nurture recommended actions must be tagged [NEXT CAMPAIGN] — they will not have sufficient time to impact this flight.
 5. Always check the cross-stage pattern. The most important diagnostic is Pipeline Risk: Conversion Green + Demand Red/Amber + Nurture Red/Amber = sales cliff in 8-12 weeks post-campaign. Flag it explicitly when detected.
-6. Recommended actions must be numbered, specific, and actionable within 48 hours.
-
-OUTPUT FORMAT (JSON):
-{
-  "narrative": "1-2 paragraphs. Plain language, not code. What the signal combination means for this campaign right now.",
-  "recommended_actions": ["action 1", "action 2", "action 3"],
-  "phase_context": "One sentence on what this phase means for decision-making."
-}`;
+6. Recommended actions must be numbered, specific, and actionable within 48 hours.`;
 }
 
 function buildUserPrompt(
@@ -357,6 +376,8 @@ export async function POST(req: NextRequest) {
       model: signalModel,
       max_tokens: 800,
       system: buildSystemPrompt(),
+      tools: [SIGNAL_REPORT_TOOL],
+      tool_choice: { type: "tool", name: "submit_signal_report" },
       messages: [
         {
           role: "user",
@@ -378,31 +399,19 @@ export async function POST(req: NextRequest) {
       ],
     });
 
-    const rawContent = aiResponse.content[0];
-    if (rawContent.type !== "text") {
-      throw new Error("Unexpected AI response type");
+    // 8. Extract tool use result — .input is already parsed, no text manipulation needed
+    const toolBlock = aiResponse.content.find((b) => b.type === "tool_use");
+    if (!toolBlock || toolBlock.type !== "tool_use") {
+      throw new Error("AI did not return a tool_use block");
     }
-
-    // 8. Parse AI JSON output
-    let narrative = "";
-    let recommendedActions: string[] = [];
-    let phaseContext = "";
-
-    try {
-      // Strip markdown fences if present
-      const cleaned = rawContent.text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      const parsed = JSON.parse(cleaned);
-      narrative = parsed.narrative ?? "";
-      recommendedActions = Array.isArray(parsed.recommended_actions)
-        ? parsed.recommended_actions
-        : [];
-      phaseContext = parsed.phase_context ?? "";
-    } catch {
-      // If JSON parse fails, use raw text as narrative
-      narrative = rawContent.text;
-      recommendedActions = [];
-      phaseContext = "";
-    }
+    const result = toolBlock.input as {
+      narrative: string;
+      recommended_actions: string[];
+      phase_context: string;
+    };
+    const narrative          = result.narrative          ?? "";
+    const recommendedActions = Array.isArray(result.recommended_actions) ? result.recommended_actions : [];
+    const phaseContext       = result.phase_context      ?? "";
 
     // 9. Save traffic lights + AI outputs back to signal_weekly_reports
     const { error: updateErr } = await supabase

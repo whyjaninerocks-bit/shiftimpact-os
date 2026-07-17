@@ -24,6 +24,43 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const anthropic = new Anthropic();
 
+// ─── Tool schema ─────────────────────────────────────────────────────────────
+
+const BMS_TOOL = {
+  name: "submit_bms_composite",
+  description: "Submit the Brand Momentum Score composite assessment.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      bms_direction: {
+        type: "string",
+        enum: ["Positive", "Neutral", "Negative"],
+        description: "Positive = brand gaining ground; Neutral = holding; Negative = losing ground",
+      },
+      bms_velocity: {
+        type: "string",
+        enum: ["Accelerating", "Stable", "Decelerating"],
+        description: "Accelerating = improving week-over-week; Stable = consistent; Decelerating = slowing",
+      },
+      bms_confidence: {
+        type: "integer",
+        minimum: 1,
+        maximum: 10,
+        description: "Confidence 1–10. Penalise -1.5 per missing dimension, -2 per conflict pair.",
+      },
+      dimension_conflict_flag: {
+        type: "boolean",
+        description: "True if any two dimensions point in materially opposite directions.",
+      },
+      ai_read: {
+        type: "string",
+        description: "2 sentences max. State composite logic and single biggest risk or opportunity. INTERNAL ONLY — frank and specific.",
+      },
+    },
+    required: ["bms_direction", "bms_velocity", "bms_confidence", "dimension_conflict_flag", "ai_read"],
+  },
+} as const;
+
 // ─── Prompt builder ───────────────────────────────────────────────────────────
 
 function buildBmsPrompt(
@@ -133,21 +170,22 @@ export async function POST(req: NextRequest) {
       competitive_note:    bmsRow.competitive_note ?? "",
     });
 
-    // 4. Call Claude Haiku
+    // 4. Call Claude Haiku — tool use forces structured output, no JSON parsing
     const message = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 512,
+      system: "You are a senior brand strategist computing Brand Momentum Score composites for internal strategy use. Be frank, specific, and diagnostic.",
+      tools: [BMS_TOOL],
+      tool_choice: { type: "tool", name: "submit_bms_composite" },
       messages: [{ role: "user", content: prompt }],
     });
 
-    const rawText = message.content
-      .filter((b) => b.type === "text")
-      .map((b) => (b as { type: "text"; text: string }).text)
-      .join("")
-      .trim();
-
-    // 5. Parse JSON
-    let parsed: {
+    // 5. Extract tool use result
+    const toolBlock = message.content.find((b) => b.type === "tool_use");
+    if (!toolBlock || toolBlock.type !== "tool_use") {
+      throw new Error("AI did not return a tool_use block");
+    }
+    const parsed = toolBlock.input as {
       bms_direction: string;
       bms_velocity: string;
       bms_confidence: number;
@@ -155,15 +193,7 @@ export async function POST(req: NextRequest) {
       ai_read: string;
     };
 
-    try {
-      parsed = JSON.parse(rawText);
-    } catch {
-      // Strip markdown fences if any
-      const cleaned = rawText.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
-      parsed = JSON.parse(cleaned);
-    }
-
-    // Validate direction/velocity against allowed enum values
+    // Guard against out-of-enum values (defensive)
     const validDirection = ["Positive", "Neutral", "Negative"];
     const validVelocity  = ["Accelerating", "Stable", "Decelerating"];
     if (!validDirection.includes(parsed.bms_direction)) parsed.bms_direction = "Neutral";

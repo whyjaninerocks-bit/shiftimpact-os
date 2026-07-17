@@ -63,6 +63,39 @@ interface CrossChannelReportRow {
   idea_integrity_note: string;
 }
 
+// ─── Tool schema ─────────────────────────────────────────────────────────────
+
+const CROSS_CHANNEL_TOOL = {
+  name: "submit_cross_channel_report",
+  description: "Submit the cross-channel intelligence report for this week.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      narrative: {
+        type: "string",
+        description: "2–3 paragraphs. Cross-channel intelligence read. What does the combination of channel signals tell us this week?",
+      },
+      recommended_actions: {
+        type: "array",
+        items: { type: "string" },
+        description: "Cross-channel actions — not single-channel fixes. 2–4 items.",
+      },
+      idea_integrity_score: {
+        type: "integer",
+        minimum: 1,
+        maximum: 5,
+        description: "1=Fragmented, 2=Inconsistent, 3=Mostly coherent, 4=Coherent, 5=Fully coherent",
+      },
+      dominant_funnel_gap: {
+        type: "string",
+        enum: ["Demand", "Nurture", "Conversion", "Retention", "None"],
+        description: "Which funnel stage has the most critical shortfall this week?",
+      },
+    },
+    required: ["narrative", "recommended_actions", "idea_integrity_score", "dominant_funnel_gap"],
+  },
+} as const;
+
 // ─── System prompt ────────────────────────────────────────────────────────────
 
 function buildSystemPrompt(): string {
@@ -78,14 +111,6 @@ CRITICAL RULES:
 5. A Demand channel (long dwell, passive) and a Conversion channel (short dwell, high action affordance) will LOOK different — that's correct. They should feel like the same idea wearing different clothes for different moments.
 6. Flag funnel gaps: which funnel stage has the most critical shortfall based on channel health patterns across that stage's channels?
 7. Recommended actions must be cross-channel in nature — not "fix TikTok's save rate" but "the Nurture stage is leaking: both TikTok and Instagram Reels show Red save rates while Search is Green — audience is converting before they've been nurtured."
-
-OUTPUT FORMAT (JSON — no markdown fences):
-{
-  "narrative": "2-3 paragraphs. The cross-channel intelligence read. What does the combination of channel signals tell us this week?",
-  "recommended_actions": ["cross-channel action 1", "cross-channel action 2", "cross-channel action 3"],
-  "idea_integrity_score": <integer 1-5>,
-  "dominant_funnel_gap": "<Demand|Nurture|Conversion|Retention|None>"
-}
 
 Idea Integrity scoring:
 1 = Fragmented — channels appear to be running different campaigns
@@ -274,13 +299,15 @@ export async function POST(req: NextRequest) {
     const budgetDeployed = (existingReport as CrossChannelReportRow | null)?.budget_deployed ?? null;
     const ideaIntegrityNote = (existingReport as CrossChannelReportRow | null)?.idea_integrity_note ?? "";
 
-    // 5. Call Claude Haiku
+    // 5. Call Claude Haiku — tool use forces structured output, no text parsing
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
     const aiResponse = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 900,
       system: buildSystemPrompt(),
+      tools: [CROSS_CHANNEL_TOOL],
+      tool_choice: { type: "tool", name: "submit_cross_channel_report" },
       messages: [
         {
           role: "user",
@@ -297,39 +324,29 @@ export async function POST(req: NextRequest) {
       ],
     });
 
-    const rawContent = aiResponse.content[0];
-    if (rawContent.type !== "text") {
-      throw new Error("Unexpected AI response type");
+    // 6. Extract tool use result
+    const toolBlock = aiResponse.content.find((b) => b.type === "tool_use");
+    if (!toolBlock || toolBlock.type !== "tool_use") {
+      throw new Error("AI did not return a tool_use block");
     }
-
-    // 6. Parse AI JSON output
-    let narrative = "";
-    let recommendedActions: string[] = [];
-    let ideaIntegrityScore: number | null = null;
-    let dominantFunnelGap: string | null = null;
-
-    try {
-      const cleaned = rawContent.text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      const parsed = JSON.parse(cleaned);
-      narrative = parsed.narrative ?? "";
-      recommendedActions = Array.isArray(parsed.recommended_actions)
-        ? parsed.recommended_actions
-        : [];
-      ideaIntegrityScore =
-        typeof parsed.idea_integrity_score === "number" &&
-        parsed.idea_integrity_score >= 1 &&
-        parsed.idea_integrity_score <= 5
-          ? parsed.idea_integrity_score
-          : null;
-      const gap = parsed.dominant_funnel_gap;
-      dominantFunnelGap =
-        ["Demand", "Nurture", "Conversion", "Retention", "None"].includes(gap)
-          ? gap
-          : null;
-    } catch {
-      narrative = rawContent.text;
-      recommendedActions = [];
-    }
+    const result = toolBlock.input as {
+      narrative: string;
+      recommended_actions: string[];
+      idea_integrity_score: number;
+      dominant_funnel_gap: string;
+    };
+    const narrative          = result.narrative ?? "";
+    const recommendedActions = Array.isArray(result.recommended_actions) ? result.recommended_actions : [];
+    const ideaIntegrityScore: number | null =
+      typeof result.idea_integrity_score === "number" &&
+      result.idea_integrity_score >= 1 &&
+      result.idea_integrity_score <= 5
+        ? result.idea_integrity_score
+        : null;
+    const dominantFunnelGap: string | null =
+      ["Demand", "Nurture", "Conversion", "Retention", "None"].includes(result.dominant_funnel_gap)
+        ? result.dominant_funnel_gap
+        : null;
 
     // 7. Save AI outputs back to cross_channel_reports
     // Upsert in case the row doesn't exist yet (race condition)

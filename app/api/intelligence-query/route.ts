@@ -246,6 +246,35 @@ function assessConfidence(data_basis: DataBasis[]): ConfidenceTier {
 
 // ─── Step 4: Run targeted inference ──────────────────────────────────────────
 
+// ─── Finding tool schema ──────────────────────────────────────────────────────
+
+const FINDING_TOOL = {
+  name: "submit_intelligence_finding",
+  description: "Submit the 4-part client-safe intelligence finding.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      headline: {
+        type: "string",
+        description: "One sentence — what the data shows.",
+      },
+      context: {
+        type: "string",
+        description: "2–3 sentences — what was measured and what it shows.",
+      },
+      implication: {
+        type: "string",
+        description: "1–2 sentences — what this means for the brand or campaign.",
+      },
+      recommendation: {
+        type: "string",
+        description: "1–2 sentences — what to do.",
+      },
+    },
+    required: ["headline", "context", "implication", "recommendation"],
+  },
+} as const;
+
 async function generateFinding(
   query_text: string,
   scopes: QueryScope[],
@@ -267,15 +296,7 @@ BOUNDARY RULES — STRICT:
 
 CONFIDENCE: ${confidence}
 ${confidence === "Directional" ? "Phrase findings as indicative signals, not confirmed facts. Use language like 'early data suggests' or 'directionally'." : ""}
-${confidence === "Speculative" ? "Clearly frame findings as preliminary. Limited data available. Do not overstate certainty." : ""}
-
-Produce a 4-part finding as JSON:
-{
-  "headline": "<one sentence — what the data shows>",
-  "context": "<2-3 sentences — what was measured and what it shows>",
-  "implication": "<1-2 sentences — what this means for the brand or campaign>",
-  "recommendation": "<1-2 sentences — what to do>"
-}`;
+${confidence === "Speculative" ? "Clearly frame findings as preliminary. Limited data available. Do not overstate certainty." : ""}`;
 
   const userPrompt = `Client question: "${query_text}"
 
@@ -284,43 +305,39 @@ Intelligence domains queried: ${scopes.join(", ")}
 Available data:
 ${dataContext}
 
-Produce the 4-part client-safe finding as JSON.`;
+Produce the 4-part client-safe finding.`;
 
   const queryModel = await getModel("model_intelligence_query", "claude-sonnet-4-6");
   const msg = await anthropic.messages.create({
     model: queryModel,
     max_tokens: 600,
     system: systemPrompt,
+    tools: [FINDING_TOOL],
+    tool_choice: { type: "tool", name: "submit_intelligence_finding" },
     messages: [{ role: "user", content: userPrompt }],
   });
 
-  const text = msg.content[0].type === "text" ? msg.content[0].text.trim() : "{}";
-
-  // Strip markdown code fences if present
-  const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "");
-
-  try {
-    const parsed = JSON.parse(cleaned) as {
-      headline?: string;
-      context?: string;
-      implication?: string;
-      recommendation?: string;
-    };
+  const toolBlock = msg.content.find((b) => b.type === "tool_use");
+  if (!toolBlock || toolBlock.type !== "tool_use") {
     return {
-      headline: parsed.headline ?? "Intelligence finding not available.",
-      context: parsed.context ?? "",
-      implication: parsed.implication ?? "",
-      recommendation: parsed.recommendation ?? "",
-    };
-  } catch {
-    // Fallback: return raw text as headline
-    return {
-      headline: text.slice(0, 120) || "Intelligence finding not available.",
+      headline: "Intelligence finding not available.",
       context: "",
       implication: "",
       recommendation: "",
     };
   }
+  const result = toolBlock.input as {
+    headline?: string;
+    context?: string;
+    implication?: string;
+    recommendation?: string;
+  };
+  return {
+    headline:       result.headline       ?? "Intelligence finding not available.",
+    context:        result.context        ?? "",
+    implication:    result.implication    ?? "",
+    recommendation: result.recommendation ?? "",
+  };
 }
 
 // ─── Main handler ─────────────────────────────────────────────────────────────

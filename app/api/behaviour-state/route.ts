@@ -52,6 +52,53 @@ interface ThresholdRow {
   campaign_duration_weeks: number;
 }
 
+// ─── Tool schema ──────────────────────────────────────────────────────────────
+
+const BEHAVIOUR_STATE_TOOL = {
+  name: "submit_behaviour_state_diagnosis",
+  description: "Submit the consumer behaviour state classification and diagnosis.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      diagnosed_state: {
+        type: "integer",
+        description: "The classified consumer state as an integer 1–6.",
+        minimum: 1,
+        maximum: 6,
+      },
+      state_name: {
+        type: "string",
+        description: "The exact state name: Unaware | Aware but Passive | Aware but Unconvinced | In Consideration | Intent-Active | Post-Purchase",
+      },
+      signal_pattern_read: {
+        type: "string",
+        description: "1–2 sentences: which signal combination you observed and why it maps to this state.",
+      },
+      activation_direction: {
+        type: "string",
+        description: "1–2 sentences: what the strategy lead should prioritise this week to advance consumers toward the next state.",
+      },
+      low_involvement_note: {
+        type: "string",
+        description: "1 sentence: how the category's involvement level modifies this read. Empty string if not applicable or insufficient data.",
+      },
+      confidence_level: {
+        type: "string",
+        enum: ["High", "Medium", "Directional"],
+        description: "High = 2+ signals clearly point to one state. Medium = 1 clear signal + supporting evidence. Directional = single signal or ambiguous.",
+      },
+    },
+    required: [
+      "diagnosed_state",
+      "state_name",
+      "signal_pattern_read",
+      "activation_direction",
+      "low_involvement_note",
+      "confidence_level",
+    ],
+  },
+} as const;
+
 // ─── System prompt ────────────────────────────────────────────────────────────
 
 function buildSystemPrompt(): string {
@@ -83,17 +130,7 @@ CRITICAL RULES:
 2. State names and numbers are INTERNAL ONLY — they will not be shown to clients.
 3. activation_direction must be practical and actionable within the next 7 days.
 4. Acknowledge incomplete data honestly. Not all signals may be reported each week.
-5. Do not write motivational language. Be diagnostic and direct.
-
-OUTPUT FORMAT (JSON, no markdown fences):
-{
-  "diagnosed_state": <integer 1-6>,
-  "state_name": "<exact state name from the list above>",
-  "signal_pattern_read": "<1-2 sentences: which signal combination you observed and why it maps to this state>",
-  "activation_direction": "<1-2 sentences: what the strategy lead should prioritise this week to advance consumers toward the next state>",
-  "low_involvement_note": "<1 sentence: how the category's involvement level modifies this read — leave empty string if not applicable or insufficient data>",
-  "confidence_level": "<High|Medium|Directional>"
-}`;
+5. Do not write motivational language. Be diagnostic and direct.`;
 }
 
 // ─── User prompt ──────────────────────────────────────────────────────────────
@@ -253,13 +290,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 6. Call Claude Haiku
+    // 6. Call Claude Haiku — tool use forces structured output, eliminates JSON text parsing
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
     const aiResponse = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 700,
       system: buildSystemPrompt(),
+      tools: [BEHAVIOUR_STATE_TOOL],
+      tool_choice: { type: "tool", name: "submit_behaviour_state_diagnosis" },
       messages: [
         {
           role: "user",
@@ -277,42 +316,35 @@ export async function POST(req: NextRequest) {
       ],
     });
 
-    const rawContent = aiResponse.content[0];
-    if (rawContent.type !== "text") {
-      throw new Error("Unexpected AI response type");
+    // 7. Extract tool use result — .input is already a parsed object, no text manipulation needed
+    const toolBlock = aiResponse.content.find((b) => b.type === "tool_use");
+    if (!toolBlock || toolBlock.type !== "tool_use") {
+      throw new Error("AI did not return a tool_use block");
     }
 
-    // 7. Parse AI JSON output
-    let diagnosedState: number | null = null;
-    let stateName = "";
-    let signalPatternRead = "";
-    let activationDirection = "";
-    let lowInvolvementNote = "";
-    let confidenceLevel: "High" | "Medium" | "Directional" = "Directional";
+    const parsed = toolBlock.input as {
+      diagnosed_state: number;
+      state_name: string;
+      signal_pattern_read: string;
+      activation_direction: string;
+      low_involvement_note: string;
+      confidence_level: "High" | "Medium" | "Directional";
+    };
 
-    try {
-      const cleaned = rawContent.text
-        .replace(/```json\n?/g, "")
-        .replace(/```\n?/g, "")
-        .trim();
-      const parsed = JSON.parse(cleaned);
-
-      const rawState = parsed.diagnosed_state;
-      if (typeof rawState === "number" && rawState >= 1 && rawState <= 6) {
-        diagnosedState = rawState;
-      }
-      stateName = parsed.state_name ?? "";
-      signalPatternRead = parsed.signal_pattern_read ?? "";
-      activationDirection = parsed.activation_direction ?? "";
-      lowInvolvementNote = parsed.low_involvement_note ?? "";
-      const rawConf = parsed.confidence_level;
-      if (rawConf === "High" || rawConf === "Medium" || rawConf === "Directional") {
-        confidenceLevel = rawConf;
-      }
-    } catch {
-      // Fallback: use raw text as signal_pattern_read
-      signalPatternRead = rawContent.text;
-    }
+    const diagnosedState: number | null =
+      typeof parsed.diagnosed_state === "number" &&
+      parsed.diagnosed_state >= 1 &&
+      parsed.diagnosed_state <= 6
+        ? parsed.diagnosed_state
+        : null;
+    const stateName          = parsed.state_name          ?? "";
+    const signalPatternRead  = parsed.signal_pattern_read ?? "";
+    const activationDirection = parsed.activation_direction ?? "";
+    const lowInvolvementNote = parsed.low_involvement_note ?? "";
+    const confidenceLevel: "High" | "Medium" | "Directional" =
+      parsed.confidence_level === "High" || parsed.confidence_level === "Medium"
+        ? parsed.confidence_level
+        : "Directional";
 
     // 8. Save AI outputs to consumer_behaviour_states
     // Row guaranteed to exist (created by saveConsumerBehaviourObservation before this call)
