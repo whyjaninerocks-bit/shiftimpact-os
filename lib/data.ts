@@ -33,6 +33,10 @@ import type {
   // Sprint 18
   IqEvaluation,
   MediaDeliveryRecord,
+  // Sprint 19
+  AiBrandVisibilityScore,
+  // Sprint 20
+  SocialCurrencyScore,
 } from "@/lib/types";
 
 export async function getClients(): Promise<ClientWithRollups[]> {
@@ -534,6 +538,43 @@ export async function getMediaDeliveryRecords(
     .order("week_number", { ascending: false });
   if (error) throw error;
   return (data ?? []) as MediaDeliveryRecord[];
+}
+
+// ─── F23 — AI Brand Visibility Layer (Sprint 19) ─────────────────────────────
+// Most recent AI Brand Visibility score for a campaign.
+// INTERNAL ONLY — eligibility_score, trust gaps and band never exposed to portal.
+export async function getAiBrandVisibilityScore(
+  campaignId: string
+): Promise<AiBrandVisibilityScore | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("ai_brand_visibility_scores")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) return null;
+  return data as AiBrandVisibilityScore | null;
+}
+
+// ─── F23 Phase 2 — Social Currency Index (Sprint 20) ─────────────────────────
+// Most recent SCI score for a campaign.
+// sci_score + trend_direction + ai_narrative are client-shareable;
+// dimension scores and build_action are INTERNAL ONLY.
+export async function getSocialCurrencyScore(
+  campaignId: string
+): Promise<SocialCurrencyScore | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("social_currency_scores")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) return null;
+  return data as SocialCurrencyScore | null;
 }
 
 export async function getLatestCampaignReport(

@@ -24,6 +24,8 @@ import {
   getConsumerSnapshot,
   getIqEvaluation,
   getMediaDeliveryRecords,
+  getAiBrandVisibilityScore,
+  getSocialCurrencyScore,
 } from "@/lib/data";
 import { Badge, ErrorBanner, gateSignalTone, phaseTone } from "@/app/_components/ui";
 import { CampaignInfoSection } from "./_components/CampaignInfoSection";
@@ -49,12 +51,16 @@ import { ShareBriefWidget } from "./_components/ShareBriefWidget";
 import { ShareReportWidget } from "./_components/ShareReportWidget";
 import { IqEvaluateSection } from "./_components/IqEvaluateSection";
 import { SignalLayer0Section } from "./_components/SignalLayer0Section";
+import { AiBrandVisibilitySection } from "./_components/AiBrandVisibilitySection";
+import { SocialCurrencySection } from "./_components/SocialCurrencySection";
 
 const sectionLinks = [
   { href: "#info", label: "Campaign" },
   { href: "#frame", label: "FRAME Brief" },
   { href: "#bip", label: "Big Idea Platform" },
   { href: "#iq-evaluate", label: "IQ Evaluate ✦" },
+  { href: "#ai-brand-visibility", label: "AI Visibility F23 ✦" },
+  { href: "#social-currency", label: "Social Currency F23 ✦" },
   { href: "#kill-switches", label: "Kill Switches" },
   { href: "#stage-briefs", label: "STAGE Briefs" },
   { href: "#phase-gates", label: "Phase Gates" },
@@ -92,7 +98,7 @@ export default async function CampaignDetailPage({
 
   const clientChannels = await getClientChannels(campaign.client_id);
 
-  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions, bip, signalThreshold, signalReports, campaignChannels, crossChannelReports, allChannelProfiles, behaviourStates, marketContexts, attributionRecords, consumerSnapshot, iqEvaluation, mdhRecords] = await Promise.all([
+  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions, bip, signalThreshold, signalReports, campaignChannels, crossChannelReports, allChannelProfiles, behaviourStates, marketContexts, attributionRecords, consumerSnapshot, iqEvaluation, mdhRecords, aiBrandVisibilityScore, socialCurrencyScore] = await Promise.all([
     getKillSwitches(frame.id),
     getStageBriefs(id),
     getPhaseGates(id),
@@ -113,6 +119,8 @@ export default async function CampaignDetailPage({
     getConsumerSnapshot(id),
     getIqEvaluation(id),
     getMediaDeliveryRecords(id),
+    getAiBrandVisibilityScore(id),
+    getSocialCurrencyScore(id),
   ]);
 
   const latestSignalWeek = signalReports[0]?.week_number ?? null;
@@ -160,6 +168,12 @@ export default async function CampaignDetailPage({
           lastEvaluation={iqEvaluation}
         />
       )}
+      <AiBrandVisibilitySection campaignId={id} lastScore={aiBrandVisibilityScore} />
+      <SocialCurrencySection
+        campaignId={id}
+        lastScore={socialCurrencyScore}
+        currentWeek={latestSignalWeek ?? 1}
+      />
       <KillSwitchesSection campaignId={id} frameBriefId={frame.id} killSwitches={killSwitches} />
       <StageBriefsSection
         campaignId={id}

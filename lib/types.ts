@@ -1048,3 +1048,72 @@ export type MediaDeliveryRecord = {
   created_at: string;
   updated_at: string;
 };
+
+// ─── F23 — AI Brand Visibility Score (Sprint 19) ─────────────────────────────
+// Phase 1: eligibility scoring from existing signal data + manual inputs.
+//
+// ACCESS RULES:
+//   eligibility_score (number): INTERNAL ONLY
+//   eligibility_band (label):   INTERNAL — use directional language with client
+//   trust_gap_*:                INTERNAL ONLY
+//   priority_action:            INTERNAL
+//   ai_narrative:               Client-shareable
+
+export type AiEligibilityBand = "AI-Ready" | "Developing" | "Emerging" | "At Risk";
+
+export type AiBrandVisibilityScore = {
+  id: string;
+  campaign_id: string;
+  // Manual inputs
+  cep_count: number;
+  information_consistency_score: number;
+  ai_visibility_observations: string;
+  // Dimension scores (0–100 each) — INTERNAL
+  ugc_depth_score: number | null;
+  sentiment_clarity_score: number | null;
+  cep_breadth_score: number | null;
+  search_intent_score: number | null;
+  // Eligibility — INTERNAL
+  eligibility_score: number | null;
+  eligibility_band: AiEligibilityBand | null;
+  // Trust gaps — INTERNAL
+  trust_gap_owned: string;
+  trust_gap_cep: string;
+  // Priority action — INTERNAL
+  priority_action: string;
+  // Client-shareable narrative
+  ai_narrative: string;
+  status: string;
+  created_at: string;
+};
+
+// ─── F23 Phase 2 — Social Currency Index (Sprint 20) ─────────────────────────
+// Measures how well the brand's content earns genuine sharing and conversation.
+//
+// ACCESS RULES:
+//   sci_score, trend_direction, ai_narrative: shareable with client
+//   dimension scores, build_action: INTERNAL ONLY
+
+export type SciTrend = "Improving" | "Stable" | "Declining";
+
+export type SocialCurrencyScore = {
+  id: string;
+  campaign_id: string;
+  week_number: number;
+  // Manual inputs
+  comment_depth_avg: number;   // avg comments per post this week
+  cross_platform_pct: number;  // % content spreading to 2+ platforms
+  // Dimension scores (0–100 each) — INTERNAL
+  save_to_post_ratio_score: number | null;   // 30% — Signal 2 save rate
+  share_velocity_score: number | null;       // 25% — week-over-week Signal 2 trend
+  comment_depth_score: number | null;        // 20% — from comment_depth_avg
+  cross_platform_score: number | null;       // 15% — from cross_platform_pct
+  sentiment_momentum_score: number | null;   // 10% — Signal 3 demand_health
+  // Composite (client-shareable)
+  sci_score: number;
+  trend_direction: SciTrend;
+  // AI outputs
+  ai_narrative: string | null;  // client-shareable
+  build_action: string | null;  // INTERNAL ONLY
+  created_at: string;
+};
