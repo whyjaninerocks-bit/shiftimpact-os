@@ -37,6 +37,10 @@ import type {
   AiBrandVisibilityScore,
   // Sprint 20
   SocialCurrencyScore,
+  // Sprint 21 — F27
+  ConsumerStateReading,
+  // Sprint 22 — F29
+  BrandAsset,
 } from "@/lib/types";
 
 export async function getClients(): Promise<ClientWithRollups[]> {
@@ -575,6 +579,43 @@ export async function getSocialCurrencyScore(
     .maybeSingle();
   if (error) return null;
   return data as SocialCurrencyScore | null;
+}
+
+// ─── F27 — Consumer State Transition Rate (Sprint 21) ────────────────────────
+// Most recent consumer_state_reading for a campaign.
+// state_distribution, dominant_state, cstr_vs_prior, velocity_score: INTERNAL ONLY
+// ai_narrative: client-shareable
+export async function getLatestConsumerStateReading(
+  campaignId: string
+): Promise<ConsumerStateReading | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("consumer_state_readings")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .order("week_number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) return null;
+  return data as ConsumerStateReading | null;
+}
+
+// ─── F29 — Distinctive Brand Assets (Sprint 22) ───────────────────────────────
+// All active brand assets for a client (ordered by type, then creation date).
+// ALL fields INTERNAL ONLY — consistency_score computed in future sprint.
+export async function getBrandAssets(
+  clientId: string
+): Promise<BrandAsset[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("brand_assets")
+    .select("*")
+    .eq("client_id", clientId)
+    .eq("active", true)
+    .order("asset_type", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (error) return [];
+  return (data ?? []) as BrandAsset[];
 }
 
 export async function getLatestCampaignReport(

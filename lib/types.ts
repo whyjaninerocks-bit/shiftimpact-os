@@ -252,6 +252,11 @@ export type FrameBrief = {
   ics_any_dimension_blocker: boolean;
   ics_threshold: IcsThreshold;
 
+  // ── F29 — Distinctive Brand Assets deployed in this brief (Sprint 22) ──────
+  // Comma-separated brand_asset UUIDs | 'NONE_CONFIRMED' | '' (not set)
+  // '' → BIP co-pilot DBA flag fires; 'NONE_CONFIRMED' → flag suppressed
+  distinctive_assets_deployed: string;
+
   // ── Lock ──
   lock_status: LockStatus;
   locked_at: string | null;
