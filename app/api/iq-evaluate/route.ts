@@ -138,6 +138,43 @@ Return ONLY valid JSON in this exact format. No prose before or after.
   "overall_assessment": "2-3 sentences. What kind of idea this is right now, and what it would take to become genuinely excellent."
 }`;
 
+// ─── JSON Extraction ─────────────────────────────────────────────────────────
+// Claude sometimes wraps output in ```json fences and/or adds trailing prose.
+// This extracts the first balanced JSON object regardless of surrounding text.
+
+function extractFirstJsonObject(text: string): string {
+  // Try code fence first (handles ```json\n...\n```)
+  const fenceMatch = text.match(/```(?:json)?\r?\n?([\s\S]*?)\r?\n?```/);
+  if (fenceMatch) {
+    const candidate = fenceMatch[1].trim();
+    JSON.parse(candidate); // throws if invalid — let caller catch
+    return candidate;
+  }
+
+  // Brace-balanced extraction — handles trailing prose after closing }
+  const start = text.indexOf("{");
+  if (start === -1) throw new Error("No JSON object found in response");
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (escape)         { escape = false; continue; }
+    if (ch === "\\")    { escape = true;  continue; }
+    if (ch === '"')     { inString = !inString; continue; }
+    if (inString)       continue;
+    if (ch === "{")     depth++;
+    if (ch === "}") {
+      depth--;
+      if (depth === 0)  return text.substring(start, i + 1);
+    }
+  }
+
+  throw new Error("Unbalanced braces in JSON response");
+}
+
 // ─── User Prompt Builder ──────────────────────────────────────────────────────
 
 function buildUserPrompt(
@@ -266,12 +303,7 @@ export async function POST(req: NextRequest) {
     let overall_assessment = "";
 
     try {
-      // Find the JSON object boundaries directly — handles any code fence variation
-      const text = rawText.text;
-      const jsonStart = text.indexOf("{");
-      const jsonEnd = text.lastIndexOf("}");
-      if (jsonStart === -1 || jsonEnd === -1) throw new Error("No JSON object found in response");
-      const cleaned = text.substring(jsonStart, jsonEnd + 1);
+      const cleaned = extractFirstJsonObject(rawText.text);
       const parsed = JSON.parse(cleaned);
       dimensions = Array.isArray(parsed.dimensions) ? parsed.dimensions : [];
       red_flags = Array.isArray(parsed.red_flags) ? parsed.red_flags : [];
@@ -279,6 +311,7 @@ export async function POST(req: NextRequest) {
       overall_assessment = parsed.overall_assessment ?? "";
     } catch (parseErr) {
       console.error("/api/iq-evaluate JSON parse error:", parseErr);
+      console.error("/api/iq-evaluate raw response (first 500 chars):", rawText.text.slice(0, 500));
       overall_assessment = "Evaluation completed but results could not be parsed. Please re-run IQ Evaluate.";
     }
 
