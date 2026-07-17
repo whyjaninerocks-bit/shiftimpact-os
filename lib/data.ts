@@ -30,6 +30,9 @@ import type {
   CampaignChannelWithProfile,
   ChannelWeeklyMetric,
   CrossChannelReport,
+  // Sprint 18
+  IqEvaluation,
+  MediaDeliveryRecord,
 } from "@/lib/types";
 
 export async function getClients(): Promise<ClientWithRollups[]> {
@@ -496,6 +499,41 @@ export interface CampaignReportClientView {
   status: string;
   report_week: number;
   created_at: string;
+}
+
+// ─── IQ Evaluation (F-IQ) ────────────────────────────────────────────────────
+// Returns the most recent IQ evaluation for this campaign (null if none run yet).
+// INTERNAL ONLY — never passed to any client-facing route.
+export async function getIqEvaluation(
+  campaignId: string
+): Promise<IqEvaluation | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("iq_evaluations")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .eq("status", "ready")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data as IqEvaluation | null;
+}
+
+// ─── Signal Layer 0 — Media Delivery Health (Sprint 18) ──────────────────────
+// All MDH weekly records for a campaign, most recent first.
+// INTERNAL ONLY — never passed to any client-facing route.
+export async function getMediaDeliveryRecords(
+  campaignId: string
+): Promise<MediaDeliveryRecord[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("signal_media_delivery")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .order("week_number", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as MediaDeliveryRecord[];
 }
 
 export async function getLatestCampaignReport(

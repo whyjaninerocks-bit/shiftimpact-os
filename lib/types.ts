@@ -996,3 +996,55 @@ export type ConsumerIntelligenceSnapshot = {
   error_detail: string | null;
   created_at: string;
 };
+
+// ─── IQ Evaluation (F-IQ — Idea Quality Evaluator) ───────────────────────────
+// INTERNAL ONLY — never shown to clients.
+// Triggered by /api/iq-evaluate (Elevation Mode ON + BIP has topline_idea).
+// 8 dimensions calibrated to Cannes Lions 2026 Grand Prix standard.
+
+export type IqDimensionLevel = "Foundational" | "Developing" | "World-Class";
+
+export type IqDimension = {
+  name: string;
+  level: IqDimensionLevel;
+  score: 1 | 2 | 3;          // 1=Foundational, 2=Developing, 3=World-Class
+  rationale: string;
+  elevation_move: string;     // one specific action to reach the next level
+};
+
+export type IqEvaluation = {
+  id: string;
+  campaign_id: string;
+  bip_snapshot: Record<string, unknown>;
+  frame_snapshot: Record<string, unknown>;
+  dimensions: IqDimension[];
+  red_flags: string[];
+  elevation_brief: string;
+  overall_assessment: string;
+  iq_score_pct: number | null;  // sum(score) / 24 * 100 — null if dimensions missing
+  status: "pending" | "ready" | "error";
+  error_message: string | null;
+  created_at: string;
+};
+
+// ─── Signal Layer 0 — Media Delivery Health (MDH) ────────────────────────────
+// Prerequisite check before Signal 1–3 interpretation.
+// Tracks Reach / Impressions / Average Frequency weekly.
+// Quarantine rule: MDH = Red → Signal 1–3 readings suppressed.
+
+export type MdhStatus = "Green" | "Amber" | "Red";
+
+export type MediaDeliveryRecord = {
+  id: string;
+  campaign_id: string;
+  week_number: number;
+  reach_unique: number | null;
+  impressions: number | null;
+  avg_frequency: number | null;
+  mdh_status: MdhStatus | null;
+  frequency_label: string;
+  quarantine_active: boolean;
+  strategy_notes: string;
+  created_at: string;
+  updated_at: string;
+};
