@@ -153,9 +153,9 @@ export async function POST(req: NextRequest) {
     // 1. Load campaign + client
     const { data: campaign, error: cErr } = await supabase
       .from("campaigns")
-      .select("name, clients(name), industry_profile")
+      .select("name, clients(name)")
       .eq("id", campaign_id)
-      .single();
+      .maybeSingle();
 
     if (cErr || !campaign) {
       return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
@@ -207,7 +207,7 @@ export async function POST(req: NextRequest) {
 
     const userPrompt = `BRAND: ${clientName}
 CAMPAIGN: ${campaign.name}
-INDUSTRY: ${campaign.industry_profile ?? "Not specified"}
+INDUSTRY: Not specified
 
 ── BIG IDEA PLATFORM ──
 Topline Idea: ${bip?.topline_idea ?? "Not filled"}
