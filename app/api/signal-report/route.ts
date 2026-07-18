@@ -1,10 +1,7 @@
 // app/api/signal-report/route.ts
 // Feature 12 — Signal Intelligence Reporting Module (Sprint 2)
 // Sprint 24 — Signal 2B (Share Rate) + Gate Signal Convergence Module
-<<<<<<< HEAD
-=======
 // Sprint 25 — Signal 3B (VCR) + Signal 4 (Retention) + market_code context
->>>>>>> b9b444c (Sprint 25 — SignalIntelligenceSection + client report Campaign Progress)
 // INTERNAL ONLY — never called from or exposed to Client Interface (/portal/*).
 //
 // POST /api/signal-report
@@ -226,8 +223,6 @@ function computeGateStatus(
   };
 }
 
-<<<<<<< HEAD
-=======
 // ─── Market signal priority context ──────────────────────────────────────────
 // Each market has a different rank order for which signals carry the most weight.
 // Used to contextualise AI recommendations — e.g. "TikTok Save+Share is the
@@ -247,7 +242,6 @@ function buildMarketSignalContext(marketCode: string | null): string {
   return `\nMARKET SIGNAL PRIORITY CONTEXT (${code}):\n${ctx}`;
 }
 
->>>>>>> b9b444c (Sprint 25 — SignalIntelligenceSection + client report Campaign Progress)
 // ─── Tool schema ─────────────────────────────────────────────────────────────
 
 const SIGNAL_REPORT_TOOL = {
@@ -321,23 +315,16 @@ function buildUserPrompt(
   nurtureHealth: SignalHealth,
   nurtureShareHealth: SignalHealth,
   conversionHealth: SignalHealth,
-<<<<<<< HEAD
-=======
   vcrHealth: SignalHealth | null,
   retentionHealth: SignalHealth | null,
->>>>>>> b9b444c (Sprint 25 — SignalIntelligenceSection + client report Campaign Progress)
   gateStatus: GateStatus,
   gateSignalsConverging: number,
   gateNote: string,
   pipelineRisk: boolean,
   campaignName: string,
   channelHealthContext: string,
-<<<<<<< HEAD
-  marketContextSection: string
-=======
   marketContextSection: string,
   marketSignalContext: string
->>>>>>> b9b444c (Sprint 25 — SignalIntelligenceSection + client report Campaign Progress)
 ): string {
   const phaseCtx = phaseLabel(phase, durationWeeks, weekNumber);
   const phasePct = Math.round((weekNumber / durationWeeks) * 100);
@@ -375,10 +362,7 @@ ${retentionHealth ? `- Retention (Signal 4 — ${weekly.signal_4_actual_pct !== 
 
 ${pipelineRisk ? "⚠️ PIPELINE RISK PATTERN DETECTED: Conversion is Green but Demand and/or Nurture are not. This means current conversion activity is drawing down an audience that is not being replenished. Expect a post-campaign sales cliff in 8-12 weeks if not addressed now." : ""}
 ${weekly.flags_suppressed ? "Note: Flags are suppressed in Phase 1. Baseline only." : ""}
-<<<<<<< HEAD
-=======
 ${marketSignalContext}
->>>>>>> b9b444c (Sprint 25 — SignalIntelligenceSection + client report Campaign Progress)
 ${marketContextSection}
 ${channelHealthContext}
 Generate the signal intelligence report for this week.`;
@@ -565,8 +549,6 @@ export async function POST(req: NextRequest) {
       phase
     );
 
-<<<<<<< HEAD
-=======
     // 5b. Signal 3B (VCR) health — optional, only if data entered
     const vcrHealth: SignalHealth | null =
       weekly.signal_3b_actual_pct !== null
@@ -594,7 +576,6 @@ export async function POST(req: NextRequest) {
     // Market signal priority context (Sprint 25)
     const marketSignalContext = buildMarketSignalContext(threshold.market_code ?? "MY");
 
->>>>>>> b9b444c (Sprint 25 — SignalIntelligenceSection + client report Campaign Progress)
     // 6. Gate Signal Convergence
     // Signal 2B (Share Rate) and Signal 2 (Save Rate) are both Nurture-stage but measured from
     // different audience actions — treated as independent for Gate convergence purposes.
@@ -661,23 +642,16 @@ export async function POST(req: NextRequest) {
             nurtureHealth,
             nurtureShareHealth,
             conversionHealth,
-<<<<<<< HEAD
-=======
             vcrHealth,
             retentionHealth,
->>>>>>> b9b444c (Sprint 25 — SignalIntelligenceSection + client report Campaign Progress)
             gate_status,
             gate_signals_converging,
             gate_note,
             pipelineRisk,
             campaignName,
             channelHealthContext,
-<<<<<<< HEAD
-            marketContextSection
-=======
             marketContextSection,
             marketSignalContext
->>>>>>> b9b444c (Sprint 25 — SignalIntelligenceSection + client report Campaign Progress)
           ),
         },
       ],
@@ -710,11 +684,8 @@ export async function POST(req: NextRequest) {
         nurture_health: nurtureHealth,
         signal_2b_health: nurtureShareHealth,
         conversion_health: conversionHealth,
-<<<<<<< HEAD
-=======
         signal_3b_health: vcrHealth,
         signal_4_health: retentionHealth,
->>>>>>> b9b444c (Sprint 25 — SignalIntelligenceSection + client report Campaign Progress)
         gate_status,
         gate_signals_converging,
         gate_note,
