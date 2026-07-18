@@ -1,6 +1,10 @@
 // app/api/signal-report/route.ts
 // Feature 12 — Signal Intelligence Reporting Module (Sprint 2)
 // Sprint 24 — Signal 2B (Share Rate) + Gate Signal Convergence Module
+<<<<<<< HEAD
+=======
+// Sprint 25 — Signal 3B (VCR) + Signal 4 (Retention) + market_code context
+>>>>>>> b9b444c (Sprint 25 — SignalIntelligenceSection + client report Campaign Progress)
 // INTERNAL ONLY — never called from or exposed to Client Interface (/portal/*).
 //
 // POST /api/signal-report
@@ -61,6 +65,18 @@ interface ThresholdRecord {
   signal_3_threshold_count: number;
   signal_3_amber_count: number;
   signal_3_red_count: number;
+  // Signal 3B (VCR) — Sprint 25
+  signal_3b_label: string;
+  signal_3b_target_pct: number;
+  signal_3b_amber_pct: number;
+  signal_3b_red_pct: number;
+  // Signal 4 (Retention) — Sprint 25
+  signal_4_label: string;
+  signal_4_target_pct: number;
+  signal_4_amber_pct: number;
+  signal_4_red_pct: number;
+  // Market code — Sprint 25
+  market_code: string | null;
   locked: boolean;
 }
 
@@ -71,6 +87,8 @@ interface WeeklyRecord {
   signal_2b_actual_pct: number | null;
   signal_2b_label: string | null;
   signal_3_actual_count: number | null;
+  signal_3b_actual_pct: number | null;  // VCR — Sprint 25
+  signal_4_actual_pct: number | null;   // Retention — Sprint 25
   campaign_phase: number;
   flags_suppressed: boolean;
 }
@@ -208,6 +226,28 @@ function computeGateStatus(
   };
 }
 
+<<<<<<< HEAD
+=======
+// ─── Market signal priority context ──────────────────────────────────────────
+// Each market has a different rank order for which signals carry the most weight.
+// Used to contextualise AI recommendations — e.g. "TikTok Save+Share is the
+// primary lead signal in Malaysia; SoS leads in Singapore."
+
+const MARKET_SIGNAL_PRIORITY: Record<string, string> = {
+  MY: "Malaysia (MY): TikTok Save Rate + Share Rate are the primary lead signals. WhatsApp dark social (referral traffic spike) is the strongest advocacy proxy. Shopee Wishlist Adds are a high-value commerce signal. SoS strengthens in consideration-stage. Prioritise S2 + S2B convergence for Gate assessment.",
+  SG: "Singapore (SG): Share of Search (SoS / S1) is the strongest signal — most search-mature market in SEA. Save Rate (S2) and Instagram Story Reply Rate follow. LinkedIn Saves relevant for B2B. Gate should weight S1 + S2 convergence.",
+  PH: "Philippines (PH): Facebook Group Mentions are the #1 organic signal — FB is effectively the internet in PH. TikTok UGC volume and Share Rate follow. Shopee Live Commerce engagement is a high-value commerce signal.",
+  TH: "Thailand (TH): TikTok Sound Adoption Rate is the #1 signal for trend-led categories. LINE OA Open Rate and Forward Rate are strong CRM signals. Save + Share Rate on TikTok follow. UGC Volume signals community traction.",
+  ID: "Indonesia (ID): TikTok UGC Volume is the #1 signal — highest organic TikTok content output in SEA. Tokopedia + Shopee Wishlist Adds are high-value commerce signals. WhatsApp dark social proxy (referral traffic spike) is a strong advocacy indicator. YouTube Completion Rate for long-form.",
+};
+
+function buildMarketSignalContext(marketCode: string | null): string {
+  const code = (marketCode ?? "MY").toUpperCase();
+  const ctx = MARKET_SIGNAL_PRIORITY[code] ?? MARKET_SIGNAL_PRIORITY["MY"];
+  return `\nMARKET SIGNAL PRIORITY CONTEXT (${code}):\n${ctx}`;
+}
+
+>>>>>>> b9b444c (Sprint 25 — SignalIntelligenceSection + client report Campaign Progress)
 // ─── Tool schema ─────────────────────────────────────────────────────────────
 
 const SIGNAL_REPORT_TOOL = {
@@ -281,13 +321,23 @@ function buildUserPrompt(
   nurtureHealth: SignalHealth,
   nurtureShareHealth: SignalHealth,
   conversionHealth: SignalHealth,
+<<<<<<< HEAD
+=======
+  vcrHealth: SignalHealth | null,
+  retentionHealth: SignalHealth | null,
+>>>>>>> b9b444c (Sprint 25 — SignalIntelligenceSection + client report Campaign Progress)
   gateStatus: GateStatus,
   gateSignalsConverging: number,
   gateNote: string,
   pipelineRisk: boolean,
   campaignName: string,
   channelHealthContext: string,
+<<<<<<< HEAD
   marketContextSection: string
+=======
+  marketContextSection: string,
+  marketSignalContext: string
+>>>>>>> b9b444c (Sprint 25 — SignalIntelligenceSection + client report Campaign Progress)
 ): string {
   const phaseCtx = phaseLabel(phase, durationWeeks, weekNumber);
   const phasePct = Math.round((weekNumber / durationWeeks) * 100);
@@ -316,9 +366,19 @@ SIGNAL HEALTH SUMMARY:
   Actual: ${weekly.signal_2b_actual_pct !== null ? `${weekly.signal_2b_actual_pct}%` : "Not reported"} | Green ≥${threshold.signal_2b_target_pct}% | Amber ≥${threshold.signal_2b_amber_pct}% | Red <${threshold.signal_2b_amber_pct}%
 - Conversion (Signal 1 — ${threshold.signal_1_label}): ${conversionHealth}
   Actual: ${weekly.signal_1_actual_pct !== null ? `${weekly.signal_1_actual_pct}%` : "Not reported"} search lift | Green ≥${threshold.signal_1_threshold_pct}% | Amber ≥${threshold.signal_1_amber_pct}% | Red <${threshold.signal_1_amber_pct}%
+${vcrHealth ? `- Demand — VCR (Signal 3B — ${weekly.signal_3b_actual_pct !== null ? threshold.signal_3b_label ?? "Video completion rate" : "not entered"}): ${vcrHealth}
+  Actual: ${weekly.signal_3b_actual_pct !== null ? `${weekly.signal_3b_actual_pct}%` : "Not reported"} | Green ≥${threshold.signal_3b_target_pct ?? 70}% | Amber ≥${threshold.signal_3b_amber_pct ?? 50}%
+  Note: VCR is a supplementary Demand-stage signal. Not a primary Gate signal.` : "- Signal 3B (VCR): Not entered this week."}
+${retentionHealth ? `- Retention (Signal 4 — ${weekly.signal_4_actual_pct !== null ? threshold.signal_4_label ?? "Retention / repeat visit rate" : "not entered"}): ${retentionHealth}
+  Actual: ${weekly.signal_4_actual_pct !== null ? `${weekly.signal_4_actual_pct}%` : "Not reported"} | Green ≥${threshold.signal_4_target_pct ?? 15}% | Amber ≥${threshold.signal_4_amber_pct ?? 8}%
+  Note: Signal 4 is a LAG signal — it confirms what happened, not what's coming. Use for diagnosis, not prediction.` : "- Signal 4 (Retention): Not entered this week."}
 
 ${pipelineRisk ? "⚠️ PIPELINE RISK PATTERN DETECTED: Conversion is Green but Demand and/or Nurture are not. This means current conversion activity is drawing down an audience that is not being replenished. Expect a post-campaign sales cliff in 8-12 weeks if not addressed now." : ""}
 ${weekly.flags_suppressed ? "Note: Flags are suppressed in Phase 1. Baseline only." : ""}
+<<<<<<< HEAD
+=======
+${marketSignalContext}
+>>>>>>> b9b444c (Sprint 25 — SignalIntelligenceSection + client report Campaign Progress)
 ${marketContextSection}
 ${channelHealthContext}
 Generate the signal intelligence report for this week.`;
@@ -505,6 +565,36 @@ export async function POST(req: NextRequest) {
       phase
     );
 
+<<<<<<< HEAD
+=======
+    // 5b. Signal 3B (VCR) health — optional, only if data entered
+    const vcrHealth: SignalHealth | null =
+      weekly.signal_3b_actual_pct !== null
+        ? computeNumericHealth(
+            weekly.signal_3b_actual_pct,
+            threshold.signal_3b_target_pct ?? 70,
+            threshold.signal_3b_amber_pct ?? 50,
+            threshold.signal_3b_red_pct ?? 30,
+            phase
+          )
+        : null;
+
+    // 5c. Signal 4 (Retention) health — LAG signal, only if data entered
+    const retentionHealth: SignalHealth | null =
+      weekly.signal_4_actual_pct !== null
+        ? computeNumericHealth(
+            weekly.signal_4_actual_pct,
+            threshold.signal_4_target_pct ?? 15,
+            threshold.signal_4_amber_pct ?? 8,
+            threshold.signal_4_red_pct ?? 3,
+            phase
+          )
+        : null;
+
+    // Market signal priority context (Sprint 25)
+    const marketSignalContext = buildMarketSignalContext(threshold.market_code ?? "MY");
+
+>>>>>>> b9b444c (Sprint 25 — SignalIntelligenceSection + client report Campaign Progress)
     // 6. Gate Signal Convergence
     // Signal 2B (Share Rate) and Signal 2 (Save Rate) are both Nurture-stage but measured from
     // different audience actions — treated as independent for Gate convergence purposes.
@@ -571,13 +661,23 @@ export async function POST(req: NextRequest) {
             nurtureHealth,
             nurtureShareHealth,
             conversionHealth,
+<<<<<<< HEAD
+=======
+            vcrHealth,
+            retentionHealth,
+>>>>>>> b9b444c (Sprint 25 — SignalIntelligenceSection + client report Campaign Progress)
             gate_status,
             gate_signals_converging,
             gate_note,
             pipelineRisk,
             campaignName,
             channelHealthContext,
+<<<<<<< HEAD
             marketContextSection
+=======
+            marketContextSection,
+            marketSignalContext
+>>>>>>> b9b444c (Sprint 25 — SignalIntelligenceSection + client report Campaign Progress)
           ),
         },
       ],
@@ -610,6 +710,11 @@ export async function POST(req: NextRequest) {
         nurture_health: nurtureHealth,
         signal_2b_health: nurtureShareHealth,
         conversion_health: conversionHealth,
+<<<<<<< HEAD
+=======
+        signal_3b_health: vcrHealth,
+        signal_4_health: retentionHealth,
+>>>>>>> b9b444c (Sprint 25 — SignalIntelligenceSection + client report Campaign Progress)
         gate_status,
         gate_signals_converging,
         gate_note,

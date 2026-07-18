@@ -576,6 +576,21 @@ export type SignalThreshold = {
   signal_3_amber_count: number;
   signal_3_red_count: number;
 
+  // Signal 3B — Video Completion Rate (%) — optional, TikTok-native, Sprint 25
+  signal_3b_label: string;
+  signal_3b_target_pct: number;    // Green if >= this
+  signal_3b_amber_pct: number;     // Amber if below target but >= this
+  signal_3b_red_pct: number;       // Red if below this
+
+  // Signal 4 — Retention / Repeat Visit Rate (%) — LAG, manual only, Sprint 25
+  signal_4_label: string;
+  signal_4_target_pct: number;
+  signal_4_amber_pct: number;
+  signal_4_red_pct: number;
+
+  // Market code — MY / SG / PH / TH / ID — Sprint 25
+  market_code: string;
+
   locked: boolean;
   locked_at: string | null;
   lock_notes: string;
@@ -597,16 +612,33 @@ export type SignalWeeklyReport = {
   signal_2b_actual_pct: number | null;   // TikTok share rate %  (Signal 2B — Sprint 24)
   signal_2b_label: string | null;        // Label for Signal 2B
   signal_3_actual_count: number | null;  // UGC volume
+<<<<<<< HEAD
+=======
+  signal_3b_actual_pct: number | null;   // Video completion rate % (Signal 3B — Sprint 25)
+  signal_3b_label: string | null;        // Label for Signal 3B
+  signal_4_actual_pct: number | null;    // Retention / repeat visit rate % (Signal 4 — Sprint 25)
+  signal_4_label: string | null;         // Label for Signal 4
+>>>>>>> b9b444c (Sprint 25 — SignalIntelligenceSection + client report Campaign Progress)
 
   // Campaign phase (1-4), computed from week_number / campaign_duration_weeks
   campaign_phase: CampaignPhaseNumber;
   flags_suppressed: boolean;
 
+<<<<<<< HEAD
   // Traffic lights — one per funnel stage + Signal 2B
   demand_health: SignalHealth;        // driven by Signal 3 (UGC)
   nurture_health: SignalHealth;       // driven by Signal 2 (Save Rate)
   signal_2b_health: SignalHealth;     // driven by Signal 2B (Share Rate) — Sprint 24
   conversion_health: SignalHealth;    // driven by Signal 1 (Search Lift / SoS)
+=======
+  // Traffic lights — one per funnel stage + Signal 2B + Signal 3B + Signal 4
+  demand_health: SignalHealth;        // driven by Signal 3 (UGC)
+  nurture_health: SignalHealth;       // driven by Signal 2 (Save Rate)
+  signal_2b_health: SignalHealth;     // driven by Signal 2B (Share Rate) — Sprint 24
+  signal_3b_health: SignalHealth | null; // driven by Signal 3B (VCR) — Sprint 25
+  conversion_health: SignalHealth;    // driven by Signal 1 (Search Lift / SoS)
+  signal_4_health: SignalHealth | null;  // driven by Signal 4 (Retention) — Sprint 25, LAG
+>>>>>>> b9b444c (Sprint 25 — SignalIntelligenceSection + client report Campaign Progress)
 
   // Gate Signal Convergence (Signal Gap Framework v2) — Sprint 24
   gate_status: SignalHealth;          // Green = Gate open, Amber = watch, Red = closed

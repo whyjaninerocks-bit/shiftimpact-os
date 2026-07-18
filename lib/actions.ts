@@ -850,6 +850,18 @@ export async function upsertSignalThresholds(
     signal_3_threshold_count: Number(str(formData, "signal_3_threshold_count")) || 100,
     signal_3_amber_count: Number(str(formData, "signal_3_amber_count")) || 50,
     signal_3_red_count: Number(str(formData, "signal_3_red_count")) || 20,
+    // Signal 3B — Video Completion Rate (Sprint 25)
+    signal_3b_label: str(formData, "signal_3b_label") || "Video completion rate",
+    signal_3b_target_pct: Number(str(formData, "signal_3b_target_pct")) || 70,
+    signal_3b_amber_pct: Number(str(formData, "signal_3b_amber_pct")) || 50,
+    signal_3b_red_pct: Number(str(formData, "signal_3b_red_pct")) || 30,
+    // Signal 4 — Retention (Sprint 25)
+    signal_4_label: str(formData, "signal_4_label") || "Retention / repeat visit rate",
+    signal_4_target_pct: Number(str(formData, "signal_4_target_pct")) || 15,
+    signal_4_amber_pct: Number(str(formData, "signal_4_amber_pct")) || 8,
+    signal_4_red_pct: Number(str(formData, "signal_4_red_pct")) || 3,
+    // Market code (Sprint 25)
+    market_code: str(formData, "market_code") || "MY",
   };
 
   const { error } = await supabase
@@ -946,6 +958,12 @@ export async function saveWeeklySignalInputs(
       signal_2b_actual_pct: numOrNull(formData, "signal_2b_actual_pct"),
       signal_2b_label: str(formData, "signal_2b_label") || null,
       signal_3_actual_count: numOrNull(formData, "signal_3_actual_count"),
+      // Signal 3B — VCR (Sprint 25, optional)
+      signal_3b_actual_pct: numOrNull(formData, "signal_3b_actual_pct"),
+      signal_3b_label: str(formData, "signal_3b_label") || null,
+      // Signal 4 — Retention (Sprint 25, optional)
+      signal_4_actual_pct: numOrNull(formData, "signal_4_actual_pct"),
+      signal_4_label: str(formData, "signal_4_label") || null,
       campaign_phase: phase,
       flags_suppressed: phase === 1,
       // Health and AI narrative are populated by /api/signal-report

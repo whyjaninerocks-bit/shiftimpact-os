@@ -1,12 +1,18 @@
 // app/report/[id]/page.tsx
 // PUBLIC — client-facing campaign intelligence report.
-// Shows: signal traffic lights, Big Idea, CIR executive summary + findings,
-//        latest signal note, gate status.
+// Shows: Campaign Progress (renamed traffic lights + week-by-week timeline),
+//        Big Idea, AI health read, recommended actions, CIR findings.
 //
 // GOVERNANCE — never exposes:
-//   threshold numbers, budget amounts, gate hold duration in days,
+//   Gate status / gate_status field, threshold numbers, budget amounts,
+//   signal methodology names (S1/S2/S3), gate hold duration in days,
 //   UGC Authenticity Ratio, CIR confidence ratings,
-//   components_used, scopes_resolved, or any internal methodology.
+//   components_used, scopes_resolved, pipeline risk label, or any internal methodology.
+//
+// Client-facing signal label mapping:
+//   Demand     → Audience Build
+//   Nurture    → Content Engagement
+//   Conversion → Purchase Intent
 
 import { notFound } from "next/navigation";
 import {
@@ -14,10 +20,9 @@ import {
   getFrameBrief,
   getBigIdeaPlatform,
   getSignalWeeklyReports,
-  getPhaseGates,
   getLatestCampaignReport,
 } from "@/lib/data";
-import type { SignalHealth, GateDecision } from "@/lib/types";
+import type { SignalHealth } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +30,7 @@ export const dynamic = "force-dynamic";
 
 function healthLabel(h: SignalHealth): string {
   if (h === "Green") return "On Track";
-  if (h === "Amber") return "Watch";
+  if (h === "Amber") return "Building";
   return "Needs Attention";
 }
 
@@ -41,11 +46,15 @@ function healthDot(h: SignalHealth): string {
   return "bg-red-500";
 }
 
-function gateColor(d: GateDecision): string {
-  if (d === "Open")  return "text-emerald-700 bg-emerald-50 border-emerald-200";
-  if (d === "Hold")  return "text-amber-700 bg-amber-50 border-amber-200";
-  if (d === "Stop")  return "text-red-700 bg-red-50 border-red-200";
-  return "text-neutral-500 bg-neutral-50 border-neutral-200";
+// Strip internal "Gate Status: ..." first line from AI narrative before showing clients.
+// The narrative is saved as `${gateStatusLabel}\n\n${narrative}` — the first line is internal.
+function stripGateStatusLabel(narrative: string): string {
+  const lines = narrative.split("\n");
+  // Gate status label always starts with "Gate Status:"
+  if (lines[0]?.startsWith("Gate Status:")) {
+    return lines.slice(1).join("\n").trimStart();
+  }
+  return narrative;
 }
 
 // ── Page ─────────────────────────────────────────────────────────────────────
@@ -55,12 +64,11 @@ export default async function ClientReportPage({
 }: {
   params: { id: string };
 }) {
-  const [campaign, frame, bip, signalReports, gates, cir] = await Promise.all([
+  const [campaign, , bip, signalReports, cir] = await Promise.all([
     getCampaign(params.id),
     getFrameBrief(params.id),
     getBigIdeaPlatform(params.id),
     getSignalWeeklyReports(params.id),
-    getPhaseGates(params.id),
     getLatestCampaignReport(params.id),
   ]);
 
@@ -132,39 +140,105 @@ export default async function ClientReportPage({
           </div>
         )}
 
-        {/* ── Signal Traffic Lights ────────────────────────────────────── */}
+        {/* ── Campaign Progress ─────────────────────────────────────────── */}
         <div className="rounded-xl border border-neutral-200 bg-white px-6 py-5 shadow-sm">
-          <p className="text-xs text-neutral-400 uppercase tracking-wide font-medium mb-4">
-            Campaign Signals
-          </p>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs text-neutral-400 uppercase tracking-wide font-medium">
+              Campaign Progress
+            </p>
+            {latestSignal && (
+              <span className="text-xs text-neutral-400">
+                Week {latestSignal.week_number}
+              </span>
+            )}
+          </div>
 
           {!latestSignal ? (
-            <p className="text-sm text-neutral-400">No signal data recorded yet.</p>
+            <p className="text-sm text-neutral-400">No campaign data recorded yet.</p>
           ) : (
-            <div className="space-y-3">
-              {[
-                { label: "Demand",     health: latestSignal.demand_health,     sub: "Awareness & reach momentum" },
-                { label: "Nurture",    health: latestSignal.nurture_health,    sub: "Engagement & content resonance" },
-                { label: "Conversion", health: latestSignal.conversion_health, sub: "Intent & purchase signal" },
-              ].map(({ label, health, sub }) => (
-                <div key={label} className="flex items-center justify-between py-2 border-b border-neutral-100 last:border-0">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full shrink-0 ${healthDot(health)}`} />
-                    <div>
-                      <p className="text-sm font-semibold text-neutral-800">{label}</p>
-                      <p className="text-xs text-neutral-400">{sub}</p>
+            <div className="space-y-4">
+              {/* Current week traffic lights — client-safe labels */}
+              <div className="space-y-3">
+                {[
+                  {
+                    label: "Audience Build",
+                    health: latestSignal.demand_health as SignalHealth,
+                    sub: "Is the campaign reaching and building the right audience?",
+                  },
+                  {
+                    label: "Content Engagement",
+                    health: latestSignal.nurture_health as SignalHealth,
+                    sub: "Is the content resonating and building genuine interest?",
+                  },
+                  {
+                    label: "Purchase Intent",
+                    health: latestSignal.conversion_health as SignalHealth,
+                    sub: "Are people moving toward a purchase decision?",
+                  },
+                ].map(({ label, health, sub }) => (
+                  <div
+                    key={label}
+                    className="flex items-center justify-between py-2.5 border-b border-neutral-100 last:border-0"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${healthDot(health)}`} />
+                      <div>
+                        <p className="text-sm font-semibold text-neutral-800">{label}</p>
+                        <p className="text-xs text-neutral-400">{sub}</p>
+                      </div>
                     </div>
+                    <span
+                      className={`text-xs font-semibold px-2.5 py-1 rounded-full border shrink-0 ml-3 ${healthColor(health)}`}
+                    >
+                      {healthLabel(health)}
+                    </span>
                   </div>
-                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${healthColor(health)}`}>
-                    {healthLabel(health)}
-                  </span>
-                </div>
-              ))}
+                ))}
+              </div>
 
-              {latestSignal.pipeline_risk_detected && (
-                <div className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  Pipeline risk pattern detected — demand signals weakening while conversion holds.
-                  Review reach and nurture investment.
+              {/* Week-by-week timeline dots */}
+              {signalReports.length > 1 && (
+                <div className="pt-3 border-t border-neutral-100">
+                  <p className="text-xs text-neutral-400 mb-2.5">Weekly progress</p>
+                  <div className="flex items-end gap-3 flex-wrap">
+                    {[...signalReports]
+                      .sort((a, b) => a.week_number - b.week_number)
+                      .map((r) => {
+                        // Derive an overall health for the week:
+                        // Any Red = Red, any Amber = Amber, all Green = Green
+                        const healths = [
+                          r.demand_health as SignalHealth,
+                          r.nurture_health as SignalHealth,
+                          r.conversion_health as SignalHealth,
+                        ].filter(Boolean);
+                        const overall: SignalHealth = healths.includes("Red")
+                          ? "Red"
+                          : healths.includes("Amber")
+                          ? "Amber"
+                          : "Green";
+                        const isLatest = r.week_number === latestSignal.week_number;
+                        return (
+                          <div key={r.id} className="flex flex-col items-center gap-1">
+                            <span
+                              className={`rounded-full border-2 transition-all ${
+                                isLatest ? "w-4 h-4 border-neutral-700" : "w-3 h-3 border-transparent"
+                              } ${
+                                r.flags_suppressed
+                                  ? "bg-neutral-200"
+                                  : healthDot(overall)
+                              }`}
+                              title={`Week ${r.week_number}${r.flags_suppressed ? " (establishing baseline)" : ` — ${healthLabel(overall)}`}`}
+                            />
+                            <span className={`text-xs font-mono ${isLatest ? "text-neutral-700 font-bold" : "text-neutral-300"}`}>
+                              W{r.week_number}
+                            </span>
+                          </div>
+                        );
+                      })}
+                  </div>
+                  <p className="text-xs text-neutral-400 mt-2">
+                    {signalReports.length} week{signalReports.length !== 1 ? "s" : ""} tracked
+                  </p>
                 </div>
               )}
             </div>
@@ -188,15 +262,25 @@ export default async function ClientReportPage({
           </div>
         )}
 
-        {/* If no CIR yet — fall back to latest weekly AI narrative */}
+        {/* If no CIR yet — fall back to latest weekly AI narrative (gate label stripped) */}
         {!cir?.executive_summary && latestSignal?.ai_narrative && (
           <div className="rounded-xl border border-neutral-200 bg-white px-6 py-5 shadow-sm">
-            <p className="text-xs text-neutral-400 uppercase tracking-wide font-medium mb-3">
-              Intelligence Summary
-            </p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-neutral-400 uppercase tracking-wide font-medium">
+                Campaign Health Read
+              </p>
+              {latestSignal.week_number && (
+                <span className="text-xs text-neutral-400">Week {latestSignal.week_number}</span>
+              )}
+            </div>
             <p className="text-sm text-neutral-700 leading-relaxed">
-              {latestSignal.ai_narrative}
+              {stripGateStatusLabel(latestSignal.ai_narrative)}
             </p>
+            {latestSignal.ai_phase_context && (
+              <p className="text-xs text-neutral-400 mt-2 italic">
+                {latestSignal.ai_phase_context}
+              </p>
+            )}
           </div>
         )}
 
@@ -248,25 +332,6 @@ export default async function ClientReportPage({
                 </li>
               ))}
             </ol>
-          </div>
-        )}
-
-        {/* ── Gate Status ──────────────────────────────────────────────── */}
-        {gates.length > 0 && (
-          <div className="rounded-xl border border-neutral-200 bg-white px-6 py-5 shadow-sm">
-            <p className="text-xs text-neutral-400 uppercase tracking-wide font-medium mb-4">
-              Campaign Gates
-            </p>
-            <div className="space-y-2">
-              {gates.map((g) => (
-                <div key={g.id} className="flex items-center justify-between py-2 border-b border-neutral-100 last:border-0">
-                  <p className="text-sm font-medium text-neutral-700">{g.gate_type}</p>
-                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${gateColor(g.gate_decision)}`}>
-                    {g.gate_decision}
-                  </span>
-                </div>
-              ))}
-            </div>
           </div>
         )}
 
