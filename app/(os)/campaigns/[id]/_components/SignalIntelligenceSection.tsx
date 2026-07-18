@@ -9,6 +9,7 @@
 // 2. Weekly Signal Entry — log actuals, trigger AI inference, view traffic lights + narrative
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   upsertSignalThresholds,
   lockSignalThresholds,
@@ -402,9 +403,20 @@ function WeeklySignalPanel({
   reports: SignalWeeklyReport[];
 }) {
   const [isPending, startTransition] = useTransition();
-  const [activeWeek, setActiveWeek] = useState<SignalWeeklyReport | null>(
-    reports.length > 0 ? reports[0] : null
+  const router = useRouter();
+
+  // Store week number only — derive the object from live `reports` prop each render.
+  // This means when reports refresh (after router.refresh()), activeWeek auto-updates.
+  const [activeWeekNum, setActiveWeekNum] = useState<number | null>(
+    reports.length > 0 ? reports[0].week_number : null
   );
+  const activeWeek: SignalWeeklyReport | null =
+    activeWeekNum !== null
+      ? (reports.find((r) => r.week_number === activeWeekNum) ?? null)
+      : reports.length > 0
+      ? reports[0]
+      : null;
+
   const [runningAI, setRunningAI] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
@@ -415,20 +427,20 @@ function WeeklySignalPanel({
 
   // Call AI signal report after saving inputs
   async function handleSubmitAndRunAI(formData: FormData) {
+    const weekNumber = Number(formData.get("week_number"));
     startTransition(async () => {
-      // Save inputs via server action first
+      // Save inputs via server action first (triggers revalidatePath)
       await saveAction(formData);
-      // Then call AI inference
+      // Navigate to the week we just logged so user sees the result
+      setActiveWeekNum(weekNumber);
+      // Then call AI inference (writes gate_status, health fields, narrative)
       setRunningAI(true);
       setAiError(null);
       try {
         const res = await fetch("/api/signal-report", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            campaign_id: campaignId,
-            week_number: Number(formData.get("week_number")),
-          }),
+          body: JSON.stringify({ campaign_id: campaignId, week_number: weekNumber }),
         });
         if (!res.ok) {
           const errData = await res.json();
@@ -438,6 +450,8 @@ function WeeklySignalPanel({
         setAiError(e instanceof Error ? e.message : "Network error");
       } finally {
         setRunningAI(false);
+        // Refresh server data so activeWeek reflects the DB-written gate_status
+        router.refresh();
       }
     });
   }
@@ -549,9 +563,9 @@ function WeeklySignalPanel({
                 <button
                   key={r.id}
                   type="button"
-                  onClick={() => setActiveWeek(r)}
+                  onClick={() => setActiveWeekNum(r.week_number)}
                   className={`text-xs px-2 py-0.5 rounded border transition-colors ${
-                    activeWeek?.id === r.id
+                    activeWeekNum === r.week_number
                       ? "bg-neutral-800 text-white border-neutral-800"
                       : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400"
                   }`}
