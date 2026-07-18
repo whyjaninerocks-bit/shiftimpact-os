@@ -564,6 +564,12 @@ export type SignalThreshold = {
   signal_2_amber_pct: number;
   signal_2_red_pct: number;
 
+  // Signal 2B — TikTok Share Rate (%)
+  signal_2b_label: string;
+  signal_2b_target_pct: number;   // Green if >= this
+  signal_2b_amber_pct: number;    // Amber if below target but >= this
+  signal_2b_red_pct: number;      // Red if below this
+
   // Signal 3 — UGC Volume (count/week via Apify)
   signal_3_label: string;
   signal_3_threshold_count: number;
@@ -586,18 +592,26 @@ export type SignalWeeklyReport = {
   week_of: string; // ISO date
 
   // Raw signal inputs
-  signal_1_actual_pct: number | null;   // Branded search lift %
-  signal_2_actual_pct: number | null;   // Content save rate %
-  signal_3_actual_count: number | null; // UGC volume
+  signal_1_actual_pct: number | null;    // Branded search lift % (Share of Search)
+  signal_2_actual_pct: number | null;    // Content save rate %
+  signal_2b_actual_pct: number | null;   // TikTok share rate %  (Signal 2B — Sprint 24)
+  signal_2b_label: string | null;        // Label for Signal 2B
+  signal_3_actual_count: number | null;  // UGC volume
 
   // Campaign phase (1-4), computed from week_number / campaign_duration_weeks
   campaign_phase: CampaignPhaseNumber;
   flags_suppressed: boolean;
 
-  // Traffic lights — one per funnel stage
-  demand_health: SignalHealth;     // driven by Signal 3 (UGC)
-  nurture_health: SignalHealth;    // driven by Signal 2 (Save Rate)
-  conversion_health: SignalHealth; // driven by Signal 1 (Search Lift)
+  // Traffic lights — one per funnel stage + Signal 2B
+  demand_health: SignalHealth;        // driven by Signal 3 (UGC)
+  nurture_health: SignalHealth;       // driven by Signal 2 (Save Rate)
+  signal_2b_health: SignalHealth;     // driven by Signal 2B (Share Rate) — Sprint 24
+  conversion_health: SignalHealth;    // driven by Signal 1 (Search Lift / SoS)
+
+  // Gate Signal Convergence (Signal Gap Framework v2) — Sprint 24
+  gate_status: SignalHealth;          // Green = Gate open, Amber = watch, Red = closed
+  gate_signals_converging: number;    // count of signals at Green this week
+  gate_note: string;                  // plain-language gate status for strategy lead
 
   // AI-generated outputs
   ai_narrative: string;

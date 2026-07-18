@@ -1,11 +1,19 @@
 // app/api/signal-report/route.ts
 // Feature 12 — Signal Intelligence Reporting Module (Sprint 2)
+// Sprint 24 — Signal 2B (Share Rate) + Gate Signal Convergence Module
 // INTERNAL ONLY — never called from or exposed to Client Interface (/portal/*).
 //
 // POST /api/signal-report
 // Reads signal inputs from signal_weekly_reports, applies threshold rules,
-// computes campaign-proportional phase, runs Claude Haiku for AI narrative,
-// saves traffic lights + narrative back to signal_weekly_reports.
+// computes campaign-proportional phase, computes Gate Status (Amber/Green/Red),
+// runs Claude Haiku for AI narrative, saves traffic lights + Gate + narrative
+// back to signal_weekly_reports.
+//
+// Gate Signal Logic (Signal Gap Framework v2):
+//   Amber = 1 behaviour signal above threshold (watch, no budget release)
+//   Green = 2+ independent behaviour signals converging (Gate open, budget release eligible)
+//   Red   = no behaviour signals above threshold
+//   "Fires AND holds" — prior-week check confirms signal is not a one-week spike.
 //
 // Auth: service role (Supabase JWT) — strategy lead and Janine only.
 
@@ -26,6 +34,7 @@ function getSupabase() {
 
 type SignalHealth = "Green" | "Amber" | "Red";
 type CampaignPhase = 1 | 2 | 3 | 4;
+type GateStatus = "Green" | "Amber" | "Red";
 
 interface SignalReportRequest {
   campaign_id: string;
@@ -44,6 +53,10 @@ interface ThresholdRecord {
   signal_2_threshold_pct: number;
   signal_2_amber_pct: number;
   signal_2_red_pct: number;
+  signal_2b_label: string;
+  signal_2b_target_pct: number;
+  signal_2b_amber_pct: number;
+  signal_2b_red_pct: number;
   signal_3_label: string;
   signal_3_threshold_count: number;
   signal_3_amber_count: number;
@@ -55,6 +68,8 @@ interface WeeklyRecord {
   id: string;
   signal_1_actual_pct: number | null;
   signal_2_actual_pct: number | null;
+  signal_2b_actual_pct: number | null;
+  signal_2b_label: string | null;
   signal_3_actual_count: number | null;
   campaign_phase: number;
   flags_suppressed: boolean;
@@ -70,7 +85,6 @@ function computePhase(weekNumber: number, durationWeeks: number): CampaignPhase 
   return 4;
 }
 
-// Phase name and context for AI prompt
 function phaseLabel(phase: CampaignPhase, durationWeeks: number, weekNumber: number): string {
   const weeksLeft = durationWeeks - weekNumber;
   switch (phase) {
@@ -91,7 +105,6 @@ function computeNumericHealth(
   phase: CampaignPhase,
   higherIsBetter = true
 ): SignalHealth {
-  // Phase 1: no flags
   if (phase === 1) return "Green";
   if (actual === null) return "Green"; // no data = no flag
 
@@ -100,11 +113,99 @@ function computeNumericHealth(
     if (actual >= amberThreshold) return "Amber";
     return "Red";
   } else {
-    // Lower is better (not used currently but available)
     if (actual <= greenThreshold) return "Green";
     if (actual <= amberThreshold) return "Amber";
     return "Red";
   }
+}
+
+// ─── Gate Signal Convergence ──────────────────────────────────────────────────
+// Signal Gap Framework v2 — Gate logic:
+//   Green Gate: 2+ independent behaviour signals BOTH above target AND holding
+//   Amber Gate: 1 signal above target (progress reportable, no budget release)
+//   Red Gate:   0 signals above target
+//
+// "Holds": signal was at the same level or better the prior week.
+// A one-week spike does not open the Gate.
+
+interface SignalForGate {
+  name: string;
+  health: SignalHealth;
+  hasData: boolean;
+  priorHealth: SignalHealth | null;
+}
+
+function computeGateStatus(
+  signals: SignalForGate[],
+  phase: CampaignPhase
+): { gate_status: GateStatus; gate_signals_converging: number; gate_note: string } {
+  // Phase 1 — baseline, no gate assessment
+  if (phase === 1) {
+    return {
+      gate_status: "Red",
+      gate_signals_converging: 0,
+      gate_note:
+        "Gate inactive — campaign is in baseline phase. Signal targets are being established. Gate assessment begins in Phase 2.",
+    };
+  }
+
+  // Only count signals with data entered this week
+  const active = signals.filter((s) => s.hasData);
+  if (active.length === 0) {
+    return {
+      gate_status: "Red",
+      gate_signals_converging: 0,
+      gate_note: "Gate closed — no signal data entered this week.",
+    };
+  }
+
+  const greenSignals = active.filter((s) => s.health === "Green");
+  const amberSignals = active.filter((s) => s.health === "Amber");
+  const greenCount = greenSignals.length;
+
+  // "Holds" check — signal was at Green or Amber in the prior week too
+  const holdingGreen = greenSignals.filter(
+    (s) => s.priorHealth === "Green" || s.priorHealth === "Amber"
+  );
+  const isHolding = holdingGreen.length >= 2;
+  const holdingNote = isHolding
+    ? " and holding"
+    : greenCount >= 2
+    ? " (confirm holding next week)"
+    : "";
+
+  if (greenCount >= 2) {
+    const names = greenSignals.map((s) => s.name).join(" + ");
+    return {
+      gate_status: "Green",
+      gate_signals_converging: greenCount,
+      gate_note: `Gate open — ${names} both above target${holdingNote}. Budget release criteria met per Signal Gap Framework v2.`,
+    };
+  }
+
+  if (greenCount === 1) {
+    return {
+      gate_status: "Amber",
+      gate_signals_converging: 1,
+      gate_note: `Gate watch — ${greenSignals[0].name} is above target. Watching for one more independent signal to converge before Gate opens. Budget hold maintained.`,
+    };
+  }
+
+  if (amberSignals.length >= 1) {
+    const names = amberSignals.map((s) => s.name).join(", ");
+    return {
+      gate_status: "Amber",
+      gate_signals_converging: 0,
+      gate_note: `Gate watch — ${names} ${amberSignals.length > 1 ? "are" : "is"} approaching target but below Green threshold. No signals at Green yet. Budget hold maintained.`,
+    };
+  }
+
+  return {
+    gate_status: "Red",
+    gate_signals_converging: 0,
+    gate_note:
+      "Gate closed — no behaviour signals above target threshold this week. Review campaign creative and targeting.",
+  };
 }
 
 // ─── Tool schema ─────────────────────────────────────────────────────────────
@@ -115,21 +216,28 @@ const SIGNAL_REPORT_TOOL = {
   input_schema: {
     type: "object" as const,
     properties: {
+      gate_status_label: {
+        type: "string",
+        description:
+          "One sentence only. Open with 'Gate Status: [Open / Watch / Closed] —'. State what the Gate Status means for budget release this week. No more than 25 words.",
+      },
       narrative: {
         type: "string",
-        description: "1–2 paragraphs. Plain language. What the signal combination means for this campaign right now.",
+        description:
+          "1–2 paragraphs. Plain language. What the signal combination means for this campaign right now. Start with the most critical diagnostic — do not lead with good news if there is a risk to address.",
       },
       recommended_actions: {
         type: "array",
         items: { type: "string" },
-        description: "Numbered, specific actions actionable within 48 hours. 2–4 items.",
+        description:
+          "Numbered, specific actions actionable within 48 hours. 2–4 items. Phase 4: tag Demand/Nurture actions as [NEXT CAMPAIGN].",
       },
       phase_context: {
         type: "string",
         description: "One sentence on what this phase means for decision-making.",
       },
     },
-    required: ["narrative", "recommended_actions", "phase_context"],
+    required: ["gate_status_label", "narrative", "recommended_actions", "phase_context"],
   },
 } as const;
 
@@ -138,18 +246,29 @@ const SIGNAL_REPORT_TOOL = {
 function buildSystemPrompt(): string {
   return `You are the ShiftImpact OS Signal Intelligence engine — an internal AI tool for strategy leads and Janine.
 
-You analyse weekly campaign signal data across three concurrent funnel stages:
-- Demand: measures how well the campaign is building category interest and brand awareness (Signal 3 — UGC volume)
-- Nurture: measures how well the campaign is moving people from awareness to active consideration (Signal 2 — content save rate)
-- Conversion: measures whether people are moving to active purchase intent (Signal 1 — branded search lift)
+You analyse weekly campaign signal data across four concurrent behaviour signals:
+- Demand: measures category interest and brand awareness (Signal 3 — UGC volume)
+- Nurture — Save Rate: measures active consideration (Signal 2 — content save rate)
+- Nurture — Share Rate: measures social advocacy (Signal 2B — content share rate)
+- Conversion: measures purchase intent (Signal 1 — branded search lift / Share of Search)
+
+GATE SIGNAL LOGIC (Signal Gap Framework v2):
+Gate Status determines whether budget release criteria have been met this week.
+- Gate: Closed (Red) = no behaviour signals above target. No budget release. Diagnose cause.
+- Gate: Watch (Amber) = 1 signal above target. Progress reportable to client. Budget hold maintained.
+- Gate: Open (Green) = 2+ independent behaviour signals both above target. Budget release criteria met.
+The budget does not move until the Gate opens. This is the contractual commitment, not a recommendation.
 
 CRITICAL RULES:
-1. You write for strategy leads who understand the ShiftImpact OS methodology. Be direct, specific, and strategic.
+1. Write for strategy leads who understand the ShiftImpact OS methodology. Be direct, specific, strategic.
 2. Never use motivational language ("great work", "keep it up", etc.)
-3. Phase 1 reports always say: "Campaign in baseline phase — signal baselines are being established. No flags generated this week."
-4. In Phase 4, all Demand and Nurture recommended actions must be tagged [NEXT CAMPAIGN] — they will not have sufficient time to impact this flight.
-5. Always check the cross-stage pattern. The most important diagnostic is Pipeline Risk: Conversion Green + Demand Red/Amber + Nurture Red/Amber = sales cliff in 8-12 weeks post-campaign. Flag it explicitly when detected.
-6. Recommended actions must be numbered, specific, and actionable within 48 hours.`;
+3. Phase 1 reports always say: "Campaign in baseline phase — signal baselines are being established. Gate inactive. No flags generated this week."
+4. In Phase 4, all Demand and Nurture recommended actions must be tagged [NEXT CAMPAIGN].
+5. Always check the cross-stage pattern. Pipeline Risk: Conversion Green + Demand Red/Amber + Nurture Red/Amber = sales cliff in 8-12 weeks post-campaign. Flag it explicitly.
+6. When Gate is Open (Green): state clearly that budget release criteria are met. Name which signals triggered it.
+7. When Gate is Watch (Amber): state which signal is above target and what is still missing for Gate to open.
+8. When Gate is Closed (Red): diagnose why. Do not soften this.
+9. Recommended actions must be numbered, specific, and actionable within 48 hours.`;
 }
 
 function buildUserPrompt(
@@ -160,24 +279,41 @@ function buildUserPrompt(
   weekly: WeeklyRecord,
   demandHealth: SignalHealth,
   nurtureHealth: SignalHealth,
+  nurtureShareHealth: SignalHealth,
   conversionHealth: SignalHealth,
+  gateStatus: GateStatus,
+  gateSignalsConverging: number,
+  gateNote: string,
   pipelineRisk: boolean,
   campaignName: string,
-  channelHealthContext: string,   // F16B: cross-channel health from F13 hub
-  marketContextSection: string    // F16C: external market variable context
+  channelHealthContext: string,
+  marketContextSection: string
 ): string {
   const phaseCtx = phaseLabel(phase, durationWeeks, weekNumber);
   const phasePct = Math.round((weekNumber / durationWeeks) * 100);
+  const signal2bLabel = weekly.signal_2b_label ?? threshold.signal_2b_label ?? "TikTok share rate";
+
+  const gateEmoji = gateStatus === "Green" ? "⚡" : gateStatus === "Amber" ? "⏸" : "🔴";
 
   return `CAMPAIGN: ${campaignName}
 WEEK: ${weekNumber} of ${durationWeeks} (${phasePct}% through campaign)
 ${phaseCtx}
 
+${gateEmoji} GATE SIGNAL STATUS (Signal Gap Framework v2):
+Gate Status: ${gateStatus === "Green" ? "OPEN" : gateStatus === "Amber" ? "WATCH" : "CLOSED"}
+${gateNote}
+Signals at Green this week: ${gateSignalsConverging}
+${gateStatus === "Green" ? "BUDGET RELEASE CRITERIA MET. State this clearly in gate_status_label and narrative." : ""}
+${gateStatus === "Amber" ? "BUDGET HOLD MAINTAINED. Progress reportable. State which signal is above target and what is still needed." : ""}
+${gateStatus === "Red" && phase >= 2 ? "GATE CLOSED. Diagnose the cause. Do not soften." : ""}
+
 SIGNAL HEALTH SUMMARY:
 - Demand (Signal 3 — ${threshold.signal_3_label}): ${demandHealth}
   Actual: ${weekly.signal_3_actual_count ?? "Not reported"} posts/mentions | Green ≥${threshold.signal_3_threshold_count} | Amber ≥${threshold.signal_3_amber_count} | Red <${threshold.signal_3_amber_count}
-- Nurture (Signal 2 — ${threshold.signal_2_label}): ${nurtureHealth}
-  Actual: ${weekly.signal_2_actual_pct !== null ? `${weekly.signal_2_actual_pct}%` : "Not reported"} save rate | Green ≥${threshold.signal_2_threshold_pct}% | Amber ≥${threshold.signal_2_amber_pct}% | Red <${threshold.signal_2_amber_pct}%
+- Nurture — Save Rate (Signal 2 — ${threshold.signal_2_label}): ${nurtureHealth}
+  Actual: ${weekly.signal_2_actual_pct !== null ? `${weekly.signal_2_actual_pct}%` : "Not reported"} | Green ≥${threshold.signal_2_threshold_pct}% | Amber ≥${threshold.signal_2_amber_pct}% | Red <${threshold.signal_2_amber_pct}%
+- Nurture — Share Rate (Signal 2B — ${signal2bLabel}): ${nurtureShareHealth}
+  Actual: ${weekly.signal_2b_actual_pct !== null ? `${weekly.signal_2b_actual_pct}%` : "Not reported"} | Green ≥${threshold.signal_2b_target_pct}% | Amber ≥${threshold.signal_2b_amber_pct}% | Red <${threshold.signal_2b_amber_pct}%
 - Conversion (Signal 1 — ${threshold.signal_1_label}): ${conversionHealth}
   Actual: ${weekly.signal_1_actual_pct !== null ? `${weekly.signal_1_actual_pct}%` : "Not reported"} search lift | Green ≥${threshold.signal_1_threshold_pct}% | Amber ≥${threshold.signal_1_amber_pct}% | Red <${threshold.signal_1_amber_pct}%
 
@@ -225,7 +361,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Load weekly signal inputs
+    // 2. Load weekly signal inputs for THIS week
     const { data: weekly, error: wErr } = await supabase
       .from("signal_weekly_reports")
       .select("*")
@@ -240,7 +376,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Load campaign name for context
+    // 2b. Load PRIOR week for "holds" check (Gate fires AND holds)
+    const { data: priorWeekly } = await supabase
+      .from("signal_weekly_reports")
+      .select("demand_health, nurture_health, signal_2b_health, conversion_health")
+      .eq("campaign_id", campaign_id)
+      .eq("week_number", week_number - 1)
+      .maybeSingle();
+
+    // 3. Load campaign name
     const { data: campaign } = await supabase
       .from("campaigns")
       .select("name")
@@ -248,8 +392,7 @@ export async function POST(req: NextRequest) {
       .single();
     const campaignName = campaign?.name ?? "Campaign";
 
-    // 3.5. F16C — Load market variable context for this week (optional enrichment)
-    // All 6 fields optional — if not saved, marketContextSection is empty and prompt is unchanged.
+    // 3.5. F16C — Market variable context
     const { data: marketCtx } = await supabase
       .from("signal_market_contexts")
       .select("*")
@@ -283,8 +426,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3.6. F16B — Load F13 cross-channel health for this week (optional enrichment)
-    // If no channels are set up yet, channelHealthContext is empty and the prompt is unchanged.
+    // 3.6. F16B — Cross-channel health from F13 hub
     const { data: channelMetrics } = await supabase
       .from("channel_weekly_metrics")
       .select(`
@@ -320,13 +462,13 @@ export async function POST(req: NextRequest) {
         }
       }
       const lines = ROLES
-        .filter(r => roleHealth[r].names.length > 0)
-        .map(r => {
+        .filter((r) => roleHealth[r].names.length > 0)
+        .map((r) => {
           const v = roleHealth[r];
           return `  ${r}: ${v.G}G/${v.A}A/${v.R}R — ${v.names.join(", ")}`;
         });
       if (lines.length > 0) {
-        channelHealthContext = `\nCROSS-CHANNEL HEALTH (per-channel data from F13 hub this week):\n${lines.join("\n")}\nNote: Cross-channel data is supplementary context. The three primary signal health indicators above remain the primary diagnostic.`;
+        channelHealthContext = `\nCROSS-CHANNEL HEALTH (per-channel data from F13 hub this week):\n${lines.join("\n")}\nNote: Cross-channel data is supplementary context. Gate Status and the four primary signal health indicators are the primary diagnostic.`;
       }
     }
 
@@ -334,7 +476,6 @@ export async function POST(req: NextRequest) {
     const phase = computePhase(week_number, threshold.campaign_duration_weeks);
 
     // 5. Compute traffic lights
-    // Signal 3 (UGC count) → Demand health
     const demandHealth = computeNumericHealth(
       weekly.signal_3_actual_count,
       threshold.signal_3_threshold_count,
@@ -342,7 +483,6 @@ export async function POST(req: NextRequest) {
       threshold.signal_3_red_count,
       phase
     );
-    // Signal 2 (save rate %) → Nurture health
     const nurtureHealth = computeNumericHealth(
       weekly.signal_2_actual_pct,
       threshold.signal_2_threshold_pct,
@@ -350,7 +490,13 @@ export async function POST(req: NextRequest) {
       threshold.signal_2_red_pct,
       phase
     );
-    // Signal 1 (search lift %) → Conversion health
+    const nurtureShareHealth = computeNumericHealth(
+      weekly.signal_2b_actual_pct,
+      threshold.signal_2b_target_pct ?? 5,
+      threshold.signal_2b_amber_pct ?? 3,
+      threshold.signal_2b_red_pct ?? 1,
+      phase
+    );
     const conversionHealth = computeNumericHealth(
       weekly.signal_1_actual_pct,
       threshold.signal_1_threshold_pct,
@@ -359,14 +505,48 @@ export async function POST(req: NextRequest) {
       phase
     );
 
-    // 6. Pipeline Risk detection
-    // Conversion Green + (Demand Red/Amber OR Nurture Red/Amber)
+    // 6. Gate Signal Convergence
+    // Signal 2B (Share Rate) and Signal 2 (Save Rate) are both Nurture-stage but measured from
+    // different audience actions — treated as independent for Gate convergence purposes.
+    const gateSignals: SignalForGate[] = [
+      {
+        name: weekly.signal_2b_label ?? threshold.signal_2b_label ?? "Share Rate",
+        health: nurtureShareHealth,
+        hasData: weekly.signal_2b_actual_pct !== null,
+        priorHealth: (priorWeekly?.signal_2b_health as SignalHealth | null) ?? null,
+      },
+      {
+        name: threshold.signal_2_label ?? "Save Rate",
+        health: nurtureHealth,
+        hasData: weekly.signal_2_actual_pct !== null,
+        priorHealth: (priorWeekly?.nurture_health as SignalHealth | null) ?? null,
+      },
+      {
+        name: threshold.signal_3_label ?? "UGC Volume",
+        health: demandHealth,
+        hasData: weekly.signal_3_actual_count !== null,
+        priorHealth: (priorWeekly?.demand_health as SignalHealth | null) ?? null,
+      },
+      {
+        name: threshold.signal_1_label ?? "Branded Search Lift",
+        health: conversionHealth,
+        hasData: weekly.signal_1_actual_pct !== null,
+        priorHealth: (priorWeekly?.conversion_health as SignalHealth | null) ?? null,
+      },
+    ];
+
+    const { gate_status, gate_signals_converging, gate_note } = computeGateStatus(
+      gateSignals,
+      phase
+    );
+
+    // 7. Pipeline Risk detection
     const pipelineRisk =
       conversionHealth === "Green" &&
       (demandHealth !== "Green" || nurtureHealth !== "Green") &&
       phase >= 2;
 
-    // 7. Call AI for narrative (model read from os_settings — change via /settings UI)
+    // 8. Call AI for narrative
     const anthropic = new Anthropic({
       apiKey: process.env.ANTHROPIC_API_KEY!,
     });
@@ -374,7 +554,7 @@ export async function POST(req: NextRequest) {
     const signalModel = await getModel("model_signal_report", "claude-haiku-4-5-20251001");
     const aiResponse = await anthropic.messages.create({
       model: signalModel,
-      max_tokens: 800,
+      max_tokens: 900,
       system: buildSystemPrompt(),
       tools: [SIGNAL_REPORT_TOOL],
       tool_choice: { type: "tool", name: "submit_signal_report" },
@@ -389,7 +569,11 @@ export async function POST(req: NextRequest) {
             weekly,
             demandHealth,
             nurtureHealth,
+            nurtureShareHealth,
             conversionHealth,
+            gate_status,
+            gate_signals_converging,
+            gate_note,
             pipelineRisk,
             campaignName,
             channelHealthContext,
@@ -399,21 +583,24 @@ export async function POST(req: NextRequest) {
       ],
     });
 
-    // 8. Extract tool use result — .input is already parsed, no text manipulation needed
+    // 9. Extract tool use result
     const toolBlock = aiResponse.content.find((b) => b.type === "tool_use");
     if (!toolBlock || toolBlock.type !== "tool_use") {
       throw new Error("AI did not return a tool_use block");
     }
     const result = toolBlock.input as {
+      gate_status_label: string;
       narrative: string;
       recommended_actions: string[];
       phase_context: string;
     };
-    const narrative          = result.narrative          ?? "";
+    const gateStatusLabel    = result.gate_status_label   ?? "";
+    const narrative          = result.narrative            ?? "";
     const recommendedActions = Array.isArray(result.recommended_actions) ? result.recommended_actions : [];
-    const phaseContext       = result.phase_context      ?? "";
+    const phaseContext       = result.phase_context        ?? "";
 
-    // 9. Save traffic lights + AI outputs back to signal_weekly_reports
+    // 10. Save traffic lights + Gate + AI outputs back to signal_weekly_reports
+    // ai_narrative prefixed with gate_status_label so it surfaces at the top of the report card
     const { error: updateErr } = await supabase
       .from("signal_weekly_reports")
       .update({
@@ -421,8 +608,12 @@ export async function POST(req: NextRequest) {
         flags_suppressed: phase === 1,
         demand_health: demandHealth,
         nurture_health: nurtureHealth,
+        signal_2b_health: nurtureShareHealth,
         conversion_health: conversionHealth,
-        ai_narrative: narrative,
+        gate_status,
+        gate_signals_converging,
+        gate_note,
+        ai_narrative: gateStatusLabel ? `${gateStatusLabel}\n\n${narrative}` : narrative,
         ai_recommended_actions: JSON.stringify(recommendedActions),
         ai_phase_context: phaseContext,
         pipeline_risk_detected: pipelineRisk,
@@ -434,15 +625,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: updateErr.message }, { status: 500 });
     }
 
-    // 10. Return the full report
+    // 11. Return full report
     return NextResponse.json({
       week_number,
       campaign_phase: phase,
       flags_suppressed: phase === 1,
       demand_health: demandHealth,
       nurture_health: nurtureHealth,
+      nurture_share_health: nurtureShareHealth,
       conversion_health: conversionHealth,
+      gate_status,
+      gate_signals_converging,
+      gate_note,
       pipeline_risk_detected: pipelineRisk,
+      ai_gate_status_label: gateStatusLabel,
       ai_narrative: narrative,
       ai_recommended_actions: recommendedActions,
       ai_phase_context: phaseContext,

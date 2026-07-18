@@ -842,6 +842,10 @@ export async function upsertSignalThresholds(
     signal_2_threshold_pct: Number(str(formData, "signal_2_threshold_pct")) || 8,
     signal_2_amber_pct: Number(str(formData, "signal_2_amber_pct")) || 4,
     signal_2_red_pct: Number(str(formData, "signal_2_red_pct")) || 2,
+    signal_2b_label: str(formData, "signal_2b_label") || "TikTok share rate",
+    signal_2b_target_pct: Number(str(formData, "signal_2b_target_pct")) || 5,
+    signal_2b_amber_pct: Number(str(formData, "signal_2b_amber_pct")) || 3,
+    signal_2b_red_pct: Number(str(formData, "signal_2b_red_pct")) || 1,
     signal_3_label: str(formData, "signal_3_label") || "UGC Volume (Apify)",
     signal_3_threshold_count: Number(str(formData, "signal_3_threshold_count")) || 100,
     signal_3_amber_count: Number(str(formData, "signal_3_amber_count")) || 50,
@@ -939,6 +943,8 @@ export async function saveWeeklySignalInputs(
       week_of: str(formData, "week_of") || new Date().toISOString().slice(0, 10),
       signal_1_actual_pct: numOrNull(formData, "signal_1_actual_pct"),
       signal_2_actual_pct: numOrNull(formData, "signal_2_actual_pct"),
+      signal_2b_actual_pct: numOrNull(formData, "signal_2b_actual_pct"),
+      signal_2b_label: str(formData, "signal_2b_label") || null,
       signal_3_actual_count: numOrNull(formData, "signal_3_actual_count"),
       campaign_phase: phase,
       flags_suppressed: phase === 1,
@@ -946,6 +952,7 @@ export async function saveWeeklySignalInputs(
       // Stored as Green defaults here; component calls /api/signal-report after save
       demand_health: "Green",
       nurture_health: "Green",
+      signal_2b_health: "Green",
       conversion_health: "Green",
     },
     { onConflict: "campaign_id,week_number" }

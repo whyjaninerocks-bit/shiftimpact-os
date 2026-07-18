@@ -1,6 +1,7 @@
 "use client";
 
 // Feature 12 — Signal Intelligence Reporting Module (Sprint 2)
+// Sprint 24 — Signal 2B (Share Rate) + Gate Signal Convergence Module
 // Internal only. Not shown to clients.
 //
 // Two panels:
@@ -64,6 +65,69 @@ function TrafficLight({
       }`}>
         {s.label}
       </span>
+    </div>
+  );
+}
+
+
+// ─── Gate Signal Badge ────────────────────────────────────────────────────────
+
+const GATE_STYLE: Record<string, { bg: string; border: string; text: string; icon: string; label: string }> = {
+  Green: { bg: "bg-emerald-50", border: "border-emerald-300", text: "text-emerald-800", icon: "⚡", label: "Gate Open"   },
+  Amber: { bg: "bg-amber-50",   border: "border-amber-300",   text: "text-amber-800",   icon: "⏸", label: "Gate Watch"  },
+  Red:   { bg: "bg-red-50",     border: "border-red-300",     text: "text-red-800",     icon: "🔴", label: "Gate Closed" },
+};
+
+function GateBadge({
+  gateStatus,
+  gateNote,
+  gateSignalsConverging,
+  flagsSuppressed,
+}: {
+  gateStatus: string;
+  gateNote: string;
+  gateSignalsConverging: number;
+  flagsSuppressed: boolean;
+}) {
+  if (flagsSuppressed) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-neutral-50 border border-neutral-200 text-xs text-neutral-400">
+        <span>⏳</span>
+        <span>Gate inactive — baseline phase. Gate assessment begins in Phase 2.</span>
+      </div>
+    );
+  }
+
+  const s = GATE_STYLE[gateStatus] ?? GATE_STYLE["Red"];
+  return (
+    <div className={`rounded-lg border ${s.bg} ${s.border} px-3 py-2.5 space-y-1`}>
+      <div className="flex items-center gap-2">
+        <span className="text-base">{s.icon}</span>
+        <span className={`text-xs font-bold ${s.text}`}>
+          {s.label}
+        </span>
+        {gateStatus === "Green" && gateSignalsConverging > 0 && (
+          <span className="text-xs bg-emerald-100 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded-full font-medium">
+            {gateSignalsConverging} signal{gateSignalsConverging !== 1 ? "s" : ""} converging
+          </span>
+        )}
+        {gateStatus === "Amber" && gateSignalsConverging > 0 && (
+          <span className="text-xs bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full font-medium">
+            {gateSignalsConverging} at Green
+          </span>
+        )}
+        {gateStatus === "Green" && (
+          <span className="ml-auto text-xs bg-emerald-700 text-white px-2 py-0.5 rounded font-semibold">
+            Budget release eligible
+          </span>
+        )}
+        {gateStatus !== "Green" && (
+          <span className="ml-auto text-xs text-neutral-400 font-medium">Budget hold</span>
+        )}
+      </div>
+      {gateNote && (
+        <p className={`text-xs ${s.text} opacity-80 leading-snug`}>{gateNote}</p>
+      )}
     </div>
   );
 }
@@ -225,6 +289,42 @@ function ThresholdSetupPanel({
           </div>
         </div>
 
+        {/* Signal 2B — Share Rate */}
+        <div className="border border-rose-100 rounded-md p-3 bg-rose-50/30">
+          <p className="text-xs font-semibold text-rose-800 mb-2">
+            Signal 2B — TikTok Share Rate (Advocacy)
+          </p>
+          <p className="text-xs text-rose-600 mb-3">
+            When people share your content, they&apos;re actively vouching for it to their network. Share rate is a stronger social-proof signal than saves — it means your brand is spreading through trusted peer relationships, not just bookmarked intent.
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className={labelClass}>Green threshold (%)</label>
+              <input
+                type="number" name="signal_2b_target_pct" className={inputClass} step="0.1"
+                defaultValue={threshold?.signal_2b_target_pct ?? 5} disabled={locked} required
+              />
+              <p className="text-xs text-neutral-400 mt-0.5">Share rate % = Green</p>
+            </div>
+            <div>
+              <label className={labelClass}>Amber threshold (%)</label>
+              <input
+                type="number" name="signal_2b_amber_pct" className={inputClass} step="0.1"
+                defaultValue={threshold?.signal_2b_amber_pct ?? 3} disabled={locked} required
+              />
+              <p className="text-xs text-neutral-400 mt-0.5">Approaching = Amber</p>
+            </div>
+            <div>
+              <label className={labelClass}>Red threshold (%)</label>
+              <input
+                type="number" name="signal_2b_red_pct" className={inputClass} step="0.1"
+                defaultValue={threshold?.signal_2b_red_pct ?? 1} disabled={locked} required
+              />
+              <p className="text-xs text-neutral-400 mt-0.5">At/below = Red</p>
+            </div>
+          </div>
+        </div>
+
         {/* Signal 3 — UGC Volume via Apify */}
         <div className="border border-emerald-100 rounded-md p-3 bg-emerald-50/30">
           <p className="text-xs font-semibold text-emerald-800 mb-2">
@@ -381,30 +481,40 @@ function WeeklySignalPanel({
               />
             </div>
           </div>
-          <div className="grid sm:grid-cols-3 gap-4">
-            <div>
-              <label className={labelClass}>Signal 1 — Search Lift (%)</label>
-              <input
-                type="number" name="signal_1_actual_pct" className={inputClass}
-                step="0.1" placeholder={`Target ≥${threshold.signal_1_threshold_pct}%`}
-              />
-              <p className="text-xs text-blue-600 mt-0.5">→ Conversion health</p>
-            </div>
+          <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Signal 2 — Save Rate (%)</label>
               <input
                 type="number" name="signal_2_actual_pct" className={inputClass}
                 step="0.1" placeholder={`Target ≥${threshold.signal_2_threshold_pct}%`}
               />
-              <p className="text-xs text-purple-600 mt-0.5">→ Nurture health</p>
+              <p className="text-xs text-purple-600 mt-0.5">Nurture — content save rate</p>
             </div>
+            <div>
+              <label className={labelClass}>Signal 2B — TikTok Share Rate (%)</label>
+              <input
+                type="number" name="signal_2b_actual_pct" className={inputClass}
+                step="0.1" placeholder={`Target ≥${threshold.signal_2b_target_pct ?? 5}%`}
+              />
+              <p className="text-xs text-rose-600 mt-0.5">Nurture — share rate (advocacy)</p>
+            </div>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Signal 3 — UGC Posts (count)</label>
               <input
                 type="number" name="signal_3_actual_count" className={inputClass}
                 placeholder={`Target ≥${threshold.signal_3_threshold_count} posts`}
               />
-              <p className="text-xs text-emerald-600 mt-0.5">→ Demand health</p>
+              <p className="text-xs text-emerald-600 mt-0.5">Demand — organic brand mentions</p>
+            </div>
+            <div>
+              <label className={labelClass}>Signal 1 — Search Lift (%)</label>
+              <input
+                type="number" name="signal_1_actual_pct" className={inputClass}
+                step="0.1" placeholder={`Target ≥${threshold.signal_1_threshold_pct}%`}
+              />
+              <p className="text-xs text-blue-600 mt-0.5">Conversion — branded search lift (SoS)</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -476,13 +586,21 @@ function WeeklySignalPanel({
                 </div>
               )}
 
+              {/* Gate Signal Status — primary decision indicator */}
+              <GateBadge
+                gateStatus={activeWeek.gate_status ?? "Red"}
+                gateNote={activeWeek.gate_note ?? ""}
+                gateSignalsConverging={activeWeek.gate_signals_converging ?? 0}
+                flagsSuppressed={activeWeek.flags_suppressed}
+              />
+
               {/* Traffic lights */}
               {activeWeek.flags_suppressed ? (
                 <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-md text-xs text-neutral-500">
                   Still in the early phase — building a baseline. No alerts yet. Check back next week.
                 </div>
               ) : (
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <TrafficLight
                     stage="Demand"
                     health={activeWeek.demand_health as SignalHealth}
@@ -492,6 +610,11 @@ function WeeklySignalPanel({
                     stage="Nurture"
                     health={activeWeek.nurture_health as SignalHealth}
                     signal="Signal 2 (Save Rate)"
+                  />
+                  <TrafficLight
+                    stage="Nurture"
+                    health={(activeWeek.signal_2b_health ?? "Green") as SignalHealth}
+                    signal="Signal 2B (Share Rate)"
                   />
                   <TrafficLight
                     stage="Conversion"
@@ -543,20 +666,9 @@ function WeeklySignalPanel({
                 <summary className="cursor-pointer hover:text-neutral-700 font-medium">
                   Raw signal data — Week {activeWeek.week_number}
                 </summary>
-                <div className="mt-2 grid grid-cols-3 gap-3 pt-2 border-t border-neutral-100">
+                <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-neutral-100">
                   <div>
-                    <p className="text-neutral-400">Signal 1 (Search Lift)</p>
-                    <p className="font-mono text-neutral-700">
-                      {activeWeek.signal_1_actual_pct !== null
-                        ? `${activeWeek.signal_1_actual_pct}%`
-                        : "—"}
-                    </p>
-                    <p className="text-neutral-300">
-                      Target: ≥{threshold.signal_1_threshold_pct}%
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-neutral-400">Signal 2 (Save Rate)</p>
+                    <p className="text-neutral-400">S2 — Save Rate</p>
                     <p className="font-mono text-neutral-700">
                       {activeWeek.signal_2_actual_pct !== null
                         ? `${activeWeek.signal_2_actual_pct}%`
@@ -567,7 +679,18 @@ function WeeklySignalPanel({
                     </p>
                   </div>
                   <div>
-                    <p className="text-neutral-400">Signal 3 (UGC Count)</p>
+                    <p className="text-neutral-400">S2B — Share Rate</p>
+                    <p className="font-mono text-neutral-700">
+                      {activeWeek.signal_2b_actual_pct !== null
+                        ? `${activeWeek.signal_2b_actual_pct}%`
+                        : "—"}
+                    </p>
+                    <p className="text-neutral-300">
+                      Target: ≥{threshold.signal_2b_target_pct ?? 5}%
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-neutral-400">S3 — UGC Count</p>
                     <p className="font-mono text-neutral-700">
                       {activeWeek.signal_3_actual_count !== null
                         ? activeWeek.signal_3_actual_count
@@ -575,6 +698,17 @@ function WeeklySignalPanel({
                     </p>
                     <p className="text-neutral-300">
                       Target: ≥{threshold.signal_3_threshold_count} posts
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-neutral-400">S1 — Search Lift</p>
+                    <p className="font-mono text-neutral-700">
+                      {activeWeek.signal_1_actual_pct !== null
+                        ? `${activeWeek.signal_1_actual_pct}%`
+                        : "—"}
+                    </p>
+                    <p className="text-neutral-300">
+                      Target: ≥{threshold.signal_1_threshold_pct}%
                     </p>
                   </div>
                 </div>
@@ -668,10 +802,12 @@ function TimelinePanel({
           <thead>
             <tr className="border-b border-neutral-200 text-neutral-400 text-left">
               <th className="py-1.5 pr-3 font-medium w-14">Week</th>
-              <th className="py-1.5 pr-3 font-medium w-28">Phase</th>
-              <th className="py-1.5 pr-3 font-medium text-center w-20">Demand</th>
-              <th className="py-1.5 pr-3 font-medium text-center w-20">Nurture</th>
-              <th className="py-1.5 pr-3 font-medium text-center w-24">Conversion</th>
+              <th className="py-1.5 pr-3 font-medium w-24">Phase</th>
+              <th className="py-1.5 pr-3 font-medium text-center w-16">Demand</th>
+              <th className="py-1.5 pr-3 font-medium text-center w-16">Save</th>
+              <th className="py-1.5 pr-3 font-medium text-center w-16">Share</th>
+              <th className="py-1.5 pr-3 font-medium text-center w-20">Conversion</th>
+              <th className="py-1.5 pr-3 font-medium text-center w-20">Gate</th>
               <th className="py-1.5 pr-3 font-medium text-center w-14">Risk</th>
               <th className="py-1.5 font-medium">AI Read (excerpt)</th>
             </tr>
@@ -714,8 +850,28 @@ function TimelinePanel({
                   <td className="py-2 pr-3 text-center">
                     {r.flags_suppressed ? (
                       <span className="text-neutral-300">—</span>
+                    ) : r.signal_2b_health ? (
+                      <HealthDot health={r.signal_2b_health} />
+                    ) : (
+                      <span className="text-neutral-200">—</span>
+                    )}
+                  </td>
+                  <td className="py-2 pr-3 text-center">
+                    {r.flags_suppressed ? (
+                      <span className="text-neutral-300">—</span>
                     ) : (
                       <HealthDot health={r.conversion_health} />
+                    )}
+                  </td>
+                  <td className="py-2 pr-3 text-center" title={r.gate_note ?? ""}>
+                    {r.flags_suppressed ? (
+                      <span className="text-neutral-300">—</span>
+                    ) : r.gate_status === "Green" ? (
+                      <span className="text-emerald-600 font-bold text-xs">⚡ Open</span>
+                    ) : r.gate_status === "Amber" ? (
+                      <span className="text-amber-500 font-bold text-xs">⏸ Watch</span>
+                    ) : (
+                      <span className="text-red-400 text-xs">Closed</span>
                     )}
                   </td>
                   <td className="py-2 pr-3 text-center">
