@@ -1,6 +1,10 @@
 // app/api/consumer-state-transition/route.ts
 // F27 — Consumer State Transition Rate Engine
-// Sprint 21 · 18 July 2026
+// Sprint 21 · 18 July 2026  |  Sprint 23 thresholds update · 18 July 2026
+//
+// NOTE (Sprint 23): This route is now called internally by /api/behaviour-state
+// after it auto-computes the state distribution from diagnosed_state + signal health.
+// Direct POST calls still work for any future manual override.
 //
 // POST /api/consumer-state-transition
 // Body:
@@ -14,7 +18,14 @@
 //   cstr_vs_prior     — { "1_to_2": delta, ..., "5_to_6": delta }
 //                       delta = current[i+1] - prior[i+1] (pp moved)
 //   velocity_score    — weighted average of CSTR deltas (positive = advancing)
-//   state_stall_flag  — TRUE if 4+ of 5 transition deltas are within ±0.5pp
+//   state_stall_flag  — TRUE if 4+ of 5 transition deltas are within ±0.3pp
+//                       (Sprint 23: lowered from 0.5pp to 0.3pp — passive minimum)
+//
+// VELOCITY BANDS (Sprint 23 — passive minimums, recalibrate after 3 campaigns per category):
+//   > +1.0  → Strong (audience advancing well)
+//   +0.3 to +1.0 → On Track
+//   -0.3 to +0.3 → Flat — Watch
+//   < -0.3  → Regression
 //
 // ACCESS RULES:
 //   state_distribution, dominant_state, cstr_vs_prior, velocity_score: INTERNAL ONLY
@@ -37,9 +48,8 @@ function getSupabase() {
 }
 
 // ─── Dominant state computation ───────────────────────────────────────────────
-// Returns the state number (1–6) with the highest audience % this week.
 
-function computeDominantState(dist: Record<string, number>): number {
+export function computeDominantState(dist: Record<string, number>): number {
   let best = 1;
   let bestVal = -1;
   for (const [k, v] of Object.entries(dist)) {
@@ -56,9 +66,8 @@ function computeDominantState(dist: Record<string, number>): number {
 // For each adjacent pair i → i+1:
 //   CSTR = current[i+1] - prior[i+1]
 //   Positive = more audience in higher state vs last week → forward momentum
-//   Negative = fewer in higher state → regression
 
-function computeCstr(
+export function computeCstr(
   current: Record<string, number>,
   prior: Record<string, number>
 ): Record<string, number> {
@@ -73,10 +82,8 @@ function computeCstr(
 }
 
 // ─── Velocity score ───────────────────────────────────────────────────────────
-// Weighted average of CSTR values.
-// Early-funnel transitions weighted higher — more audience, more signal.
 
-const VELOCITY_WEIGHTS: Record<string, number> = {
+export const VELOCITY_WEIGHTS: Record<string, number> = {
   "1_to_2": 0.25,
   "2_to_3": 0.25,
   "3_to_4": 0.20,
@@ -84,7 +91,7 @@ const VELOCITY_WEIGHTS: Record<string, number> = {
   "5_to_6": 0.10,
 };
 
-function computeVelocityScore(cstr: Record<string, number>): number {
+export function computeVelocityScore(cstr: Record<string, number>): number {
   let score = 0;
   for (const [key, weight] of Object.entries(VELOCITY_WEIGHTS)) {
     score += (cstr[key] ?? 0) * weight;
@@ -93,22 +100,23 @@ function computeVelocityScore(cstr: Record<string, number>): number {
 }
 
 // ─── Stall flag ───────────────────────────────────────────────────────────────
-// Stall = 4 or more of 5 transition pairs show < 0.5pp movement (flat).
-// stall_note lists which transitions are stalling — INTERNAL ONLY.
+// Sprint 23: Stall threshold lowered from 0.5pp to 0.3pp (passive minimum).
+// 4 or more of 5 transition pairs showing < 0.3pp movement = stall.
 
-function computeStall(cstr: Record<string, number>): {
+export function computeStall(cstr: Record<string, number>): {
   stall_flag: boolean;
   stall_note: string;
 } {
+  const STALL_THRESHOLD = 0.3; // pp — passive minimum; recalibrate after 3 campaigns
   const flatTransitions = Object.entries(cstr)
-    .filter(([, delta]) => Math.abs(delta) < 0.5)
+    .filter(([, delta]) => Math.abs(delta) < STALL_THRESHOLD)
     .map(([key]) => key);
 
   if (flatTransitions.length < 4) {
     return { stall_flag: false, stall_note: "" };
   }
 
-  const note = `Minimal movement (<0.5pp) in: ${flatTransitions.join(", ")}`;
+  const note = `Minimal movement (<${STALL_THRESHOLD}pp) in: ${flatTransitions.join(", ")}`;
   return { stall_flag: true, stall_note: note };
 }
 
@@ -200,7 +208,7 @@ export async function POST(req: NextRequest) {
 
     const clientName = (campaign.clients as { name: string } | null)?.name ?? "Unknown Brand";
 
-    // 2. Load prior reading (most recent week before this one)
+    // 2. Load prior reading
     const { data: priorReadings } = await supabase
       .from("consumer_state_readings")
       .select("week_number, state_distribution, velocity_score")
@@ -250,11 +258,13 @@ export async function POST(req: NextRequest) {
     const velocityLabel =
       velocity_score === null
         ? "N/A (first reading)"
-        : velocity_score > 0
-        ? `+${velocity_score} (advancing)`
-        : velocity_score < 0
-        ? `${velocity_score} (regressing)`
-        : "0.00 (flat)";
+        : velocity_score >= 1.0
+        ? `+${velocity_score} (Strong — audience advancing well)`
+        : velocity_score > 0.3
+        ? `+${velocity_score} (On Track)`
+        : velocity_score >= -0.3
+        ? `${velocity_score} (Flat — watch closely)`
+        : `${velocity_score} (Regression — intervention required)`;
 
     const userPrompt = `BRAND: ${clientName}
 CAMPAIGN: ${campaign.name}
@@ -303,7 +313,7 @@ If stall flag is YES, clearly signal that strategic intervention is needed to un
 
     const { ai_narrative } = toolBlock.input as { ai_narrative: string };
 
-    // 8. Upsert to consumer_state_readings (unique on campaign_id + week_number)
+    // 8. Upsert to consumer_state_readings
     const { data: saved, error: saveErr } = await supabase
       .from("consumer_state_readings")
       .upsert(
@@ -318,7 +328,7 @@ If stall flag is YES, clearly signal that strategic intervention is needed to un
           state_stall_flag: stall_flag,
           state_stall_note: stall_note,
           ai_narrative,
-          reading_source: "behaviour-state",
+          reading_source: "manual",
         },
         { onConflict: "campaign_id,week_number" }
       )

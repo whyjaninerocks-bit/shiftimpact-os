@@ -1,11 +1,13 @@
 // app/api/behaviour-state/route.ts
 // Feature 18A — Consumer Behaviour State Diagnostic (Sprint 3)
-// Internal only. Not exposed to clients.
+// Sprint 23 update · 18 July 2026 — auto-writes to consumer_state_readings
 //
 // POST /api/behaviour-state
 // Reads F12 signal data + F13 channel health for the requested week,
 // classifies the consumer behaviour state using Claude Haiku (6-state model),
-// saves the result back to consumer_behaviour_states.
+// saves the result back to consumer_behaviour_states,
+// then auto-infers state distribution and writes to consumer_state_readings
+// so the CSTR Engine (F27) populates automatically — no manual input required.
 //
 // Auth: service role (Supabase JWT) — strategy lead and Janine only.
 // CRITICAL: State names, numbers, and classification system are
@@ -14,6 +16,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
+import { getModel } from "@/lib/ai-model";
+import {
+  computeDominantState,
+  computeCstr,
+  computeVelocityScore,
+  computeStall,
+} from "@/app/api/consumer-state-transition/route";
 
 // ─── Supabase admin client ────────────────────────────────────────────────────
 
@@ -51,6 +60,87 @@ interface ThresholdRow {
   signal_3_label: string;
   campaign_duration_weeks: number;
 }
+
+// ─── State distribution inference ─────────────────────────────────────────────
+// Derives the full 6-state audience % distribution from the diagnosed_state
+// + signal health statuses. Eliminates manual data entry.
+//
+// Logic:
+//   1. Step-down weights from modal (diagnosed) state outward — each state
+//      gets: max(1, 40 - (distance × 10))
+//   2. Signal health shifts ±4pp within its proxied zone:
+//      Signal 3 (Demand) → shifts States 1↔2
+//      Signal 2 (Nurture) → shifts States 2↔3
+//      Signal 1 (Conversion) → shifts States 4↔5
+//   3. Normalise to 100%
+//
+// Thresholds are passive minimums (Sprint 23). Recalibrate after 3 campaigns
+// per category — see project_cstr_benchmarks memory.
+
+function inferStateDistribution(
+  diagnosedState: number,
+  demandHealth: SignalHealth | null,
+  nurtureHealth: SignalHealth | null,
+  conversionHealth: SignalHealth | null
+): Record<string, number> {
+  // Step 1 — Step-down weights from modal state
+  const raw: Record<number, number> = {};
+  for (let s = 1; s <= 6; s++) {
+    const dist = Math.abs(s - diagnosedState);
+    raw[s] = Math.max(1, 40 - dist * 10);
+  }
+
+  // Step 2 — Signal health zone adjustments (±4pp)
+  const shift = (state: number, delta: number) => {
+    raw[state] = Math.max(0, (raw[state] || 0) + delta);
+  };
+
+  // Signal 3 (Demand/UGC) → proxies States 1–2 awareness zone
+  if (demandHealth === "Green")     { shift(2, 4); shift(1, -2); }
+  else if (demandHealth === "Red")  { shift(1, 4); shift(2, -2); }
+
+  // Signal 2 (Nurture/Save Rate) → proxies States 2–3 consideration zone
+  if (nurtureHealth === "Green")    { shift(3, 4); shift(2, -2); }
+  else if (nurtureHealth === "Red") { shift(2, 4); shift(3, -2); }
+
+  // Signal 1 (Conversion/Search Lift) → proxies States 4–5 intent zone
+  if (conversionHealth === "Green")    { shift(5, 4); shift(4, -2); }
+  else if (conversionHealth === "Red") { shift(4, 4); shift(5, -2); }
+
+  // Step 3 — Normalise to 100%
+  const total = Object.values(raw).reduce((a, b) => a + b, 0);
+  const dist: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    dist[k] = parseFloat(((v / total) * 100).toFixed(1));
+  }
+  return dist;
+}
+
+// ─── CSTR narrative tool ──────────────────────────────────────────────────────
+// Generates the auto-narrative for consumer_state_readings.ai_narrative.
+// Uses Claude Haiku (same model as behaviour-state diagnostic) for speed.
+
+const CSTR_NARRATIVE_TOOL = {
+  name: "submit_cstr_narrative",
+  description: "Submit the audience progression narrative for this campaign week.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      ai_narrative: {
+        type: "string",
+        description: [
+          "2–3 sentences in plain business language.",
+          "Describes how the campaign audience is progressing this week based on the behaviour state diagnosis.",
+          "CRITICAL: NEVER mention state numbers (1–6) or state names (Unaware, Aware, In Consideration, etc.).",
+          "Use directional marketing language only: 'awareness is building', 'consideration is stalling', 'intent signals are growing', etc.",
+          "If velocity is negative or stall flag is active, clearly signal that momentum needs attention.",
+          "Client-facing — write for a brand marketer, not a data scientist.",
+        ].join(" "),
+      },
+    },
+    required: ["ai_narrative"],
+  },
+} as const;
 
 // ─── Tool schema ──────────────────────────────────────────────────────────────
 
@@ -145,7 +235,6 @@ function buildUserPrompt(
   channelHealthContext: string,
   strategyNotes: string
 ): string {
-  // Signal values
   const sig1Value = weekly?.signal_1_actual_pct != null
     ? `${weekly.signal_1_actual_pct}% ${threshold?.signal_1_label ?? "branded search lift"}`
     : "Not reported";
@@ -160,9 +249,7 @@ function buildUserPrompt(
   const nurtureH = weekly?.nurture_health ?? "No data";
   const conversionH = weekly?.conversion_health ?? "No data";
 
-  const phaseLabel = campaignPhase
-    ? `Phase ${campaignPhase} of 4`
-    : "Phase unknown";
+  const phaseLabel = campaignPhase ? `Phase ${campaignPhase} of 4` : "Phase unknown";
 
   const durationCtx = threshold?.campaign_duration_weeks
     ? ` (${threshold.campaign_duration_weeks}-week campaign)`
@@ -189,6 +276,19 @@ ${channelHealthContext}${notesSection}${noSignalWarning}
 Diagnose the consumer behaviour state for this campaign this week.`;
 }
 
+// ─── ISO date for Monday of week N ────────────────────────────────────────────
+// Used as week_of when auto-writing to consumer_state_readings.
+// Anchored to current date — approximate; exact date not material since
+// consumer_state_readings unique key is (campaign_id, week_number).
+
+function mondayOfCurrentWeek(): string {
+  const d = new Date();
+  const day = d.getDay(); // 0 = Sunday
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diffToMonday);
+  return d.toISOString().slice(0, 10);
+}
+
 // ─── Route handler ────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -208,13 +308,14 @@ export async function POST(req: NextRequest) {
     // 1. Load campaign name + industry profile
     const { data: campaign } = await supabase
       .from("campaigns")
-      .select("name, industry_profile")
+      .select("name, industry_profile, clients(name)")
       .eq("id", campaign_id)
       .single();
     const campaignName = campaign?.name ?? "Campaign";
     const industryProfile = campaign?.industry_profile ?? "";
+    const clientName = (campaign?.clients as { name: string } | null)?.name ?? "Unknown Brand";
 
-    // 2. Load signal threshold (for signal labels + campaign duration)
+    // 2. Load signal threshold
     const { data: threshold } = await supabase
       .from("signal_thresholds")
       .select("signal_1_label, signal_2_label, signal_3_label, campaign_duration_weeks")
@@ -222,7 +323,6 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     // 3. Load signal weekly report for this week
-    // Provides computed health lights + actual signal values
     const { data: weekly } = await supabase
       .from("signal_weekly_reports")
       .select(
@@ -233,8 +333,7 @@ export async function POST(req: NextRequest) {
       .eq("week_number", week_number)
       .maybeSingle();
 
-    // 4. Load consumer_behaviour_states row for strategy_notes
-    // (row was created by saveConsumerBehaviourObservation before this API call)
+    // 4. Load strategy_notes from consumer_behaviour_states
     const { data: stateRow } = await supabase
       .from("consumer_behaviour_states")
       .select("strategy_notes")
@@ -243,7 +342,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
     const strategyNotes = (stateRow as any)?.strategy_notes ?? "";
 
-    // 5. Load F13 cross-channel health for supplementary context
+    // 5. Load F13 cross-channel health for context
     const { data: channelMetrics } = await supabase
       .from("channel_weekly_metrics")
       .select(`
@@ -290,11 +389,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 6. Call Claude Haiku — tool use forces structured output, eliminates JSON text parsing
+    // 6. Call AI model — behaviour state diagnosis
+    // Model resolved from os_settings (configurable from /settings page).
+    // Default: claude-haiku-4-5-20251001. Can be upgraded to Sonnet per campaign.
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+    const behaviourStateModel = await getModel("model_behaviour_state", "claude-haiku-4-5-20251001");
 
     const aiResponse = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
+      model: behaviourStateModel,
       max_tokens: 700,
       system: buildSystemPrompt(),
       tools: [BEHAVIOUR_STATE_TOOL],
@@ -316,7 +418,7 @@ export async function POST(req: NextRequest) {
       ],
     });
 
-    // 7. Extract tool use result — .input is already a parsed object, no text manipulation needed
+    // 7. Extract tool use result
     const toolBlock = aiResponse.content.find((b) => b.type === "tool_use");
     if (!toolBlock || toolBlock.type !== "tool_use") {
       throw new Error("AI did not return a tool_use block");
@@ -337,17 +439,16 @@ export async function POST(req: NextRequest) {
       parsed.diagnosed_state <= 6
         ? parsed.diagnosed_state
         : null;
-    const stateName          = parsed.state_name          ?? "";
-    const signalPatternRead  = parsed.signal_pattern_read ?? "";
+    const stateName           = parsed.state_name           ?? "";
+    const signalPatternRead   = parsed.signal_pattern_read  ?? "";
     const activationDirection = parsed.activation_direction ?? "";
-    const lowInvolvementNote = parsed.low_involvement_note ?? "";
+    const lowInvolvementNote  = parsed.low_involvement_note ?? "";
     const confidenceLevel: "High" | "Medium" | "Directional" =
       parsed.confidence_level === "High" || parsed.confidence_level === "Medium"
         ? parsed.confidence_level
         : "Directional";
 
     // 8. Save AI outputs to consumer_behaviour_states
-    // Row guaranteed to exist (created by saveConsumerBehaviourObservation before this call)
     const { error: updateErr } = await supabase
       .from("consumer_behaviour_states")
       .update({
@@ -366,7 +467,120 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: updateErr.message }, { status: 500 });
     }
 
-    // 9. Return the full result
+    // ─────────────────────────────────────────────────────────────────────────
+    // Sprint 23 addition: Auto-write to consumer_state_readings (F27 CSTR Engine)
+    // This eliminates the need for manual state distribution input.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    if (diagnosedState !== null) {
+      const weeklyData = weekly as SignalWeeklyRow | null;
+
+      // 9a. Infer state distribution from diagnosed state + signal health
+      const stateDist = inferStateDistribution(
+        diagnosedState,
+        weeklyData?.demand_health ?? null,
+        weeklyData?.nurture_health ?? null,
+        weeklyData?.conversion_health ?? null
+      );
+
+      // 9b. Load prior reading for CSTR delta computation
+      const { data: priorReadings } = await supabase
+        .from("consumer_state_readings")
+        .select("week_number, state_distribution, velocity_score")
+        .eq("campaign_id", campaign_id)
+        .lt("week_number", week_number)
+        .order("week_number", { ascending: false })
+        .limit(1);
+
+      const priorReading = priorReadings?.[0] ?? null;
+
+      // 9c. Compute CSTR metrics
+      const dominant_state = computeDominantState(stateDist);
+      let cstr_vs_prior: Record<string, number> | null = null;
+      let velocity_score: number | null = null;
+      let stall_flag = false;
+      let stall_note = "";
+
+      if (priorReading) {
+        const priorDist = priorReading.state_distribution as Record<string, number>;
+        cstr_vs_prior = computeCstr(stateDist, priorDist);
+        velocity_score = computeVelocityScore(cstr_vs_prior);
+        const stall = computeStall(cstr_vs_prior);
+        stall_flag = stall.stall_flag;
+        stall_note = stall.stall_note;
+      }
+
+      // 9d. Generate CSTR narrative (Haiku — fast, client-facing plain language)
+      const velocityContext = velocity_score === null
+        ? "first reading this campaign — no prior week to compare"
+        : velocity_score >= 1.0
+        ? `velocity +${velocity_score} — audience advancing strongly`
+        : velocity_score > 0.3
+        ? `velocity +${velocity_score} — on track`
+        : velocity_score >= -0.3
+        ? `velocity ${velocity_score} — audience movement is flat, needs attention`
+        : `velocity ${velocity_score} — audience regressing, intervention needed`;
+
+      const cstrNarrativeModel = await getModel("model_cstr_narrative", "claude-haiku-4-5-20251001");
+      const cstrNarrativeRes = await anthropic.messages.create({
+        model: cstrNarrativeModel,
+        max_tokens: 300,
+        system: `You are the Consumer Progression Intelligence in ShiftImpact OS.
+Write 2–3 sentences of plain business language about how this brand's audience is progressing.
+CRITICAL: NEVER use state numbers (1–6) or state names (Unaware, In Consideration, etc.).
+Use only directional marketing language. Client-facing. Be direct.`,
+        tools: [CSTR_NARRATIVE_TOOL],
+        tool_choice: { type: "tool", name: "submit_cstr_narrative" },
+        messages: [{
+          role: "user",
+          content: `BRAND: ${clientName}
+CAMPAIGN: ${campaignName}
+WEEK: ${week_number}
+
+SIGNAL READ (internal context):
+${signalPatternRead}
+
+VELOCITY: ${velocityContext}
+STALL: ${stall_flag ? `Yes — ${stall_note}` : "No stall detected"}
+NEXT ACTION (internal): ${activationDirection}
+
+Write the audience progression narrative for this week.`,
+        }],
+      });
+
+      const cstrNarrativeBlock = cstrNarrativeRes.content.find((b) => b.type === "tool_use");
+      const ai_narrative = cstrNarrativeBlock?.type === "tool_use"
+        ? (cstrNarrativeBlock.input as { ai_narrative: string }).ai_narrative
+        : `${signalPatternRead} ${activationDirection}`; // fallback
+
+      // 9e. Upsert into consumer_state_readings
+      const week_of = mondayOfCurrentWeek();
+      const { error: cstrSaveErr } = await supabase
+        .from("consumer_state_readings")
+        .upsert(
+          {
+            campaign_id,
+            week_number,
+            week_of,
+            state_distribution: stateDist,
+            dominant_state,
+            cstr_vs_prior,
+            velocity_score,
+            state_stall_flag: stall_flag,
+            state_stall_note: stall_note,
+            ai_narrative,
+            reading_source: "behaviour-state-auto",
+          },
+          { onConflict: "campaign_id,week_number" }
+        );
+
+      if (cstrSaveErr) {
+        // Non-fatal — log but don't fail the behaviour state response
+        console.error("Sprint 23: CSTR auto-write failed (non-fatal):", cstrSaveErr);
+      }
+    }
+
+    // 10. Return the full behaviour state result
     return NextResponse.json({
       week_number,
       diagnosed_state: diagnosedState,
@@ -375,6 +589,7 @@ export async function POST(req: NextRequest) {
       activation_direction: activationDirection,
       low_involvement_note: lowInvolvementNote,
       confidence_level: confidenceLevel,
+      cstr_auto_written: diagnosedState !== null,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
