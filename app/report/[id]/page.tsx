@@ -247,6 +247,7 @@ function progressBarColor(h: SignalHealth | null | undefined, pct: number): stri
 
 // ── Client safety filter ──────────────────────────────────────────────────────
 
+// For activation_direction (short, single-purpose field)
 function isClientSafeDirection(text: string | null | undefined): boolean {
   if (!text || text.trim().length < 10) return false;
   const blocked = [
@@ -256,6 +257,36 @@ function isClientSafeDirection(text: string | null | undefined): boolean {
   ];
   const lower = text.toLowerCase();
   return !blocked.some((term) => lower.includes(term));
+}
+
+// Sentence-level filter for AI narrative prose.
+// Strips individual sentences containing internal operational language while
+// preserving the rest of the paragraph. Uses a tighter term list than
+// isClientSafeDirection to avoid false positives on legitimate business prose
+// (e.g. "signal capture" should NOT be blocked, "Signal Intelligence" should).
+const NARRATIVE_BLOCKED_TERMS = [
+  "signal intelligence",
+  "diagnostics immediately",
+  "immediately to identify",
+  "measurement gap",
+  "no actionable strategy",
+  "cannot be determined",
+  "data point",
+  "metrics for week",
+  "apify",
+  "without these data",
+];
+
+function filterNarrativeSentences(text: string): string {
+  // Split on sentence-ending punctuation followed by whitespace
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  return sentences
+    .filter((s) => {
+      const lower = s.toLowerCase();
+      return !NARRATIVE_BLOCKED_TERMS.some((term) => lower.includes(term));
+    })
+    .join(" ")
+    .trim();
 }
 
 // ── Consumer journey funnel ───────────────────────────────────────────────────
@@ -364,9 +395,11 @@ export default async function ClientReportPage({
     : null;
 
   const cleanNarrative = latestSignal?.ai_narrative
-    ? toParas(stripGateStatusLabel(latestSignal.ai_narrative))
+    ? toParas(filterNarrativeSentences(stripGateStatusLabel(latestSignal.ai_narrative)))
     : [];
-  const cleanExecSummary = cir?.executive_summary ? toParas(cir.executive_summary) : [];
+  const cleanExecSummary = cir?.executive_summary
+    ? toParas(filterNarrativeSentences(cir.executive_summary))
+    : [];
 
   // ── Campaign duration + progress ─────────────────────────────────────────
   const totalWeeks   = threshold?.campaign_duration_weeks ?? null;
@@ -500,12 +533,14 @@ export default async function ClientReportPage({
   const latestBehaviour  = behaviourStates[0] ?? null;
   const currentStageNum  = latestBehaviour?.diagnosed_state ?? null;
   const consumerNarrative = consumerReading?.ai_narrative
-    ? toParas(consumerReading.ai_narrative) : [];
+    ? toParas(filterNarrativeSentences(consumerReading.ai_narrative)) : [];
   const hasStallAlert    = consumerReading?.state_stall_flag ?? false;
 
   // ── AI + Social Currency ──────────────────────────────────────────────────
-  const aiVisNarrative = aiVisibility?.ai_narrative ? toParas(aiVisibility.ai_narrative) : [];
-  const sciNarrative   = socialCurrency?.ai_narrative ? toParas(socialCurrency.ai_narrative) : [];
+  const aiVisNarrative = aiVisibility?.ai_narrative
+    ? toParas(filterNarrativeSentences(aiVisibility.ai_narrative)) : [];
+  const sciNarrative = socialCurrency?.ai_narrative
+    ? toParas(filterNarrativeSentences(socialCurrency.ai_narrative)) : [];
 
   const weekDate = formatWeekOf(latestSignal?.week_of);
 
