@@ -182,6 +182,31 @@ function sciTrendBg(trend: string | null | undefined): string {
   return "bg-amber-50 border-amber-200 text-amber-700";
 }
 
+/**
+ * Returns true only if activation_direction is safe for client eyes.
+ * Suppresses text that contains internal operational instructions,
+ * tool references, or data-collection language.
+ */
+function isClientSafeDirection(text: string | null | undefined): boolean {
+  if (!text || text.trim().length < 10) return false;
+  const blocked = [
+    "signal intelligence",
+    "module",
+    "data point",
+    "metrics for week",
+    "apify",
+    "capture",
+    "run the",
+    "without these",
+    "no actionable strategy",
+    "cannot be determined",
+    "immediately to identify",
+    "measurement gap",
+  ];
+  const lower = text.toLowerCase();
+  return !blocked.some((term) => lower.includes(term));
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function ClientReportPage({
@@ -260,41 +285,41 @@ export default async function ClientReportPage({
   const primarySignals = [
     {
       label: "Audience Build",
-      sub: threshold?.signal_3_label ?? "UGC volume — content created about the brand",
+      sub: "Organic brand content created by consumers this week",
       health: latestSignal?.demand_health as SignalHealth,
       actual: s3Actual !== null && s3Actual !== undefined ? `${s3Actual} posts` : null,
       target: s3Target !== undefined ? `${s3Target} posts` : null,
       pct: progressPct(s3Actual, s3Target),
       gap: gapCount(s3Actual, s3Target, "posts"),
-      businessNote: "UGC volume measures real people talking about your brand — the most credible form of reach. Growing this directly expands organic audience without additional media spend.",
+      businessNote: "Consumer-created content is the most credible form of brand reach — it grows your audience without additional media spend and signals genuine product affinity.",
       goalContext: s3Target
-        ? `Goal: ${s3Target} pieces of brand content created per week`
+        ? `Weekly target: ${s3Target} pieces of organic brand content`
         : null,
     },
     {
       label: "Content Engagement",
-      sub: threshold?.signal_2_label ?? "Content save rate — audience intent to return",
+      sub: "Audience intent — how many people saved your content to return to",
       health: latestSignal?.nurture_health as SignalHealth,
       actual: fmt(s2Actual),
       target: s2Target !== undefined ? `${s2Target}%` : null,
       pct: progressPct(s2Actual, s2Target),
       gap: gapPct(s2Actual, s2Target),
-      businessNote: "Save rate signals high-intent engagement — people bookmarking content to return to later. This is a proven leading indicator of future conversion, typically converting within 2–4 weeks.",
+      businessNote: "Save rate separates passive viewers from active buyers — people who bookmark content to come back later convert at 3–4× the rate of casual engagers.",
       goalContext: s2Target
-        ? `Goal: ${s2Target}% of content viewers save the post`
+        ? `Weekly target: ${s2Target}% of viewers save the content`
         : null,
     },
     {
       label: "Purchase Intent",
-      sub: threshold?.signal_1_label ?? "Branded search lift — consumers actively seeking the brand",
+      sub: "Consumers actively seeking the brand — your share of search",
       health: latestSignal?.conversion_health as SignalHealth,
       actual: fmt(s1Actual),
       target: s1Target !== undefined ? `${s1Target}%` : null,
       pct: progressPct(s1Actual, s1Target),
       gap: gapPct(s1Actual, s1Target),
-      businessNote: "Branded search lift is your most direct revenue signal — when consumers search for your brand by name, they're one step from purchase. It also tracks your Share of Voice: higher SOV leads to higher market share over time.",
+      businessNote: "When consumers search for your brand by name, they are one step from purchase. This signal also tracks Share of Voice — brands that grow SOV above their market share consistently win revenue over 6–12 months.",
       goalContext: s1Target
-        ? `Goal: ${s1Target}% lift in branded search volume vs campaign baseline`
+        ? `Weekly target: ${s1Target}% lift in branded searches vs campaign baseline`
         : null,
     },
   ];
@@ -508,7 +533,7 @@ export default async function ClientReportPage({
               </span>
               <div>
                 <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1">
-                  {phaseLabel(latestSignal.campaign_phase)} — What to Expect
+                  {phaseLabel(latestSignal.campaign_phase)}
                 </p>
                 <p className="text-xs text-slate-500 leading-relaxed">{latestSignal.ai_phase_context}</p>
               </div>
@@ -695,14 +720,11 @@ export default async function ClientReportPage({
 
               {latestBehaviour && (
                 <div className="mb-4">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-1">
                     <span className="w-2 h-2 rounded-full bg-slate-900 shrink-0" />
                     <p className="text-sm font-bold text-slate-900">
                       Current Stage: {latestBehaviour.state_name}
                     </p>
-                    {latestBehaviour.week_number && (
-                      <span className="text-xs text-slate-400 ml-auto">Week {latestBehaviour.week_number}</span>
-                    )}
                   </div>
                   {currentStageNum && FUNNEL_STAGES[currentStageNum - 1] && (
                     <p className="text-xs text-slate-500 ml-4">{FUNNEL_STAGES[currentStageNum - 1].desc}</p>
@@ -714,7 +736,7 @@ export default async function ClientReportPage({
                 <div className="mb-4 flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200">
                   <span className="text-amber-500 text-sm shrink-0 mt-0.5">⚠</span>
                   <p className="text-xs text-amber-700 font-medium">
-                    Momentum Alert: Audience progression has slowed. Review activation strategy to re-accelerate movement through the funnel.
+                    Audience momentum has plateaued — the brand is not advancing through the purchase funnel at the expected rate. Focus this week should shift to re-engagement and conversion activation.
                   </p>
                 </div>
               )}
@@ -727,13 +749,14 @@ export default async function ClientReportPage({
                 </div>
               )}
 
-              {latestBehaviour?.activation_direction && (
+              {/* Only show strategic direction — suppress internal operational instructions */}
+              {isClientSafeDirection(latestBehaviour?.activation_direction) && (
                 <div className="mt-3 pt-3 border-t border-slate-100">
                   <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-2">
-                    What's Needed to Advance
+                    Strategic Priority to Advance
                   </p>
-                  <p className="text-sm text-slate-800 leading-relaxed font-medium">
-                    {latestBehaviour.activation_direction}
+                  <p className="text-sm text-slate-800 leading-relaxed">
+                    {latestBehaviour!.activation_direction}
                   </p>
                 </div>
               )}
@@ -808,14 +831,11 @@ export default async function ClientReportPage({
                       <span className="w-6 h-6 rounded-full bg-slate-700 text-white text-xs font-bold flex items-center justify-center shrink-0 leading-none">AI</span>
                       <p className="text-sm font-semibold text-slate-800">AI Brand Visibility</p>
                     </div>
-                    <div className="flex items-center gap-3">
-                      {aiVisibility.cep_count > 0 && (
-                        <span className="text-xs text-slate-500">{aiVisibility.cep_count} entry point{aiVisibility.cep_count !== 1 ? "s" : ""}</span>
-                      )}
-                      {aiVisibility.information_consistency_score !== null && (
-                        <span className="text-xs font-bold text-slate-700">{aiVisibility.information_consistency_score}% consistent</span>
-                      )}
-                    </div>
+                    {aiVisibility.information_consistency_score !== null && (
+                      <span className="text-xs font-bold text-slate-700">
+                        {aiVisibility.information_consistency_score}% brand consistency
+                      </span>
+                    )}
                   </div>
                   {aiVisibility.information_consistency_score !== null && (
                     <div className="ml-8 mb-3">
@@ -948,17 +968,17 @@ export default async function ClientReportPage({
           </div>
         )}
 
-        {/* ── Recommended Actions ───────────────────────────────────────── */}
+        {/* ── Recommended Actions — capped at 3 for CMO clarity ───────── */}
         {weeklyActions.length > 0 && (
           <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div className="px-6 pt-5 pb-4 border-b border-slate-100">
               <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">
-                Recommended Actions
+                Strategic Priorities This Week
               </p>
-              <p className="text-xs text-slate-400 mt-1">What to prioritise this week to close the gaps</p>
+              <p className="text-xs text-slate-400 mt-1">Highest-leverage actions to move the campaign forward</p>
             </div>
             <div className="divide-y divide-slate-100">
-              {weeklyActions.map((a, i) => (
+              {weeklyActions.slice(0, 3).map((a, i) => (
                 <div key={i} className="px-6 py-4 flex gap-3.5">
                   <span className="shrink-0 w-6 h-6 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center justify-center mt-0.5">
                     {i + 1}
