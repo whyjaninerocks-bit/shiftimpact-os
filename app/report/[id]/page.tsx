@@ -1,28 +1,22 @@
-// app/report/[id]/page.tsx — Sprint 26C
+// app/report/[id]/page.tsx — Sprint 27
 // PUBLIC — client-facing campaign intelligence report.
 //
-// Data sources:
-//   getCampaign                   — name, client_name, phase
-//   getFrameBrief                 — force (objective), primary_kpi
-//   getBigIdeaPlatform            — topline_idea, brand_role
-//   getSignalThreshold            — targets + labels for actual vs target display
-//   getSignalWeeklyReports        — weekly actuals, health, phase, timeline
-//   getLatestCampaignReport       — CIR executive summary + findings
-//   getConsumerBehaviourStates    — current audience stage + activation direction
-//   getLatestConsumerStateReading — consumer journey narrative
-//   getAiBrandVisibilityScore     — AI visibility narrative
-//   getSocialCurrencyScore        — SCI score + trend + narrative
+// Sprint 27 additions over Sprint 26C:
+//   - Campaign week progress bar in header (Week N of Total, weeks remaining)
+//   - Phase Context callout from ai_phase_context (what to expect this phase)
+//   - Per-signal progress bars showing actual vs target as visual fill
+//   - Gap-to-close statements ("Need 20 more posts", "1.0% away from target")
+//   - Signal convergence summary ("2 of 3 signals on track")
+//   - Business goal framing per signal with on-track / gap language
+//   - Supplementary signals also get gap statements
 //
 // GOVERNANCE — never exposes:
-//   Gate status / gate_status, gate threshold numbers, budget amounts,
+//   Gate status / gate_status, gate threshold numbers, gate_signals_converging,
 //   signal names (S1/S2/S3), state_distribution, velocity_score, stall_note,
 //   cstr_vs_prior, eligibility_score, trust_gap_*, priority_action,
 //   build_action, SCI dimension scores, signal_pattern_read, confidence_level,
-//   CIR confidence ratings, components_used, scopes_resolved.
-//
-// Client-facing label mapping:
-//   Demand → Audience Build | Nurture → Content Engagement | Conversion → Purchase Intent
-//   Amber → Building
+//   CIR confidence ratings, components_used, scopes_resolved, pipeline_risk_label,
+//   amber/red threshold values.
 
 import { notFound } from "next/navigation";
 import {
@@ -41,7 +35,7 @@ import type { SignalHealth } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-// ── Colour helpers ────────────────────────────────────────────────────────────
+// ── Colour / label helpers ────────────────────────────────────────────────────
 
 function healthLabel(h: SignalHealth | null | undefined): string {
   if (h === "Green") return "On Track";
@@ -92,6 +86,42 @@ function overallBanner(h: SignalHealth): string {
   return "bg-red-500/15 border-red-500/30 text-red-300";
 }
 
+// ── Progress helpers ──────────────────────────────────────────────────────────
+
+/** Returns 0–100 capped fill percentage for progress bar. */
+function progressPct(actual: number | null | undefined, target: number | null | undefined): number {
+  if (actual === null || actual === undefined || !target) return 0;
+  return Math.min(Math.round((actual / target) * 100), 100);
+}
+
+/** "20 posts to target" or "Exceeding target by 3 posts" */
+function gapCount(actual: number | null | undefined, target: number | null | undefined, unit = "posts"): string {
+  if (actual === null || actual === undefined || !target) return "";
+  if (actual >= target) {
+    const over = actual - target;
+    return `Exceeding target by ${over} ${unit}`;
+  }
+  return `${target - actual} ${unit} to target`;
+}
+
+/** "1.0% to target" or "Exceeding target by 0.7%" */
+function gapPct(actual: number | null | undefined, target: number | null | undefined, suffix = "%"): string {
+  if (actual === null || actual === undefined || !target) return "";
+  if (actual >= target) {
+    const over = (actual - target).toFixed(1);
+    return `Exceeding target by ${over}${suffix}`;
+  }
+  const gap = (target - actual).toFixed(1);
+  return `${gap}${suffix} to target`;
+}
+
+function progressBarColor(h: SignalHealth | null | undefined, pct: number): string {
+  if (pct >= 100) return "bg-emerald-400";
+  if (h === "Red") return "bg-red-400";
+  if (h === "Amber") return "bg-amber-400";
+  return "bg-emerald-400";
+}
+
 // ── Consumer journey funnel ───────────────────────────────────────────────────
 
 const FUNNEL_STAGES = [
@@ -137,11 +167,6 @@ function fmt(val: number | null | undefined, suffix = "%"): string {
   return `${val}${suffix}`;
 }
 
-function fmtTarget(val: number | null | undefined, suffix = "%"): string {
-  if (val === null || val === undefined) return "";
-  return `Target: ${val}${suffix}`;
-}
-
 function formatWeekOf(isoDate: string | null | undefined): string {
   if (!isoDate) return "";
   try {
@@ -149,13 +174,6 @@ function formatWeekOf(isoDate: string | null | undefined): string {
       day: "numeric", month: "long", year: "numeric",
     });
   } catch { return ""; }
-}
-
-// SCI trend colour
-function sciTrendColor(trend: string | null | undefined): string {
-  if (trend === "Improving") return "text-emerald-600";
-  if (trend === "Declining") return "text-red-600";
-  return "text-amber-600";
 }
 
 function sciTrendBg(trend: string | null | undefined): string {
@@ -194,7 +212,7 @@ export default async function ClientReportPage({
   const latestSignal = signalReports[0] ?? null;
 
   let weeklyActions: string[] = [];
-  if (latestSignal?.ai_recommended_actions && !cir?.findings.length) {
+  if (latestSignal?.ai_recommended_actions) {
     try { weeklyActions = JSON.parse(latestSignal.ai_recommended_actions); }
     catch { weeklyActions = [latestSignal.ai_recommended_actions]; }
   }
@@ -216,71 +234,117 @@ export default async function ClientReportPage({
     : [];
   const cleanExecSummary = cir?.executive_summary ? toParas(cir.executive_summary) : [];
 
-  // ── Primary signal rows ───────────────────────────────────────────────────
+  // ── Campaign duration / progress ─────────────────────────────────────────
+  const totalWeeks = threshold?.campaign_duration_weeks ?? null;
+  const currentWeek = latestSignal?.week_number ?? 0;
+  const weeksRemaining = totalWeeks ? totalWeeks - currentWeek : null;
+  const campaignPct = totalWeeks && currentWeek
+    ? Math.round((currentWeek / totalWeeks) * 100)
+    : null;
+
+  // ── Signal convergence summary (client-safe — count only, no gate label) ─
+  const primaryHealths = latestSignal
+    ? [latestSignal.demand_health, latestSignal.nurture_health, latestSignal.conversion_health]
+    : [];
+  const signalsOnTrack = primaryHealths.filter((h) => h === "Green").length;
+  const totalPrimarySignals = primaryHealths.filter(Boolean).length;
+
+  // ── Primary signal rows ─────────────────────────────────────────────────
+  const s1Actual = latestSignal?.signal_1_actual_pct;
+  const s1Target = threshold?.signal_1_threshold_pct;
+  const s2Actual = latestSignal?.signal_2_actual_pct;
+  const s2Target = threshold?.signal_2_threshold_pct;
+  const s3Actual = latestSignal?.signal_3_actual_count;
+  const s3Target = threshold?.signal_3_threshold_count;
+
   const primarySignals = [
     {
       label: "Audience Build",
-      sub: threshold?.signal_3_label ?? "Content volume & audience reach",
+      sub: threshold?.signal_3_label ?? "UGC volume — content created about the brand",
       health: latestSignal?.demand_health as SignalHealth,
-      actual:
-        latestSignal?.signal_3_actual_count !== null &&
-        latestSignal?.signal_3_actual_count !== undefined
-          ? `${latestSignal.signal_3_actual_count} posts`
-          : null,
-      target:
-        threshold?.signal_3_threshold_count !== undefined
-          ? `Target: ${threshold.signal_3_threshold_count} posts`
-          : null,
-      businessNote: "UGC volume is a direct proxy for word-of-mouth reach.",
+      actual: s3Actual !== null && s3Actual !== undefined ? `${s3Actual} posts` : null,
+      target: s3Target !== undefined ? `${s3Target} posts` : null,
+      pct: progressPct(s3Actual, s3Target),
+      gap: gapCount(s3Actual, s3Target, "posts"),
+      businessNote: "UGC volume measures real people talking about your brand — the most credible form of reach. Growing this directly expands organic audience without additional media spend.",
+      goalContext: s3Target
+        ? `Goal: ${s3Target} pieces of brand content created per week`
+        : null,
     },
     {
       label: "Content Engagement",
-      sub: threshold?.signal_2_label ?? "Content save rate",
+      sub: threshold?.signal_2_label ?? "Content save rate — audience intent to return",
       health: latestSignal?.nurture_health as SignalHealth,
-      actual: fmt(latestSignal?.signal_2_actual_pct),
-      target: fmtTarget(threshold?.signal_2_threshold_pct),
-      businessNote: "Save rate signals intent to return — a strong indicator of future conversion.",
+      actual: fmt(s2Actual),
+      target: s2Target !== undefined ? `${s2Target}%` : null,
+      pct: progressPct(s2Actual, s2Target),
+      gap: gapPct(s2Actual, s2Target),
+      businessNote: "Save rate signals high-intent engagement — people bookmarking content to return to later. This is a proven leading indicator of future conversion, typically converting within 2–4 weeks.",
+      goalContext: s2Target
+        ? `Goal: ${s2Target}% of content viewers save the post`
+        : null,
     },
     {
       label: "Purchase Intent",
-      sub: threshold?.signal_1_label ?? "Branded search lift",
+      sub: threshold?.signal_1_label ?? "Branded search lift — consumers actively seeking the brand",
       health: latestSignal?.conversion_health as SignalHealth,
-      actual: fmt(latestSignal?.signal_1_actual_pct),
-      target: fmtTarget(threshold?.signal_1_threshold_pct),
-      businessNote: "Branded search lift is your Share of Voice proxy. Research shows SOV ≈ SOM over time.",
+      actual: fmt(s1Actual),
+      target: s1Target !== undefined ? `${s1Target}%` : null,
+      pct: progressPct(s1Actual, s1Target),
+      gap: gapPct(s1Actual, s1Target),
+      businessNote: "Branded search lift is your most direct revenue signal — when consumers search for your brand by name, they're one step from purchase. It also tracks your Share of Voice: higher SOV leads to higher market share over time.",
+      goalContext: s1Target
+        ? `Goal: ${s1Target}% lift in branded search volume vs campaign baseline`
+        : null,
     },
   ];
 
   // ── Supplementary signals ─────────────────────────────────────────────────
+  const s2bActual = latestSignal?.signal_2b_actual_pct;
+  const s2bTarget = threshold?.signal_2b_target_pct;
+  const s3bActual = latestSignal?.signal_3b_actual_pct;
+  const s3bTarget = threshold?.signal_3b_target_pct;
+  const s4Actual = latestSignal?.signal_4_actual_pct;
+  const s4Target = threshold?.signal_4_target_pct;
+
   const supplementarySignals = [
-    latestSignal?.signal_2b_actual_pct !== null && latestSignal?.signal_2b_actual_pct !== undefined
+    s2bActual !== null && s2bActual !== undefined
       ? {
-          label: latestSignal.signal_2b_label ?? "Content Share Rate",
-          actual: fmt(latestSignal.signal_2b_actual_pct),
-          target: fmtTarget(threshold?.signal_2b_target_pct),
-          health: latestSignal.signal_2b_health as SignalHealth,
-          note: "Content amplification",
+          label: latestSignal!.signal_2b_label ?? "Content Share Rate",
+          actual: fmt(s2bActual),
+          target: s2bTarget !== undefined ? `Target: ${s2bTarget}%` : null,
+          gap: gapPct(s2bActual, s2bTarget),
+          pct: progressPct(s2bActual, s2bTarget),
+          health: latestSignal!.signal_2b_health as SignalHealth,
+          note: "Content amplification — how far your content travels beyond initial audience",
         }
       : null,
-    latestSignal?.signal_3b_actual_pct !== null && latestSignal?.signal_3b_actual_pct !== undefined
+    s3bActual !== null && s3bActual !== undefined
       ? {
-          label: latestSignal.signal_3b_label ?? "Video Completion Rate",
-          actual: fmt(latestSignal.signal_3b_actual_pct),
-          target: fmtTarget(threshold?.signal_3b_target_pct),
-          health: latestSignal.signal_3b_health as SignalHealth,
-          note: "Demand signal",
+          label: latestSignal!.signal_3b_label ?? "Video Completion Rate",
+          actual: fmt(s3bActual),
+          target: s3bTarget !== undefined ? `Target: ${s3bTarget}%` : null,
+          gap: gapPct(s3bActual, s3bTarget),
+          pct: progressPct(s3bActual, s3bTarget),
+          health: latestSignal!.signal_3b_health as SignalHealth,
+          note: "Audience attention quality — are they watching or scrolling past?",
         }
       : null,
-    latestSignal?.signal_4_actual_pct !== null && latestSignal?.signal_4_actual_pct !== undefined
+    s4Actual !== null && s4Actual !== undefined
       ? {
-          label: latestSignal.signal_4_label ?? "Return Visits",
-          actual: fmt(latestSignal.signal_4_actual_pct),
-          target: fmtTarget(threshold?.signal_4_target_pct),
-          health: latestSignal.signal_4_health as SignalHealth,
-          note: "Retention — lags campaign",
+          label: latestSignal!.signal_4_label ?? "Return Visits",
+          actual: fmt(s4Actual),
+          target: s4Target !== undefined ? `Target: ${s4Target}%` : null,
+          gap: gapPct(s4Actual, s4Target),
+          pct: progressPct(s4Actual, s4Target),
+          health: latestSignal!.signal_4_health as SignalHealth,
+          note: "Retention — lags campaign activity by 2–4 weeks",
         }
       : null,
-  ].filter(Boolean) as { label: string; actual: string; target: string; health: SignalHealth; note: string }[];
+  ].filter(Boolean) as {
+    label: string; actual: string; target: string | null; gap: string; pct: number;
+    health: SignalHealth; note: string;
+  }[];
 
   // ── Consumer journey ──────────────────────────────────────────────────────
   const latestBehaviour = behaviourStates[0] ?? null;
@@ -295,7 +359,6 @@ export default async function ClientReportPage({
   const sciNarrative = socialCurrency?.ai_narrative ? toParas(socialCurrency.ai_narrative) : [];
 
   const weekDate = formatWeekOf(latestSignal?.week_of);
-  const campPhase = latestSignal?.campaign_phase;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -330,9 +393,9 @@ export default async function ClientReportPage({
                 </span>
               )}
               <div className="flex items-center gap-2">
-                {campPhase && (
+                {latestSignal?.campaign_phase && (
                   <span className="text-xs text-slate-400 font-medium">
-                    {phaseLabel(campPhase)}
+                    {phaseLabel(latestSignal.campaign_phase)}
                   </span>
                 )}
                 <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/10 text-white border border-white/20">
@@ -342,16 +405,37 @@ export default async function ClientReportPage({
             </div>
           </div>
 
+          {/* Overall health banner */}
           {overall && (
             <div className={`mt-5 flex items-center gap-3 px-4 py-3 rounded-lg border ${overallBanner(overall)}`}>
               <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${healthDotBg(overall)}`} />
               <span className="text-sm font-semibold">Campaign is {healthLabel(overall)}</span>
-              {latestSignal?.pipeline_risk_detected && (
-                <span className="ml-1 text-xs font-medium text-amber-300">· Risk factors flagged</span>
+              {totalPrimarySignals > 0 && (
+                <span className="text-xs font-medium opacity-75">
+                  · {signalsOnTrack} of {totalPrimarySignals} signals on track
+                </span>
               )}
-              <span className="text-slate-600 text-xs ml-auto">
-                {signalReports.length} week{signalReports.length !== 1 ? "s" : ""} tracked
-              </span>
+            </div>
+          )}
+
+          {/* Campaign week progress bar */}
+          {campaignPct !== null && totalWeeks && (
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
+                <span className="font-medium">Campaign Progress</span>
+                <span>
+                  Week {currentWeek} of {totalWeeks}
+                  {weeksRemaining !== null && weeksRemaining > 0 && (
+                    <span className="text-slate-500"> · {weeksRemaining} week{weeksRemaining !== 1 ? "s" : ""} remaining</span>
+                  )}
+                </span>
+              </div>
+              <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-white/50 rounded-full transition-all"
+                  style={{ width: `${campaignPct}%` }}
+                />
+              </div>
             </div>
           )}
         </div>
@@ -370,7 +454,7 @@ export default async function ClientReportPage({
             {frame.primary_kpi && (
               <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2">
                 <span className="text-xs text-slate-400 font-medium uppercase tracking-wide">Primary KPI</span>
-                <span className="text-xs text-slate-600 font-semibold">{frame.primary_kpi}</span>
+                <span className="text-xs text-slate-700 font-semibold">{frame.primary_kpi}</span>
               </div>
             )}
           </div>
@@ -396,15 +480,40 @@ export default async function ClientReportPage({
         {/* ── This Week's Performance ───────────────────────────────────── */}
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-6 pt-5 pb-4 border-b border-slate-100 flex items-center justify-between">
-            <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">
-              This Week's Performance
-            </p>
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">
+                This Week's Performance
+              </p>
+              {totalPrimarySignals > 0 && (
+                <p className="text-xs text-slate-400 mt-1">
+                  {signalsOnTrack} of {totalPrimarySignals} key signals on track
+                  {signalsOnTrack < totalPrimarySignals && ` · ${totalPrimarySignals - signalsOnTrack} need${totalPrimarySignals - signalsOnTrack === 1 ? "s" : ""} attention`}
+                </p>
+              )}
+            </div>
             {latestSignal && (
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-slate-400 shrink-0">
                 Week {latestSignal.week_number}{weekDate ? ` · ${weekDate}` : ""}
               </span>
             )}
           </div>
+
+          {/* Phase context callout */}
+          {latestSignal?.ai_phase_context && (
+            <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-start gap-3">
+              <span className="shrink-0 text-slate-400 mt-0.5">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </span>
+              <div>
+                <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1">
+                  {phaseLabel(latestSignal.campaign_phase)} — What to Expect
+                </p>
+                <p className="text-xs text-slate-500 leading-relaxed">{latestSignal.ai_phase_context}</p>
+              </div>
+            </div>
+          )}
 
           {!latestSignal ? (
             <div className="px-6 py-5">
@@ -413,9 +522,10 @@ export default async function ClientReportPage({
           ) : (
             <>
               <div className="divide-y divide-slate-100">
-                {primarySignals.map(({ label, sub, health, actual, target, businessNote }) => (
-                  <div key={label} className="px-6 py-4">
-                    <div className="flex items-center justify-between gap-4">
+                {primarySignals.map(({ label, sub, health, actual, target, pct, gap, businessNote, goalContext }) => (
+                  <div key={label} className="px-6 py-5">
+                    {/* Signal header row */}
+                    <div className="flex items-center justify-between gap-4 mb-3">
                       <div className="flex items-center gap-3.5 min-w-0">
                         <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${healthIconBg(health)}`}>
                           <span className={`w-3 h-3 rounded-full ${healthDotBg(health)}`} />
@@ -425,43 +535,91 @@ export default async function ClientReportPage({
                           <p className="text-xs text-slate-400 mt-0.5">{sub}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        {actual && actual !== "—" && (
-                          <div className="text-right">
-                            <p className="text-sm font-bold text-slate-800">{actual}</p>
-                            {target && <p className="text-xs text-slate-400">{target}</p>}
+                      <span className={`text-xs font-semibold px-3 py-1.5 rounded-full border shrink-0 ${healthBadge(health)}`}>
+                        {healthLabel(health)}
+                      </span>
+                    </div>
+
+                    {/* Goal context line */}
+                    {goalContext && (
+                      <p className="text-xs text-slate-400 ml-[52px] mb-2">{goalContext}</p>
+                    )}
+
+                    {/* Progress bar + numbers */}
+                    {actual && actual !== "—" && (
+                      <div className="ml-[52px]">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-xl font-bold text-slate-900 leading-none">{actual}</span>
+                            {target && <span className="text-xs text-slate-400">/ {target} target</span>}
+                          </div>
+                          {pct > 0 && (
+                            <span className={`text-xs font-semibold ${pct >= 100 ? "text-emerald-600" : health === "Red" ? "text-red-600" : "text-amber-600"}`}>
+                              {pct}%
+                            </span>
+                          )}
+                        </div>
+                        {target && (
+                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
+                            <div
+                              className={`h-full rounded-full transition-all ${progressBarColor(health, pct)}`}
+                              style={{ width: `${pct}%` }}
+                            />
                           </div>
                         )}
-                        <span className={`text-xs font-semibold px-3 py-1.5 rounded-full border ${healthBadge(health)}`}>
-                          {healthLabel(health)}
-                        </span>
+                        {gap && (
+                          <p className={`text-xs font-medium ${pct >= 100 ? "text-emerald-600" : "text-slate-500"}`}>
+                            {gap}
+                          </p>
+                        )}
                       </div>
-                    </div>
-                    {/* Business implication note */}
-                    <p className="text-xs text-slate-400 mt-2 ml-[52px] italic">{businessNote}</p>
+                    )}
+
+                    {/* Business context */}
+                    <p className="text-xs text-slate-400 mt-3 ml-[52px] leading-relaxed border-l-2 border-slate-100 pl-3">
+                      {businessNote}
+                    </p>
                   </div>
                 ))}
               </div>
 
+              {/* Supplementary signals */}
               {supplementarySignals.length > 0 && (
                 <div className="px-6 py-4 bg-slate-50 border-t border-slate-100">
-                  <p className="text-xs text-slate-400 font-medium mb-3 uppercase tracking-wide">
+                  <p className="text-xs text-slate-400 font-semibold mb-3 uppercase tracking-wide">
                     Additional Signals
                   </p>
-                  <div className="space-y-2.5">
+                  <div className="space-y-4">
                     {supplementarySignals.map((s) => (
-                      <div key={s.label} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <span className={`w-2 h-2 rounded-full ${healthDotBg(s.health)}`} />
-                          <span className="text-xs font-semibold text-slate-700">{s.label}</span>
-                          <span className="text-xs text-slate-400">· {s.note}</span>
+                      <div key={s.label}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full ${healthDotBg(s.health)}`} />
+                            <span className="text-xs font-semibold text-slate-700">{s.label}</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-sm font-bold text-slate-800">{s.actual}</span>
+                            {s.target && <span className="text-xs text-slate-400">{s.target}</span>}
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${healthBadge(s.health)}`}>
+                              {healthLabel(s.health)}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2.5 shrink-0">
-                          <span className="text-xs font-bold text-slate-700">{s.actual}</span>
-                          {s.target && <span className="text-xs text-slate-400">{s.target}</span>}
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${healthBadge(s.health)}`}>
-                            {healthLabel(s.health)}
-                          </span>
+                        {s.target && (
+                          <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden mb-1">
+                            <div
+                              className={`h-full rounded-full ${progressBarColor(s.health, s.pct)}`}
+                              style={{ width: `${s.pct}%` }}
+                            />
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-slate-400">{s.note}</p>
+                          {s.gap && (
+                            <p className={`text-xs font-medium ${s.pct >= 100 ? "text-emerald-600" : "text-slate-500"}`}>
+                              {s.gap}
+                            </p>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -469,6 +627,7 @@ export default async function ClientReportPage({
                 </div>
               )}
 
+              {/* Weekly timeline */}
               {signalReports.length > 1 && (
                 <div className="px-6 py-4 bg-slate-50 border-t border-slate-100">
                   <p className="text-xs text-slate-400 font-medium mb-3">Weekly timeline</p>
@@ -518,27 +677,22 @@ export default async function ClientReportPage({
             </div>
 
             <div className="px-6 py-5">
-              {/* Funnel stage visual */}
+              {/* Funnel visual */}
               <div className="flex items-stretch gap-1 mb-5">
                 {FUNNEL_STAGES.map((stage, idx) => (
                   <div key={stage.num} className="flex items-center flex-1 min-w-0">
                     <div className={`flex-1 px-1.5 py-2 rounded-lg border text-center transition-all ${stagePill(stage.num, currentStageNum)}`}>
-                      <p className="text-xs font-semibold leading-tight truncate">
-                        {stage.label}
-                      </p>
+                      <p className="text-xs font-semibold leading-tight truncate">{stage.label}</p>
                     </div>
                     {idx < FUNNEL_STAGES.length - 1 && (
-                      <span className={`text-xs mx-0.5 shrink-0 ${
-                        currentStageNum !== null && idx + 1 < currentStageNum
-                          ? "text-emerald-400"
-                          : "text-slate-300"
-                      }`}>›</span>
+                      <span className={`text-xs mx-0.5 shrink-0 ${currentStageNum !== null && idx + 1 < currentStageNum ? "text-emerald-400" : "text-slate-300"}`}>
+                        ›
+                      </span>
                     )}
                   </div>
                 ))}
               </div>
 
-              {/* Current stage detail */}
               {latestBehaviour && (
                 <div className="mb-4">
                   <div className="flex items-center gap-2 mb-2">
@@ -547,20 +701,15 @@ export default async function ClientReportPage({
                       Current Stage: {latestBehaviour.state_name}
                     </p>
                     {latestBehaviour.week_number && (
-                      <span className="text-xs text-slate-400 ml-auto">
-                        Week {latestBehaviour.week_number}
-                      </span>
+                      <span className="text-xs text-slate-400 ml-auto">Week {latestBehaviour.week_number}</span>
                     )}
                   </div>
                   {currentStageNum && FUNNEL_STAGES[currentStageNum - 1] && (
-                    <p className="text-xs text-slate-500 ml-4">
-                      {FUNNEL_STAGES[currentStageNum - 1].desc}
-                    </p>
+                    <p className="text-xs text-slate-500 ml-4">{FUNNEL_STAGES[currentStageNum - 1].desc}</p>
                   )}
                 </div>
               )}
 
-              {/* Stall alert */}
               {hasStallAlert && (
                 <div className="mb-4 flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200">
                   <span className="text-amber-500 text-sm shrink-0 mt-0.5">⚠</span>
@@ -570,7 +719,6 @@ export default async function ClientReportPage({
                 </div>
               )}
 
-              {/* Consumer narrative */}
               {consumerNarrative.length > 0 && (
                 <div className="space-y-2.5 mb-4">
                   {consumerNarrative.map((para, i) => (
@@ -579,7 +727,6 @@ export default async function ClientReportPage({
                 </div>
               )}
 
-              {/* Activation direction — what's needed to advance */}
               {latestBehaviour?.activation_direction && (
                 <div className="mt-3 pt-3 border-t border-slate-100">
                   <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-2">
@@ -594,7 +741,7 @@ export default async function ClientReportPage({
           </div>
         )}
 
-        {/* ── Brand Intelligence: SOV × AI Visibility × Social Currency ── */}
+        {/* ── Brand Intelligence ────────────────────────────────────────── */}
         {(aiVisibility || socialCurrency) && (
           <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div className="px-6 pt-5 pb-4 border-b border-slate-100">
@@ -607,8 +754,7 @@ export default async function ClientReportPage({
             </div>
 
             <div className="divide-y divide-slate-100">
-
-              {/* SOV = SOM context — always shown, tied to Signal 1 */}
+              {/* SOV → SOM */}
               <div className="px-6 py-4">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="w-6 h-6 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center justify-center shrink-0">
@@ -617,49 +763,75 @@ export default async function ClientReportPage({
                   <p className="text-sm font-semibold text-slate-800">Share of Voice → Share of Market</p>
                 </div>
                 <p className="text-sm text-slate-600 leading-relaxed ml-8">
-                  Branded search lift tracks how often consumers seek your brand specifically — this is your digital share of voice. Research shows brands that grow their SOV above their current market share consistently win revenue over a 6–12 month horizon. This week's branded search performance is a leading indicator of where your market share is heading.
+                  Branded search lift tracks how often consumers seek your brand by name — this is your digital share of voice. Research consistently shows brands that grow SOV above their current market share win revenue within 6–12 months. This week's Purchase Intent signal is a leading indicator of where your market share is heading.
                 </p>
-                {latestSignal?.signal_1_actual_pct !== null &&
-                  latestSignal?.signal_1_actual_pct !== undefined && (
-                  <div className="mt-2 ml-8 flex items-center gap-2">
-                    <span className="text-xs text-slate-500">Branded search lift this week:</span>
-                    <span className={`text-xs font-bold ${
-                      (latestSignal?.conversion_health as SignalHealth) === "Green" ? "text-emerald-600" :
-                      (latestSignal?.conversion_health as SignalHealth) === "Amber" ? "text-amber-600" :
-                      "text-red-600"
-                    }`}>{latestSignal.signal_1_actual_pct}%</span>
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${healthBadge(latestSignal?.conversion_health as SignalHealth)}`}>
-                      {healthLabel(latestSignal?.conversion_health as SignalHealth)}
-                    </span>
+                {s1Actual !== null && s1Actual !== undefined && (
+                  <div className="mt-3 ml-8">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-lg font-bold text-slate-900">{s1Actual}%</span>
+                        {s1Target && <span className="text-xs text-slate-400">/ {s1Target}% target</span>}
+                      </div>
+                      {s1Target && (
+                        <span className={`text-xs font-semibold ${progressPct(s1Actual, s1Target) >= 100 ? "text-emerald-600" : "text-amber-600"}`}>
+                          {progressPct(s1Actual, s1Target)}% of target
+                        </span>
+                      )}
+                    </div>
+                    {s1Target && (
+                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-1.5">
+                        <div
+                          className={`h-full rounded-full ${progressBarColor(latestSignal?.conversion_health as SignalHealth, progressPct(s1Actual, s1Target))}`}
+                          style={{ width: `${progressPct(s1Actual, s1Target)}%` }}
+                        />
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${healthBadge(latestSignal?.conversion_health as SignalHealth)}`}>
+                        {healthLabel(latestSignal?.conversion_health as SignalHealth)}
+                      </span>
+                      {s1Target && (
+                        <span className={`text-xs font-medium ${progressPct(s1Actual, s1Target) >= 100 ? "text-emerald-600" : "text-slate-500"}`}>
+                          {gapPct(s1Actual, s1Target)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* AI Visibility */}
+              {/* AI Brand Visibility */}
               {aiVisibility && (
                 <div className="px-6 py-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-slate-700 text-white text-xs font-bold flex items-center justify-center shrink-0 leading-none">
-                        AI
-                      </span>
+                      <span className="w-6 h-6 rounded-full bg-slate-700 text-white text-xs font-bold flex items-center justify-center shrink-0 leading-none">AI</span>
                       <p className="text-sm font-semibold text-slate-800">AI Brand Visibility</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       {aiVisibility.cep_count > 0 && (
-                        <span className="text-xs text-slate-500">
-                          {aiVisibility.cep_count} consumer entry {aiVisibility.cep_count === 1 ? "point" : "points"}
-                        </span>
+                        <span className="text-xs text-slate-500">{aiVisibility.cep_count} entry point{aiVisibility.cep_count !== 1 ? "s" : ""}</span>
                       )}
                       {aiVisibility.information_consistency_score !== null && (
-                        <span className="text-xs font-bold text-slate-700 ml-1">
-                          {aiVisibility.information_consistency_score}% consistent
-                        </span>
+                        <span className="text-xs font-bold text-slate-700">{aiVisibility.information_consistency_score}% consistent</span>
                       )}
                     </div>
                   </div>
+                  {aiVisibility.information_consistency_score !== null && (
+                    <div className="ml-8 mb-3">
+                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-slate-600"
+                          style={{ width: `${aiVisibility.information_consistency_score}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-slate-400 mt-1">
+                        How consistently AI tools describe your brand across discovery queries
+                      </p>
+                    </div>
+                  )}
                   <p className="text-xs text-slate-500 ml-8 mb-2 italic">
-                    AI tools like ChatGPT and Perplexity now influence discovery. Brands with higher AI visibility win a new form of share of voice — before a consumer even searches.
+                    AI tools like ChatGPT and Perplexity now influence purchase discovery. Brands with higher AI visibility capture share of voice before a consumer even searches.
                   </p>
                   {aiVisNarrative.length > 0 && (
                     <div className="ml-8 space-y-2">
@@ -676,14 +848,12 @@ export default async function ClientReportPage({
                 <div className="px-6 py-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-slate-500 text-white text-xs font-bold flex items-center justify-center shrink-0">
-                        SCI
-                      </span>
+                      <span className="w-6 h-6 rounded-full bg-slate-500 text-white text-xs font-bold flex items-center justify-center shrink-0">SCI</span>
                       <p className="text-sm font-semibold text-slate-800">Social Currency Index</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {socialCurrency.sci_score !== null && (
-                        <span className="text-sm font-bold text-slate-800">
+                        <span className="text-lg font-bold text-slate-800">
                           {socialCurrency.sci_score}<span className="text-xs font-normal text-slate-400">/100</span>
                         </span>
                       )}
@@ -694,9 +864,19 @@ export default async function ClientReportPage({
                       )}
                     </div>
                   </div>
-                  <p className="text-xs text-slate-500 ml-8 mb-2 italic">
-                    How much your content earns genuine sharing and conversation — a direct driver of organic reach and word-of-mouth that multiplies paid media efficiency.
-                  </p>
+                  {socialCurrency.sci_score !== null && (
+                    <div className="ml-8 mb-3">
+                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-slate-500"
+                          style={{ width: `${socialCurrency.sci_score}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-slate-400 mt-1">
+                        How much your content earns organic sharing and word-of-mouth — amplifies paid media at no extra cost
+                      </p>
+                    </div>
+                  )}
                   {sciNarrative.length > 0 && (
                     <div className="ml-8 space-y-2">
                       {sciNarrative.map((para, i) => (
@@ -710,42 +890,23 @@ export default async function ClientReportPage({
           </div>
         )}
 
-        {/* ── CIR Executive Summary ─────────────────────────────────────── */}
-        {cleanExecSummary.length > 0 && (
+        {/* ── Intelligence Summary ──────────────────────────────────────── */}
+        {(cleanExecSummary.length > 0 || cleanNarrative.length > 0) && (
           <div className="rounded-xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">
                 Intelligence Summary
               </p>
-              {cir && cir.report_week > 0 && (
+              {cir?.report_week && cir.report_week > 0 && (
                 <span className="text-xs text-slate-400">Week {cir.report_week}</span>
               )}
             </div>
             <div className="space-y-3">
-              {cleanExecSummary.map((para, i) => (
+              {(cleanExecSummary.length > 0 ? cleanExecSummary : cleanNarrative).map((para, i) => (
                 <p key={i} className="text-sm text-slate-700 leading-relaxed">{para}</p>
               ))}
             </div>
-          </div>
-        )}
-
-        {/* Fallback: weekly AI narrative */}
-        {!cir?.executive_summary && cleanNarrative.length > 0 && (
-          <div className="rounded-xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">
-                Campaign Health Read
-              </p>
-              {latestSignal?.week_number && (
-                <span className="text-xs text-slate-400">Week {latestSignal.week_number}</span>
-              )}
-            </div>
-            <div className="space-y-3">
-              {cleanNarrative.map((para, i) => (
-                <p key={i} className="text-sm text-slate-700 leading-relaxed">{para}</p>
-              ))}
-            </div>
-            {latestSignal?.ai_phase_context && (
+            {!cleanExecSummary.length && latestSignal?.ai_phase_context && (
               <p className="text-xs text-slate-400 mt-4 pt-3 border-t border-slate-100 italic">
                 {latestSignal.ai_phase_context}
               </p>
@@ -770,17 +931,12 @@ export default async function ClientReportPage({
                     </span>
                     <div className="space-y-1.5 min-w-0">
                       <p className="text-sm font-semibold text-slate-900">{f.headline}</p>
-                      {f.context && (
-                        <p className="text-sm text-slate-600 leading-relaxed">{f.context}</p>
-                      )}
-                      {f.implication && (
-                        <p className="text-sm text-slate-500 italic leading-relaxed">{f.implication}</p>
-                      )}
+                      {f.context && <p className="text-sm text-slate-600 leading-relaxed">{f.context}</p>}
+                      {f.implication && <p className="text-sm text-slate-500 italic leading-relaxed">{f.implication}</p>}
                       {f.recommendation && (
                         <div className="mt-2.5 pt-2.5 border-t border-slate-100">
                           <p className="text-sm text-slate-800 leading-relaxed">
-                            <span className="font-semibold">Recommendation: </span>
-                            {f.recommendation}
+                            <span className="font-semibold">Recommendation: </span>{f.recommendation}
                           </p>
                         </div>
                       )}
@@ -792,13 +948,14 @@ export default async function ClientReportPage({
           </div>
         )}
 
-        {/* Fallback: weekly recommended actions */}
+        {/* ── Recommended Actions ───────────────────────────────────────── */}
         {weeklyActions.length > 0 && (
           <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div className="px-6 pt-5 pb-4 border-b border-slate-100">
               <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">
                 Recommended Actions
               </p>
+              <p className="text-xs text-slate-400 mt-1">What to prioritise this week to close the gaps</p>
             </div>
             <div className="divide-y divide-slate-100">
               {weeklyActions.map((a, i) => (
@@ -806,9 +963,7 @@ export default async function ClientReportPage({
                   <span className="shrink-0 w-6 h-6 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center justify-center mt-0.5">
                     {i + 1}
                   </span>
-                  <p className="text-sm text-slate-700 leading-relaxed">
-                    {stripActionNumber(a)}
-                  </p>
+                  <p className="text-sm text-slate-700 leading-relaxed">{stripActionNumber(a)}</p>
                 </div>
               ))}
             </div>
@@ -820,9 +975,7 @@ export default async function ClientReportPage({
           <span className="text-xs text-slate-400">
             Powered by <span className="font-medium text-slate-500">ShiftImpact OS</span>
           </span>
-          <span className="text-xs text-slate-400">
-            Confidential · Signal-led campaign intelligence
-          </span>
+          <span className="text-xs text-slate-400">Confidential · Signal-led campaign intelligence</span>
         </div>
 
       </div>
