@@ -1,11 +1,25 @@
-// app/report/[id]/page.tsx — Sprint 28
+// app/report/[id]/page.tsx — Sprint 29
 // PUBLIC — client-facing campaign intelligence report.
 //
-// Sprint 28 additions:
-//   1. Campaign Health Score (0–100, weighted composite, WoW delta)
-//   2. Week-on-week trend indicators on every primary signal (↑ ↓ → + delta)
-//   3. Forward projection per signal ("On track to hit target by Week X")
-//   4. AI discovery reframed as the new share of voice for Malaysian marketers
+// Sprint 29 additions:
+//   1. Brand Health Indicator (header strip) — BrandMomentumScore bms_direction + bms_velocity
+//      Suppressed when bms_confidence < 5. Labelled "Brand Health" not internal BMS name.
+//   2. Market Context block (inside signals card) — SignalMarketContext cultural_moment_flag,
+//      platform_algorithm_flag, competitive_sov_change, category_search_trend, macro_context_note.
+//      Renders conditionally; each sub-field suppressed if empty.
+//   3. Business Performance card — BusinessOutcome metric_label, actual_value, target_value, notes.
+//      Only rows with actual_value populated. Attribution framing note in subtitle.
+//   4. Cross-Channel Intelligence card — CrossChannelReport ai_narrative (filtered) +
+//      dominant_funnel_gap. idea_integrity_score EXCLUDED (methodology not client-defensible).
+//
+// GOVERNANCE — never exposes:
+//   Gate status / gate_status, gate threshold numbers, gate_signals_converging,
+//   signal names (S1/S2/S3), state_distribution, velocity_score, stall_note,
+//   cstr_vs_prior, eligibility_score, trust_gap_*, priority_action,
+//   build_action, SCI dimension scores, signal_pattern_read, confidence_level,
+//   CIR confidence ratings, components_used, scopes_resolved, pipeline_risk_label,
+//   amber/red threshold values, bms_confidence, bms ai_read, all BMS dimension fields,
+//   idea_integrity_score, idea_integrity_note, CrossChannelReport budget_* fields.
 //
 // GOVERNANCE — never exposes:
 //   Gate status / gate_status, gate threshold numbers, gate_signals_converging,
@@ -27,6 +41,10 @@ import {
   getLatestConsumerStateReading,
   getAiBrandVisibilityScore,
   getSocialCurrencyScore,
+  getBusinessOutcomes,
+  getCrossChannelReports,
+  getSignalMarketContexts,
+  getBrandMomentumScores,
 } from "@/lib/data";
 import type { SignalHealth } from "@/lib/types";
 
@@ -300,13 +318,18 @@ export default async function ClientReportPage({
 }: {
   params: { id: string };
 }) {
+  // Phase 1 — campaign needed for client_id → BrandMomentumScores
+  const campaign = await getCampaign(params.id);
+  if (!campaign) notFound();
+
+  // Phase 2 — all remaining data in parallel
   const [
-    campaign, frame, bip, threshold,
+    frame, bip, threshold,
     signalReports, cir,
     behaviourStates, consumerReading,
     aiVisibility, socialCurrency,
+    businessOutcomes, crossChannelReports, marketContexts, brandMomentumScores,
   ] = await Promise.all([
-    getCampaign(params.id),
     getFrameBrief(params.id),
     getBigIdeaPlatform(params.id),
     getSignalThreshold(params.id),
@@ -316,9 +339,11 @@ export default async function ClientReportPage({
     getLatestConsumerStateReading(params.id),
     getAiBrandVisibilityScore(params.id),
     getSocialCurrencyScore(params.id),
+    getBusinessOutcomes(params.id),
+    getCrossChannelReports(params.id),
+    getSignalMarketContexts(params.id),
+    getBrandMomentumScores(campaign.client_id),
   ]);
-
-  if (!campaign) notFound();
 
   // Latest and previous week data
   const latestSignal = signalReports[0] ?? null;
@@ -484,6 +509,31 @@ export default async function ClientReportPage({
 
   const weekDate = formatWeekOf(latestSignal?.week_of);
 
+  // ── Sprint 29 derived values ─────────────────────────────────────────────
+  // Brand Momentum — only expose direction + velocity when confidence >= 5
+  const latestBms = brandMomentumScores[0] ?? null;
+  const bms = latestBms && (latestBms.bms_confidence === null || latestBms.bms_confidence >= 5)
+    ? latestBms : null;
+
+  // Market Context — most recent week, suppress if all fields empty
+  const marketCtx = marketContexts[0] ?? null;
+  const hasMarketCtx = marketCtx && (
+    marketCtx.cultural_moment_flag ||
+    marketCtx.platform_algorithm_flag ||
+    (marketCtx.competitive_sov_change !== null && marketCtx.competitive_sov_note?.trim()) ||
+    (marketCtx.category_search_trend !== null && marketCtx.category_search_note?.trim()) ||
+    marketCtx.macro_context_note?.trim()
+  );
+
+  // Business Outcomes — only rows where actual has been entered
+  const populatedOutcomes = businessOutcomes.filter((o) => o.actual_value !== null);
+
+  // Cross-Channel — latest week, filter ai_narrative through client safety check
+  const crossChannel = crossChannelReports[0] ?? null;
+  const crossChannelNarrative = crossChannel?.ai_narrative
+    ? toParas(crossChannel.ai_narrative).filter((p) => isClientSafeDirection(p))
+    : [];
+
   return (
     <div className="min-h-screen bg-slate-50">
 
@@ -600,6 +650,32 @@ export default async function ClientReportPage({
               )}
             </div>
           </div>
+
+          {/* Brand Health Indicator — bms_direction + bms_velocity only; confidence gate applied above */}
+          {bms && bms.bms_direction && (
+            <div className="mt-3 flex items-center justify-between px-4 py-2.5 rounded-lg bg-white/6 border border-white/10">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-400 font-medium uppercase tracking-wide">Brand Health</span>
+                <span className="text-slate-700 text-xs">·</span>
+                <span className="text-xs text-slate-500">Brand-level view across all active signals</span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {bms.bms_velocity && (
+                  <span className={`text-xs font-medium ${
+                    bms.bms_velocity === "Accelerating" ? "text-emerald-400" :
+                    bms.bms_velocity === "Decelerating" ? "text-red-400" :
+                    "text-slate-400"
+                  }`}>{bms.bms_velocity}</span>
+                )}
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${
+                  bms.bms_direction === "Positive" ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-300" :
+                  bms.bms_direction === "Negative" ? "bg-red-500/20 border-red-500/30 text-red-300" :
+                  "bg-white/10 border-white/20 text-slate-300"
+                }`}>{bms.bms_direction}</span>
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
 
@@ -667,6 +743,51 @@ export default async function ClientReportPage({
                   {phaseLabel(latestSignal.campaign_phase)}
                 </p>
                 <p className="text-xs text-slate-500 leading-relaxed">{latestSignal.ai_phase_context}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Market Context — environmental factors that explain signal movement this week */}
+          {hasMarketCtx && (
+            <div className="px-6 py-4 bg-slate-50 border-b border-slate-100">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Market Context This Week</p>
+              <div className="space-y-2">
+                {marketCtx!.cultural_moment_flag && marketCtx!.cultural_moment_note?.trim() && (
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-xs text-slate-400 shrink-0 mt-px">📅</span>
+                    <p className="text-xs text-slate-600 leading-relaxed">{marketCtx!.cultural_moment_note}</p>
+                  </div>
+                )}
+                {marketCtx!.competitive_sov_change !== null && marketCtx!.competitive_sov_note?.trim() && (
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-xs text-slate-400 shrink-0 mt-px">⚡</span>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      <span className="font-medium">Competitor Activity: </span>{marketCtx!.competitive_sov_note}
+                    </p>
+                  </div>
+                )}
+                {marketCtx!.category_search_trend !== null && marketCtx!.category_search_note?.trim() && (
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-xs text-slate-400 shrink-0 mt-px">📈</span>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      <span className="font-medium">Category Trend: </span>{marketCtx!.category_search_note}
+                    </p>
+                  </div>
+                )}
+                {marketCtx!.platform_algorithm_flag && marketCtx!.platform_algorithm_note?.trim() && (
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-xs text-slate-400 shrink-0 mt-px">🔔</span>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      <span className="font-medium">Platform Update: </span>{marketCtx!.platform_algorithm_note}
+                    </p>
+                  </div>
+                )}
+                {marketCtx!.macro_context_note?.trim() && (
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-xs text-slate-400 shrink-0 mt-px">🌐</span>
+                    <p className="text-xs text-slate-600 leading-relaxed">{marketCtx!.macro_context_note}</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1024,6 +1145,95 @@ export default async function ClientReportPage({
                       ))}
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Business Performance ─────────────────────────────────────── */}
+        {populatedOutcomes.length > 0 && (
+          <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="px-6 pt-5 pb-4 border-b border-slate-100">
+              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Business Performance</p>
+              <p className="text-xs text-slate-400 mt-1">Business results for this period — campaign activity is one of several contributing factors</p>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {populatedOutcomes.slice(0, 6).map((o) => {
+                const boPct = o.target_value && o.target_value > 0
+                  ? Math.min(Math.round((o.actual_value! / o.target_value) * 100), 100)
+                  : null;
+                const boStatus = boPct === null ? null : boPct >= 100 ? "met" : boPct >= 75 ? "near" : "below";
+                return (
+                  <div key={o.id} className="px-6 py-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-semibold text-slate-800">{o.metric_label}</p>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-base font-bold text-slate-900">
+                          {o.actual_value!.toLocaleString("en-MY", { maximumFractionDigits: 2 })}
+                        </span>
+                        {o.target_value !== null && (
+                          <span className="text-xs text-slate-400">
+                            / {o.target_value.toLocaleString("en-MY", { maximumFractionDigits: 2 })} target
+                          </span>
+                        )}
+                        {boStatus && (
+                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                            boStatus === "met" ? "bg-emerald-50 border-emerald-200 text-emerald-700" :
+                            boStatus === "near" ? "bg-amber-50 border-amber-200 text-amber-700" :
+                            "bg-red-50 border-red-200 text-red-700"
+                          }`}>
+                            {boStatus === "met" ? "On Target" : boStatus === "near" ? "Building" : "Below Target"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {o.target_value !== null && boPct !== null && (
+                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-1.5">
+                        <div
+                          className={`h-full rounded-full ${
+                            boStatus === "met" ? "bg-emerald-400" :
+                            boStatus === "near" ? "bg-amber-400" :
+                            "bg-red-400"
+                          }`}
+                          style={{ width: `${boPct}%` }}
+                        />
+                      </div>
+                    )}
+                    {o.notes?.trim() && (
+                      <p className="text-xs text-slate-400 mt-1 leading-relaxed">{o.notes}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── Cross-Channel Intelligence ────────────────────────────────── */}
+        {crossChannel && (crossChannelNarrative.length > 0 || (crossChannel.dominant_funnel_gap && crossChannel.dominant_funnel_gap !== "None")) && (
+          <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="px-6 pt-5 pb-4 border-b border-slate-100">
+              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Cross-Channel Intelligence</p>
+              <p className="text-xs text-slate-400 mt-1">How your campaign is performing across all active channels this week</p>
+            </div>
+            <div className="px-6 py-5">
+              {crossChannel.dominant_funnel_gap && crossChannel.dominant_funnel_gap !== "None" && (
+                <div className="mb-4 flex items-start gap-3 px-4 py-3 rounded-lg bg-amber-50 border border-amber-200">
+                  <svg className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div>
+                    <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-0.5">Priority Focus This Week</p>
+                    <p className="text-sm text-amber-800">Biggest gap across channels: <span className="font-semibold">{crossChannel.dominant_funnel_gap}</span></p>
+                  </div>
+                </div>
+              )}
+              {crossChannelNarrative.length > 0 && (
+                <div className="space-y-2.5">
+                  {crossChannelNarrative.map((para, i) => (
+                    <p key={i} className="text-sm text-slate-700 leading-relaxed">{para}</p>
+                  ))}
                 </div>
               )}
             </div>
