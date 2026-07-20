@@ -455,6 +455,15 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
       {/* ── BODY ── */}
       <div className="max-w-3xl mx-auto px-6 py-7 space-y-5">
 
+        {/* Executive Intelligence Summary */}
+        <div className="rounded-xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-3">Executive Intelligence</p>
+          <blockquote className="border-l-[3px] border-slate-900 pl-4 text-base font-semibold text-slate-900 leading-snug mb-4">
+            {r.effectiveness_headline}
+          </blockquote>
+          <p className="text-sm text-slate-700 leading-relaxed">{r.frame_diagnosis}</p>
+        </div>
+
         {/* Campaign Effectiveness */}
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-6 pt-5 pb-4 border-b border-slate-100">
@@ -660,6 +669,26 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
               body={r.gate_recommendation}
             />
             <PhaseTimeline phase={r.campaign_phase} weekRange={r.estimated_campaign_week} />
+          </div>
+          <div className="px-6 pt-4 pb-2">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-slate-600">Gate Condition Progress</p>
+              <span className="text-xs font-bold text-slate-700">
+                {r.gate_conditions.filter(gc => gc.met).length}/{r.gate_conditions.length} conditions met
+              </span>
+            </div>
+            <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-1">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  r.gate_conditions.filter(gc => gc.met).length === r.gate_conditions.length
+                    ? "bg-emerald-500"
+                    : r.gate_conditions.filter(gc => gc.met).length >= Math.ceil(r.gate_conditions.length * 0.6)
+                    ? "bg-amber-400"
+                    : "bg-red-400"
+                }`}
+                style={{ width: `${r.gate_conditions.length > 0 ? (r.gate_conditions.filter(gc => gc.met).length / r.gate_conditions.length) * 100 : 0}%` }}
+              />
+            </div>
           </div>
           <div className="px-6 pb-5 space-y-2">
             {r.gate_conditions.map((gc, i) => (
