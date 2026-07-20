@@ -246,7 +246,7 @@ function PhaseTimeline({ phase, weekRange }: { phase: string; weekRange: string 
   );
 }
 
-function CMBACard({ title, finding, action, impact, priority }: {
+function StrategicCard({ title, finding, action, impact, priority }: {
   title: string; finding: string; action: string; impact: string; priority: number;
 }) {
   return (
@@ -256,7 +256,7 @@ function CMBACard({ title, finding, action, impact, priority }: {
           <span className="text-xs font-bold text-white">{priority}</span>
         </div>
         <div>
-          <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest mb-0.5">CMBA Priority {priority}</p>
+          <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest mb-0.5">Priority {priority}</p>
           <p className="text-sm font-bold text-white leading-snug">{title}</p>
         </div>
       </div>
@@ -284,11 +284,10 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function AssessmentBlock({ text }: { text: string }) {
+function StrategicPOV({ text }: { text: string }) {
   return (
-    <div className="mt-3 bg-neutral-50 border border-neutral-100 rounded-lg px-3 py-2.5">
-      <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">CMBA Assessment</p>
-      <p className="text-xs text-neutral-700 leading-relaxed">{text}</p>
+    <div className="border-l-[3px] border-neutral-900 pl-4 mb-5">
+      <p className="text-[13px] font-semibold text-neutral-900 leading-snug">{text}</p>
     </div>
   );
 }
@@ -314,15 +313,6 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
   const generatedDate = new Date(a.created_at).toLocaleDateString("en-MY", {
     day: "numeric", month: "long", year: "numeric",
   });
-
-  const ICS_DIMS = [
-    { key: "cultural_fit",          label: "Cultural Fit",          weight: 20 },
-    { key: "business_alignment",    label: "Business Alignment",    weight: 20 },
-    { key: "audience_tension",      label: "Audience Tension",      weight: 20 },
-    { key: "executional_coherence", label: "Executional Coherence", weight: 15 },
-    { key: "measurability",         label: "Measurability",         weight: 15 },
-    { key: "scalability",           label: "Scalability",           weight: 10 },
-  ];
 
   const CORE_SIGNALS: { key: keyof typeof r.signals; label: string; always: boolean }[] = [
     { key: "sov",            label: "Share of Voice",        always: true },
@@ -371,14 +361,29 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
             <p className={`text-3xl font-bold ${scoreColor(r.effectiveness_score)}`}>{r.effectiveness_score}</p>
             <span className={`text-[10px] font-semibold ${rating.text}`}>{r.effectiveness_rating}</span>
           </div>
-          {/* ICS */}
-          <div className="rounded-xl border border-neutral-200 bg-white p-3 text-center">
-            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wide mb-1">Idea Certainty</p>
-            <p className={`text-3xl font-bold ${scoreColor(r.ics_score)}`}>{r.ics_score}</p>
-            <span className={`text-[10px] font-semibold ${
-              r.ics_threshold === "Advance" ? "text-emerald-700" :
-              r.ics_threshold === "Conditional" ? "text-amber-700" : "text-red-700"
-            }`}>{r.ics_threshold}</span>
+          {/* Campaign Diagnostic */}
+          <div className="rounded-xl border border-neutral-200 bg-white p-3">
+            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wide mb-2 text-center">Campaign Diagnostic</p>
+            <div className="space-y-1">
+              {([
+                { label: "SoV",    sig: r.signals.sov },
+                { label: "Search", sig: r.signals.branded_search },
+                { label: "Save",   sig: r.signals.save_rate },
+                { label: "KOL",    sig: r.signals.kol_earned },
+                { label: "Share",  sig: r.signals.share_rate },
+              ] as { label: string; sig: SignalItem }[]).map(({ label, sig }) => {
+                const col = signalStatusColor(sig.status);
+                return (
+                  <div key={label} className="flex items-center justify-between gap-1">
+                    <span className="text-[9px] text-neutral-500 w-10 shrink-0">{label}</span>
+                    <div className="flex-1 h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                      <div className={`${col.bar} h-1.5 rounded-full`} style={{ width: `${signalStatusScore(sig.status)}%` }} />
+                    </div>
+                    <span className={`text-[8px] font-semibold px-1 py-0.5 rounded border shrink-0 ${col.badge}`}>{sig.status.split(" ")[0]}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
           {/* Gate */}
           <div className="rounded-xl border border-neutral-200 bg-white p-3 text-center">
@@ -396,13 +401,13 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
       {/* ── Campaign Effectiveness ── */}
       <div className="bg-white border border-neutral-100 rounded-xl p-5">
         <SectionLabel>Campaign Effectiveness Diagnosis</SectionLabel>
+        <StrategicPOV text={r.effectiveness_headline} />
         <div className="flex items-start gap-5">
           <div className="shrink-0 text-center">
             <ScoreGauge score={r.effectiveness_score} size={130} />
             <p className={`text-3xl font-bold -mt-2 ${scoreColor(r.effectiveness_score)}`}>{r.effectiveness_score}</p>
           </div>
           <div className="flex-1">
-            <p className="text-sm font-semibold text-neutral-900 leading-snug mb-2">{r.effectiveness_headline}</p>
             <p className="text-xs text-neutral-600 leading-relaxed">{r.effectiveness_diagnosis}</p>
             <div className="flex items-center gap-2 mt-3">
               <span className={`text-[10px] font-semibold border px-2 py-1 rounded-full ${ratingColor(r.effectiveness_rating).badge ?? "bg-neutral-50 border-neutral-200 text-neutral-600"}`}>
@@ -419,52 +424,38 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
       {/* ── Campaign Engine ── */}
       <div className="bg-white border border-neutral-100 rounded-xl p-5">
         <SectionLabel>Campaign Engine — Media vs Idea</SectionLabel>
+        <StrategicPOV text={r.engine_recommendation} />
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold text-neutral-700">
-            {r.engine_type}
-          </span>
+          <span className="text-xs font-semibold text-neutral-700">{r.engine_type}</span>
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
             r.engine_type === "Idea-Driven" ? "bg-emerald-50 border-emerald-200 text-emerald-700" :
             r.engine_type === "Hybrid"      ? "bg-blue-50 border-blue-200 text-blue-700" :
                                               "bg-amber-50 border-amber-200 text-amber-700"
           }`}>{r.engine_type}</span>
         </div>
-
-        {/* Split bar */}
         <div className="flex h-4 rounded-lg overflow-hidden mb-2">
-          <div
-            className="bg-neutral-900 flex items-center justify-center"
-            style={{ width: `${r.engine_media_pct}%` }}
-          >
-            {r.engine_media_pct > 15 && (
-              <span className="text-[9px] font-bold text-white">{r.engine_media_pct}% Media</span>
-            )}
+          <div className="bg-neutral-900 flex items-center justify-center" style={{ width: `${r.engine_media_pct}%` }}>
+            {r.engine_media_pct > 15 && <span className="text-[9px] font-bold text-white">{r.engine_media_pct}% Media</span>}
           </div>
-          <div
-            className="bg-emerald-400 flex items-center justify-center"
-            style={{ width: `${r.engine_idea_pct}%` }}
-          >
-            {r.engine_idea_pct > 15 && (
-              <span className="text-[9px] font-bold text-white">{r.engine_idea_pct}% Idea</span>
-            )}
+          <div className="bg-emerald-400 flex items-center justify-center" style={{ width: `${r.engine_idea_pct}%` }}>
+            {r.engine_idea_pct > 15 && <span className="text-[9px] font-bold text-white">{r.engine_idea_pct}% Idea</span>}
           </div>
         </div>
         <div className="flex justify-between text-[10px] text-neutral-400 mb-3">
           <span>Media-Compensated</span>
           <span>Idea-Driven</span>
         </div>
-
         <p className="text-xs text-neutral-600 leading-relaxed">{r.engine_diagnosis}</p>
-        <AssessmentBlock text={r.engine_recommendation} />
       </div>
 
       {/* ── Consumer State ── */}
       <div className="bg-white border border-neutral-100 rounded-xl p-5">
         <SectionLabel>Consumer Behaviour State</SectionLabel>
+        <StrategicPOV text={r.consumer_state_recommendation} />
         <div className="mb-4">
           <ConsumerStateArc currentState={r.consumer_state} />
         </div>
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-3 mb-2">
           <div className={`shrink-0 px-2.5 py-1 rounded-lg text-xs font-bold border ${
             r.state_transition_risk === "Low"    ? "bg-emerald-50 border-emerald-200 text-emerald-700" :
             r.state_transition_risk === "Medium" ? "bg-amber-50 border-amber-200 text-amber-700" :
@@ -472,17 +463,15 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
           }`}>
             {r.state_transition_risk} transition risk
           </div>
-          <div>
-            <p className="text-sm font-semibold text-neutral-800">State {r.consumer_state} — {r.consumer_state_name}</p>
-          </div>
+          <p className="text-sm font-semibold text-neutral-800">State {r.consumer_state} — {r.consumer_state_name}</p>
         </div>
-        <p className="text-xs text-neutral-600 leading-relaxed mt-2">{r.consumer_state_diagnosis}</p>
-        <AssessmentBlock text={r.consumer_state_recommendation} />
+        <p className="text-xs text-neutral-600 leading-relaxed">{r.consumer_state_diagnosis}</p>
       </div>
 
       {/* ── Signal Health ── */}
       <div className="bg-white border border-neutral-100 rounded-xl p-5">
         <SectionLabel>Signal Intelligence — Public Proxy Reads</SectionLabel>
+        <StrategicPOV text={r.efficiency_opportunity} />
         <div className="space-y-4">
           {visibleSignals.map((s) => {
             const sig = r.signals[s.key] as SignalItem;
@@ -533,6 +522,7 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
       {/* ── Audience Intelligence ── */}
       <div className="bg-white border border-neutral-100 rounded-xl p-5">
         <SectionLabel>Audience Intelligence — Acquisition vs Retention</SectionLabel>
+        <StrategicPOV text={r.audience_recommendation} />
         <div className="flex items-center gap-3 mb-3">
           <div className="flex-1">
             <div className="flex justify-between text-[10px] font-semibold text-neutral-600 mb-1">
@@ -550,13 +540,13 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
           }`}>{r.audience_intent}</span>
         </div>
         <p className="text-xs text-neutral-600 leading-relaxed">{r.audience_diagnosis}</p>
-        <AssessmentBlock text={r.audience_recommendation} />
       </div>
 
       {/* ── AI Brand Visibility ── */}
       <div className="bg-white border border-neutral-100 rounded-xl p-5">
-        <SectionLabel>AI Brand Visibility (F23)</SectionLabel>
-        <div className="flex items-center gap-4 mb-3">
+        <SectionLabel>AI Brand Visibility</SectionLabel>
+        <StrategicPOV text={r.ai_visibility_recommendation} />
+        <div className="flex items-center gap-4">
           <div className="text-center shrink-0">
             <p className={`text-4xl font-bold ${scoreColor(r.ai_visibility_score * 10)}`}>
               {r.ai_visibility_score}<span className="text-lg text-neutral-400 font-normal">/10</span>
@@ -576,19 +566,17 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
             <p className="text-xs text-neutral-600 leading-relaxed">{r.ai_visibility_diagnosis}</p>
           </div>
         </div>
-        <AssessmentBlock text={r.ai_visibility_recommendation} />
       </div>
 
       {/* ── Gate Intelligence ── */}
       <div className="bg-white border border-neutral-100 rounded-xl p-5">
         <SectionLabel>Gate Intelligence — Budget Phase Decision</SectionLabel>
+        <StrategicPOV text={r.gate_recommendation} />
 
-        {/* Phase timeline */}
         <div className="mb-5">
           <PhaseTimeline phase={r.campaign_phase} weekRange={r.estimated_campaign_week} />
         </div>
 
-        {/* Gate status + conditions */}
         <div className="flex items-start gap-4 mb-4">
           <div className={`px-3 py-2 rounded-xl ${gate.bg} shrink-0 text-center min-w-[90px]`}>
             <p className={`text-xs font-bold ${gate.text}`}>{gate.label}</p>
@@ -611,73 +599,25 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
           </div>
         </div>
 
-        <p className="text-xs text-neutral-600 leading-relaxed mb-2">{r.gate_recommendation}</p>
-        <div className="grid grid-cols-2 gap-3 mt-3">
+        <div className="grid grid-cols-2 gap-3">
           <div className="bg-neutral-50 border border-neutral-100 rounded-lg px-3 py-2.5">
             <p className="text-[9px] font-bold text-red-500 uppercase tracking-wide mb-1">Primary Risk</p>
             <p className="text-[11px] text-neutral-700 leading-snug">{r.primary_risk}</p>
           </div>
           <div className="bg-neutral-50 border border-neutral-100 rounded-lg px-3 py-2.5">
-            <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-wide mb-1">Efficiency Opportunity</p>
+            <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-wide mb-1">Highest Leverage</p>
             <p className="text-[11px] text-neutral-700 leading-snug">{r.efficiency_opportunity}</p>
           </div>
         </div>
       </div>
 
-      {/* ── ICS Breakdown ── */}
-      <div className="bg-white border border-neutral-100 rounded-xl p-5">
-        <div className="flex items-start justify-between mb-4">
-          <SectionLabel>Idea Certainty Score — Brief Architecture</SectionLabel>
-          <div className="text-right shrink-0">
-            <p className={`text-2xl font-bold ${scoreColor(r.ics_score)}`}>{r.ics_score}</p>
-            <p className={`text-[10px] font-semibold ${
-              r.ics_threshold === "Advance"     ? "text-emerald-700" :
-              r.ics_threshold === "Conditional" ? "text-amber-700" : "text-red-700"
-            }`}>{r.ics_threshold}</p>
-          </div>
-        </div>
-
-        {/* Inferred big idea */}
-        {r.inferred_big_idea && (
-          <div className="border-l-2 border-neutral-300 pl-3 mb-4">
-            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wide mb-0.5">Inferred Campaign Idea</p>
-            <p className="text-xs text-neutral-700 italic">&ldquo;{r.inferred_big_idea}&rdquo;</p>
-          </div>
-        )}
-
-        <div className="space-y-3">
-          {ICS_DIMS.map((dim) => {
-            const score = r.ics_scores[dim.key] ?? 3;
-            const pct = score * 20;
-            const barCol = scoreBarColor(pct);
-            return (
-              <div key={dim.key}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-semibold text-neutral-700">
-                    {dim.label}
-                    <span className="ml-1 text-[10px] font-normal text-neutral-400">({dim.weight}%)</span>
-                  </span>
-                  <span className={`text-[10px] font-bold ${scoreColor(pct)}`}>{score}/5</span>
-                </div>
-                <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden mb-1">
-                  <div className={`${barCol} h-1.5 rounded-full`} style={{ width: `${pct}%` }} />
-                </div>
-                <p className="text-[10px] text-neutral-500 leading-relaxed">{r.ics_reasoning[dim.key]}</p>
-              </div>
-            );
-          })}
-        </div>
-        {r.frame_diagnosis && (
-          <AssessmentBlock text={r.frame_diagnosis} />
-        )}
-      </div>
-
-      {/* ── CMBA Strategic Recommendations ── */}
+      {/* ── Strategic Recommendations ── */}
       <div>
-        <SectionLabel>CMBA Strategic Recommendations</SectionLabel>
+        <SectionLabel>Strategic Recommendations</SectionLabel>
+        <StrategicPOV text={r.primary_risk} />
         <div className="space-y-3">
           {r.recommendations.map((rec) => (
-            <CMBACard
+            <StrategicCard
               key={rec.priority}
               priority={rec.priority}
               title={rec.title}
@@ -713,10 +653,15 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
             This preview used public signals only. Partnership with ShiftImpact OS unlocks all signal dimensions, gate convergence tracking, and confirmed attribution — updated every week of your campaign flight.
           </p>
           <a
-            href="mailto:whyjaninerocks@gmail.com?subject=ShiftImpact OS — Campaign Intelligence Partnership&body=Hi Janine,%0A%0AI reviewed the Campaign Intelligence Preview for [Brand] and would like to explore a partnership.%0A%0A"
-            className="inline-block bg-neutral-900 text-white text-sm font-semibold px-6 py-3 rounded-xl hover:bg-neutral-700 transition-colors"
+            href="https://wa.me/60122147085?text=Hi%20Janine%2C%20I%20reviewed%20the%20Campaign%20Intelligence%20Preview%20and%20would%20like%20to%20explore%20a%20partnership."
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 bg-[#25D366] text-white text-sm font-semibold px-6 py-3 rounded-xl hover:bg-[#1ebe5d] transition-colors"
           >
-            Book a Strategy Call →
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+            </svg>
+            WhatsApp Janine →
           </a>
           <p className="text-[10px] text-neutral-400 mt-3">
             ShiftImpact OS · Malaysia&apos;s first campaign intelligence operating system · Built for CMO-level decisions
