@@ -265,7 +265,7 @@ function StrategicCard({ title, finding, action, impact, priority }: {
   );
 }
 
-// Efficiency impact — cause → effect, divide-y rows
+// Efficiency impact — cause → effect, divide-y rows, stretched body copy
 function EfficiencyImpact({ items }: { items: { label: string; sig: SignalItem }[] }) {
   const WATCH  = ["Below Category", "Below Floor", "Weak", "Declining", "Passive", "Minimal", "Needs Attention"];
   const STRONG = ["Strong", "Lifting", "Active", "Above Benchmark", "Above Floor"];
@@ -282,22 +282,21 @@ function EfficiencyImpact({ items }: { items: { label: string; sig: SignalItem }
   if (!impacts.length) return null;
   return (
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-      <div className="px-6 pt-5 pb-4 border-b border-slate-100 flex items-start justify-between">
-        <div>
-          <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Efficiency Summary</p>
-          <p className="text-xs text-slate-400 mt-1">Where budget is working — and where attention is needed</p>
-        </div>
+      <div className="px-6 pt-5 pb-4 border-b border-slate-100">
+        <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Efficiency Summary</p>
+        <p className="text-xs text-slate-400 mt-1">Where budget is working — and where attention is needed</p>
       </div>
       <div className="divide-y divide-slate-100">
         {impacts.map((item, i) => (
-          <div key={i} className="px-6 py-3.5 flex items-start gap-3">
-            <span className={`text-[9px] font-bold px-2 py-1 rounded-full border shrink-0 mt-0.5
+          <div key={i} className="px-6 py-5 flex items-start gap-3">
+            <span className={`text-[9px] font-bold px-2.5 py-1 rounded-full border shrink-0 mt-1
               ${item.isWatch ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
               {item.isWatch ? "↓ Watch" : "↑ Strong"}
             </span>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              <span className="font-semibold text-slate-800">{item.label}</span> — {item.read}
-            </p>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-800 mb-1">{item.label}</p>
+              <p className="text-sm text-slate-600 leading-relaxed">{item.read}</p>
+            </div>
           </div>
         ))}
       </div>
@@ -735,7 +734,10 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
           <div className="bg-slate-900 px-6 py-4">
             <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Intelligence Gaps</p>
             <p className="text-sm font-semibold text-white">
-              What this preview cannot see — what ShiftImpact OS clients get every week
+              What public signals cannot read
+            </p>
+            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+              These dimensions require confirmed client data — spend records, platform analytics, and campaign tracking — which this public preview does not have access to.
             </p>
           </div>
           <div className="divide-y divide-slate-100">
