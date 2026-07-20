@@ -482,7 +482,7 @@ export function ReviewPlatformSection({
             TripAdvisor
           </p>
           <p className="text-xs text-neutral-400 mb-3">
-            Hospitality + F&B — leave blank if not applicable
+            Hospitality + F&amp;B — leave blank if not applicable
           </p>
           <div className="grid grid-cols-2 gap-3">
             <div>
