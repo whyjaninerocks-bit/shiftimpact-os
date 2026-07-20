@@ -989,6 +989,72 @@ export default async function ClientReportPage({
           )}
         </div>
 
+        {/* ── Signal Convergence Tracker ──────────────────────────────── */}
+        {latestSignal && totalPrimarySignals > 0 && (
+          <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="px-6 pt-5 pb-4 border-b border-slate-100">
+              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Phase Gate Progress</p>
+              <p className="text-xs text-slate-400 mt-1">
+                Signal convergence toward {latestSignal.campaign_phase ? phaseLabel(latestSignal.campaign_phase) : "campaign"} completion criteria
+              </p>
+            </div>
+            <div className="px-6 py-5">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold text-slate-800">
+                  {signalsOnTrack} of {totalPrimarySignals} signals on track for phase gate
+                </p>
+                <span className={`text-xs font-semibold px-3 py-1.5 rounded-full border shrink-0 ${
+                  signalsOnTrack === totalPrimarySignals
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                    : signalsOnTrack >= Math.ceil(totalPrimarySignals * 0.6)
+                    ? "bg-amber-50 border-amber-200 text-amber-700"
+                    : "bg-red-50 border-red-200 text-red-700"
+                }`}>
+                  {signalsOnTrack === totalPrimarySignals
+                    ? "Gate Ready"
+                    : signalsOnTrack >= Math.ceil(totalPrimarySignals * 0.6)
+                    ? "Building"
+                    : "Needs Focus"}
+                </span>
+              </div>
+              <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-4">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    signalsOnTrack === totalPrimarySignals
+                      ? "bg-emerald-500"
+                      : signalsOnTrack >= Math.ceil(totalPrimarySignals * 0.6)
+                      ? "bg-amber-400"
+                      : "bg-red-400"
+                  }`}
+                  style={{ width: `${totalPrimarySignals > 0 ? (signalsOnTrack / totalPrimarySignals) * 100 : 0}%` }}
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {primarySignals.map(({ label, health }) => (
+                  <div key={label} className={`rounded-lg px-3 py-2.5 border text-center ${
+                    health === "Green"
+                      ? "bg-emerald-50 border-emerald-100"
+                      : health === "Amber"
+                      ? "bg-amber-50 border-amber-100"
+                      : health === "Red"
+                      ? "bg-red-50 border-red-100"
+                      : "bg-slate-50 border-slate-100"
+                  }`}>
+                    <span className={`w-2 h-2 rounded-full inline-block mb-1 ${healthDotBg(health as SignalHealth)}`} />
+                    <p className="text-xs font-semibold text-slate-700 leading-tight">{label}</p>
+                    <p className={`text-[10px] font-medium mt-0.5 ${
+                      health === "Green" ? "text-emerald-600"
+                      : health === "Amber" ? "text-amber-600"
+                      : health === "Red" ? "text-red-600"
+                      : "text-slate-400"
+                    }`}>{healthLabel(health as SignalHealth)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── Consumer Journey ──────────────────────────────────────────── */}
         {(latestBehaviour || consumerNarrative.length > 0) && (
           <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -1314,6 +1380,72 @@ export default async function ClientReportPage({
                       </div>
                     )}
                   </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Data Quality Panel ──────────────────────────────────────── */}
+        {latestSignal && (
+          <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="px-6 pt-5 pb-4 border-b border-slate-100">
+              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Data Quality This Period</p>
+              <p className="text-xs text-slate-400 mt-1">Confirmed data inputs used in this report</p>
+            </div>
+            <div className="px-6 py-5 space-y-3">
+              {([
+                {
+                  label: "Signal readings",
+                  confirmed: latestSignal.signal_1_actual_pct !== null || latestSignal.signal_2_actual_pct !== null || latestSignal.signal_3_actual_count !== null,
+                  note: "Weekly platform analytics confirmed",
+                },
+                {
+                  label: "Phase context",
+                  confirmed: !!latestSignal.ai_phase_context,
+                  note: "Campaign phase diagnostic applied",
+                },
+                {
+                  label: "Consumer journey",
+                  confirmed: !!latestBehaviour,
+                  note: "Audience state diagnosis completed",
+                },
+                {
+                  label: "AI brand visibility",
+                  confirmed: !!aiVisibility,
+                  note: "AI assistant discovery audit completed",
+                },
+                {
+                  label: "Social currency",
+                  confirmed: !!socialCurrency,
+                  note: "Content sharing momentum tracked",
+                },
+                {
+                  label: "Business outcomes",
+                  confirmed: populatedOutcomes.length > 0,
+                  note: "Client confirmed results received",
+                },
+                {
+                  label: "Channel intelligence",
+                  confirmed: !!crossChannel,
+                  note: "Multichannel performance read applied",
+                },
+              ] as { label: string; confirmed: boolean; note: string }[]).map(({ label, confirmed, note }) => (
+                <div key={label} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${confirmed ? "bg-emerald-500" : "bg-slate-200"}`} />
+                    <div>
+                      <p className="text-xs font-semibold text-slate-700">{label}</p>
+                      <p className="text-[10px] text-slate-400">{note}</p>
+                    </div>
+                  </div>
+                  <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border shrink-0 ${
+                    confirmed
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                      : "bg-slate-50 border-slate-200 text-slate-400"
+                  }`}>
+                    {confirmed ? "Confirmed" : "Pending"}
+                  </span>
                 </div>
               ))}
             </div>
