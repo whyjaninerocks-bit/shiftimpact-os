@@ -83,29 +83,32 @@ type QuickAudit = {
   created_at: string;
 };
 
-// ─── Colour helpers ───────────────────────────────────────────────────────────
+// ─── Sanitise AI output — strip disallowed terms ──────────────────────────────
+
+function sanitise(r: AuditResult): AuditResult {
+  const json = JSON.stringify(r)
+    .replace(/\bCMOs?\b/g, "senior decision-makers")
+    .replace(/\bC-suite\b/gi, "executive leadership");
+  return JSON.parse(json) as AuditResult;
+}
+
+// ─── Colour helpers — traffic light system only: green / amber / red ──────────
 
 function scoreRingColor(score: number) {
-  if (score >= 75) return "#34d399";
-  if (score >= 55) return "#fbbf24";
-  return "#f87171";
+  if (score >= 75) return "#34d399";   // green
+  if (score >= 50) return "#fbbf24";   // amber
+  return "#f87171";                     // red
 }
 
 function scoreTextColor(score: number) {
   if (score >= 75) return "text-emerald-400";
-  if (score >= 55) return "text-amber-400";
+  if (score >= 50) return "text-amber-400";
   return "text-red-400";
-}
-
-function scoreLabelColor(score: number) {
-  if (score >= 75) return "text-emerald-600";
-  if (score >= 55) return "text-amber-500";
-  return "text-red-500";
 }
 
 function ratingBadge(r: string) {
   if (r === "Strong")   return "bg-emerald-50 border-emerald-200 text-emerald-700";
-  if (r === "On Track") return "bg-sky-50 border-sky-200 text-sky-700";
+  if (r === "On Track") return "bg-amber-50 border-amber-200 text-amber-700";
   if (r === "At Risk")  return "bg-amber-50 border-amber-200 text-amber-700";
   return "bg-red-50 border-red-200 text-red-700";
 }
@@ -116,26 +119,23 @@ function priorityBadge(level: string) {
   return "bg-red-50 border-red-200 text-red-700";
 }
 
+// Traffic light: green = performing, amber = caution, red = underperforming
 function signalStatusColor(status: string) {
-  const STRONG = ["Strong", "Lifting", "Active", "Above Benchmark", "Above Floor"];
-  const STABLE = ["Elevated", "On Par", "At Floor", "Stable", "At Benchmark", "Solid", "Moderate"];
-  const BELOW  = ["Below Category", "Below Floor", "Passive", "Minimal", "Needs Attention"];
-  const WEAK   = ["Weak", "Declining", "Risk"];
-  if (STRONG.includes(status)) return { badge: "bg-emerald-50 text-emerald-700 border-emerald-200", bar: "bg-emerald-500", dot: "bg-emerald-500", dotBg: "bg-emerald-50" };
-  if (STABLE.includes(status)) return { badge: "bg-sky-50 text-sky-700 border-sky-200",             bar: "bg-sky-400",     dot: "bg-sky-400",     dotBg: "bg-sky-50" };
-  if (BELOW.includes(status))  return { badge: "bg-amber-50 text-amber-700 border-amber-200",       bar: "bg-amber-400",   dot: "bg-amber-400",   dotBg: "bg-amber-50" };
-  if (WEAK.includes(status))   return { badge: "bg-red-50 text-red-600 border-red-200",             bar: "bg-red-400",     dot: "bg-red-500",     dotBg: "bg-red-50" };
-  return { badge: "bg-slate-50 text-slate-500 border-slate-200", bar: "bg-slate-300", dot: "bg-slate-300", dotBg: "bg-slate-50" };
+  const GREEN = ["Strong", "Lifting", "Active", "Above Benchmark", "Above Floor", "Elevated"];
+  const AMBER = ["On Par", "Stable", "At Benchmark", "Solid", "Moderate", "At Floor"];
+  const RED   = ["Below Category", "Below Floor", "Passive", "Minimal", "Needs Attention", "Weak", "Declining", "Risk"];
+  if (GREEN.includes(status)) return { badge: "bg-emerald-50 text-emerald-700 border-emerald-200", bar: "bg-emerald-500", dot: "bg-emerald-500", dotBg: "bg-emerald-50" };
+  if (AMBER.includes(status)) return { badge: "bg-amber-50 text-amber-700 border-amber-200",       bar: "bg-amber-400",   dot: "bg-amber-400",   dotBg: "bg-amber-50" };
+  if (RED.includes(status))   return { badge: "bg-red-50 text-red-600 border-red-200",             bar: "bg-red-400",     dot: "bg-red-500",     dotBg: "bg-red-50" };
+  return { badge: "bg-slate-100 text-slate-500 border-slate-200", bar: "bg-slate-300", dot: "bg-slate-300", dotBg: "bg-slate-100" };
 }
 
-function signalStatusScore(status: string): number {
-  const STRONG = ["Strong", "Lifting", "Active", "Above Benchmark", "Above Floor"];
-  const STABLE = ["Elevated", "On Par", "At Floor", "Stable", "At Benchmark", "Solid", "Moderate"];
-  const BELOW  = ["Below Category", "Below Floor", "Passive", "Minimal", "Needs Attention"];
-  if (STRONG.includes(status)) return 85;
-  if (STABLE.includes(status)) return 58;
-  if (BELOW.includes(status))  return 33;
-  return 14;
+function signalBarWidth(status: string): number {
+  const GREEN = ["Strong", "Lifting", "Active", "Above Benchmark", "Above Floor", "Elevated"];
+  const AMBER = ["On Par", "Stable", "At Benchmark", "Solid", "Moderate", "At Floor"];
+  if (GREEN.includes(status)) return 85;
+  if (AMBER.includes(status)) return 55;
+  return 25;
 }
 
 function directionIcon(d: string) {
@@ -147,14 +147,13 @@ function directionIcon(d: string) {
 
 function gateStyle(g: string) {
   if (g === "Advance")             return { bg: "bg-emerald-500", text: "text-white", label: "✓ Advance" };
-  if (g === "Conditional Release") return { bg: "bg-sky-500",     text: "text-white", label: "◐ Conditional" };
-  if (g === "Hold")                return { bg: "bg-amber-500",   text: "text-white", label: "⏸ Hold" };
+  if (g === "Conditional Release") return { bg: "bg-amber-500",   text: "text-white", label: "◐ Conditional" };
+  if (g === "Hold")                return { bg: "bg-amber-600",   text: "text-white", label: "⏸ Hold" };
   return { bg: "bg-red-500", text: "text-white", label: "↺ Pivot" };
 }
 
 // ─── Components ───────────────────────────────────────────────────────────────
 
-// Score ring — matches SaveSmart demo health ring style
 function ScoreRing({ score }: { score: number }) {
   const r = 22;
   const circ = 2 * Math.PI * r;
@@ -173,7 +172,6 @@ function ScoreRing({ score }: { score: number }) {
   );
 }
 
-// Consumer state arc
 function ConsumerStateArc({ currentState }: { currentState: number }) {
   const states = [
     { n: 1, label: "Unaware" },
@@ -206,7 +204,6 @@ function ConsumerStateArc({ currentState }: { currentState: number }) {
   );
 }
 
-// Phase timeline
 function PhaseTimeline({ phase, weekRange }: { phase: string; weekRange: string }) {
   const phases = ["Demand", "Conversion", "Retention"];
   const idx = phases.indexOf(phase);
@@ -228,7 +225,6 @@ function PhaseTimeline({ phase, weekRange }: { phase: string; weekRange: string 
   );
 }
 
-// Two-layer strategic POV — label + blockquote (matches demo Campaign Idea style)
 function StrategicPOV({ header, body }: { header: string; body: string }) {
   return (
     <div className="mb-5">
@@ -240,7 +236,6 @@ function StrategicPOV({ header, body }: { header: string; body: string }) {
   );
 }
 
-// Strategic recommendation card — numbered circle, no dark boxes, matches demo priority style
 function StrategicCard({ title, finding, action, impact, priority }: {
   title: string; finding: string; action: string; impact: string; priority: number;
 }) {
@@ -265,32 +260,31 @@ function StrategicCard({ title, finding, action, impact, priority }: {
   );
 }
 
-// Efficiency impact — cause → effect, divide-y rows, stretched body copy
 function EfficiencyImpact({ items }: { items: { label: string; sig: SignalItem }[] }) {
-  const WATCH  = ["Below Category", "Below Floor", "Weak", "Declining", "Passive", "Minimal", "Needs Attention"];
-  const STRONG = ["Strong", "Lifting", "Active", "Above Benchmark", "Above Floor"];
-  const impacts = items
+  const WATCH = ["Below Category", "Below Floor", "Passive", "Minimal", "Needs Attention", "Weak", "Declining", "Risk"];
+  const GOOD  = ["Strong", "Lifting", "Active", "Above Benchmark", "Above Floor", "Elevated"];
+  const rows = items
     .map(({ label, sig }) => ({
       label,
       read: sig.efficiency_read,
       isWatch: WATCH.includes(sig.status),
-      isStrong: STRONG.includes(sig.status),
+      isGood:  GOOD.includes(sig.status),
     }))
-    .filter(i => i.isWatch || i.isStrong)
+    .filter(i => i.isWatch || i.isGood)
     .sort((a, b) => Number(b.isWatch) - Number(a.isWatch))
     .slice(0, 5);
-  if (!impacts.length) return null;
+  if (!rows.length) return null;
   return (
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
       <div className="px-6 pt-5 pb-4 border-b border-slate-100">
         <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Efficiency Summary</p>
-        <p className="text-xs text-slate-400 mt-1">Where budget is working — and where attention is needed</p>
+        <p className="text-xs text-slate-400 mt-1">Where budget is working and where attention is needed</p>
       </div>
       <div className="divide-y divide-slate-100">
-        {impacts.map((item, i) => (
+        {rows.map((item, i) => (
           <div key={i} className="px-6 py-5 flex items-start gap-3">
             <span className={`text-[9px] font-bold px-2.5 py-1 rounded-full border shrink-0 mt-1
-              ${item.isWatch ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
+              ${item.isWatch ? "bg-red-50 text-red-600 border-red-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
               {item.isWatch ? "↓ Watch" : "↑ Strong"}
             </span>
             <div className="min-w-0">
@@ -314,7 +308,7 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
   if (error || !audit) notFound();
 
   const a = audit as QuickAudit;
-  const r = a.result;
+  const r = sanitise(a.result);
   const gate = gateStyle(r.gate_status);
   const generatedDate = new Date(a.created_at).toLocaleDateString("en-MY", {
     day: "numeric", month: "long", year: "numeric",
@@ -325,11 +319,11 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
     { key: "save_rate",       label: "Save Rate",             always: true },
     { key: "share_rate",      label: "Share Rate",            always: true },
     { key: "branded_search",  label: "Branded Search Lift",   always: true },
-    { key: "kol_earned",      label: "KOL / Earned Media",    always: true },
+    { key: "kol_earned",      label: "KOL Earned Media",      always: true },
     { key: "vcr",             label: "Video Completion Rate", always: false },
     { key: "pr_earned",       label: "PR Coverage",           always: false },
     { key: "review_platform", label: "Review Platform",       always: false },
-    { key: "retail_signal",   label: "Retail / E-commerce",   always: false },
+    { key: "retail_signal",   label: "Retail and E-commerce", always: false },
   ];
 
   const visibleSignals = CORE_SIGNALS.filter(s => {
@@ -338,21 +332,19 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
     return sig?.include === true;
   });
 
-  const STRONG_ST = ["Strong","Lifting","Active","Above Benchmark","Above Floor"];
-  const WATCH_ST  = ["Below Category","Below Floor","Weak","Declining","Passive","Minimal","Needs Attention"];
-  const strongCount = visibleSignals.filter(s => STRONG_ST.includes((r.signals[s.key] as SignalItem).status)).length;
-  const watchCount  = visibleSignals.filter(s => WATCH_ST.includes((r.signals[s.key] as SignalItem).status)).length;
+  const GREEN_ST = ["Strong", "Lifting", "Active", "Above Benchmark", "Above Floor", "Elevated"];
+  const RED_ST   = ["Below Category", "Below Floor", "Passive", "Minimal", "Needs Attention", "Weak", "Declining", "Risk"];
+  const strongCount = visibleSignals.filter(s => GREEN_ST.includes((r.signals[s.key] as SignalItem).status)).length;
+  const watchCount  = visibleSignals.filter(s => RED_ST.includes((r.signals[s.key] as SignalItem).status)).length;
   const aiVisLabel  = r.ai_visibility_label.replace(/^AI-/, "");
 
   return (
-    // Break out of (os) layout padding: -mx-4 sm:-mx-6 -mt-8
     <div className="-mx-4 sm:-mx-6 -mt-8 bg-slate-50 min-h-screen">
 
-      {/* ── DARK HEADER — full bleed, matching demo report ── */}
+      {/* ── DARK HEADER ── */}
       <div className="bg-slate-900 text-white">
         <div className="max-w-3xl mx-auto px-6 pt-8 pb-7">
 
-          {/* Top bar */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2.5">
               <span className="font-bold text-sm tracking-tight">
@@ -372,7 +364,6 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
             </div>
           </div>
 
-          {/* Brand + campaign */}
           <div className="flex items-start justify-between gap-4 mb-5">
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-white leading-tight mb-1">
@@ -391,7 +382,6 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
           {/* 3 glass metric cards */}
           <div className="grid grid-cols-3 gap-3">
 
-            {/* Campaign Score */}
             <div className="flex items-center gap-3 px-4 py-3.5 rounded-xl"
               style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}>
               <ScoreRing score={r.effectiveness_score} />
@@ -404,7 +394,6 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
               </div>
             </div>
 
-            {/* Signal Diagnostic */}
             <div className="px-4 py-3.5 rounded-xl"
               style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}>
               <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wide mb-2.5">Signal Diagnostic</p>
@@ -423,7 +412,7 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
                       <div className="flex-1 h-1.5 rounded-full overflow-hidden"
                         style={{ background: "rgba(255,255,255,0.1)" }}>
                         <div className={`${col.bar} h-1.5 rounded-full`}
-                          style={{ width: `${signalStatusScore(sig.status)}%` }} />
+                          style={{ width: `${signalBarWidth(sig.status)}%` }} />
                       </div>
                       <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${col.badge}`}>
                         {sig.status.split(" ")[0]}
@@ -434,7 +423,6 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
               </div>
             </div>
 
-            {/* Gate */}
             <div className="flex flex-col items-center justify-center gap-2 px-4 py-3.5 rounded-xl"
               style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}>
               <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Gate Status</p>
@@ -446,14 +434,13 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
 
           </div>
 
-          {/* Campaign health strip */}
           <div className="mt-3 flex items-center justify-between px-4 py-2.5 rounded-lg"
             style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Signal Health</span>
               <span className="text-slate-700">·</span>
               <span className="text-[10px] text-slate-500">
-                {strongCount} strong · {watchCount} need attention · from public data only
+                {strongCount} strong · {watchCount} need attention · public proxy reads
               </span>
             </div>
             <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full border"
@@ -468,7 +455,7 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
       {/* ── BODY ── */}
       <div className="max-w-3xl mx-auto px-6 py-7 space-y-5">
 
-        {/* ── Campaign Effectiveness ── */}
+        {/* Campaign Effectiveness */}
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-6 pt-5 pb-4 border-b border-slate-100">
             <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Campaign Effectiveness</p>
@@ -490,10 +477,10 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
           </div>
         </div>
 
-        {/* ── Campaign Engine ── */}
+        {/* Campaign Engine */}
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-6 pt-5 pb-4 border-b border-slate-100">
-            <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Campaign Engine — Media vs Idea</p>
+            <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Campaign Engine: Media and Idea</p>
           </div>
           <div className="px-6 py-5">
             <StrategicPOV
@@ -504,8 +491,8 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
               <span>Media-Compensated</span>
               <span className={`font-semibold px-2.5 py-1 rounded-full border ${
                 r.engine_type === "Idea-Driven" ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                : r.engine_type === "Hybrid"    ? "bg-sky-50 border-sky-200 text-sky-700"
-                :                                 "bg-amber-50 border-amber-200 text-amber-700"
+                : r.engine_type === "Hybrid"    ? "bg-amber-50 border-amber-200 text-amber-700"
+                :                                 "bg-red-50 border-red-200 text-red-700"
               }`}>{r.engine_type}</span>
               <span>Idea-Driven</span>
             </div>
@@ -521,7 +508,7 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
           </div>
         </div>
 
-        {/* ── Consumer State ── */}
+        {/* Consumer State */}
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-6 pt-5 pb-4 border-b border-slate-100">
             <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Consumer Behaviour State</p>
@@ -534,15 +521,13 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
             <ConsumerStateArc currentState={r.consumer_state} />
             <div className="flex items-center gap-2 mb-3">
               <span className="w-2 h-2 rounded-full bg-slate-900 shrink-0" />
-              <p className="text-sm font-bold text-slate-900">
-                Current Stage: {r.consumer_state_name}
-              </p>
+              <p className="text-sm font-bold text-slate-900">Current Stage: {r.consumer_state_name}</p>
             </div>
             <p className="text-sm text-slate-600 leading-relaxed">{r.consumer_state_diagnosis}</p>
           </div>
         </div>
 
-        {/* ── Signal Intelligence ── */}
+        {/* Signal Intelligence */}
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-6 pt-5 pb-4 border-b border-slate-100 flex items-start justify-between">
             <div>
@@ -583,7 +568,7 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
                   <div className="ml-[52px]">
                     <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-3">
                       <div className={`h-full rounded-full ${sc.bar}`}
-                        style={{ width: `${signalStatusScore(sig.status)}%` }} />
+                        style={{ width: `${signalBarWidth(sig.status)}%` }} />
                     </div>
                     <div className="px-3 py-2.5 bg-slate-50 rounded-lg border border-slate-100 space-y-1.5">
                       <div className="flex items-start gap-1.5">
@@ -607,7 +592,7 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
           </div>
         </div>
 
-        {/* ── Audience Intelligence ── */}
+        {/* Audience Intelligence */}
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-6 pt-5 pb-4 border-b border-slate-100">
             <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Audience Intelligence</p>
@@ -624,12 +609,12 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
               </div>
               <div className="flex h-2.5 rounded-full overflow-hidden">
                 <div className="bg-slate-700" style={{ width: `${r.audience_acquisition_pct}%` }} />
-                <div className="bg-sky-400"   style={{ width: `${r.audience_retention_pct}%` }} />
+                <div className="bg-emerald-400" style={{ width: `${r.audience_retention_pct}%` }} />
               </div>
             </div>
             <div className="flex items-center gap-2 mt-3 mb-4">
               <span className={`text-xs font-semibold border px-2.5 py-1 rounded-full ${
-                r.audience_intent === "Balanced" ? "bg-sky-50 border-sky-200 text-sky-700"
+                r.audience_intent === "Balanced" ? "bg-emerald-50 border-emerald-200 text-emerald-700"
                 : "bg-amber-50 border-amber-200 text-amber-700"
               }`}>{r.audience_intent}</span>
             </div>
@@ -637,7 +622,7 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
           </div>
         </div>
 
-        {/* ── AI Brand Visibility ── */}
+        {/* AI Brand Visibility */}
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-6 pt-5 pb-4 border-b border-slate-100 flex items-center justify-between">
             <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">AI Brand Visibility</p>
@@ -648,7 +633,7 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
               header={`${r.ai_visibility_score}/10 · ${aiVisLabel}`}
               body={r.ai_visibility_recommendation}
             />
-            <div className="ml-0 mb-3">
+            <div className="mb-3">
               <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-1.5">
                 <div className={`h-full rounded-full ${
                   r.ai_visibility_score >= 7 ? "bg-emerald-500"
@@ -664,14 +649,14 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
           </div>
         </div>
 
-        {/* ── Gate Intelligence ── */}
+        {/* Gate Intelligence */}
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-6 pt-5 pb-4 border-b border-slate-100">
-            <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Gate Intelligence — Budget Phase Decision</p>
+            <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Gate Intelligence: Budget Phase Decision</p>
           </div>
           <div className="px-6 py-5">
             <StrategicPOV
-              header={`${r.gate_status} — ${r.budget_release_recommendation}`}
+              header={`${r.gate_status}: ${r.budget_release_recommendation}`}
               body={r.gate_recommendation}
             />
             <PhaseTimeline phase={r.campaign_phase} weekRange={r.estimated_campaign_week} />
@@ -692,22 +677,22 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
             ))}
           </div>
           <div className="px-6 pb-5 grid grid-cols-2 gap-3">
-            <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
-              <p className="text-[9px] font-bold text-amber-500 uppercase tracking-wide mb-1">Key Watch</p>
+            <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+              <p className="text-[9px] font-bold text-red-500 uppercase tracking-wide mb-1">Key Watch</p>
               <p className="text-xs text-slate-700 leading-relaxed">{r.primary_risk}</p>
             </div>
-            <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
+            <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
               <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-wide mb-1">Highest Leverage</p>
               <p className="text-xs text-slate-700 leading-relaxed">{r.efficiency_opportunity}</p>
             </div>
           </div>
         </div>
 
-        {/* ── Strategic Recommendations ── */}
+        {/* Strategic Recommendations */}
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-6 pt-5 pb-4 border-b border-slate-100">
             <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Strategic Recommendations</p>
-            <p className="text-xs text-slate-400 mt-1">Highest-leverage actions — ranked by expected business impact</p>
+            <p className="text-xs text-slate-400 mt-1">Highest-leverage actions ranked by expected business impact</p>
           </div>
           <div className="px-6 pt-5 pb-2">
             <StrategicPOV
@@ -729,41 +714,41 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
           </div>
         </div>
 
-        {/* ── Intelligence Gaps ── */}
+        {/* Intelligence Gaps */}
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <div className="bg-slate-900 px-6 py-4">
-            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Intelligence Gaps</p>
-            <p className="text-sm font-semibold text-white">
-              What public signals cannot read
+          <div className="bg-slate-900 px-6 py-5">
+            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Intelligence Gaps</p>
+            <p className="text-sm font-semibold text-white mb-2">
+              What public signals cannot tell us
             </p>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-              These dimensions require confirmed client data — spend records, platform analytics, and campaign tracking — which this public preview does not have access to.
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Each gap below can be answered with confirmed client data. ShiftImpact OS builds this intelligence layer for active campaign partners using your spend records, platform analytics, and first-party campaign tracking.
             </p>
           </div>
           <div className="divide-y divide-slate-100">
             {r.intelligence_gaps.map((gap, i) => (
-              <div key={i} className="px-6 py-3.5 flex items-start gap-3">
+              <div key={i} className="px-6 py-4 flex items-start gap-3">
                 <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
                   <span className="text-[9px] font-bold text-slate-400">?</span>
                 </div>
-                <p className="text-xs text-slate-600 leading-relaxed">{gap}</p>
+                <p className="text-sm text-slate-600 leading-relaxed">{gap}</p>
               </div>
             ))}
           </div>
         </div>
 
-        {/* ── Efficiency Summary — standalone before CTA ── */}
+        {/* Efficiency Summary */}
         <EfficiencyImpact
           items={visibleSignals.map(s => ({ label: s.label, sig: r.signals[s.key] as SignalItem }))}
         />
 
-        {/* ── CTA ── */}
+        {/* CTA */}
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm px-6 py-7 text-center">
           <p className="text-sm font-semibold text-slate-900 mb-1.5">
-            Get full campaign intelligence — confirmed, weekly, with attribution.
+            Get full campaign intelligence. Confirmed, weekly, with attribution.
           </p>
-          <p className="text-xs text-slate-400 mb-5 max-w-sm mx-auto leading-relaxed">
-            This preview used public signals only. ShiftImpact OS partnership unlocks all signal dimensions, gate convergence tracking, and confirmed attribution — updated every week of your campaign flight.
+          <p className="text-sm text-slate-500 mb-5 max-w-sm mx-auto leading-relaxed">
+            This preview used public signals only. ShiftImpact OS partnership unlocks all signal dimensions, gate convergence tracking, and confirmed attribution updated every week of your campaign flight.
           </p>
           <a
             href="https://wa.me/60122147085?text=Hi%2C%20I%20reviewed%20the%20Campaign%20Intelligence%20Preview%20and%20would%20like%20to%20explore%20a%20partnership."
