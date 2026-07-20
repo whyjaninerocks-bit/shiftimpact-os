@@ -6,10 +6,11 @@
 // Sits immediately after CampaignInfoSection in the campaign page.
 // Strategy lead + client configure how each signal's data will be sourced.
 //
-// Three modes per signal:
-//   confirmed — client provides actual data (100% confidence)
-//   indexed   — client provides directional signals (85% confidence)
-//   proxied   — OS derives from public sources (70% confidence)
+// Four modes per signal:
+//   confirmed      — client provides actual data (100% confidence)
+//   indexed        — client provides directional signals when asked (85% confidence)
+//   stable_default — baseline set once at setup; assumed stable unless client flags change (80% confidence)
+//   proxied        — OS derives from public sources (70% confidence)
 //
 // Review Platform, AI Brand Visibility, Social Currency are always public —
 // they show as auto-confirmed/proxied and cannot be changed.
@@ -140,20 +141,23 @@ const AUTO_SIGNALS = [
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function modeColor(mode: DataMode): string {
-  if (mode === "confirmed") return "text-emerald-700 bg-emerald-50 border-emerald-200";
-  if (mode === "indexed")   return "text-amber-700 bg-amber-50 border-amber-200";
+  if (mode === "confirmed")      return "text-emerald-700 bg-emerald-50 border-emerald-200";
+  if (mode === "indexed")        return "text-amber-700 bg-amber-50 border-amber-200";
+  if (mode === "stable_default") return "text-blue-700 bg-blue-50 border-blue-200";
   return "text-slate-600 bg-slate-50 border-slate-200";
 }
 
 function modeLabel(mode: DataMode): string {
-  if (mode === "confirmed") return "✓ Confirmed";
-  if (mode === "indexed")   return "↕ Indexed";
+  if (mode === "confirmed")      return "✓ Confirmed";
+  if (mode === "indexed")        return "↕ Indexed";
+  if (mode === "stable_default") return "◉ Stable Default";
   return "◎ Proxied";
 }
 
 function confidenceLabel(mode: DataMode): string {
-  if (mode === "confirmed") return "100% confidence";
-  if (mode === "indexed")   return "85% confidence";
+  if (mode === "confirmed")      return "100% confidence";
+  if (mode === "indexed")        return "85% confidence";
+  if (mode === "stable_default") return "80% confidence";
   return "70% confidence";
 }
 
@@ -289,6 +293,9 @@ export function DataSourceSetupSection({
                       {sig.allowIndexed && (
                         <option value="indexed">↕ Indexed — Directional signals only</option>
                       )}
+                      {sig.allowIndexed && (
+                        <option value="stable_default">◉ Stable Default — Baseline set once, assumed stable</option>
+                      )}
                       {sig.allowProxied && (
                         <option value="proxied">◎ Proxied — Use public source</option>
                       )}
@@ -356,6 +363,22 @@ export function DataSourceSetupSection({
                         </div>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Sub-panel: Stable Default */}
+                {mode === "stable_default" && (
+                  <div className="mt-3 px-3 py-2.5 rounded-lg bg-blue-50 border border-blue-100 space-y-1.5">
+                    <p className="text-xs text-blue-800 font-medium">
+                      Baseline set once at campaign start — OS assumes this signal is stable week-on-week.
+                    </p>
+                    <p className="text-xs text-blue-700">
+                      You only need to flag a change if something meaningfully shifts mid-campaign.
+                      Use the Setup Notes field below to describe the baseline context.
+                    </p>
+                    <p className="text-xs text-blue-500">
+                      80% confidence weighting · Labelled as Stable Default in all outputs
+                    </p>
                   </div>
                 )}
 

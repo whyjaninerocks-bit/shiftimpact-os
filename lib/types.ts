@@ -1214,7 +1214,7 @@ export type ReviewPlatformScore = {
 // indexed   = client provides directional signals (85% confidence weight)
 // proxied   = OS derives from public sources (70% confidence weight)
 
-export type DataMode = "confirmed" | "indexed" | "proxied";
+export type DataMode = "confirmed" | "indexed" | "stable_default" | "proxied";
 
 export type DataPreferences = {
   id: string;
