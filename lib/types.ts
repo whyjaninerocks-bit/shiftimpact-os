@@ -1157,3 +1157,53 @@ export type SocialCurrencyScore = {
   build_action: string | null;  // INTERNAL ONLY
   created_at: string;
 };
+
+// ─── F-Review — Review Platform Intelligence (Sprint 30) ─────────────────────
+// Google Reviews + TripAdvisor (hospitality only).
+// TripAdvisor fields are nullable — only populated for hospitality clients.
+//
+// ACCESS RULES:
+//   review_health_score + trend_direction + ai_narrative: client-shareable
+//   dimension scores (google_score, ta_score, etc.) + action_recommendation: INTERNAL ONLY
+
+export type ReviewTrendDirection = "Improving" | "Stable" | "Declining";
+
+export type ReviewPlatformScore = {
+  id: string;
+  campaign_id: string;
+  week_number: number;
+
+  // Google Reviews
+  google_rating: number | null;
+  google_review_count_total: number | null;
+  google_review_count_period: number | null;
+  google_avg_rating_period: number | null;
+
+  // TripAdvisor (hospitality only — nullable for all other categories)
+  tripadvisor_rating: number | null;
+  tripadvisor_review_count_total: number | null;
+  tripadvisor_review_count_period: number | null;
+  tripadvisor_avg_rating_period: number | null;
+
+  // Sentiment
+  sentiment_positive_pct: number | null;
+  sentiment_neutral_pct: number | null;
+  sentiment_negative_pct: number | null;
+
+  // Management
+  management_response_rate_pct: number | null;
+
+  // Review themes
+  top_positive_themes: string[] | null;
+  top_negative_themes: string[] | null;
+
+  // Composite — CLIENT SAFE
+  review_health_score: number | null;
+  trend_direction: ReviewTrendDirection | null;
+
+  // AI outputs
+  ai_narrative: string | null;          // client-shareable
+  action_recommendation: string | null; // INTERNAL ONLY
+
+  created_at: string;
+};
