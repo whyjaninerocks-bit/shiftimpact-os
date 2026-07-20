@@ -1207,3 +1207,55 @@ export type ReviewPlatformScore = {
 
   created_at: string;
 };
+
+// ─── Data Source Preferences (Feature 34 — Sprint 31) ────────────────────────
+// Per-campaign, per-signal data source mode.
+// confirmed = client provides actual data (100% confidence weight)
+// indexed   = client provides directional signals (85% confidence weight)
+// proxied   = OS derives from public sources (70% confidence weight)
+
+export type DataMode = "confirmed" | "indexed" | "proxied";
+
+export type DataPreferences = {
+  id: string;
+  campaign_id: string;
+
+  // Signal 1 — SOV
+  mode_sov: DataMode;
+  indexed_sov_direction: "Higher" | "Same" | "Lower" | null;
+  indexed_sov_pct: number | null;
+
+  // Signal 2 — Save Rate
+  mode_save_rate: DataMode;
+  indexed_save_rate_direction: "Higher" | "Same" | "Lower" | null;
+
+  // Signal 2B — Share Rate
+  mode_share_rate: DataMode;
+  indexed_share_rate_direction: "Higher" | "Same" | "Lower" | null;
+
+  // Signal 3 — Branded Search
+  mode_branded_search: DataMode;
+  indexed_branded_search_direction: "Higher" | "Same" | "Lower" | null;
+  indexed_branded_search_pct: number | null;
+
+  // Signal 3B — VCR
+  mode_vcr: DataMode;
+  indexed_vcr_direction: "Higher" | "Same" | "Lower" | null;
+
+  // Signal 4 — Retention
+  mode_retention: DataMode;
+  indexed_retention_direction: "Higher" | "Same" | "Lower" | null;
+
+  // Attribution
+  mode_attribution: DataMode;
+  indexed_attribution_direction: "Higher" | "Same" | "Lower" | null;
+
+  // Media Spend (no proxied option)
+  mode_media_spend: "confirmed" | "indexed";
+
+  // Notes
+  setup_notes: string | null;
+
+  created_at: string;
+  updated_at: string;
+};

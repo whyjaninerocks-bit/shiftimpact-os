@@ -28,6 +28,7 @@ import {
   getSocialCurrencyScore,
   getLatestConsumerStateReading,
   getBrandAssets,
+  getDataPreferences,
 } from "@/lib/data";
 import { getLatestReviewPlatformScore } from "@/lib/data-review-platform";
 import { Badge, ErrorBanner, gateSignalTone, phaseTone } from "@/app/_components/ui";
@@ -57,11 +58,13 @@ import { SignalLayer0Section } from "./_components/SignalLayer0Section";
 import { AiBrandVisibilitySection } from "./_components/AiBrandVisibilitySection";
 import { SocialCurrencySection } from "./_components/SocialCurrencySection";
 import { ReviewPlatformSection } from "./_components/ReviewPlatformSection";
+import { DataSourceSetupSection } from "./_components/DataSourceSetupSection";
 import { CstrSection } from "./_components/CstrSection";
 import { DbaSection } from "./_components/DbaSection";
 
 const sectionLinks = [
   { href: "#info", label: "Campaign" },
+  { href: "#data-configuration", label: "Data Config" },
   { href: "#frame", label: "FRAME Brief" },
   { href: "#bip", label: "Big Idea Platform" },
   { href: "#iq-evaluate", label: "IQ Evaluate ✦" },
@@ -107,7 +110,7 @@ export default async function CampaignDetailPage({
 
   const clientChannels = await getClientChannels(campaign.client_id);
 
-  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions, bip, signalThreshold, signalReports, campaignChannels, crossChannelReports, allChannelProfiles, behaviourStates, marketContexts, attributionRecords, consumerSnapshot, iqEvaluation, mdhRecords, aiBrandVisibilityScore, socialCurrencyScore, latestCstrReading, brandAssets, reviewScore] = await Promise.all([
+  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions, bip, signalThreshold, signalReports, campaignChannels, crossChannelReports, allChannelProfiles, behaviourStates, marketContexts, attributionRecords, consumerSnapshot, iqEvaluation, mdhRecords, aiBrandVisibilityScore, socialCurrencyScore, latestCstrReading, brandAssets, reviewScore, dataPreferences] = await Promise.all([
     getKillSwitches(frame.id),
     getStageBriefs(id),
     getPhaseGates(id),
@@ -133,6 +136,7 @@ export default async function CampaignDetailPage({
     getLatestConsumerStateReading(id),
     getBrandAssets(campaign.client_id),
     getLatestReviewPlatformScore(id),
+    getDataPreferences(id),
   ]);
 
   const latestSignalWeek = signalReports[0]?.week_number ?? null;
@@ -170,6 +174,7 @@ export default async function CampaignDetailPage({
       </nav>
 
       <CampaignInfoSection campaign={campaign} teamMembers={teamMembers} />
+      <DataSourceSetupSection campaignId={id} initialPrefs={dataPreferences} />
       <FrameBriefSection campaignId={id} frame={frame} />
       {bip && <BigIdeaPlatformSection campaignId={id} frame={frame} bip={bip} />}
       {bip && (

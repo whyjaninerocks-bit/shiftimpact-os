@@ -655,3 +655,22 @@ export async function getLatestCampaignReport(
     created_at: data.created_at,
   };
 }
+
+// ─── F34 — Data Source Preferences (Sprint 31) ───────────────────────────────
+// Returns the data source preference configuration for a campaign, or null
+// if the strategy lead has not yet completed setup.
+export async function getDataPreferences(
+  campaignId: string
+): Promise<import("./types").DataPreferences | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("campaign_data_preferences")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .maybeSingle();
+  if (error) {
+    console.error("getDataPreferences error:", error.message);
+    return null;
+  }
+  return data as import("./types").DataPreferences | null;
+}
