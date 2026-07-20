@@ -99,12 +99,6 @@ function scoreColor(score: number) {
   return "text-red-600";
 }
 
-function scoreBarColor(score: number) {
-  if (score >= 75) return "bg-emerald-500";
-  if (score >= 55) return "bg-amber-400";
-  return "bg-red-400";
-}
-
 function signalStatusColor(status: string) {
   if (["Strong", "Lifting", "Active", "Above Benchmark", "Above Floor"].includes(status))
     return { badge: "bg-emerald-50 text-emerald-700 border-emerald-200", bar: "bg-emerald-500" };
@@ -246,6 +240,54 @@ function PhaseTimeline({ phase, weekRange }: { phase: string; weekRange: string 
   );
 }
 
+// ── StrategicPOV: scannable header + narrative body ───────────────────────────
+function StrategicPOV({ header, body }: { header: string; body: string }) {
+  return (
+    <div className="border-l-[3px] border-neutral-900 pl-4 mb-5">
+      <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1.5">{header}</p>
+      <p className="text-[13px] font-semibold text-neutral-900 leading-snug">{body}</p>
+    </div>
+  );
+}
+
+// ── EfficiencyImpact: cause → effect for each notable signal ──────────────────
+function EfficiencyImpact({ items }: { items: { label: string; sig: SignalItem }[] }) {
+  const RISK_STATUSES = ["Below Category", "Below Floor", "Weak", "Declining", "Passive", "Minimal", "Needs Attention"];
+  const GAIN_STATUSES = ["Strong", "Lifting", "Active", "Above Benchmark", "Above Floor"];
+
+  const impacts = items
+    .map(({ label, sig }) => ({
+      label,
+      efficiency_read: sig.efficiency_read,
+      isRisk: RISK_STATUSES.includes(sig.status),
+      isGain: GAIN_STATUSES.includes(sig.status),
+    }))
+    .filter(i => i.isRisk || i.isGain)
+    .sort((a, b) => Number(b.isRisk) - Number(a.isRisk)) // risks first
+    .slice(0, 4);
+
+  if (!impacts.length) return null;
+
+  return (
+    <div className="mt-5 border border-neutral-200 rounded-xl p-4 bg-neutral-50">
+      <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3">Efficiency Impact</p>
+      <div className="space-y-2.5">
+        {impacts.map((item, i) => (
+          <div key={i} className="flex items-start gap-2.5">
+            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border shrink-0 mt-0.5
+              ${item.isRisk ? "bg-red-50 text-red-600 border-red-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
+              {item.isRisk ? "↓ RISK" : "↑ GAIN"}
+            </span>
+            <p className="text-[11px] leading-relaxed text-neutral-600">
+              <span className="font-semibold text-neutral-800">{item.label}</span> — {item.efficiency_read}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function StrategicCard({ title, finding, action, impact, priority }: {
   title: string; finding: string; action: string; impact: string; priority: number;
 }) {
@@ -281,14 +323,6 @@ function StrategicCard({ title, finding, action, impact, priority }: {
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3">{children}</p>
-  );
-}
-
-function StrategicPOV({ text }: { text: string }) {
-  return (
-    <div className="border-l-[3px] border-neutral-900 pl-4 mb-5">
-      <p className="text-[13px] font-semibold text-neutral-900 leading-snug">{text}</p>
-    </div>
   );
 }
 
@@ -331,6 +365,12 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
     const sig = r.signals[s.key] as SignalItem & { include?: boolean };
     return sig?.include === true;
   });
+
+  // Signal health counts for StrategicPOV header
+  const STRONG = ["Strong", "Lifting", "Active", "Above Benchmark", "Above Floor"];
+  const AT_RISK = ["Below Category", "Below Floor", "Weak", "Declining", "Passive", "Minimal", "Needs Attention"];
+  const strongCount = visibleSignals.filter(s => STRONG.includes((r.signals[s.key] as SignalItem).status)).length;
+  const atRiskCount = visibleSignals.filter(s => AT_RISK.includes((r.signals[s.key] as SignalItem).status)).length;
 
   return (
     <div className="max-w-3xl mx-auto py-8 px-4 space-y-6">
@@ -401,7 +441,10 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
       {/* ── Campaign Effectiveness ── */}
       <div className="bg-white border border-neutral-100 rounded-xl p-5">
         <SectionLabel>Campaign Effectiveness Diagnosis</SectionLabel>
-        <StrategicPOV text={r.effectiveness_headline} />
+        <StrategicPOV
+          header={`${r.effectiveness_rating} · ${r.risk_level} Risk`}
+          body={r.effectiveness_headline}
+        />
         <div className="flex items-start gap-5">
           <div className="shrink-0 text-center">
             <ScoreGauge score={r.effectiveness_score} size={130} />
@@ -424,7 +467,10 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
       {/* ── Campaign Engine ── */}
       <div className="bg-white border border-neutral-100 rounded-xl p-5">
         <SectionLabel>Campaign Engine — Media vs Idea</SectionLabel>
-        <StrategicPOV text={r.engine_recommendation} />
+        <StrategicPOV
+          header={`${r.engine_type} — ${r.engine_media_pct}% Media / ${r.engine_idea_pct}% Idea`}
+          body={r.engine_recommendation}
+        />
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-semibold text-neutral-700">{r.engine_type}</span>
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
@@ -451,7 +497,10 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
       {/* ── Consumer State ── */}
       <div className="bg-white border border-neutral-100 rounded-xl p-5">
         <SectionLabel>Consumer Behaviour State</SectionLabel>
-        <StrategicPOV text={r.consumer_state_recommendation} />
+        <StrategicPOV
+          header={`State ${r.consumer_state} — ${r.consumer_state_name}`}
+          body={r.consumer_state_recommendation}
+        />
         <div className="mb-4">
           <ConsumerStateArc currentState={r.consumer_state} />
         </div>
@@ -471,7 +520,10 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
       {/* ── Signal Health ── */}
       <div className="bg-white border border-neutral-100 rounded-xl p-5">
         <SectionLabel>Signal Intelligence — Public Proxy Reads</SectionLabel>
-        <StrategicPOV text={r.efficiency_opportunity} />
+        <StrategicPOV
+          header={`${strongCount} Signal${strongCount !== 1 ? "s" : ""} Strong · ${atRiskCount} At Risk`}
+          body={r.efficiency_opportunity}
+        />
         <div className="space-y-4">
           {visibleSignals.map((s) => {
             const sig = r.signals[s.key] as SignalItem;
@@ -514,6 +566,12 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
             );
           })}
         </div>
+
+        {/* Efficiency Impact — cause → effect summary */}
+        <EfficiencyImpact
+          items={visibleSignals.map(s => ({ label: s.label, sig: r.signals[s.key] as SignalItem }))}
+        />
+
         <p className="text-[10px] text-neutral-400 text-center mt-3">
           All signal reads derived from public sources. Confirmed client data unlocks 8 additional signal dimensions.
         </p>
@@ -522,7 +580,10 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
       {/* ── Audience Intelligence ── */}
       <div className="bg-white border border-neutral-100 rounded-xl p-5">
         <SectionLabel>Audience Intelligence — Acquisition vs Retention</SectionLabel>
-        <StrategicPOV text={r.audience_recommendation} />
+        <StrategicPOV
+          header={`${r.audience_intent} · ${r.audience_acquisition_pct}% Acquisition Focus`}
+          body={r.audience_recommendation}
+        />
         <div className="flex items-center gap-3 mb-3">
           <div className="flex-1">
             <div className="flex justify-between text-[10px] font-semibold text-neutral-600 mb-1">
@@ -545,7 +606,10 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
       {/* ── AI Brand Visibility ── */}
       <div className="bg-white border border-neutral-100 rounded-xl p-5">
         <SectionLabel>AI Brand Visibility</SectionLabel>
-        <StrategicPOV text={r.ai_visibility_recommendation} />
+        <StrategicPOV
+          header={`${r.ai_visibility_label} — ${r.ai_visibility_score}/10`}
+          body={r.ai_visibility_recommendation}
+        />
         <div className="flex items-center gap-4">
           <div className="text-center shrink-0">
             <p className={`text-4xl font-bold ${scoreColor(r.ai_visibility_score * 10)}`}>
@@ -571,7 +635,10 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
       {/* ── Gate Intelligence ── */}
       <div className="bg-white border border-neutral-100 rounded-xl p-5">
         <SectionLabel>Gate Intelligence — Budget Phase Decision</SectionLabel>
-        <StrategicPOV text={r.gate_recommendation} />
+        <StrategicPOV
+          header={`Gate Decision: ${r.gate_status}`}
+          body={r.gate_recommendation}
+        />
 
         <div className="mb-5">
           <PhaseTimeline phase={r.campaign_phase} weekRange={r.estimated_campaign_week} />
@@ -614,7 +681,10 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
       {/* ── Strategic Recommendations ── */}
       <div>
         <SectionLabel>Strategic Recommendations</SectionLabel>
-        <StrategicPOV text={r.primary_risk} />
+        <StrategicPOV
+          header={`${r.risk_level} Risk · ${r.recommendations.length} Strategic Priorities`}
+          body={r.primary_risk}
+        />
         <div className="space-y-3">
           {r.recommendations.map((rec) => (
             <StrategicCard
@@ -661,10 +731,10 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
             </svg>
-            WhatsApp Janine →
+            Book a Strategy Call →
           </a>
           <p className="text-[10px] text-neutral-400 mt-3">
-            ShiftImpact OS · Malaysia&apos;s first campaign intelligence operating system · Built for CMO-level decisions
+            ShiftImpact OS · Malaysia&apos;s first campaign intelligence operating system · Built for marketing and business leaders
           </p>
         </div>
       </div>
