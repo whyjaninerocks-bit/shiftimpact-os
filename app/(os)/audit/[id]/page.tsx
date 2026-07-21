@@ -1,3 +1,17 @@
+// app/(os)/audit/[id]/page.tsx — Campaign Intelligence Preview (public-signals version)
+//
+// GOVERNANCE — this report intentionally exposes gate_status and gate_conditions
+// because this is a prospect-facing preview product built on public proxy signals,
+// not a confirmed-data client report. Different exposure rules from /report/[id].
+//
+// GOVERNANCE — never exposes (fields exist in AuditResult type but are NOT rendered):
+//   ics_score, ics_threshold, ics_scores, ics_reasoning — IQ Evaluate internal only
+//   budget_* fields from CrossChannelReport (not applicable here — audit has its own budget_release_recommendation)
+//   CMO / C-suite — stripped server-side by sanitise() before any render
+//
+// COPY RULES — no dashes or hyphens in hardcoded UI strings (locked July 2026)
+//   traffic light colours only: emerald = performing, amber = caution, red = action needed
+
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 

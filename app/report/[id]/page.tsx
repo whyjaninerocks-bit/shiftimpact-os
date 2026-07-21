@@ -60,10 +60,10 @@ function healthLabel(h: SignalHealth | null | undefined): string {
 }
 
 function phaseLabel(phase: number | null | undefined): string {
-  if (phase === 1) return "Phase 1 — Launch";
-  if (phase === 2) return "Phase 2 — Build";
-  if (phase === 3) return "Phase 3 — Peak";
-  if (phase === 4) return "Phase 4 — Close";
+  if (phase === 1) return "Phase 1: Launch";
+  if (phase === 2) return "Phase 2: Build";
+  if (phase === 3) return "Phase 3: Peak";
+  if (phase === 4) return "Phase 4: Close";
   return "Active";
 }
 
@@ -767,6 +767,21 @@ export default async function ClientReportPage({
             )}
           </div>
 
+          {/* Baseline suppression notice — shown when flags_suppressed = true (short campaign / pre-Phase 2) */}
+          {latestSignal?.flags_suppressed && (
+            <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-start gap-3">
+              <svg className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1">Baseline Period</p>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Signals are being calibrated against pre-campaign baseline. Health status will activate from next reporting period. Readings shown below are reference only.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Phase context */}
           {latestSignal?.ai_phase_context && (
             <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-start gap-3">
@@ -834,23 +849,32 @@ export default async function ClientReportPage({
           ) : (
             <>
               <div className="divide-y divide-slate-100">
-                {primarySignals.map(({ label, sub, health, actual, target, pct, gap, delta, deltaUnit, projection, businessNote, goalContext }) => (
+                {primarySignals.map(({ label, sub, health, actual, target, pct, gap, delta, deltaUnit, projection, businessNote, goalContext }) => {
+                  // During baseline suppression period, mute health status display
+                  const displayHealth: SignalHealth = latestSignal?.flags_suppressed ? null as unknown as SignalHealth : health;
+                  return (
                   <div key={label} className="px-6 py-5">
 
                     {/* Signal header */}
                     <div className="flex items-center justify-between gap-4 mb-3">
                       <div className="flex items-center gap-3.5 min-w-0">
-                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${healthIconBg(health)}`}>
-                          <span className={`w-3 h-3 rounded-full ${healthDotBg(health)}`} />
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${latestSignal?.flags_suppressed ? "bg-slate-50" : healthIconBg(health)}`}>
+                          <span className={`w-3 h-3 rounded-full ${latestSignal?.flags_suppressed ? "bg-slate-200" : healthDotBg(health)}`} />
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-slate-800">{label}</p>
                           <p className="text-xs text-slate-400 mt-0.5">{sub}</p>
                         </div>
                       </div>
-                      <span className={`text-xs font-semibold px-3 py-1.5 rounded-full border shrink-0 ${healthBadge(health)}`}>
-                        {healthLabel(health)}
-                      </span>
+                      {latestSignal?.flags_suppressed ? (
+                        <span className="text-xs font-semibold px-3 py-1.5 rounded-full border shrink-0 bg-slate-50 border-slate-200 text-slate-400">
+                          Calibrating
+                        </span>
+                      ) : (
+                        <span className={`text-xs font-semibold px-3 py-1.5 rounded-full border shrink-0 ${healthBadge(displayHealth)}`}>
+                          {healthLabel(displayHealth)}
+                        </span>
+                      )}
                     </div>
 
                     {/* Goal line */}
@@ -909,7 +933,8 @@ export default async function ClientReportPage({
                       {businessNote}
                     </p>
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Supplementary signals */}
@@ -1121,7 +1146,7 @@ export default async function ClientReportPage({
           <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div className="px-6 pt-5 pb-4 border-b border-slate-100">
               <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Brand Intelligence</p>
-              <p className="text-xs text-slate-400 mt-1">Share of voice, AI visibility, and social currency — the pillars of long-term market share</p>
+              <p className="text-xs text-slate-400 mt-1">Share of voice, AI visibility, and social currency: the pillars of long-term market share</p>
             </div>
             <div className="divide-y divide-slate-100">
 
