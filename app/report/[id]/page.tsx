@@ -1,5 +1,12 @@
-// app/report/[id]/page.tsx — Sprint 29
+// app/report/[id]/page.tsx — Sprint 29 / Sprint 32 QC pass
 // PUBLIC — client-facing campaign intelligence report.
+//
+// Sprint 32 QC additions:
+//   5. MDH quarantine check (Signal Layer 0) — fetches signal_media_delivery for current week.
+//      When quarantine_active = true: shows "Media Delivery Under Review" red notice, mutes
+//      all signal health badges to "Under Review". Per PRD addendum Signal Layer 0 spec:
+//      "When MDH = RED, Signal 1-3 readings are quarantined. Report states delivery status only."
+//      Order: MDH notice → baseline suppression notice → phase context → signal cards.
 //
 // Sprint 29 additions:
 //   1. Brand Health Indicator (header strip) — BrandMomentumScore bms_direction + bms_velocity
@@ -45,6 +52,7 @@ import {
   getCrossChannelReports,
   getSignalMarketContexts,
   getBrandMomentumScores,
+  getMediaDeliveryRecords,
 } from "@/lib/data";
 import type { SignalHealth } from "@/lib/types";
 
@@ -360,6 +368,7 @@ export default async function ClientReportPage({
     behaviourStates, consumerReading,
     aiVisibility, socialCurrency,
     businessOutcomes, crossChannelReports, marketContexts, brandMomentumScores,
+    mediaDeliveryRecords,
   ] = await Promise.all([
     getFrameBrief(params.id),
     getBigIdeaPlatform(params.id),
@@ -374,6 +383,7 @@ export default async function ClientReportPage({
     getCrossChannelReports(params.id),
     getSignalMarketContexts(params.id),
     getBrandMomentumScores(campaign.client_id),
+    getMediaDeliveryRecords(params.id),
   ]);
 
   // Latest and previous week data
@@ -406,6 +416,14 @@ export default async function ClientReportPage({
   const currentWeek  = latestSignal?.week_number ?? 0;
   const weeksRemaining = totalWeeks ? totalWeeks - currentWeek : null;
   const campaignPct  = totalWeeks && currentWeek ? Math.round((currentWeek / totalWeeks) * 100) : null;
+
+  // ── MDH quarantine check (Signal Layer 0) ────────────────────────────────
+  // Match MDH record to the current signal week; fall back to most recent.
+  // When quarantine_active = true, signal health badges are suppressed and the
+  // report states delivery status only — per PRD addendum Signal Layer 0 spec.
+  const currentWeekMdh = mediaDeliveryRecords.find((r) => r.week_number === currentWeek)
+    ?? mediaDeliveryRecords[0] ?? null;
+  const mdhQuarantine = currentWeekMdh?.quarantine_active === true;
 
   // ── Signal values — current and previous ─────────────────────────────────
   const s1A = latestSignal?.signal_1_actual_pct;
@@ -767,6 +785,22 @@ export default async function ClientReportPage({
             )}
           </div>
 
+          {/* MDH quarantine notice — shown when Signal Layer 0 quarantine is active */}
+          {/* Per PRD addendum: when MDH = RED, report states delivery status only. Signals are NOT interpreted. */}
+          {mdhQuarantine && (
+            <div className="px-6 py-4 bg-red-50 border-b border-red-100 flex items-start gap-3">
+              <svg className="w-4 h-4 text-red-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div>
+                <p className="text-xs font-semibold text-red-700 uppercase tracking-wide mb-1">Media Delivery Under Review</p>
+                <p className="text-xs text-red-600 leading-relaxed">
+                  Campaign reach did not meet the minimum threshold required to interpret signals reliably this week. Signal readings below are recorded for reference. Health status will activate once sufficient audience reach is confirmed.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Baseline suppression notice — shown when flags_suppressed = true (short campaign / pre-Phase 2) */}
           {latestSignal?.flags_suppressed && (
             <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-start gap-3">
@@ -850,16 +884,17 @@ export default async function ClientReportPage({
             <>
               <div className="divide-y divide-slate-100">
                 {primarySignals.map(({ label, sub, health, actual, target, pct, gap, delta, deltaUnit, projection, businessNote, goalContext }) => {
-                  // During baseline suppression period, mute health status display
-                  const displayHealth: SignalHealth = latestSignal?.flags_suppressed ? null as unknown as SignalHealth : health;
+                  // Mute health status during baseline suppression OR MDH quarantine
+                  const healthMuted = latestSignal?.flags_suppressed || mdhQuarantine;
+                  const displayHealth: SignalHealth = healthMuted ? null as unknown as SignalHealth : health;
                   return (
                   <div key={label} className="px-6 py-5">
 
                     {/* Signal header */}
                     <div className="flex items-center justify-between gap-4 mb-3">
                       <div className="flex items-center gap-3.5 min-w-0">
-                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${latestSignal?.flags_suppressed ? "bg-slate-50" : healthIconBg(health)}`}>
-                          <span className={`w-3 h-3 rounded-full ${latestSignal?.flags_suppressed ? "bg-slate-200" : healthDotBg(health)}`} />
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${healthMuted ? "bg-slate-50" : healthIconBg(health)}`}>
+                          <span className={`w-3 h-3 rounded-full ${healthMuted ? "bg-slate-200" : healthDotBg(health)}`} />
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-slate-800">{label}</p>
@@ -869,6 +904,10 @@ export default async function ClientReportPage({
                       {latestSignal?.flags_suppressed ? (
                         <span className="text-xs font-semibold px-3 py-1.5 rounded-full border shrink-0 bg-slate-50 border-slate-200 text-slate-400">
                           Calibrating
+                        </span>
+                      ) : mdhQuarantine ? (
+                        <span className="text-xs font-semibold px-3 py-1.5 rounded-full border shrink-0 bg-red-50 border-red-200 text-red-500">
+                          Under Review
                         </span>
                       ) : (
                         <span className={`text-xs font-semibold px-3 py-1.5 rounded-full border shrink-0 ${healthBadge(displayHealth)}`}>
