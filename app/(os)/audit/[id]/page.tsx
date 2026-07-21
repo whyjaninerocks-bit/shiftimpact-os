@@ -627,8 +627,8 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
             />
             <div className="mb-1.5">
               <div className="flex justify-between text-xs font-medium text-slate-600 mb-1.5">
-                <span>Acquisition — {r.audience_acquisition_pct}%</span>
-                <span>Retention — {r.audience_retention_pct}%</span>
+                <span>Acquisition: {r.audience_acquisition_pct}%</span>
+                <span>Retention: {r.audience_retention_pct}%</span>
               </div>
               <div className="flex h-2.5 rounded-full overflow-hidden">
                 <div className="bg-slate-700" style={{ width: `${r.audience_acquisition_pct}%` }} />

@@ -192,8 +192,8 @@ function projectToTarget(
     const projectedFinal = Math.max(0, current + weeklyChange * weeksLeft);
     const shortfall = target - projectedFinal;
     return isCount
-      ? `At this pace, projected to reach ~${Math.round(projectedFinal)} posts by campaign close — ${Math.round(shortfall)} short of target`
-      : `At this pace, projected to reach ~${projectedFinal.toFixed(1)}% by campaign close — ${shortfall.toFixed(1)}% short of target`;
+      ? `At this pace, projected to reach ~${Math.round(projectedFinal)} posts by campaign close (${Math.round(shortfall)} short of target)`
+      : `At this pace, projected to reach ~${projectedFinal.toFixed(1)}% by campaign close (${shortfall.toFixed(1)}% short of target)`;
   }
 
   const weeksNeeded = Math.ceil((target - current) / weeklyChange);
@@ -202,15 +202,15 @@ function projectToTarget(
   if (projectedWeek <= totalWeeks) {
     const buffer = totalWeeks - projectedWeek;
     return buffer > 0
-      ? `On track to reach target by Week ${projectedWeek} — ${buffer} week${buffer !== 1 ? "s" : ""} before campaign close`
+      ? `On track to reach target by Week ${projectedWeek}, ${buffer} week${buffer !== 1 ? "s" : ""} before campaign close`
       : `On track to reach target by final campaign week`;
   }
 
   const projectedFinal = current + weeklyChange * weeksLeft;
   const shortfall = target - projectedFinal;
   return isCount
-    ? `Projected to reach ~${Math.round(projectedFinal)} posts by campaign close — ${Math.round(shortfall)} short`
-    : `Projected to reach ~${projectedFinal.toFixed(1)}% by campaign close — ${shortfall.toFixed(1)}% short`;
+    ? `Projected to reach ~${Math.round(projectedFinal)} posts by campaign close (${Math.round(shortfall)} short)`
+    : `Projected to reach ~${projectedFinal.toFixed(1)}% by campaign close (${shortfall.toFixed(1)}% short)`;
 }
 
 function projectionColor(text: string | null): string {
@@ -455,12 +455,12 @@ export default async function ClientReportPage({
       delta: d_s3,
       deltaUnit: "posts",
       projection: proj_s3,
-      businessNote: "Consumer-created content is the most credible form of brand reach — it expands organic audience without additional media spend and signals genuine product affinity.",
+      businessNote: "Consumer-created content is the most credible form of brand reach. It expands organic audience without additional media spend and signals genuine product affinity.",
       goalContext: s3T ? `Weekly target: ${s3T} pieces of organic brand content` : null,
     },
     {
       label: "Content Engagement",
-      sub: "Audience intent — how many people saved your content to return to",
+      sub: "Audience intent: how many people saved your content to return to",
       health: latestSignal?.nurture_health as SignalHealth,
       actual: fmt(s2A),
       target: s2T !== undefined ? `${s2T}%` : null,
@@ -469,12 +469,12 @@ export default async function ClientReportPage({
       delta: d_s2,
       deltaUnit: "%",
       projection: proj_s2,
-      businessNote: "Save rate separates passive viewers from active buyers — people who bookmark content to return later convert at 3–4× the rate of casual engagers.",
+      businessNote: "Save rate separates passive viewers from active buyers. People who bookmark content to return later convert at 3 to 4 times the rate of casual engagers.",
       goalContext: s2T ? `Weekly target: ${s2T}% of viewers save the content` : null,
     },
     {
       label: "Purchase Intent",
-      sub: "Consumers actively seeking the brand — your share of search",
+      sub: "Consumers actively seeking the brand: your share of search",
       health: latestSignal?.conversion_health as SignalHealth,
       actual: fmt(s1A),
       target: s1T !== undefined ? `${s1T}%` : null,
@@ -483,7 +483,7 @@ export default async function ClientReportPage({
       delta: d_s1,
       deltaUnit: "%",
       projection: proj_s1,
-      businessNote: "When consumers search for your brand by name, they are one step from purchase. This also tracks Share of Voice — brands that grow SOV above their market share consistently win revenue over 6–12 months.",
+      businessNote: "When consumers search for your brand by name, they are one step from purchase. This also tracks Share of Voice. Brands that grow SOV above their market share consistently win revenue over 6 to 12 months.",
       goalContext: s1T ? `Weekly target: ${s1T}% lift in branded searches vs campaign baseline` : null,
     },
   ];
@@ -505,7 +505,7 @@ export default async function ClientReportPage({
       actual: fmt(s2bA), target: s2bT !== undefined ? `Target: ${s2bT}%` : null,
       gap: gapPct(s2bA, s2bT), pct: progressPct(s2bA, s2bT),
       health: latestSignal!.signal_2b_health as SignalHealth,
-      note: "Content amplification — how far your content travels beyond initial audience",
+      note: "Content amplification: how far your content travels beyond initial audience",
       delta: p_s2b, deltaUnit: "%",
     } : null,
     s3bA !== null && s3bA !== undefined ? {
@@ -513,7 +513,7 @@ export default async function ClientReportPage({
       actual: fmt(s3bA), target: s3bT !== undefined ? `Target: ${s3bT}%` : null,
       gap: gapPct(s3bA, s3bT), pct: progressPct(s3bA, s3bT),
       health: latestSignal!.signal_3b_health as SignalHealth,
-      note: "Audience attention quality — are they watching or scrolling past?",
+      note: "Audience attention quality: are they watching or scrolling past?",
       delta: p_s3b, deltaUnit: "%",
     } : null,
     s4A !== null && s4A !== undefined ? {
@@ -521,7 +521,7 @@ export default async function ClientReportPage({
       actual: fmt(s4A), target: s4T !== undefined ? `Target: ${s4T}%` : null,
       gap: gapPct(s4A, s4T), pct: progressPct(s4A, s4T),
       health: latestSignal!.signal_4_health as SignalHealth,
-      note: "Retention — lags campaign activity by 2–4 weeks",
+      note: "Retention: lags campaign activity by 2 to 4 weeks",
       delta: p_s4, deltaUnit: "%",
     } : null,
   ].filter(Boolean) as {
@@ -999,7 +999,7 @@ export default async function ClientReportPage({
                           <div key={r.id} className="flex flex-col items-center gap-1">
                             <span
                               className={`rounded-full ${isLatest ? "w-4 h-4 ring-2 ring-slate-400 ring-offset-2 ring-offset-slate-50" : "w-3 h-3"} ${r.flags_suppressed ? "bg-slate-200" : healthDotBg(wk)}`}
-                              title={`Week ${r.week_number}${r.flags_suppressed ? " (baseline)" : ` — ${healthLabel(wk)}`}`}
+                              title={`Week ${r.week_number}${r.flags_suppressed ? " (baseline)" : `: ${healthLabel(wk)}`}`}
                             />
                             <span className={`text-xs font-mono ${isLatest ? "text-slate-700 font-bold" : "text-slate-300"}`}>
                               W{r.week_number}
@@ -1118,7 +1118,7 @@ export default async function ClientReportPage({
                 <div className="mb-4 flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200">
                   <span className="text-amber-500 text-sm shrink-0 mt-0.5">⚠</span>
                   <p className="text-xs text-amber-700 font-medium">
-                    Audience momentum has plateaued — the brand is not advancing through the purchase funnel at the expected rate. Focus this week should shift to re-engagement and conversion activation.
+                    Audience momentum has plateaued. The brand is not advancing through the purchase funnel at the expected rate. Focus this week should shift to re-engagement and conversion activation.
                   </p>
                 </div>
               )}
@@ -1157,7 +1157,7 @@ export default async function ClientReportPage({
                   <p className="text-sm font-semibold text-slate-800">Share of Voice → Share of Market</p>
                 </div>
                 <p className="text-sm text-slate-600 leading-relaxed ml-8">
-                  Branded search lift tracks how often consumers seek your brand by name — your digital share of voice. Research consistently shows brands that grow SOV above their current market share win revenue within 6–12 months. This week's Purchase Intent signal is a leading indicator of where your market share is heading.
+                  Branded search lift tracks how often consumers seek your brand by name: your digital share of voice. Research consistently shows brands that grow SOV above their current market share win revenue within 6 to 12 months. This week's Purchase Intent signal is a leading indicator of where your market share is heading.
                 </p>
                 {s1A !== null && s1A !== undefined && (
                   <div className="mt-3 ml-8">
@@ -1209,7 +1209,7 @@ export default async function ClientReportPage({
                   {/* Reframed for modern Malaysian CMO */}
                   <div className="ml-8 mb-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
                     <p className="text-xs text-slate-700 leading-relaxed font-medium">
-                      In 2026, Malaysian consumers increasingly ask AI assistants — ChatGPT, Perplexity, Google AI Overviews — for brand recommendations before they search. When someone asks <em>"what's a good Malaysian sauce brand to cook with?"</em>, is your brand part of that answer? AI visibility is the new share of voice.
+                      In 2026, Malaysian consumers increasingly ask AI assistants (ChatGPT, Perplexity, Google AI Overviews) for brand recommendations before they search. When someone asks <em>"what's a good Malaysian sauce brand to cook with?"</em>, is your brand part of that answer? AI visibility is the new share of voice.
                     </p>
                   </div>
 
@@ -1261,7 +1261,7 @@ export default async function ClientReportPage({
                       <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-1">
                         <div className="h-full rounded-full bg-slate-500" style={{ width: `${socialCurrency.sci_score}%` }} />
                       </div>
-                      <p className="text-xs text-slate-400">How much your content earns organic sharing — amplifies paid media reach at no extra cost</p>
+                      <p className="text-xs text-slate-400">How much your content earns organic sharing, amplifying paid media reach at no extra cost</p>
                     </div>
                   )}
                   {sciNarrative.length > 0 && (
@@ -1282,7 +1282,7 @@ export default async function ClientReportPage({
           <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div className="px-6 pt-5 pb-4 border-b border-slate-100">
               <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Business Performance</p>
-              <p className="text-xs text-slate-400 mt-1">Business results for this period — campaign activity is one of several contributing factors</p>
+              <p className="text-xs text-slate-400 mt-1">Business results for this period. Campaign activity is one of several contributing factors.</p>
             </div>
             <div className="divide-y divide-slate-100">
               {populatedOutcomes.slice(0, 6).map((o) => {
