@@ -1,6 +1,6 @@
 // app/(os)/clients/page.tsx
 // ShiftImpact OS -- Home / Clients
-// Branded dashboard home: client list + New Client form + Clarity Snapshot CTA.
+// Branded dashboard home: client list + New Client form + Clarity Snapshot + Clarity Signal CTAs.
 
 import Link from "next/link";
 import { getClients } from "@/lib/data";
@@ -29,12 +29,20 @@ return (
       <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-1">ShiftImpact OS</p>
       <p className="text-sm text-neutral-600">A concise executive view of what deserves attention now.</p>
     </div>
-    <Link
-      href="/audit"
-      className="shrink-0 px-5 py-2.5 rounded-lg bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-700 transition-colors"
-    >
-      Clarity Snapshot
-    </Link>
+    <div className="flex items-center gap-3 shrink-0">
+      <Link
+        href="/clarity-signal"
+        className="px-5 py-2.5 rounded-lg border border-neutral-300 bg-white text-neutral-800 text-sm font-semibold hover:bg-neutral-50 transition-colors"
+      >
+        Clarity Signal™
+      </Link>
+      <Link
+        href="/audit"
+        className="px-5 py-2.5 rounded-lg bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-700 transition-colors"
+      >
+        Clarity Snapshot
+      </Link>
+    </div>
   </div>
 </div>
 
