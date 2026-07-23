@@ -350,16 +350,6 @@ export default async function ClaritySignalOutputPage({
         </div>
       </div>
 
-      {/* Internal: one-click Clarity Snapshot promotion — uses stored Signal context, no re-fetch */}
-      <div className="text-center pb-2">
-        <a
-          href={`/audit?signal_id=${row.id}`}
-          className="text-[11px] text-neutral-300 hover:text-neutral-500 transition-colors"
-        >
-          Generate Clarity Snapshot from this Signal
-        </a>
-      </div>
-
       {/* Footer */}
       <p className="text-center text-[11px] text-neutral-400 mt-2 pb-4">
         Shift Impact™ · Clarity Signal™ · Public signals only · {formatDate(row.created_at)}
