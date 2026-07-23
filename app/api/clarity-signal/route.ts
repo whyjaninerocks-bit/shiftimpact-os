@@ -141,8 +141,10 @@ Return the Clarity Signal™ JSON only. Every word must earn its place.`;
 
     const result = JSON.parse(jsonMatch[0]);
 
-    // Add clarity signal marker so the output page can identify the format
+    // Add clarity signal marker and store the full raw context for Snapshot promotion
+    // _context_raw is never rendered client-side — used only for internal Snapshot generation
     result._clarity_signal = true;
+    result._context_raw = context_text;
 
     // ── Store in quick_audits (reuses existing table) ──────────────────────────
 

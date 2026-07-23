@@ -110,9 +110,29 @@ export default function QuickAuditPage() {
   const objectiveRef = useRef<HTMLInputElement>(null);
   const budgetRef = useRef<HTMLSelectElement>(null);
 
-  // Pre-fill from URL params (e.g. coming from Clarity Signal upgrade path)
+  // Pre-fill form on load from either:
+  //   ?signal_id=xxx  → fetch stored context from a Clarity Signal (brand + campaign + full context)
+  //   ?brand=&campaign=&industry= → simple URL params (manual deep link)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const signalId = params.get("signal_id");
+
+    if (signalId) {
+      fetch(`/api/signal-context/${signalId}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.brand_name && brandRef.current) brandRef.current.value = data.brand_name;
+          if (data.campaign_name && campaignRef.current) campaignRef.current.value = data.campaign_name;
+          if (data.industry && industryRef.current) industryRef.current.value = data.industry;
+          if (data.context_text) setContextText(data.context_text);
+        })
+        .catch(() => {
+          // Signal not found or fetch failed — form stays empty for manual input
+        });
+      return;
+    }
+
+    // Fallback: plain URL params (brand/campaign/industry only, no context)
     const b = params.get("brand");
     const c = params.get("campaign");
     const ind = params.get("industry");
