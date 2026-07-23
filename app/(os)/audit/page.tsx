@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -107,6 +107,17 @@ export default function QuickAuditPage() {
   const phaseRef = useRef<HTMLSelectElement>(null);
   const objectiveRef = useRef<HTMLInputElement>(null);
   const budgetRef = useRef<HTMLSelectElement>(null);
+
+  // Pre-fill from URL params (e.g. coming from Clarity Signal upgrade path)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const b = params.get("brand");
+    const c = params.get("campaign");
+    const ind = params.get("industry");
+    if (b && brandRef.current) brandRef.current.value = b;
+    if (c && campaignRef.current) campaignRef.current.value = c;
+    if (ind && industryRef.current) industryRef.current.value = ind;
+  }, []);
 
   const cfg = FETCH_PLATFORMS.find(p => p.value === platform)!;
 

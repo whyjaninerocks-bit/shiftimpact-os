@@ -303,6 +303,23 @@ export default async function ClaritySignalOutputPage({
         <p className="text-sm text-neutral-600 leading-relaxed italic">{r.hidden_signal}</p>
       </div>
 
+      {/* ── GENERATE CLARITY SNAPSHOT ────────────────────────────────── */}
+      <div className="rounded-2xl bg-slate-900 text-white p-7 mb-4">
+        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
+          Next Step
+        </p>
+        <h3 className="text-base font-bold text-white mb-2">Generate Full Clarity Snapshot</h3>
+        <p className="text-sm text-slate-400 mb-5 leading-relaxed">
+          The Clarity Signal surfaces what is visible from public signals. The Clarity Snapshot adds your internal campaign data, attribution layer, and full brand intelligence stack for a complete executive diagnosis.
+        </p>
+        <a
+          href={`/audit?brand=${encodeURIComponent(row.brand_name)}&campaign=${encodeURIComponent(row.campaign_name)}&industry=${encodeURIComponent(row.industry)}`}
+          className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-white text-slate-900 text-sm font-bold hover:bg-slate-100 transition-colors"
+        >
+          Generate Clarity Snapshot →
+        </a>
+      </div>
+
       {/* ── CTA ──────────────────────────────────────────────────────── */}
       <div className="rounded-2xl border border-neutral-200 bg-white p-8 text-center shadow-sm">
         <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">
