@@ -814,6 +814,31 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
           </div>
         </div>
 
+      {/* ── DATA SOURCING FINE PRINT ─────────────────────────────── */}
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">
+          Data Sourcing and Limitations
+        </p>
+        <div className="space-y-2 text-[11px] text-slate-400 leading-relaxed">
+          <p>
+            <span className="font-semibold text-slate-500">What this report is based on:</span>{" "}
+            Publicly accessible signals only. Sources include brand websites, public social media posts, Facebook Ad Library, press coverage indexed on Google News, trade media articles (Marketing Interactive, Campaign Brief Asia, Mumbrella Asia and similar), and KOL content. All signals were available without authentication at the time of analysis.
+          </p>
+          <p>
+            <span className="font-semibold text-slate-500">What this report cannot access:</span>{" "}
+            Paywalled editorial content (Campaign Asia premium, select Straits Times articles, Nielsen and Kantar reports, Mintel). Private or login-gated social content (Facebook organic posts, private Instagram and TikTok accounts, LinkedIn, WhatsApp and Telegram groups). Live campaign performance data including CTR, ROAS, impressions, reach and frequency. Broadcast and OOH placement data (TV airings, radio ad frequency, billboard locations). Internal brand and agency data including sales figures, CRM records, first-party audiences, media plans, attribution models, and programmatic buying data. Precise app download counts and in-app behaviour data.
+          </p>
+          <p>
+            <span className="font-semibold text-slate-500">Data freshness:</span>{" "}
+            Signals reflect publicly available information at the time of generation. Social content, press coverage and ad activity change daily. This snapshot should be treated as a point-in-time read, not a live dashboard.
+          </p>
+          <p>
+            <span className="font-semibold text-slate-500">Interpretation:</span>{" "}
+            Observations, scores and gate conditions are based on pattern recognition from public proxy signals. They do not constitute a confirmed diagnosis. Internal campaign data is required to validate or refute any conclusion in this report. Shift Impact OS partnership unlocks confirmed signal layers updated weekly throughout your campaign flight.
+          </p>
+        </div>
+      </div>
+
       </div>
     </div>
   );

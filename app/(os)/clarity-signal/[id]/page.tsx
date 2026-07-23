@@ -342,8 +342,33 @@ export default async function ClaritySignalOutputPage({
         </a>
       </div>
 
+      {/* ── DATA SOURCING FINE PRINT ─────────────────────────────────── */}
+      <div className="rounded-xl border border-neutral-100 bg-neutral-50 p-5 mt-2 mb-2">
+        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3">
+          Data Sourcing and Limitations
+        </p>
+        <div className="space-y-2 text-[11px] text-neutral-400 leading-relaxed">
+          <p>
+            <span className="font-semibold text-neutral-500">What this report is based on:</span>{" "}
+            Publicly accessible signals only. Sources include brand websites, public social media posts, Facebook Ad Library, press coverage indexed on Google News, trade media articles, and KOL content. All signals were available without authentication at the time of analysis.
+          </p>
+          <p>
+            <span className="font-semibold text-neutral-500">What this report cannot access:</span>{" "}
+            Paywalled editorial content (Campaign Asia premium, some Straits Times, Nielsen and Kantar reports). Private or login-gated social content (Facebook organic posts, private Instagram accounts, LinkedIn, WhatsApp and Telegram groups). Live campaign performance data including CTR, ROAS, impressions, reach and frequency. Broadcast and OOH placement data (TV, radio, billboards). Internal brand and agency data including sales figures, CRM, first-party audiences, media plans and attribution models. Precise app download counts and in-app behaviour.
+          </p>
+          <p>
+            <span className="font-semibold text-neutral-500">Data freshness:</span>{" "}
+            Signals reflect publicly available information at the time of generation. Social content, press coverage and ad activity change daily. This snapshot should be treated as a point-in-time read.
+          </p>
+          <p>
+            <span className="font-semibold text-neutral-500">Interpretation:</span>{" "}
+            Observations and implications are based on pattern recognition from public signals. They do not constitute a confirmed diagnosis. Internal campaign data is required to validate or refute any conclusion in this report.
+          </p>
+        </div>
+      </div>
+
       {/* Footer */}
-      <p className="text-center text-[11px] text-neutral-400 mt-8 pb-4">
+      <p className="text-center text-[11px] text-neutral-400 mt-4 pb-4">
         Shift Impact™ · Clarity Signal™ · Public signals only · {formatDate(row.created_at)}
       </p>
 
