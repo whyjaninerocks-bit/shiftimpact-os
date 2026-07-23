@@ -109,26 +109,26 @@ export default async function ClaritySignalOutputPage({
     <div className="max-w-3xl mx-auto">
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
-      <div className="rounded-2xl bg-neutral-950 text-white p-8 mb-6">
+      <div className="rounded-2xl bg-white border border-neutral-200 p-8 mb-6 shadow-sm">
 
         {/* Header row */}
-        <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="flex items-start justify-between gap-4 mb-6 pb-6 border-b border-neutral-100">
           <div>
-            <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-1">
+            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
               Shift Impact™
             </p>
-            <h1 className="text-3xl font-bold tracking-tight">Clarity Signal™</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-neutral-900">Clarity Signal™</h1>
           </div>
           <div className="text-right shrink-0">
-            <p className="text-[10px] text-neutral-500 uppercase tracking-widest mb-1">Generated</p>
-            <p className="text-sm text-neutral-300">{formatDate(row.created_at)}</p>
+            <p className="text-[10px] text-neutral-400 uppercase tracking-widest mb-1">Generated</p>
+            <p className="text-sm text-neutral-500">{formatDate(row.created_at)}</p>
           </div>
         </div>
 
         {/* Brand / Campaign */}
-        <div className="mb-6 pb-6 border-b border-neutral-800">
-          <p className="text-lg font-semibold text-white">{row.brand_name}</p>
-          <p className="text-sm text-neutral-400">{row.campaign_name} · {row.industry}</p>
+        <div className="mb-6 pb-6 border-b border-neutral-100">
+          <p className="text-lg font-semibold text-neutral-900">{row.brand_name}</p>
+          <p className="text-sm text-neutral-500">{row.campaign_name} · {row.industry}</p>
         </div>
 
         {/* Decision Status */}
@@ -137,15 +137,15 @@ export default async function ClaritySignalOutputPage({
           <span className={`text-sm font-bold px-3 py-1 rounded-full border ${status.badge}`}>
             {status.label}
           </span>
-          <span className="text-sm text-neutral-400">{r.decision_status_reason}</span>
+          <span className="text-sm text-neutral-500">{r.decision_status_reason}</span>
         </div>
 
         {/* Executive Observation */}
         <div>
-          <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-3">
+          <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3">
             Executive Observation
           </p>
-          <p className="text-base text-neutral-200 leading-relaxed">
+          <p className="text-base text-neutral-700 leading-relaxed">
             {r.executive_observation}
           </p>
         </div>
@@ -220,26 +220,28 @@ export default async function ClaritySignalOutputPage({
       </div>
 
       {/* ── HIDDEN SIGNAL ─────────────────────────────────────────────────── */}
-      <div className="bg-neutral-950 rounded-2xl p-6 mb-8">
-        <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-3">
+      <div className="bg-neutral-50 rounded-2xl border border-neutral-200 p-6 mb-8">
+        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3">
           Hidden Signal
         </p>
-        <p className="text-sm text-neutral-300 leading-relaxed italic">
+        <p className="text-sm text-neutral-600 leading-relaxed italic">
           {r.hidden_signal}
         </p>
       </div>
 
       {/* ── CTA ───────────────────────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-neutral-200 bg-white p-8 text-center">
+      <div className="rounded-2xl border border-neutral-200 bg-white p-8 text-center shadow-sm">
         <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">
           Shift Impact™
         </p>
         <h3 className="text-lg font-bold text-neutral-900 mb-2">Ready to go deeper?</h3>
         <p className="text-sm text-neutral-500 mb-6 max-w-md mx-auto">
-          The Clarity Signal™ surfaces what is visible. The Executive Diagnostic reveals what is driving it.
+          The Clarity Signal™ surfaces what is visible. The Clarity Snapshot reveals what is driving it.
         </p>
         <a
-          href="mailto:janine@shiftimpact.co"
+          href="https://wa.me/60122147085"
+          target="_blank"
+          rel="noopener noreferrer"
           className="inline-block px-8 py-3 rounded-lg bg-neutral-900 text-white text-sm font-bold hover:bg-neutral-700 transition-colors"
         >
           Book a Strategy Conversation →
