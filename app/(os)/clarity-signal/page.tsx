@@ -37,6 +37,13 @@ const COUNTRIES = [
 // Signal sources for auto-fetch — reuses /api/audit-fetch
 const SIGNAL_SOURCES = [
   {
+    value: "twitter",
+    label: "Twitter / X Posts",
+    hint: "Brand handle or campaign hashtag — conversation, reactions, hashtag volume",
+    field: "handle",
+    placeholder: "@nikefootball or #NikeChamber",
+  },
+  {
     value: "podcast",
     label: "Podcast Search",
     hint: "Searches Apple Podcasts for branded or campaign podcast series — returns show info and episode descriptions (free, no Apify required)",

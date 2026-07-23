@@ -247,6 +247,43 @@ async function fetchBrandWebsite(url: string): Promise<{ content: string; count:
   };
 }
 
+// ── Twitter / X posts and hashtags ───────────────────────────────────────────
+async function fetchTwitter(brandName: string, campaignName?: string, handle?: string): Promise<{ content: string; count: number }> {
+  const searchTerms: string[] = [];
+  if (handle) searchTerms.push(handle.replace(/^@/, ""));
+  if (campaignName) searchTerms.push(campaignName);
+  if (!campaignName) searchTerms.push(brandName);
+
+  const items = await runApifyActor("apify~twitter-scraper", {
+    searchTerms,
+    twitterHandles: handle ? [handle.replace(/^@/, "")] : [],
+    maxItems: 20,
+    addUserInfo: true,
+  }, 90);
+
+  if (!Array.isArray(items) || items.length === 0) return { content: "", count: 0 };
+
+  const lines = items.slice(0, 20).map((t: Record<string, unknown>, i) => {
+    const text = ((t.fullText || t.text || t.tweetText || "") as string).slice(0, 400);
+    const author = (t.author as Record<string, unknown>) ?? {};
+    const user = (author.userName || t.username || "unknown") as string;
+    const likes = (t.likeCount || t.favoriteCount || 0) as number;
+    const retweets = (t.retweetCount || 0) as number;
+    const date = ((t.createdAt || "") as string).slice(0, 10);
+    const parts = [`[Tweet ${i + 1}] @${user}${date ? ` — ${date}` : ""}`];
+    parts.push(text);
+    if (likes || retweets) parts.push(`Likes: ${likes}  Retweets: ${retweets}`);
+    return parts.join("\n");
+  });
+
+  return {
+    content:
+      `=== Twitter / X — "${brandName}"${campaignName ? ` / "${campaignName}"` : ""} — ${items.length} posts ===\n\n` +
+      lines.join("\n\n---\n\n"),
+    count: items.length,
+  };
+}
+
 // ── Podcast search (iTunes API + RSS — no Apify needed) ──────────────────────
 // Searches Apple Podcasts / iTunes for brand or campaign podcasts.
 // Fetches the RSS feed for each result and returns episode titles + descriptions.
@@ -543,6 +580,9 @@ export async function POST(req: NextRequest) {
         break;
       case "radio_partnership":
         result = await fetchRadioPartnership(brand_name ?? "");
+        break;
+      case "twitter":
+        result = await fetchTwitter(brand_name ?? "", campaign_name, handle);
         break;
       case "trade_press_deep":
         result = await fetchTradePressDeep(brand_name ?? "", campaign_name);

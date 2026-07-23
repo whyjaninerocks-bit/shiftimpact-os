@@ -57,6 +57,7 @@ const CHANNELS = [
 ];
 
 const FETCH_PLATFORMS = [
+  { value: "twitter",           label: "Twitter / X Posts",    hint: "Brand handle or campaign hashtag",          field: "handle",      placeholder: "@nikefootball or #NikeChamber" },
   { value: "podcast",          label: "Podcast Search",       hint: "Apple Podcasts — branded podcast series and episode descriptions (free, no Apify)", field: "none",        placeholder: "" },
   { value: "trade_press_deep", label: "Trade Press Search",  hint: "APAC + global trade media — Marketing Interactive, Campaign Brief Asia, Mumbrella, The Drum, AdWeek", field: "none",        placeholder: "" },
   { value: "article_url",      label: "Article URL",          hint: "Paste specific article URL — headless browser extracts full content", field: "website_url", placeholder: "https://marketinginteractive.com/article/..." },
