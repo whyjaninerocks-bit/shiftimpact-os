@@ -53,10 +53,10 @@ JSON STRUCTURE:
 
   "top_signals": [
     {
-      "signal": "<Signal category — e.g. Share of Voice, Search Behaviour, Content Engagement, Organic Amplification, AI Discoverability, Brand Conversation, Competitor Activity, Creative Behaviour, Audience Behaviour, Business Signal>",
-      "headline": "<Strong, confident POV statement — 10 to 16 words. A business assertion that makes a CEO sit up. Not the signal name. Not jargon. A human truth grounded in what the data shows. Example: The campaign is buying visibility it has not yet earned organically.>",
-      "status": "<ONE word or short phrase — e.g. Holding, Expanding, Declining, Absent, Passive, Active, Emerging, At Risk>",
-      "business_read": "<ONE sentence elaboration. What public signals specifically show. Business language. No hype.>"
+      "signal": "<Signal category label — e.g. Content Engagement, Brand Conversation, Search Behaviour, Organic Amplification, AI Discoverability, Competitor Pressure, Creative Effectiveness, Audience Momentum, Market Presence, Business Signal>",
+      "status": "<ONE word or short phrase — e.g. Critical, Absent, Flat, Passive, Active, Expanding, At Risk, Holding>",
+      "observation": "<What was specifically detected from public signals. ONE sentence. Factual. Precise. No fluff. Name specific evidence where possible — e.g. a paid post, a search pattern, a share rate, a content gap. This is what the data actually shows.>",
+      "implication": "<What this means for the business if it continues. ONE sentence. Business consequence for leadership — budget waste, equity erosion, competitive exposure, or missed opportunity. No recommendations. No action verbs directed at the client. Observation only.>"
     }
   ],
 

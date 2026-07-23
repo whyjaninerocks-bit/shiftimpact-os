@@ -12,9 +12,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 type TopSignal = {
   signal: string;
-  headline: string;
+  headline?: string;       // legacy
   status: string;
-  business_read: string;
+  business_read?: string;  // legacy
+  observation?: string;
+  implication?: string;
 };
 
 type ClaritySignalResult = {
@@ -190,44 +192,61 @@ export default async function ClaritySignalOutputPage({
 
       </div>
 
-      {/* ── TOP 5 SIGNALS — Editorial POV Cards ───────────────────────── */}
+      {/* ── TOP 5 SIGNALS — Intelligence Briefs ──────────────────────── */}
       <div className="bg-white rounded-2xl border border-neutral-100 p-8 mb-6 shadow-sm">
         <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
           Signal Intelligence
         </p>
         <h2 className="text-lg font-bold text-neutral-900 mb-6">Top 5 Signals</h2>
 
-        <div className="space-y-5">
-          {(r.top_signals ?? []).slice(0, 5).map((sig, i) => (
-            <div
-              key={i}
-              className="border border-neutral-100 rounded-xl p-5"
-            >
-              {/* Signal label + status badge */}
-              <div className="flex items-center justify-between gap-3 mb-3">
-                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
-                  {sig.signal}
-                </p>
-                <span
-                  className={`text-xs font-bold px-2.5 py-1 rounded-full border whitespace-nowrap ${signalStatusStyle(
-                    sig.status
-                  )}`}
-                >
-                  {sig.status}
-                </span>
+        <div className="divide-y divide-neutral-100">
+          {(r.top_signals ?? []).slice(0, 5).map((sig, i) => {
+            // Support both new (observation/implication) and legacy (headline/business_read) fields
+            const mainText = sig.observation ?? sig.headline ?? "";
+            const supportText = sig.implication ?? sig.business_read ?? "";
+            const statusStyle = signalStatusStyle(sig.status);
+
+            return (
+              <div key={i} className="py-6 flex gap-5">
+
+                {/* Index number */}
+                <div className="flex-shrink-0 w-7 pt-0.5">
+                  <span className="text-xs font-bold text-neutral-300">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+
+                  {/* Signal label + status on same row */}
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                      {sig.signal}
+                    </p>
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full border whitespace-nowrap flex-shrink-0 ${statusStyle}`}>
+                      {sig.status}
+                    </span>
+                  </div>
+
+                  {/* Observation — what the data shows */}
+                  {mainText && (
+                    <p className="text-[15px] font-semibold text-neutral-900 leading-snug mb-2.5">
+                      {mainText}
+                    </p>
+                  )}
+
+                  {/* Implication — business consequence */}
+                  {supportText && (
+                    <p className="text-sm text-neutral-500 leading-relaxed">
+                      {supportText}
+                    </p>
+                  )}
+
+                </div>
               </div>
-
-              {/* POV Headline — the opinion */}
-              <p className="text-[15px] font-bold text-neutral-900 leading-snug mb-2">
-                {sig.headline ?? sig.signal}
-              </p>
-
-              {/* Elaboration */}
-              <p className="text-sm text-neutral-500 leading-relaxed">
-                {sig.business_read}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -290,12 +309,11 @@ export default async function ClaritySignalOutputPage({
           Shift Impact™
         </p>
         <h3 className="text-lg font-bold text-neutral-900 mb-3">Ready to go deeper?</h3>
-        <p className="text-sm text-neutral-500 mb-6 max-w-sm mx-auto leading-relaxed">
-          The Clarity Signal™ surfaces what is visible.{" "}
-          <br className="hidden sm:block" />
-          The Clarity Snapshot
-          <br />
-          reveals what is driving it.
+        <p className="text-sm text-neutral-500 mb-1 max-w-sm mx-auto">
+          The Clarity Signal™ surfaces what is visible.
+        </p>
+        <p className="text-sm text-neutral-500 mb-6 max-w-sm mx-auto">
+          The Clarity Snapshot reveals what is driving it.
         </p>
         <a
           href="https://wa.me/60122147085"
