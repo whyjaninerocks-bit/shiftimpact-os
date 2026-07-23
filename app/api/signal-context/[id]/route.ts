@@ -15,7 +15,7 @@ export async function GET(
 
   const { data, error } = await supabase
     .from("quick_audits")
-    .select("brand_name, campaign_name, industry, context_summary, result")
+    .select("brand_name, campaign_name, industry, business_objective, context_summary, result")
     .eq("id", id)
     .single();
 
@@ -35,10 +35,14 @@ export async function GET(
     (data.context_summary as string) ||
     "";
 
+  // business_objective is stored as "Country | Competitors" for Clarity Signal rows
+  const country = (data.business_objective as string | null)?.split("|")[0]?.trim() || "Malaysia";
+
   return NextResponse.json({
     brand_name: data.brand_name,
     campaign_name: data.campaign_name,
     industry: data.industry,
+    country,
     context_text: contextText,
   });
 }

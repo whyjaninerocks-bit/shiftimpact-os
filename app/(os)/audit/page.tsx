@@ -105,6 +105,8 @@ export default function QuickAuditPage() {
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
+  const [country, setCountry] = useState("Malaysia");
+
   const brandRef = useRef<HTMLInputElement>(null);
   const campaignRef = useRef<HTMLInputElement>(null);
   const industryRef = useRef<HTMLSelectElement>(null);
@@ -126,6 +128,7 @@ export default function QuickAuditPage() {
           if (data.brand_name && brandRef.current) brandRef.current.value = data.brand_name;
           if (data.campaign_name && campaignRef.current) campaignRef.current.value = data.campaign_name;
           if (data.industry && industryRef.current) industryRef.current.value = data.industry;
+          if (data.country) setCountry(data.country);
           if (data.context_text) setContextText(data.context_text);
         })
         .catch(() => {
@@ -198,6 +201,7 @@ export default function QuickAuditPage() {
           brand_name: brandRef.current?.value,
           campaign_name: campaignRef.current?.value,
           industry: industryRef.current?.value,
+          country,
           campaign_phase: phaseRef.current?.value,
           business_objective: objectiveRef.current?.value,
           channels: selectedChannels,
@@ -253,11 +257,23 @@ export default function QuickAuditPage() {
             </div>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid sm:grid-cols-3 gap-3">
             <div>
               <label className={labelCls}>Industry *</label>
               <select ref={industryRef} className={inputCls} defaultValue="FMCG">
                 {INDUSTRIES.map(i => <option key={i.value} value={i.value}>{i.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Market *</label>
+              <select className={inputCls} value={country} onChange={e => setCountry(e.target.value)}>
+                <option value="Malaysia">Malaysia</option>
+                <option value="Singapore">Singapore</option>
+                <option value="Indonesia">Indonesia</option>
+                <option value="Philippines">Philippines</option>
+                <option value="Thailand">Thailand</option>
+                <option value="Vietnam">Vietnam</option>
+                <option value="Other">Other</option>
               </select>
             </div>
             <div>

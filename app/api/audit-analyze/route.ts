@@ -234,6 +234,7 @@ export async function POST(req: NextRequest) {
       brand_name,
       campaign_name,
       industry,
+      country = "Malaysia",
       campaign_phase = "Demand",
       business_objective,
       channels = [],
@@ -250,20 +251,25 @@ export async function POST(req: NextRequest) {
 
     // ── AI Analysis ───────────────────────────────────────────────────────────
 
+    const marketOverride = country !== "Malaysia"
+      ? `\nMARKET OVERRIDE: This campaign operates in ${country}, not Malaysia. All market context, consumer behaviour patterns, channel benchmarks, and competitive dynamics must reflect ${country} — not Malaysian defaults. Do not reference Malaysian consumer segments, festive calendars, or MY-specific platforms unless they are also directly relevant to ${country}.`
+      : "";
+
     const userPrompt = `CAMPAIGN INTELLIGENCE PREVIEW REQUEST
 
 Brand: ${brand_name}
 Campaign: ${campaign_name}
 Industry: ${industry}
+Market: ${country}
 Current Phase: ${campaign_phase}
 Business Objective: ${business_objective || "Not disclosed"}
 Active Channels: ${channels.length > 0 ? channels.join(", ") : "Not specified"}
 Approximate Media Budget: ${budget_range || "Not disclosed"}
-
+${marketOverride}
 PUBLIC SIGNAL DATA COLLECTED:
 ${context_text.slice(0, 8000)}
 
-Analyse this campaign across all intelligence dimensions. Apply Malaysian and Southeast Asian market benchmarks throughout. Determine which optional signals (review_platform, retail_signal, vcr, pr_earned) are relevant based on industry and available data — set include: true only where signal evidence exists or where the industry makes it directly relevant (Hospitality/F&B → review_platform; Retail/FMCG → retail_signal; video channels → vcr). Deliver strategic recommendations in the voice of a 30-year seasoned Chief Marketing Business Analyst. Return JSON only.`;
+Analyse this campaign across all intelligence dimensions. Apply ${country} market benchmarks and consumer behaviour context throughout. Determine which optional signals (review_platform, retail_signal, vcr, pr_earned) are relevant based on industry and available data — set include: true only where signal evidence exists or where the industry makes it directly relevant (Hospitality/F&B → review_platform; Retail/FMCG → retail_signal; video channels → vcr). Deliver strategic recommendations in the voice of a 30-year seasoned Chief Marketing Business Analyst. Return JSON only.`;
 
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
