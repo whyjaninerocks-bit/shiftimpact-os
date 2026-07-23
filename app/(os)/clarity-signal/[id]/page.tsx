@@ -303,43 +303,34 @@ export default async function ClaritySignalOutputPage({
         <p className="text-sm text-neutral-600 leading-relaxed italic">{r.hidden_signal}</p>
       </div>
 
-      {/* ── GENERATE CLARITY SNAPSHOT ────────────────────────────────── */}
-      <div className="rounded-2xl bg-slate-900 text-white p-7 mb-4">
-        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
-          Next Step
-        </p>
-        <h3 className="text-base font-bold text-white mb-2">Generate Full Clarity Snapshot</h3>
-        <p className="text-sm text-slate-400 mb-5 leading-relaxed">
-          The Clarity Signal surfaces what is visible from public signals. The Clarity Snapshot adds your internal campaign data, attribution layer, and full brand intelligence stack for a complete executive diagnosis.
-        </p>
-        <a
-          href={`/audit?brand=${encodeURIComponent(row.brand_name)}&campaign=${encodeURIComponent(row.campaign_name)}&industry=${encodeURIComponent(row.industry)}`}
-          className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-white text-slate-900 text-sm font-bold hover:bg-slate-100 transition-colors"
-        >
-          Generate Clarity Snapshot →
-        </a>
-      </div>
-
       {/* ── CTA ──────────────────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-neutral-200 bg-white p-8 text-center shadow-sm">
-        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">
+      <div className="rounded-2xl bg-slate-900 text-white p-8 text-center">
+        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
           Shift Impact™
         </p>
-        <h3 className="text-lg font-bold text-neutral-900 mb-3">Ready to go deeper?</h3>
-        <p className="text-sm text-neutral-500 mb-1 max-w-sm mx-auto">
+        <h3 className="text-lg font-bold text-white mb-3">Ready to go deeper?</h3>
+        <p className="text-sm text-slate-400 mb-1 max-w-sm mx-auto">
           The Clarity Signal™ surfaces what is visible.
         </p>
-        <p className="text-sm text-neutral-500 mb-6 max-w-sm mx-auto">
+        <p className="text-sm text-slate-400 mb-7 max-w-sm mx-auto">
           The Clarity Snapshot reveals what is driving it.
         </p>
         <a
           href="https://wa.me/60122147085"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-8 py-3 rounded-lg bg-slate-900 text-white text-sm font-bold hover:bg-slate-700 transition-colors"
+          className="inline-flex items-center gap-2 px-8 py-3 rounded-lg bg-white text-slate-900 text-sm font-bold hover:bg-slate-100 transition-colors"
         >
           Book a Strategy Conversation →
         </a>
+        <p className="mt-5">
+          <a
+            href={`/audit?brand=${encodeURIComponent(row.brand_name)}&campaign=${encodeURIComponent(row.campaign_name)}&industry=${encodeURIComponent(row.industry)}`}
+            className="text-xs text-slate-500 hover:text-slate-300 transition-colors underline underline-offset-2"
+          >
+            Generate the full Clarity Snapshot yourself →
+          </a>
+        </p>
       </div>
 
       {/* ── DATA SOURCING FINE PRINT ─────────────────────────────────── */}
