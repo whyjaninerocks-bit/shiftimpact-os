@@ -57,13 +57,15 @@ const CHANNELS = [
 ];
 
 const FETCH_PLATFORMS = [
-  { value: "facebook_ads", label: "Facebook Ad Library", hint: "Brand page URL or name", field: "page_url", placeholder: "https://www.facebook.com/YeosMY or brand name" },
-  { value: "instagram",    label: "Instagram Posts",    hint: "Brand handle",            field: "handle",   placeholder: "@yeos.my" },
-  { value: "tiktok",       label: "TikTok Posts",       hint: "Brand handle",            field: "handle",   placeholder: "@yeos_official" },
-  { value: "youtube",      label: "YouTube Channel",    hint: "Channel handle or URL",   field: "handle",   placeholder: "@YeosMalaysia" },
-  { value: "website",      label: "Brand Website",      hint: "Campaign landing page",   field: "website_url", placeholder: "https://www.yeos.com.my/campaign" },
-  { value: "kol_hashtag",  label: "KOL / Hashtag",     hint: "Campaign hashtag",        field: "hashtag",  placeholder: "#ManisnyaBerbuka" },
-  { value: "press",        label: "Press Coverage",     hint: "Searches news for brand", field: "none",     placeholder: "" },
+  { value: "trade_press_deep", label: "Trade Press Search",  hint: "APAC + global trade media — Marketing Interactive, Campaign Brief Asia, Mumbrella, The Drum, AdWeek", field: "none",        placeholder: "" },
+  { value: "article_url",      label: "Article URL",          hint: "Paste specific article URL — headless browser extracts full content", field: "website_url", placeholder: "https://marketinginteractive.com/article/..." },
+  { value: "facebook_ads",     label: "Facebook Ad Library",  hint: "Brand page URL or name",    field: "page_url",    placeholder: "https://www.facebook.com/YeosMY or brand name" },
+  { value: "instagram",        label: "Instagram Posts",      hint: "Brand handle",               field: "handle",      placeholder: "@yeos.my" },
+  { value: "tiktok",           label: "TikTok Posts",         hint: "Brand handle",               field: "handle",      placeholder: "@yeos_official" },
+  { value: "youtube",          label: "YouTube Channel",      hint: "Channel handle or URL",      field: "handle",      placeholder: "@YeosMalaysia" },
+  { value: "website",          label: "Brand Website",        hint: "Campaign landing page — headless browser when Apify configured", field: "website_url", placeholder: "https://www.yeos.com.my/campaign" },
+  { value: "kol_hashtag",      label: "KOL / Hashtag",        hint: "Campaign hashtag",           field: "hashtag",     placeholder: "#ManisnyaBerbuka" },
+  { value: "press",            label: "Google News",          hint: "Mainstream news index — limited trade press coverage", field: "none", placeholder: "" },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

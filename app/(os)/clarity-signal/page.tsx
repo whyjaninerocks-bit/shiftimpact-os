@@ -37,16 +37,30 @@ const COUNTRIES = [
 // Signal sources for auto-fetch — reuses /api/audit-fetch
 const SIGNAL_SOURCES = [
   {
+    value: "trade_press_deep",
+    label: "Trade Press Search",
+    hint: "Searches APAC + global trade media — Marketing Interactive, Campaign Brief Asia, Mumbrella, The Drum, AdWeek and more",
+    field: "none",
+    placeholder: "",
+  },
+  {
+    value: "article_url",
+    label: "Article URL",
+    hint: "Paste a specific article URL — fully extracts content even from JS-rendered pages",
+    field: "website_url",
+    placeholder: "https://marketinginteractive.com/article/...",
+  },
+  {
     value: "website",
     label: "Brand Website",
-    hint: "Scrapes homepage or campaign landing page (no Apify required)",
+    hint: "Scrapes homepage or campaign landing page — now uses headless browser when Apify is configured",
     field: "website_url",
     placeholder: "https://www.brand.com.my",
   },
   {
     value: "press",
-    label: "Press Coverage",
-    hint: "Google News for brand and campaign mentions",
+    label: "Google News",
+    hint: "Google News index — good for mainstream media, limited for trade press",
     field: "none",
     placeholder: "",
   },
