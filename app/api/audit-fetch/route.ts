@@ -247,6 +247,105 @@ async function fetchBrandWebsite(url: string): Promise<{ content: string; count:
   };
 }
 
+// ── Podcast search (iTunes API + RSS — no Apify needed) ──────────────────────
+// Searches Apple Podcasts / iTunes for brand or campaign podcasts.
+// Fetches the RSS feed for each result and returns episode titles + descriptions.
+// Captures branded podcast series (e.g. Nike Chamber with Ryot), sponsored shows,
+// and any campaign content distributed as audio.
+async function fetchPodcast(brandName: string, campaignName?: string): Promise<{ content: string; count: number }> {
+  const query = campaignName ? `${brandName} ${campaignName}` : brandName;
+
+  // Step 1: iTunes public search API — free, no key
+  const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=podcast&limit=5&lang=en_us`;
+  const searchRes = await fetch(searchUrl, {
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; ShiftImpactOS/1.0)" },
+    signal: AbortSignal.timeout(10000),
+  });
+
+  if (!searchRes.ok) throw new Error("iTunes podcast search failed.");
+
+  const searchData = await searchRes.json() as {
+    resultCount: number;
+    results: Array<{
+      collectionName: string;
+      artistName: string;
+      feedUrl?: string;
+      trackCount?: number;
+      primaryGenreName?: string;
+      collectionViewUrl?: string;
+    }>;
+  };
+
+  if (!searchData.results || searchData.results.length === 0) {
+    return { content: `=== Podcast Search — "${brandName}" ===\n\nNo podcasts found on Apple Podcasts for this brand or campaign.`, count: 0 };
+  }
+
+  const lines: string[] = [];
+
+  for (const podcast of searchData.results.slice(0, 3)) {
+    const parts: string[] = [
+      `[Podcast] ${podcast.collectionName} — by ${podcast.artistName}`,
+    ];
+    if (podcast.primaryGenreName) parts.push(`Genre: ${podcast.primaryGenreName}`);
+    if (podcast.trackCount) parts.push(`Total episodes: ${podcast.trackCount}`);
+    if (podcast.collectionViewUrl) parts.push(`Apple Podcasts: ${podcast.collectionViewUrl}`);
+
+    // Step 2: Fetch RSS feed for show description + episode details
+    if (podcast.feedUrl) {
+      try {
+        const rssRes = await fetch(podcast.feedUrl, {
+          signal: AbortSignal.timeout(10000),
+          headers: { "User-Agent": "Mozilla/5.0 (compatible; ShiftImpactOS/1.0)" },
+        });
+
+        if (rssRes.ok) {
+          const rss = await rssRes.text();
+
+          // Show description
+          const showDesc = (
+            rss.match(/<description><!\[CDATA\[([\s\S]*?)\]\]><\/description>/)?.[1] ||
+            rss.match(/<description>([\s\S]*?)<\/description>/)?.[1] ||
+            ""
+          ).replace(/<[^>]+>/g, "").trim().slice(0, 600);
+
+          if (showDesc) parts.push(`\nShow Description:\n${showDesc}`);
+
+          // Episodes
+          const items = rss.match(/<item>([\s\S]*?)<\/item>/g) ?? [];
+          const episodes = items.slice(0, 6).map((item, i) => {
+            const title = (
+              item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1] ||
+              item.match(/<title>(.*?)<\/title>/)?.[1] ||
+              `Episode ${i + 1}`
+            ).trim();
+            const desc = (
+              item.match(/<description><!\[CDATA\[([\s\S]*?)\]\]><\/description>/)?.[1] ||
+              item.match(/<description>([\s\S]*?)<\/description>/)?.[1] ||
+              ""
+            ).replace(/<[^>]+>/g, "").trim().slice(0, 350);
+            return `  Ep ${i + 1}: ${title}${desc ? `\n  ${desc}` : ""}`;
+          });
+
+          if (episodes.length > 0) {
+            parts.push(`\nEpisodes (${items.length} total):\n${episodes.join("\n\n")}`);
+          }
+        }
+      } catch {
+        // RSS unavailable — include basic podcast info only
+      }
+    }
+
+    lines.push(parts.join("\n"));
+  }
+
+  return {
+    content:
+      `=== Podcast Intelligence — "${brandName}"${campaignName ? ` / "${campaignName}"` : ""} — ${lines.length} podcast(s) found ===\n\n` +
+      lines.join("\n\n---\n\n"),
+    count: lines.length,
+  };
+}
+
 // ── Trade press deep search (APAC + global trade media) ───────────────────────
 // Uses RAG Web Browser — searches the full web including trade publications
 // that Google News does not index (Marketing Interactive, Campaign Brief Asia,
@@ -397,6 +496,12 @@ export async function POST(req: NextRequest) {
     if (platform === "article_url") {
       if (!website_url) return NextResponse.json({ error: "Article URL required." }, { status: 400 });
       const result = await fetchArticleUrl(website_url);
+      return NextResponse.json({ content: result.content, count: result.count, platform });
+    }
+
+    // Podcast search: iTunes API + RSS — free, no Apify needed
+    if (platform === "podcast") {
+      const result = await fetchPodcast(brand_name ?? "", campaign_name);
       return NextResponse.json({ content: result.content, count: result.count, platform });
     }
 

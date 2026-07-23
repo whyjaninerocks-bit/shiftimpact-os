@@ -37,6 +37,13 @@ const COUNTRIES = [
 // Signal sources for auto-fetch — reuses /api/audit-fetch
 const SIGNAL_SOURCES = [
   {
+    value: "podcast",
+    label: "Podcast Search",
+    hint: "Searches Apple Podcasts for branded or campaign podcast series — returns show info and episode descriptions (free, no Apify required)",
+    field: "none",
+    placeholder: "",
+  },
+  {
     value: "trade_press_deep",
     label: "Trade Press Search",
     hint: "Searches APAC + global trade media — Marketing Interactive, Campaign Brief Asia, Mumbrella, The Drum, AdWeek and more",
