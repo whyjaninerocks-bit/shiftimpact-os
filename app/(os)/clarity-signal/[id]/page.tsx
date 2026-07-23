@@ -323,14 +323,6 @@ export default async function ClaritySignalOutputPage({
         >
           Book a Strategy Conversation →
         </a>
-        <p className="mt-5">
-          <a
-            href={`/audit?brand=${encodeURIComponent(row.brand_name)}&campaign=${encodeURIComponent(row.campaign_name)}&industry=${encodeURIComponent(row.industry)}`}
-            className="text-xs text-slate-500 hover:text-slate-300 transition-colors underline underline-offset-2"
-          >
-            Generate the full Clarity Snapshot yourself →
-          </a>
-        </p>
       </div>
 
       {/* ── DATA SOURCING FINE PRINT ─────────────────────────────────── */}
