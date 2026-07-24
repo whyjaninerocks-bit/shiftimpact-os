@@ -53,6 +53,7 @@ import { CampaignReportSection } from "./_components/CampaignReportSection";
 import { ConsumerPulseSection } from "./_components/ConsumerPulseSection";
 import { ShareBriefWidget } from "./_components/ShareBriefWidget";
 import { ShareReportWidget } from "./_components/ShareReportWidget";
+import { BackToTop } from "@/app/_components/BackToTop";
 import { IqEvaluateSection } from "./_components/IqEvaluateSection";
 import { SignalLayer0Section } from "./_components/SignalLayer0Section";
 import { AiBrandVisibilitySection } from "./_components/AiBrandVisibilitySection";
@@ -165,9 +166,14 @@ export default async function CampaignDetailPage({
 
       <ErrorBanner message={error} />
 
-      <nav className="flex flex-wrap gap-1 text-xs">
+      {/* Sticky section nav — scrollable horizontal strip */}
+      <nav className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-neutral-50/95 backdrop-blur border-b border-neutral-100 flex gap-1 overflow-x-auto scrollbar-hide text-xs">
         {sectionLinks.map((s) => (
-          <a key={s.href} href={s.href} className="px-2 py-1 rounded bg-white border border-neutral-200 text-neutral-600 hover:text-neutral-900">
+          <a
+            key={s.href}
+            href={s.href}
+            className="shrink-0 px-2.5 py-1 rounded-full bg-white border border-neutral-200 text-neutral-600 hover:text-neutral-900 hover:border-neutral-400 transition-colors whitespace-nowrap"
+          >
             {s.label}
           </a>
         ))}
@@ -268,6 +274,7 @@ export default async function CampaignDetailPage({
         signalLogs={signalLogs}
         dashboards={dashboards}
       />
+      <BackToTop />
     </div>
   );
 }
