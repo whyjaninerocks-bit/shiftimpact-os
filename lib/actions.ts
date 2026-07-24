@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendBriefNotification } from "@/lib/email";
 
 function str(formData: FormData, key: string): string {
   return (formData.get(key) as string | null) ?? "";
@@ -33,6 +34,8 @@ export async function createClient(formData: FormData) {
       industry_profile: str(formData, "industry_profile"),
       business_outcome_label: str(formData, "business_outcome_label") || "Business Outcome",
       retention_metric_label: str(formData, "retention_metric_label") || "Retention Metric",
+      contact_name: str(formData, "contact_name") || null,
+      contact_email: str(formData, "contact_email") || null,
     })
     .select("id")
     .single();
@@ -54,6 +57,8 @@ export async function updateClient(clientId: string, formData: FormData) {
       industry_profile: str(formData, "industry_profile"),
       business_outcome_label: str(formData, "business_outcome_label") || "Business Outcome",
       retention_metric_label: str(formData, "retention_metric_label") || "Retention Metric",
+      contact_name: str(formData, "contact_name") || null,
+      contact_email: str(formData, "contact_email") || null,
     })
     .eq("id", clientId);
 
@@ -229,6 +234,58 @@ export async function setFrameLockStatus(campaignId: string, frameBriefId: strin
   // F32: fire brief orchestration chain when brief is locked (non-blocking)
   if (lock) {
     void fireOrchestration(campaignId, "BRIEF_SUBMITTED", { source: "frame_lock", frame_brief_id: frameBriefId });
+
+    // Sprint 31: fire email notifications to team member + client contact (non-blocking)
+    void (async () => {
+      try {
+        const [campaignRes, frameRes] = await Promise.all([
+          supabase
+            .from("campaigns")
+            .select("name, client_id, team_member_id, clients(name, contact_name, contact_email), team_members(name, email)")
+            .eq("id", campaignId)
+            .single(),
+          supabase
+            .from("frame_briefs")
+            .select("anchor")
+            .eq("id", frameBriefId)
+            .single(),
+        ]);
+
+        const campaign = campaignRes.data;
+        const frame = frameRes.data;
+        if (!campaign || !frame) return;
+
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://shiftimpact-os.vercel.app";
+        const briefUrl = `${baseUrl}/brief/${campaignId}`;
+
+        // Build recipient list — only include entries with an email address
+        const recipients: { name: string; email: string; role: "agency" | "client" }[] = [];
+
+        const tm = campaign.team_members as { name: string; email: string | null } | null;
+        if (tm?.email) recipients.push({ name: tm.name, email: tm.email, role: "agency" });
+
+        const cl = campaign.clients as { name: string; contact_name: string | null; contact_email: string | null } | null;
+        if (cl?.contact_email) {
+          recipients.push({
+            name: cl.contact_name ?? cl.name,
+            email: cl.contact_email,
+            role: "client",
+          });
+        }
+
+        if (recipients.length === 0) return; // no emails configured yet
+
+        await sendBriefNotification({
+          campaignName: campaign.name,
+          clientName: cl?.name ?? "Client",
+          frameAnchor: frame.anchor,
+          briefUrl,
+          recipients,
+        });
+      } catch (e) {
+        console.error("[setFrameLockStatus] email notification failed:", e);
+      }
+    })();
   }
 
   revalidatePath(`/campaigns/${campaignId}`);
@@ -422,6 +479,7 @@ export async function createTeamMember(formData: FormData) {
   const { error } = await supabase.from("team_members").insert({
     name: str(formData, "name"),
     role: str(formData, "role"),
+    email: str(formData, "email") || null,
     urgent_count: numOrNull(formData, "urgent_count") ?? 0,
   });
 
@@ -440,6 +498,7 @@ export async function updateTeamMember(memberId: string, formData: FormData) {
     .update({
       name: str(formData, "name"),
       role: str(formData, "role"),
+      email: str(formData, "email") || null,
       urgent_count: numOrNull(formData, "urgent_count") ?? 0,
     })
     .eq("id", memberId);

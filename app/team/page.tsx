@@ -38,7 +38,11 @@ export default async function TeamPage({
                       <Badge tone={m.capacity_status === "Over Capacity" ? "red" : "green"}>{m.capacity_status}</Badge>
                     </div>
                   </div>
-                  <div className="flex items-end gap-2">
+                  <div className="flex items-end gap-2 flex-wrap">
+                    <div className="flex-1 min-w-[180px]">
+                      <label className={labelClass}>Notification email</label>
+                      <input className={inputClass} type="email" name="email" defaultValue={m.email ?? ""} placeholder="agency@example.com" />
+                    </div>
                     <div>
                       <label className={labelClass} htmlFor={`urgent-${m.id}`}>Urgent count</label>
                       <input className={inputClass} type="number" min="0" id={`urgent-${m.id}`} name="urgent_count" defaultValue={m.urgent_count} />
@@ -62,6 +66,10 @@ export default async function TeamPage({
             <div>
               <label className={labelClass} htmlFor="role">Role</label>
               <input className={inputClass} id="role" name="role" placeholder="e.g. Strategy Lead" required />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="email">Notification email</label>
+              <input className={inputClass} type="email" id="email" name="email" placeholder="agency@example.com" />
             </div>
             <div>
               <label className={labelClass} htmlFor="urgent_count">Urgent Count</label>
