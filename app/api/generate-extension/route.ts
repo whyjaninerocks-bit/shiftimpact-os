@@ -64,7 +64,8 @@ export async function POST(request: Request) {
   if (!apiKey) return NextResponse.json({ error: "ANTHROPIC_API_KEY not configured" }, { status: 500 });
 
   const body = await request.json();
-  const { campaign_id, channel_name, channel_category, translation_hint } = body;
+  const { campaign_id, channel_name, channel_category, translation_hint, market } = body;
+  const marketLabel: string = (typeof market === "string" && market.trim()) ? market.trim() : "Southeast Asia";
 
   if (!campaign_id || !channel_name) {
     return NextResponse.json({ error: "campaign_id and channel_name required" }, { status: 400 });
@@ -139,7 +140,7 @@ PRE-BAKED WIN CONDITIONS FOR THIS CHANNEL:
 ${prebakedWinConditions}${hint}
 
 TEAM LENS FRAMEWORK — use these three lenses to stress-test and strengthen your brief content. Do NOT output them as separate fields — weave their insights into win_conditions, concept_rationale, and the strategic recommendation below:
-- CHIEF OF GROWTH (CoG) — ${channel_name} domain expertise in ${frame.industry_category ?? campaign?.industry_profile ?? "FMCG"} / Malaysia: Demand, audience acquisition, market penetration, funnel stage fit for this specific channel and market. Does this earn new buyers here, and is this the right channel move for this stage?
+- CHIEF OF GROWTH (CoG) — ${channel_name} domain expertise in ${frame.industry_category ?? campaign?.industry_profile ?? "FMCG"} / ${marketLabel}: Demand, audience acquisition, market penetration, funnel stage fit for this specific channel and market. Does this earn new buyers here, and is this the right channel move for this stage?
 - CFO: Budget efficiency, ROI defensibility, MMM data contribution, attribution readiness. Is this spend bankable?
 - CCO: Creative standard, idea integrity, FRAME anchor hold, brand aspiration. Would this make Cannes/Effies/AMES?
 
