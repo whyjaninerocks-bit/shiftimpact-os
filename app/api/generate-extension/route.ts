@@ -139,7 +139,7 @@ PRE-BAKED WIN CONDITIONS FOR THIS CHANNEL:
 ${prebakedWinConditions}${hint}
 
 TEAM LENS FRAMEWORK — use these three lenses to stress-test and strengthen your brief content. Do NOT output them as separate fields — weave their insights into win_conditions, concept_rationale, and the strategic recommendation below:
-- CHIEF OF GROWTH (CoG): Demand, audience acquisition, market penetration, funnel stage fit. Does this earn new buyers?
+- CHIEF OF GROWTH (CoG) — ${channel_name} domain expertise in ${frame.industry_category ?? campaign?.industry_profile ?? "FMCG"} / Malaysia: Demand, audience acquisition, market penetration, funnel stage fit for this specific channel and market. Does this earn new buyers here, and is this the right channel move for this stage?
 - CFO: Budget efficiency, ROI defensibility, MMM data contribution, attribution readiness. Is this spend bankable?
 - CCO: Creative standard, idea integrity, FRAME anchor hold, brand aspiration. Would this make Cannes/Effies/AMES?
 
