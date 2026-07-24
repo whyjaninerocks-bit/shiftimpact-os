@@ -31,9 +31,11 @@ interface V2Brief {
   concept_rationale: string;
   win_conditions: string;
   propagation_mechanism: string;
-  cog_lens: string;
-  cfo_lens: string;
-  cco_lens: string;
+  strategic_recommendation?: string;
+  // legacy lens fields — kept for backwards compat, not rendered
+  cog_lens?: string;
+  cfo_lens?: string;
+  cco_lens?: string;
   anchor_integrity_check: string;
   do_not: string;
   client_notes: string;
@@ -67,27 +69,6 @@ const ROLE_STYLE: Record<ChannelRole, string> = {
 };
 
 const CATEGORY_OPTIONS = ["Radio", "KOL", "Retail", "Digital", "PR", "CRM", "Custom"] as const;
-
-const LENS_META = {
-  cog: {
-    label: "Chief of Growth",
-    abbr: "CoG",
-    desc: "Demand, acquisition, funnel stage fit. Does this earn new buyers?",
-    color: "text-blue-700 bg-blue-50 border-blue-200",
-  },
-  cfo: {
-    label: "CFO",
-    abbr: "CFO",
-    desc: "Budget efficiency, ROI, MMM data contribution. Is this spend bankable?",
-    color: "text-emerald-700 bg-emerald-50 border-emerald-200",
-  },
-  cco: {
-    label: "Chief Creative Officer",
-    abbr: "CCO",
-    desc: "Creative standard, idea integrity, FRAME anchor hold. Cannes/Effies benchmark.",
-    color: "text-purple-700 bg-purple-50 border-purple-200",
-  },
-} as const;
 
 // ─── Section label ────────────────────────────────────────────────────────────
 
@@ -229,37 +210,12 @@ function V2ExtensionCard({
               <textarea className={taClass} name="propagation_mechanism" rows={2} defaultValue={v2.propagation_mechanism} placeholder="Specific mechanism — not a general description." />
             </div>
 
-            {/* ── Three-Lens Evaluation ─────────────────────────────────── */}
-            <div className="border border-neutral-200 rounded-xl overflow-hidden">
-              <div className="px-3 py-2 bg-neutral-50 border-b border-neutral-100">
-                <p className="text-xs font-semibold text-neutral-700">Three-Lens Evaluation — ShiftImpact OS</p>
-                <p className="text-xs text-neutral-400 mt-0.5">The brief is assessed through three leadership lenses. Edit to align with your read.</p>
-              </div>
-              <div className="divide-y divide-neutral-100">
-                {(["cog", "cfo", "cco"] as const).map((key) => {
-                  const meta = LENS_META[key];
-                  const fieldName = `${key}_lens`;
-                  const defaultVal = v2[`${key}_lens`] as string;
-                  return (
-                    <div key={key} className="px-3 py-3 space-y-1.5">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${meta.color}`}>
-                          {meta.abbr}
-                        </span>
-                        <span className="text-xs font-semibold text-neutral-700">{meta.label}</span>
-                      </div>
-                      <p className="text-xs text-neutral-400">{meta.desc}</p>
-                      <textarea
-                        className={`${taClass} bg-neutral-50`}
-                        name={fieldName}
-                        rows={3}
-                        defaultValue={defaultVal}
-                        placeholder={`${meta.label} read…`}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
+            {/* ── Strategic Recommendation ──────────────────────────────── */}
+            <div className="border border-neutral-200 rounded-xl p-3 bg-white space-y-2">
+              <FieldLabel hint="The integrated brief recommendation — what to do, why it works, and what proof of success looks like. CoG, CFO, and CCO lenses are baked in.">
+                Strategic Recommendation
+              </FieldLabel>
+              <textarea className={taClass} name="strategic_recommendation" rows={4} defaultValue={v2.strategic_recommendation ?? ""} placeholder="The output the team acts on — growth signal, spend defensibility, and creative standard in one read." />
             </div>
 
             {/* ── Anchor Integrity Check ────────────────────────────────── */}

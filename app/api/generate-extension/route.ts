@@ -138,7 +138,7 @@ CHANNEL: ${channel_name} (${channel_category})
 PRE-BAKED WIN CONDITIONS FOR THIS CHANNEL:
 ${prebakedWinConditions}${hint}
 
-TEAM LENS FRAMEWORK — ShiftImpact OS evaluates every channel brief through three lenses:
+TEAM LENS FRAMEWORK — use these three lenses to stress-test and strengthen your brief content. Do NOT output them as separate fields — weave their insights into win_conditions, concept_rationale, and the strategic recommendation below:
 - CHIEF OF GROWTH (CoG): Demand, audience acquisition, market penetration, funnel stage fit. Does this earn new buyers?
 - CFO: Budget efficiency, ROI defensibility, MMM data contribution, attribution readiness. Is this spend bankable?
 - CCO: Creative standard, idea integrity, FRAME anchor hold, brand aspiration. Would this make Cannes/Effies/AMES?
@@ -148,12 +148,10 @@ Return ONLY a valid JSON object — no markdown, no explanation, no code fences 
 {
   "__v": 2,
   "idea_spine": "One sharp sentence: how the Big Idea lives in this specific channel. Must trace directly to the FRAME anchor.",
-  "concept_rationale": "2-3 sentences: why this channel for this idea at this funnel stage. What does this channel uniquely do that others cannot?",
-  "win_conditions": "AI-enriched win conditions specific to this campaign + channel combination. Build on the pre-baked conditions above with campaign-specific insight.",
+  "concept_rationale": "2-3 sentences: why this channel for this idea at this funnel stage. What does this channel uniquely do that others cannot? Weave in CoG and CCO thinking — does this earn new buyers, and does it hold the creative standard?",
+  "win_conditions": "AI-enriched win conditions for this campaign + channel. Build on the pre-baked conditions with campaign-specific targets. Include: what growth signal this channel generates (CoG read), whether the spend is MMM-attributable and board-defensible (CFO read), and the creative integrity bar this execution must clear (CCO read). Write as a single integrated block, not labelled sub-sections.",
   "propagation_mechanism": "What does this channel execution do to earn the audience's movement to the next stage? Be specific about the mechanism.",
-  "cog_lens": "Chief of Growth read (2-3 sentences): audience reach, funnel stage contribution, acquisition or retention signal expected from this channel.",
-  "cfo_lens": "CFO read (2-3 sentences): cost efficiency, attribution plan, what this channel contributes to MMM data. Is the spend defensible to the board?",
-  "cco_lens": "CCO read (2-3 sentences): creative standard assessment, FRAME anchor integrity, does this execution hold the idea without drift? Cannes/Effies/AMES benchmark.",
+  "strategic_recommendation": "3-4 sentences. The integrated brief recommendation — what to do, why it works for this idea in this channel, and what proof of success looks like. This is the output the team acts on.",
   "anchor_integrity_check": "A candid assessment: what is the single biggest risk of idea drift in this channel? What would cause this execution to lose the FRAME anchor?",
   "do_not": "One line only: what must NEVER appear in this execution. The red line that protects the idea.",
   "client_notes": ""
@@ -162,7 +160,7 @@ Return ONLY a valid JSON object — no markdown, no explanation, no code fences 
   const anthropic = new Anthropic({ apiKey });
   const message = await anthropic.messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 1200,
+    max_tokens: 1000,
     messages: [{ role: "user", content: prompt }],
   });
 
