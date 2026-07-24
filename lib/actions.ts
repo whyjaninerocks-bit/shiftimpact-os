@@ -583,13 +583,43 @@ export async function createIdeaExtension(campaignId: string, formData: FormData
 export async function updateIdeaExtension(extensionId: string, campaignId: string, formData: FormData) {
   const supabase = createAdminClient();
   const channelRole = str(formData, "channel_role") || null;
+
+  // Detect brief format — v2 uses structured JSON fields; v1 uses raw brief_body textarea
+  const isV2 = str(formData, "__brief_version") === "2";
+  let brief_body: string;
+  let propagation_mechanism: string;
+
+  if (isV2) {
+    // Build v2 JSON from all structured form fields
+    const v2 = {
+      __v: 2,
+      idea_spine: str(formData, "idea_spine") || "",
+      concept_rationale: str(formData, "concept_rationale") || "",
+      win_conditions: str(formData, "win_conditions") || "",
+      propagation_mechanism: str(formData, "propagation_mechanism") || "",
+      cog_lens: str(formData, "cog_lens") || "",
+      cfo_lens: str(formData, "cfo_lens") || "",
+      cco_lens: str(formData, "cco_lens") || "",
+      anchor_integrity_check: str(formData, "anchor_integrity_check") || "",
+      do_not: str(formData, "do_not") || "",
+      client_notes: str(formData, "client_notes") || "",
+    };
+    brief_body = JSON.stringify(v2);
+    propagation_mechanism = v2.propagation_mechanism;
+  } else {
+    // v1 — single textarea
+    brief_body = str(formData, "brief_body") || "";
+    propagation_mechanism = str(formData, "propagation_mechanism") || "";
+  }
+
   const { error } = await supabase.from("idea_extensions").update({
     expression_name: str(formData, "expression_name") || "",
     channel_role: channelRole,
-    brief_body: str(formData, "brief_body"),
-    propagation_mechanism: str(formData, "propagation_mechanism"),
+    brief_body,
+    propagation_mechanism,
     status: str(formData, "status") || "Draft",
   }).eq("id", extensionId);
+
   if (error) redirect(`/campaigns/${campaignId}?error=${encodeURIComponent(error.message)}`);
   revalidatePath(`/campaigns/${campaignId}`);
   redirect(`/campaigns/${campaignId}#idea-extensions`);

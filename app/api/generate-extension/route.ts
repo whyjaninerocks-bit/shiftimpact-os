@@ -1,16 +1,63 @@
+// generate-extension/route.ts
+// Sprint 30+ · upgraded channel brief — structured JSON, three-lens eval, BIP context
+//
+// Output format (brief_body is stored as JSON string, __v:2):
+//   idea_spine, concept_rationale, win_conditions, propagation_mechanism,
+//   cog_lens, cfo_lens, cco_lens, anchor_integrity_check, do_not, client_notes
+//
+// Backwards compat: v1 briefs (plain text) are untouched.
+
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const CHANNEL_RULES: Record<string, string> = {
-  Radio: "Audio only. Tension must hit in the first 5 words. No visual dependency. The human emotion must be audible — not described. 15–30 second hook.",
-  KOL: "Creator-native format. Save-bait mechanic required. The creator is the proof, not the brand. Brief must specify: what the creator shows, what they say, what the save trigger is.",
-  Retail: "One moment, no copy. Brand signal only. The shelf/POS must communicate the tension without words. Think visual disruption at point of decision.",
-  Digital: "Scroll-stopping hook in first 2 seconds. Idea stays identical — only the format adapts to platform. Specify format: Reel, carousel, static, story.",
-  PR: "Journalist angle, not brand angle. What is the cultural tension that earns coverage? Frame as a story a media outlet would write — not a press release.",
-  CRM: "Personal trigger, high intimacy. One clear reward signal. The reader must feel this was written for them specifically. Timing matters — specify the trigger event.",
-  Custom: "Adapt the Big Idea faithfully to this channel's specific constraints. Identify what makes this touchpoint unique and how the idea must be expressed through it.",
+// ─── Pre-baked channel win conditions ────────────────────────────────────────
+
+interface ChannelWinSpec {
+  conditions: string;
+  kpis: string;
+  watchout: string;
+}
+
+const CHANNEL_WIN: Record<string, ChannelWinSpec> = {
+  Radio: {
+    conditions: "Tension stated in first 5 words. Sound creates the mental image — no visual dependency. Brand identifiable by audio mark alone. 15s hook holds, 30s full message earns recall.",
+    kpis: "Brand recognition in blind test >65%. Unaided recall after 3 exposures >40%. Frequency floor 3x per week in market.",
+    watchout: "Audio theatre, not radio copy. If it reads as a script, it will play as an ad.",
+  },
+  KOL: {
+    conditions: "Creator's authentic voice carries the tension — no scripted brand language. Audience ICP overlap >70%. Save-bait mechanic fires in first 7 seconds. Creator is the proof, not the brand.",
+    kpis: "Save rate on creator content >5% (above brand-owned average). Comment-to-like ratio >8%. Re-share velocity within 48 hours of posting.",
+    watchout: "Brief the tension, not the script. Over-briefing kills creator credibility and audience trust.",
+  },
+  Retail: {
+    conditions: "Point-of-decision disruption. One visual signal communicates tension without copy. Brand identifiable in under 1 second at 2 metre distance. Idea wins at shelf, not just in isolation.",
+    kpis: "Shelf standout score >70% in fixture audit. Basket attachment rate uplift vs control store. Purchase conversion lift at POS.",
+    watchout: "The competitor product is 30cm away. Win the moment — the shopper has 3 seconds.",
+  },
+  Digital: {
+    conditions: "Hook lands in under 2 seconds. Idea is recognisable with sound off. Brand identifiable within 3 seconds. Platform format is native, not adapted TV.",
+    kpis: "VCR >40% (TikTok), >55% (Meta Reels). Save rate >3.5% (FMCG benchmark). Share rate >1.8%. Comment depth avg >15 words.",
+    watchout: "If it looks like an ad, it loses. Platform-native behaviour beats brand guidelines.",
+  },
+  PR: {
+    conditions: "The cultural tension earns the coverage — not the brand announcement. Story survives without the brand name in the headline. Journalist angle, not brand angle.",
+    kpis: "Tier 1 media placements. Unprompted story replication within 72 hours. Social sharing of earned coverage by non-branded accounts.",
+    watchout: "If it reads like a press release, it gets treated like one.",
+  },
+  CRM: {
+    conditions: "Triggered by consumer behaviour, not a calendar date. Personalisation goes beyond name — references specific usage or purchase pattern. One CTA. Timing is the creative.",
+    kpis: "Open rate >25% (FMCG CRM benchmark). Click-to-conversion >4%. Unsubscribe rate <0.3%.",
+    watchout: "Relevance beats frequency. One well-timed message outperforms three calendar blasts.",
+  },
+  Custom: {
+    conditions: "Define what winning looks like in this environment before execution begins. Set a pre-agreed measurement threshold that can be read weekly.",
+    kpis: "To be defined based on channel specifics and available measurement infrastructure.",
+    watchout: "Custom channels require custom measurement. Do not retrofit standard KPIs onto non-standard environments.",
+  },
 };
+
+// ─── Route ────────────────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -25,22 +72,51 @@ export async function POST(request: Request) {
 
   const supabase = createAdminClient();
 
-  // Fetch FRAME Brief for this campaign
-  const { data: frame } = await supabase
-    .from("frame_briefs")
-    .select("force, role, anchor, mood, expression, clarity_statement, ics_threshold")
-    .eq("campaign_id", campaign_id)
-    .single();
+  // ── Fetch all relevant OS context ──────────────────────────────────────────
 
+  const [frameRes, bipRes, campaignRes] = await Promise.all([
+    supabase
+      .from("frame_briefs")
+      .select("force, role, anchor, mood, expression, clarity_statement, ics_threshold, ics_score, industry_category, campaign_pathway")
+      .eq("campaign_id", campaign_id)
+      .single(),
+    supabase
+      .from("big_idea_platforms")
+      .select("topline_idea, brand_role, propagation_mechanism, cultural_tension, media_idea, expression_summary, lock_status")
+      .eq("campaign_id", campaign_id)
+      .single(),
+    supabase
+      .from("campaigns")
+      .select("name, current_phase, gate_signal_status, industry_profile")
+      .eq("id", campaign_id)
+      .single(),
+  ]);
+
+  const frame = frameRes.data;
   if (!frame) return NextResponse.json({ error: "FRAME Brief not found" }, { status: 404 });
   if (frame.ics_threshold === "Stop") {
     return NextResponse.json({ error: "ICS score is Stop — FRAME must be reworked before generating channel briefs." }, { status: 400 });
   }
 
-  const channelRule = CHANNEL_RULES[channel_category] ?? CHANNEL_RULES.Custom;
-  const hint = translation_hint ? `\nClient-specific channel note: ${translation_hint}` : "";
+  const bip = bipRes.data;
+  const campaign = campaignRes.data;
 
-  const prompt = `You are writing a channel brief for a campaign. You have the locked FRAME Brief below. Your job is to translate the Big Idea faithfully into this specific channel — not create a new idea.
+  // ── Pre-baked win conditions for this channel ───────────────────────────────
+  const winSpec = CHANNEL_WIN[channel_category] ?? CHANNEL_WIN.Custom;
+  const prebakedWinConditions = `CONDITIONS: ${winSpec.conditions}\n\nKEY KPIs: ${winSpec.kpis}\n\nWATCHOUT: ${winSpec.watchout}`;
+
+  // ── Build AI prompt ─────────────────────────────────────────────────────────
+  const hint = translation_hint ? `\nClient channel note: ${translation_hint}` : "";
+
+  const bipContext = bip
+    ? `\nBIG IDEA PLATFORM (${bip.lock_status}):\n- Topline Idea: ${bip.topline_idea}\n- Brand Role: ${bip.brand_role}\n- Cultural Tension: ${bip.cultural_tension}\n- Propagation Mechanism: ${bip.propagation_mechanism}\n- Media Idea: ${bip.media_idea}\n- Expression Summary: ${bip.expression_summary}`
+    : "\nBIG IDEA PLATFORM: Not yet defined.";
+
+  const campaignContext = campaign
+    ? `\nCAMPAIGN CONTEXT:\n- Name: ${campaign.name}\n- Current Phase: ${campaign.current_phase}\n- Gate Signal: ${campaign.gate_signal_status}\n- Industry: ${campaign.industry_profile}`
+    : "";
+
+  const prompt = `You are a senior strategy director at ShiftImpact OS writing a comprehensive channel brief. You have the full campaign context below. Your job is to translate the Big Idea faithfully into this specific channel — not create a new idea.
 
 LOCKED FRAME BRIEF:
 - Force (cultural tension): ${frame.force}
@@ -49,48 +125,106 @@ LOCKED FRAME BRIEF:
 - Mood (emotional tone): ${frame.mood}
 - Expression (execution style): ${frame.expression}
 - Clarity Statement: ${frame.clarity_statement}
+- Industry: ${frame.industry_category ?? "Not specified"}
+- Pathway: ${frame.campaign_pathway ?? "Not specified"}
+- ICS Score: ${frame.ics_score ?? "Not scored"} (${frame.ics_threshold ?? "Unknown"})
+${bipContext}
+${campaignContext}
 
 CHANNEL: ${channel_name} (${channel_category})
-CHANNEL RULES: ${channelRule}${hint}
+PRE-BAKED WIN CONDITIONS FOR THIS CHANNEL:
+${prebakedWinConditions}${hint}
 
-Write a channel brief in this structure:
-**Idea Anchor** — one sentence: how the Big Idea lives in this channel specifically
-**Execution Format** — the specific format, length, or placement
-**Hook / Open** — the first moment (what the audience sees/hears first)
-**Core Message** — the idea body in this channel's language
-**Propagation Mechanism** — what does this channel execution do to earn the audience's movement to the next stage?
-**Do Not** — one line on what must never appear in this execution (to prevent idea drift)
+TEAM LENS FRAMEWORK — ShiftImpact OS evaluates every channel brief through three lenses:
+- CHIEF OF GROWTH (CoG): Demand, audience acquisition, market penetration, funnel stage fit. Does this earn new buyers?
+- CFO: Budget efficiency, ROI defensibility, MMM data contribution, attribution readiness. Is this spend bankable?
+- CCO: Creative standard, idea integrity, FRAME anchor hold, brand aspiration. Would this make Cannes/Effies/AMES?
 
-Keep it tight. Every line must trace back to the FRAME anchor. Do not invent new ideas.`;
+Return ONLY a valid JSON object — no markdown, no explanation, no code fences — with exactly these keys:
+
+{
+  "__v": 2,
+  "idea_spine": "One sharp sentence: how the Big Idea lives in this specific channel. Must trace directly to the FRAME anchor.",
+  "concept_rationale": "2-3 sentences: why this channel for this idea at this funnel stage. What does this channel uniquely do that others cannot?",
+  "win_conditions": "AI-enriched win conditions specific to this campaign + channel combination. Build on the pre-baked conditions above with campaign-specific insight.",
+  "propagation_mechanism": "What does this channel execution do to earn the audience's movement to the next stage? Be specific about the mechanism.",
+  "cog_lens": "Chief of Growth read (2-3 sentences): audience reach, funnel stage contribution, acquisition or retention signal expected from this channel.",
+  "cfo_lens": "CFO read (2-3 sentences): cost efficiency, attribution plan, what this channel contributes to MMM data. Is the spend defensible to the board?",
+  "cco_lens": "CCO read (2-3 sentences): creative standard assessment, FRAME anchor integrity, does this execution hold the idea without drift? Cannes/Effies/AMES benchmark.",
+  "anchor_integrity_check": "A candid assessment: what is the single biggest risk of idea drift in this channel? What would cause this execution to lose the FRAME anchor?",
+  "do_not": "One line only: what must NEVER appear in this execution. The red line that protects the idea.",
+  "client_notes": ""
+}`;
 
   const anthropic = new Anthropic({ apiKey });
   const message = await anthropic.messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 800,
+    max_tokens: 1200,
     messages: [{ role: "user", content: prompt }],
   });
 
-  const text = message.content.find((b) => b.type === "text");
-  const brief_body = text && text.type === "text" ? text.text : "";
+  const textBlock = message.content.find((b) => b.type === "text");
+  const rawText = textBlock && textBlock.type === "text" ? textBlock.text.trim() : "";
 
-  // Save to idea_extensions
-  const { data: ext, error } = await supabase
+  // Parse the JSON — fall back to a plain brief_body if parsing fails
+  let briefObj: Record<string, unknown>;
+  try {
+    // Strip any accidental markdown code fences
+    const cleaned = rawText.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+    briefObj = JSON.parse(cleaned);
+  } catch {
+    // Fallback: store as v1 plain text
+    briefObj = { __v: 1, _raw: rawText };
+  }
+
+  const brief_body = JSON.stringify(briefObj);
+  const propagation_mechanism = (typeof briefObj.propagation_mechanism === "string")
+    ? briefObj.propagation_mechanism
+    : "";
+
+  // ── Save to idea_extensions ─────────────────────────────────────────────────
+  // Check if an extension already exists for this campaign + channel
+  const { data: existing } = await supabase
     .from("idea_extensions")
-    .insert({
-      campaign_id,
-      channel_name,
-      channel_category: channel_category || "Custom",
-      brief_body,
-      frame_anchor: frame.anchor,
-      mood_register: frame.mood,
-      clarity_statement: frame.clarity_statement,
-      propagation_mechanism: "",
-      ai_generated: true,
-    })
-    .select()
+    .select("id")
+    .eq("campaign_id", campaign_id)
+    .eq("channel_name", channel_name)
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  let saveError;
+  if (existing) {
+    // Re-generate: update the existing record
+    const { error } = await supabase
+      .from("idea_extensions")
+      .update({
+        brief_body,
+        frame_anchor: frame.anchor,
+        mood_register: frame.mood,
+        clarity_statement: frame.clarity_statement,
+        propagation_mechanism,
+        channel_category: channel_category || "Custom",
+        ai_generated: true,
+      })
+      .eq("id", existing.id);
+    saveError = error;
+  } else {
+    // New brief: insert
+    const { error } = await supabase
+      .from("idea_extensions")
+      .insert({
+        campaign_id,
+        channel_name,
+        channel_category: channel_category || "Custom",
+        brief_body,
+        frame_anchor: frame.anchor,
+        mood_register: frame.mood,
+        clarity_statement: frame.clarity_statement,
+        propagation_mechanism,
+        ai_generated: true,
+      });
+    saveError = error;
+  }
 
-  return NextResponse.json({ extension: ext });
+  if (saveError) return NextResponse.json({ error: saveError.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
 }

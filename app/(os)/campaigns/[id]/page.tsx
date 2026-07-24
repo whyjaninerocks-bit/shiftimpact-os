@@ -262,6 +262,7 @@ export default async function CampaignDetailPage({
       <IdeaExtensionsSection
         campaignId={id}
         frame={frame}
+        bip={bip ?? null}
         extensions={ideaExtensions}
         clientChannels={clientChannels}
       />
