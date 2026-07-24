@@ -158,37 +158,29 @@ Return ONLY a valid JSON object — no markdown, no explanation, no code fences 
 }`;
 
   const anthropic = new Anthropic({ apiKey });
+  // Prefill the assistant turn with "{" — forces the model to continue the JSON object
+  // and prevents it from wrapping the output in markdown code fences.
   const message = await anthropic.messages.create({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 1000,
-    messages: [{ role: "user", content: prompt }],
+    messages: [
+      { role: "user", content: prompt },
+      { role: "assistant", content: "{" },
+    ],
   });
 
   const textBlock = message.content.find((b) => b.type === "text");
-  const rawText = textBlock && textBlock.type === "text" ? textBlock.text.trim() : "";
+  // Prepend the "{" we prefilled — the model continues from after it
+  const rawText = "{" + (textBlock && textBlock.type === "text" ? textBlock.text : "");
 
-  // Parse the JSON — fall back to a plain brief_body if parsing fails
+  // Parse the JSON directly — prefill guarantees no markdown fences
   let briefObj: Record<string, unknown>;
   try {
-    // Strip markdown fences wherever they appear (AI sometimes wraps in ```json ... ```)
-    const cleaned = rawText
-      .trim()
-      .replace(/^```(?:json)?\s*/i, "")
-      .replace(/\s*```\s*$/, "")
-      .trim();
-    briefObj = JSON.parse(cleaned);
+    briefObj = JSON.parse(rawText);
   } catch {
-    // Second attempt: extract the first {...} block
+    // Fallback: extract first complete {...} block (shouldn't be needed with prefill)
     const match = rawText.match(/\{[\s\S]*\}/);
-    if (match) {
-      try {
-        briefObj = JSON.parse(match[0]);
-      } catch {
-        briefObj = { __v: 1, _raw: rawText };
-      }
-    } else {
-      briefObj = { __v: 1, _raw: rawText };
-    }
+    briefObj = match ? (() => { try { return JSON.parse(match[0]); } catch { return { __v: 1, _raw: rawText }; } })() : { __v: 1, _raw: rawText };
   }
 
   const brief_body = JSON.stringify(briefObj);
