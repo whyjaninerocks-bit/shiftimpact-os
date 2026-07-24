@@ -106,6 +106,8 @@ export default function QuickAuditPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [country, setCountry] = useState("Malaysia");
+  // Carries forward the Signal's AI intelligence so Snapshot can extend rather than re-derive
+  const [signalIntelligence, setSignalIntelligence] = useState<Record<string, unknown> | null>(null);
 
   const brandRef = useRef<HTMLInputElement>(null);
   const campaignRef = useRef<HTMLInputElement>(null);
@@ -130,6 +132,7 @@ export default function QuickAuditPage() {
           if (data.industry && industryRef.current) industryRef.current.value = data.industry;
           if (data.country) setCountry(data.country);
           if (data.context_text) setContextText(data.context_text);
+          if (data.signal_intelligence) setSignalIntelligence(data.signal_intelligence);
         })
         .catch(() => {
           // Signal not found or fetch failed — form stays empty for manual input
@@ -202,6 +205,7 @@ export default function QuickAuditPage() {
           campaign_name: campaignRef.current?.value,
           industry: industryRef.current?.value,
           country,
+          signal_intelligence: signalIntelligence ?? undefined,
           campaign_phase: phaseRef.current?.value,
           business_objective: objectiveRef.current?.value,
           channels: selectedChannels,

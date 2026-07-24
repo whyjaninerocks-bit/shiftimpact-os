@@ -304,6 +304,7 @@ export async function POST(req: NextRequest) {
       campaign_name,
       industry,
       country = "Malaysia",
+      signal_intelligence,
       campaign_phase = "Demand",
       business_objective,
       channels = [],
@@ -320,6 +321,32 @@ export async function POST(req: NextRequest) {
 
     // ── AI Analysis ───────────────────────────────────────────────────────────
 
+    // If this Snapshot was promoted from a Clarity Signal, carry forward the Signal's
+    // pre-established intelligence so the AI extends rather than re-derives from scratch.
+    const signalBlock = signal_intelligence
+      ? `
+PRE-ESTABLISHED INTELLIGENCE FROM CLARITY SIGNAL™:
+The following findings were already established in the preliminary Clarity Signal run.
+Accept these as validated starting points — do NOT re-derive or contradict them.
+Extend into the full diagnostic dimensions below.
+
+Decision Status: ${signal_intelligence.decision_status} — ${signal_intelligence.decision_status_reason}
+
+Executive Observation: ${signal_intelligence.executive_observation}
+
+Top 5 Signals Already Identified:
+${JSON.stringify(signal_intelligence.top_signals, null, 2)}
+
+Biggest Opportunity (established): ${signal_intelligence.biggest_opportunity}
+Biggest Risk (established): ${signal_intelligence.biggest_risk}
+
+Questions Already Surfaced:
+${(signal_intelligence.questions_worth_asking as string[])?.map((q, i) => `${i + 1}. ${q}`).join("\n")}
+
+Your task: Using the above as your foundation, deliver the FULL Clarity Snapshot™ diagnostic — effectiveness score, engine type, consumer state, all signal dimensions, audience intent, AI visibility, gate status, ICS score, and strategic recommendations. Build ON the Signal intelligence; do not restart from scratch.
+`
+      : "";
+
     const userPrompt = `CAMPAIGN INTELLIGENCE PREVIEW REQUEST
 
 Brand: ${brand_name}
@@ -330,9 +357,9 @@ Current Phase: ${campaign_phase}
 Business Objective: ${business_objective || "Not disclosed"}
 Active Channels: ${channels.length > 0 ? channels.join(", ") : "Not specified"}
 Approximate Media Budget: ${budget_range || "Not disclosed"}
-
+${signalBlock}
 PUBLIC SIGNAL DATA COLLECTED:
-${context_text.slice(0, 8000)}
+${context_text.slice(0, signal_intelligence ? 5000 : 8000)}
 
 Analyse this campaign across all intelligence dimensions. Apply ${country} market benchmarks, platform dynamics, and consumer behaviour context throughout — every insight must be grounded in ${country} market reality. Determine which optional signals (review_platform, retail_signal, vcr, pr_earned) are relevant based on industry and available data — set include: true only where signal evidence exists or where the industry makes it directly relevant (Hospitality/F&B → review_platform; Retail/FMCG → retail_signal; video channels → vcr). Deliver strategic recommendations in the voice of a 30-year seasoned Chief Marketing Business Analyst. Return JSON only.`;
 
