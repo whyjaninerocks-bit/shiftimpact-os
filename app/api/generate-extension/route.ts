@@ -170,12 +170,25 @@ Return ONLY a valid JSON object — no markdown, no explanation, no code fences 
   // Parse the JSON — fall back to a plain brief_body if parsing fails
   let briefObj: Record<string, unknown>;
   try {
-    // Strip any accidental markdown code fences
-    const cleaned = rawText.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+    // Strip markdown fences wherever they appear (AI sometimes wraps in ```json ... ```)
+    const cleaned = rawText
+      .trim()
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```\s*$/, "")
+      .trim();
     briefObj = JSON.parse(cleaned);
   } catch {
-    // Fallback: store as v1 plain text
-    briefObj = { __v: 1, _raw: rawText };
+    // Second attempt: extract the first {...} block
+    const match = rawText.match(/\{[\s\S]*\}/);
+    if (match) {
+      try {
+        briefObj = JSON.parse(match[0]);
+      } catch {
+        briefObj = { __v: 1, _raw: rawText };
+      }
+    } else {
+      briefObj = { __v: 1, _raw: rawText };
+    }
   }
 
   const brief_body = JSON.stringify(briefObj);
