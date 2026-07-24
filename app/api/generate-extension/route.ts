@@ -162,7 +162,7 @@ Return ONLY a valid JSON object — no markdown, no explanation, no code fences 
   // and prevents it from wrapping the output in markdown code fences.
   const message = await anthropic.messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 1000,
+    max_tokens: 2000,
     messages: [
       { role: "user", content: prompt },
       { role: "assistant", content: "{" },
@@ -178,9 +178,15 @@ Return ONLY a valid JSON object — no markdown, no explanation, no code fences 
   try {
     briefObj = JSON.parse(rawText);
   } catch {
-    // Fallback: extract first complete {...} block (shouldn't be needed with prefill)
-    const match = rawText.match(/\{[\s\S]*\}/);
-    briefObj = match ? (() => { try { return JSON.parse(match[0]); } catch { return { __v: 1, _raw: rawText }; } })() : { __v: 1, _raw: rawText };
+    // Fallback: extract first complete {...} block — try to close a truncated JSON
+    const trimmed = rawText.trimEnd();
+    // If truncated mid-object, try appending closing brace
+    const candidates = [trimmed, trimmed + '""}', trimmed + '"}'];
+    let parsed: Record<string, unknown> | null = null;
+    for (const c of candidates) {
+      try { parsed = JSON.parse(c); break; } catch { /* continue */ }
+    }
+    briefObj = parsed ?? { __v: 1, _raw: rawText };
   }
 
   const brief_body = JSON.stringify(briefObj);
