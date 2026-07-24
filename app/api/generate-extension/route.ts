@@ -77,7 +77,7 @@ export async function POST(request: Request) {
   const [frameRes, bipRes, campaignRes] = await Promise.all([
     supabase
       .from("frame_briefs")
-      .select("force, role, anchor, mood, expression, clarity_statement, ics_threshold, ics_score, industry_category, campaign_pathway")
+      .select("force, role, anchor, mood, expression, clarity_statement, ics_threshold, ics_weighted_total, industry_category, campaign_pathway")
       .eq("campaign_id", campaign_id)
       .single(),
     supabase
@@ -93,7 +93,10 @@ export async function POST(request: Request) {
   ]);
 
   const frame = frameRes.data;
-  if (!frame) return NextResponse.json({ error: "FRAME Brief not found" }, { status: 404 });
+  if (!frame) {
+    const detail = frameRes.error?.message ?? "no row returned";
+    return NextResponse.json({ error: `FRAME Brief not found: ${detail}` }, { status: 404 });
+  }
   if (frame.ics_threshold === "Stop") {
     return NextResponse.json({ error: "ICS score is Stop — FRAME must be reworked before generating channel briefs." }, { status: 400 });
   }
@@ -127,7 +130,7 @@ LOCKED FRAME BRIEF:
 - Clarity Statement: ${frame.clarity_statement}
 - Industry: ${frame.industry_category ?? "Not specified"}
 - Pathway: ${frame.campaign_pathway ?? "Not specified"}
-- ICS Score: ${frame.ics_score ?? "Not scored"} (${frame.ics_threshold ?? "Unknown"})
+- ICS Score: ${frame.ics_weighted_total ?? "Not scored"} (${frame.ics_threshold ?? "Unknown"})
 ${bipContext}
 ${campaignContext}
 
