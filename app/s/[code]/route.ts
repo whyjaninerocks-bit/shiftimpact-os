@@ -1,40 +1,50 @@
 // app/s/[code]/route.ts
 // ShiftImpact OS — branded short link resolver
-// /s/[first-8-chars-of-uuid] → server-side redirect to the full Signal or Snapshot URL
-// One hop, no external service, no interstitial.
+// /s/[first-8-chars-of-uuid] → 301 server-side redirect to full Signal or Snapshot URL
+// One hop, branded domain, no external service, no interstitial.
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+export const runtime = "nodejs";
+
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
   const { code } = await params;
+  const base = new URL(req.url).origin;
 
   if (!code || code.length < 6) {
-    return NextResponse.redirect(new URL("/", _req.url));
+    return NextResponse.redirect(`${base}/clients`, { status: 302 });
   }
 
   const supabase = createAdminClient();
 
-  // Match on the first segment of the UUID (before the first dash, or first 8 chars)
+  // UUID columns can't use ILIKE directly in PostgREST.
+  // Use a range query: any UUID whose first segment matches `code`
+  // spans from `{code}-0000-0000-0000-000000000000`
+  //          to `{code}-ffff-ffff-ffff-ffffffffffff`
+  const lo = `${code.slice(0, 8)}-0000-0000-0000-000000000000`;
+  const hi = `${code.slice(0, 8)}-ffff-ffff-ffff-ffffffffffff`;
+
   const { data, error } = await supabase
     .from("quick_audits")
     .select("id, result")
-    .ilike("id", `${code}%`)
+    .gte("id", lo)
+    .lte("id", hi)
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
-    return NextResponse.redirect(new URL("/clients", _req.url));
+    return NextResponse.redirect(`${base}/clients`, { status: 302 });
   }
 
   const result = data.result as Record<string, unknown>;
   const isSignal = !!result?._clarity_signal;
   const destination = isSignal
-    ? `/clarity-signal/${data.id}`
-    : `/audit/${data.id}`;
+    ? `${base}/clarity-signal/${data.id}`
+    : `${base}/audit/${data.id}`;
 
-  return NextResponse.redirect(new URL(destination, _req.url), { status: 301 });
+  return NextResponse.redirect(destination, { status: 301 });
 }
