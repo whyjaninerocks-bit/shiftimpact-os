@@ -72,6 +72,7 @@ const sectionGroups = [
       { href: "#intelligence-query", label: "Campaign Intelligence ✦" },
       { href: "#business-outcomes", label: "Business Outcomes" },
       { href: "#signal-log", label: "Signal Log" },
+      { href: "#diagnostics", label: "Diagnostics" },
     ],
   },
   {
@@ -108,12 +109,6 @@ const sectionGroups = [
       { href: "#review-platform", label: "Review Platform F30 ✦" },
       { href: "#dba-intelligence", label: "Brand Assets F29 ⚿" },
       { href: "#attribution", label: "Attribution ⚿" },
-    ],
-  },
-  {
-    label: "System",
-    links: [
-      { href: "#diagnostics", label: "Diagnostics" },
     ],
   },
 ];
@@ -226,6 +221,15 @@ export default async function CampaignDetailPage({
       <IntelligenceQuerySection campaignId={id} campaignName={campaign.name} />
       <BusinessOutcomesSection campaignId={id} campaign={campaign} outcomes={businessOutcomes} />
       <SignalLogSection campaignId={id} signalLogs={signalLogs} phaseGates={phaseGates} />
+      <DiagnosticsSection
+        campaign={campaign}
+        frame={frame}
+        phaseGates={phaseGates}
+        stageBriefs={stageBriefs}
+        killSwitches={killSwitches}
+        signalLogs={signalLogs}
+        dashboards={dashboards}
+      />
 
       {/* ── STRATEGY ────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 pt-4">
@@ -327,20 +331,6 @@ export default async function CampaignDetailPage({
         attributionRecords={attributionRecords}
       />
 
-      {/* ── SYSTEM ──────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 pt-4">
-        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400 whitespace-nowrap">System</span>
-        <div className="flex-1 h-px bg-neutral-200" />
-      </div>
-      <DiagnosticsSection
-        campaign={campaign}
-        frame={frame}
-        phaseGates={phaseGates}
-        stageBriefs={stageBriefs}
-        killSwitches={killSwitches}
-        signalLogs={signalLogs}
-        dashboards={dashboards}
-      />
       <BackToTop />
     </div>
   );
