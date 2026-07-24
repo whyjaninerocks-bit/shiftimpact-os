@@ -1,6 +1,4 @@
 // app/(os)/clients/page.tsx
-// ShiftImpact OS — Home / Clients
-// Branded dashboard home: client list + New Client form + Quick Audit CTA.
 
 import Link from "next/link";
 import { getClients, getRecentClaritySignals } from "@/lib/data";
@@ -13,6 +11,7 @@ import {
   inputClass,
   labelClass,
 } from "@/app/_components/ui";
+import { DeleteClientButton } from "@/app/_components/DeleteClientButton";
 
 export const dynamic = "force-dynamic";
 
@@ -26,48 +25,46 @@ export default async function ClientsPage() {
     <div className="space-y-8">
 
       {/* ── Tagline bar ─────────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-neutral-200 bg-white px-6 py-4 flex items-center justify-between shadow-sm">
+      <div className="rounded-xl border border-neutral-200 bg-white px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
         <div>
           <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-0.5">ShiftImpact OS</p>
           <p className="text-sm text-neutral-500">A concise executive view of what deserves attention now.</p>
         </div>
-        <div className="flex items-center gap-3 shrink-0 ml-6">
+        <div className="flex items-center gap-3 shrink-0">
           <Link
             href="/clarity-signal"
-            className="px-5 py-2.5 rounded-lg border border-neutral-300 bg-white text-neutral-800 text-sm font-semibold hover:bg-neutral-50 transition-colors"
+            className="px-4 py-2 rounded-lg border border-neutral-300 bg-white text-neutral-800 text-sm font-semibold hover:bg-neutral-50 transition-colors"
           >
             Clarity Signal™
           </Link>
           <Link
             href="/audit"
-            className="px-5 py-2.5 rounded-lg bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-700 transition-colors"
+            className="px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-700 transition-colors"
           >
             Clarity Snapshot
           </Link>
         </div>
       </div>
 
-      {/* ── Clients + New Client ────────────────────────────────────────── */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      {/* ── Existing Clients ────────────────────────────────────────────── */}
+      <div className="space-y-3">
+        <SectionTitle>Clients</SectionTitle>
 
-        {/* Client list */}
-        <div className="lg:col-span-2 space-y-3">
-          <SectionTitle>Clients</SectionTitle>
+        {clients.length === 0 && (
+          <Card>
+            <p className="text-sm text-neutral-500">No clients yet — create one below.</p>
+          </Card>
+        )}
 
-          {clients.length === 0 && (
-            <Card>
-              <p className="text-sm text-neutral-500">No clients yet — create one to get started.</p>
-            </Card>
-          )}
-
-          {clients.map((c) => (
-            <Link key={c.id} href={`/clients/${c.id}`}>
-              <Card className="hover:border-neutral-400 transition-colors cursor-pointer">
-                <div className="flex items-center justify-between">
-                  <div>
+        {clients.map((c) => (
+          <Card key={c.id} className="group">
+            <div className="flex items-center justify-between gap-4">
+              <Link href={`/clients/${c.id}`} className="flex-1 min-w-0 hover:opacity-80 transition-opacity">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="min-w-0">
                     <p className="font-semibold text-neutral-900">{c.name}</p>
                     {(c.business_outcome_label || c.retention_metric_label) && (
-                      <p className="text-xs text-neutral-400 mt-0.5">
+                      <p className="text-xs text-neutral-400 mt-0.5 truncate">
                         {[c.business_outcome_label, c.retention_metric_label]
                           .filter(Boolean)
                           .join(" · ")}
@@ -79,17 +76,20 @@ export default async function ClientsPage() {
                     <Badge tone="blue">{c.active_campaigns} active</Badge>
                   </div>
                 </div>
-              </Card>
-            </Link>
-          ))}
-        </div>
+              </Link>
+              <DeleteClientButton clientId={c.id} clientName={c.name} />
+            </div>
+          </Card>
+        ))}
+      </div>
 
-        {/* New client form */}
+      {/* ── Add New Client ───────────────────────────────────────────────── */}
+      <div className="space-y-3">
+        <SectionTitle>Add New Client</SectionTitle>
         <Card>
-          <SectionTitle>New Client</SectionTitle>
-          <form action={createClient} className="space-y-3 mt-2">
+          <form action={createClient} className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className={labelClass} htmlFor="name">Name</label>
+              <label className={labelClass} htmlFor="name">Name *</label>
               <input className={inputClass} id="name" name="name" required placeholder="e.g. Yeo's Malaysia" />
             </div>
             <div>
@@ -98,6 +98,9 @@ export default async function ClientsPage() {
                 <option value="QSR">QSR</option>
                 <option value="B2B">B2B</option>
                 <option value="Retail">Retail</option>
+                <option value="FMCG">FMCG</option>
+                <option value="Financial Services">Financial Services</option>
+                <option value="Telco">Telco</option>
                 <option value="Other">Other</option>
               </select>
             </div>
@@ -109,16 +112,18 @@ export default async function ClientsPage() {
               <label className={labelClass} htmlFor="retention_metric_label">Retention Metric Label</label>
               <input className={inputClass} id="retention_metric_label" name="retention_metric_label" placeholder="e.g. Repeat Purchase Rate (60-day)" />
             </div>
-            <button type="submit" className={buttonClass}>Create Client</button>
+            <div className="sm:col-span-2">
+              <button type="submit" className={buttonClass}>Create Client</button>
+            </div>
           </form>
         </Card>
-
       </div>
-      {/* ── Recent Clarity Signals — internal only ──────────────────────── */}
+
+      {/* ── Recent Clarity Signals ───────────────────────────────────────── */}
       {claritySignals.length > 0 && (
-        <div>
+        <div className="space-y-3">
           <SectionTitle>Recent Clarity Signals</SectionTitle>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 mt-3">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {claritySignals.map((s) => (
               <div key={s.id} className="bg-white border border-neutral-100 rounded-xl p-4 flex items-start justify-between gap-3 shadow-sm">
                 <div className="min-w-0">

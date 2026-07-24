@@ -66,6 +66,13 @@ export async function updateClient(clientId: string, formData: FormData) {
   redirect(`/clients/${clientId}`);
 }
 
+export async function deleteClient(clientId: string) {
+  const supabase = createAdminClient();
+  await supabase.from("clients").delete().eq("id", clientId);
+  revalidatePath("/clients");
+  redirect("/clients");
+}
+
 // ───────────────────────────────────────────────────────────────────────
 // Campaigns
 // ───────────────────────────────────────────────────────────────────────
