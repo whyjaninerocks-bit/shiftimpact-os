@@ -410,15 +410,17 @@ ${rawContent}`,
 
     // Attach evidence source
     if (inserted && sig.source_url) {
-      await supabase.from("evidence_sources").insert({
-        signal_id:           inserted.id,
-        source_type:         "news",
-        url:                 sig.source_url,
-        headline:            sig.headline   ?? null,
-        published_at:        sig.published_at ?? null,
-        source_confidence:   sig.source_confidence,
-        verification_status: "Unverified",
-      }).catch(() => {});
+      try {
+        await supabase.from("evidence_sources").insert({
+          signal_id:           inserted.id,
+          source_type:         "news",
+          url:                 sig.source_url,
+          headline:            sig.headline   ?? null,
+          published_at:        sig.published_at ?? null,
+          source_confidence:   sig.source_confidence,
+          verification_status: "Unverified",
+        });
+      } catch { /* non-fatal — signal still recorded */ }
     }
   }
 
