@@ -9,6 +9,29 @@ export const maxDuration = 60; // seconds — Apify actors need time to run
 const APIFY_TOKEN = process.env.APIFY_API_TOKEN;
 const APIFY_BASE  = "https://api.apify.com/v2";
 
+// ─── Derive a short search name by stripping corporate suffixes ───────────────
+// "Gardenia Malaysia" → "Gardenia"
+// "Alliance Bank Malaysia Berhad" → "Alliance Bank"
+function shortName(companyName: string): string {
+  const suffixes = [
+    /\s+(Malaysia|Singapore|Philippines|Thailand|Indonesia)\s+Berhad\s*$/i,
+    /\s+Berhad\s*$/i,
+    /\s+Sdn\.?\s+Bhd\.?\s*$/i,
+    /\s+Bhd\.?\s*$/i,
+    /\s+Pte\.?\s+Ltd\.?\s*$/i,
+    /\s+Pte\.?\s*$/i,
+    /\s+Ltd\.?\s*$/i,
+    /\s+(Malaysia|Singapore|Philippines|Thailand|Indonesia)\s*$/i,
+    /\s+Group\s*$/i,
+  ];
+  let name = companyName.trim();
+  for (const re of suffixes) {
+    const cleaned = name.replace(re, "").trim();
+    if (cleaned.length >= 3) { name = cleaned; break; }
+  }
+  return name;
+}
+
 // ─── Google News RSS — zero-config fallback (no API key needed) ───────────────
 // Returns raw text chunks in the same format as Apify results.
 async function fetchGoogleNewsRSS(
@@ -24,10 +47,14 @@ async function fetchGoogleNewsRSS(
   };
   const { hl, gl, ceid } = marketMap[marketCode] ?? marketMap.MY;
 
+  const short = shortName(companyName);
+  // Use short name in quotes for more results; full name as fallback
+  const searchTerm = short !== companyName ? short : companyName;
+
   const queries = [
-    `"${companyName}" award OR recognition OR win`,
-    `"${companyName}" funding OR investment OR expansion OR launch`,
-    `"${companyName}" partnership OR milestone OR appointed OR leadership`,
+    `"${searchTerm}" award OR recognition OR win`,
+    `"${searchTerm}" launch OR expansion OR investment OR funding`,
+    `"${searchTerm}" partnership OR milestone OR appointed OR leadership`,
   ];
 
   const chunks: string[] = [];
@@ -58,7 +85,10 @@ async function fetchGoogleNewsRSS(
         const srcName = item.match(/<source[^>]*>(.*?)<\/source>/)?.[1]?.trim() ?? "";
         const date    = item.match(/<pubDate>(.*?)<\/pubDate>/)?.[1]?.trim() ?? "";
 
-        if (title && (title.toLowerCase().includes(companyName.toLowerCase()) || desc.toLowerCase().includes(companyName.toLowerCase()))) {
+        const nameLower  = companyName.toLowerCase();
+        const shortLower = short.toLowerCase();
+        const textToCheck = (title + " " + desc).toLowerCase();
+        if (title && (textToCheck.includes(nameLower) || textToCheck.includes(shortLower))) {
           chunks.push(`[News RSS: ${title}]\nSource: ${srcName} (${srcUrl})\nDate: ${date}\n${desc}`);
           count++;
         }
@@ -179,6 +209,7 @@ export async function POST(req: NextRequest) {
   }
 
   const companyName    = company.name as string;
+  const companyShort   = shortName(companyName);
   const linkedinUrl    = (body.linkedin_url ?? company.linkedin_url ?? null) as string | null;
   const website        = (body.website      ?? company.website      ?? null) as string | null;
   const searchQuery    = (body.search_query ?? companyName) as string;
@@ -215,15 +246,17 @@ export async function POST(req: NextRequest) {
       : Promise.resolve([] as Record<string, unknown>[]),
 
     // RAG web browser (Apify — needs token; 35s timeout to stay within Vercel 60s budget)
+    // Use short name (e.g. "Gardenia" not "Gardenia Malaysia") for broader coverage
     APIFY_TOKEN
       ? runApifyActor("apify/rag-web-browser", {
-          query: `"${searchQuery}" (award OR funding OR launch OR partnership OR expansion OR recognition OR milestone OR growth) Malaysia OR Singapore 2024 OR 2025 OR 2026`,
+          query: `"${companyShort}" (award OR funding OR launch OR partnership OR expansion OR recognition OR milestone OR growth) 2024 OR 2025 OR 2026`,
           maxResults: 5,
         }, 35, 5).catch(() => [] as Record<string, unknown>[])
       : Promise.resolve([] as Record<string, unknown>[]),
 
     // Google News RSS — no API key required, always runs
-    fetchGoogleNewsRSS(searchQuery, company.market_code as string ?? "MY"),
+    // Pass companyName so shortName() is derived inside (handles "Gardenia Malaysia" → "Gardenia")
+    fetchGoogleNewsRSS(companyName, company.market_code as string ?? "MY"),
   ]);
 
   try {
