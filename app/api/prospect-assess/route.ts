@@ -263,13 +263,17 @@ Generate a precise, commercially grounded assessment. Opportunity Score = how si
   }));
   await supabase.from("assessment_signals").insert(junctionRows).catch(() => {});
 
-  // Persist scores
+  // Persist scores — include company_id so trigger can update prospect_tier directly
+  const oppScore    = Math.round(assessment.opportunity_score as number);
+  const pursuitScore = Math.round(assessment.pursuit_score as number);
+
   const { data: scoreRow } = await supabase
     .from("prospect_scores")
     .insert({
       assessment_id:         assessmentRow.id,
-      opportunity_score:     Math.round(assessment.opportunity_score as number),
-      pursuit_score:         Math.round(assessment.pursuit_score     as number),
+      company_id:            company_id as string,
+      opportunity_score:     oppScore,
+      pursuit_score:         pursuitScore,
       opportunity_rationale: assessment.opportunity_rationale ?? "",
       pursuit_rationale:     assessment.pursuit_rationale     ?? "",
       surfaced_at:           new Date().toISOString(),
@@ -278,7 +282,6 @@ Generate a precise, commercially grounded assessment. Opportunity Score = how si
     .single();
 
   // 6. Auto-qualify company if pursuit_score >= 50
-  const pursuitScore = Math.round(assessment.pursuit_score as number);
   if (pursuitScore >= 50 && company.status === "Watching") {
     await supabase.from("companies").update({ status: "Qualified" }).eq("id", company_id as string);
   }
