@@ -75,14 +75,16 @@ async function fetchGoogleNewsRSS(
 async function runApifyActor(
   actorId: string,
   input: Record<string, unknown>,
-  timeoutSecs = 60,
-  maxItems = 20
+  timeoutSecs = 25,
+  maxItems = 5
 ) {
   const url = `${APIFY_BASE}/acts/${actorId}/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=${timeoutSecs}&maxItems=${maxItems}`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
+    // Hard client-side abort — prevents hanging the Vercel function if Apify is slow
+    signal: AbortSignal.timeout((timeoutSecs + 3) * 1000),
   });
   if (!res.ok) {
     const text = await res.text();
