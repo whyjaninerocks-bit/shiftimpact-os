@@ -32,6 +32,27 @@ const DEEP_TOOL: Anthropic.Tool = {
         type: "string",
         description: "2 sentences: why is NOW the right (or wrong) time to pursue? What is the window and when does it close?",
       },
+      // ── Person recommendation ──────────────────────────────────────────────
+      recommended_person_name: {
+        type: "string",
+        description: "The specific person's name to approach FIRST — extracted from the signal evidence if a real name was surfaced (e.g. from award announcements, executive appointment news, partnership signings). If no name was found in the signals, output exactly: 'Not identified in signals'.",
+      },
+      recommended_person_role: {
+        type: "string",
+        description: "Their exact title or the closest title to target at this company. Be specific — not 'senior executive' but 'Chief Strategy Officer' or 'Head of Corporate Affairs'.",
+      },
+      recommended_person_why: {
+        type: "string",
+        description: "2 sentences: why this person specifically — not just because of their seniority, but because of their direct connection to the business moment (ownership transition, product launch, partnership, award). What decision or tension are they personally sitting closest to?",
+      },
+      recommended_person_signal: {
+        type: "string",
+        description: "Which specific signal or evidence headline surfaced this person or this role? Quote the signal type and the key fact. E.g. 'Recognition signal: Roy Heong named Asian Innovation Excellence Award winner — signals CMO is the external-facing executive tied to brand positioning.'",
+      },
+      recommended_person_hook: {
+        type: "string",
+        description: "One specific opening line tailored to THIS person — not a generic intro. Reference something specific about them or their role in the current situation that makes it impossible to ignore.",
+      },
     },
     required: [
       "competitive_landscape",
@@ -39,6 +60,11 @@ const DEEP_TOOL: Anthropic.Tool = {
       "signal_analysis",
       "risk_factors",
       "market_timing",
+      "recommended_person_name",
+      "recommended_person_role",
+      "recommended_person_why",
+      "recommended_person_signal",
+      "recommended_person_hook",
     ],
   },
 };
@@ -114,12 +140,17 @@ export async function POST(req: NextRequest) {
     .update({ status: "Pursuing" })
     .eq("id", company_id as string);
 
-  // 3. Build context for deep dive
+  // 3. Build context for deep dive — include evidence headlines so AI can surface named individuals
   const signalContext = signals.map((s, i) => {
-    const evid = (s.evidence_sources as Array<{ source_confidence?: string; headline?: string }> | null) ?? [];
+    const evid = (s.evidence_sources as Array<{ source_confidence?: string; headline?: string; url?: string }> | null) ?? [];
     const conf = evid[0]?.source_confidence ?? "Medium";
     const fresh = Math.round((s.signal_freshness_score ?? 1) * 100);
-    return `${i + 1}. [${s.signal_category}] ${s.signal_type} (confidence: ${conf}, freshness: ${fresh}%)\n   ${s.signal_text}`;
+    const headlines = evid.map(e => e.headline).filter(Boolean).join(" | ");
+    return [
+      `${i + 1}. [${s.signal_category}] ${s.signal_type} (confidence: ${conf}, freshness: ${fresh}%)`,
+      `   ${s.signal_text}`,
+      headlines ? `   Evidence headlines: ${headlines}` : "",
+    ].filter(Boolean).join("\n");
   }).join("\n\n");
 
   const toplineContext = topline
@@ -139,7 +170,7 @@ export async function POST(req: NextRequest) {
   try {
     const aiResp = await anthropic.messages.create({
       model,
-      max_tokens: 1500,
+      max_tokens: 2000,
       tool_choice: { type: "tool", name: "generate_deep_dive" },
       tools: [DEEP_TOOL],
       messages: [{
@@ -157,7 +188,7 @@ ${assessmentContext}
 ALL BUSINESS SIGNALS DETECTED (${signals.length}):
 ${signalContext}
 
-Generate a precise, commercially grounded deep dive that gives the ShiftImpact team everything they need to move from decision-to-pursue to first meaningful conversation. Be specific — name real competitors, real market events, real risks. No generic advice.`,
+Generate a precise, commercially grounded deep dive. For the person recommendation: scan the signal evidence headlines carefully for any named individuals (executives, award winners, signatories, speakers). If a real name appears, use it. If not, recommend the most strategically relevant role to target. Be specific — name real competitors, real market events, real risks. No generic advice.`,
       }],
     });
 
@@ -174,14 +205,19 @@ Generate a precise, commercially grounded deep dive that gives the ShiftImpact t
   const { data: insightRow, error: insightErr } = await supabase
     .from("prospect_insights")
     .insert({
-      company_id:             company_id as string,
-      assessment_id:          assessment?.id ?? null,
-      depth_level:            "deep",
-      competitive_landscape:  deepDive.competitive_landscape ?? null,
-      approach_sequence:      deepDive.approach_sequence     ?? null,
-      signal_analysis:        deepDive.signal_analysis       ?? null,
-      risk_factors:           deepDive.risk_factors          ?? null,
-      market_timing:          deepDive.market_timing         ?? null,
+      company_id:                  company_id as string,
+      assessment_id:               assessment?.id ?? null,
+      depth_level:                 "deep",
+      competitive_landscape:       deepDive.competitive_landscape        ?? null,
+      approach_sequence:           deepDive.approach_sequence            ?? null,
+      signal_analysis:             deepDive.signal_analysis              ?? null,
+      risk_factors:                deepDive.risk_factors                 ?? null,
+      market_timing:               deepDive.market_timing                ?? null,
+      recommended_person_name:     deepDive.recommended_person_name      ?? null,
+      recommended_person_role:     deepDive.recommended_person_role      ?? null,
+      recommended_person_why:      deepDive.recommended_person_why       ?? null,
+      recommended_person_signal:   deepDive.recommended_person_signal    ?? null,
+      recommended_person_hook:     deepDive.recommended_person_hook      ?? null,
     })
     .select("id")
     .single();
@@ -193,15 +229,20 @@ Generate a precise, commercially grounded deep dive that gives the ShiftImpact t
     : null;
 
   return NextResponse.json({
-    insight_id:            insightRow?.id ?? null,
-    competitive_landscape: deepDive.competitive_landscape,
-    approach_sequence:     deepDive.approach_sequence,
-    signal_analysis:       deepDive.signal_analysis,
-    risk_factors:          deepDive.risk_factors,
-    market_timing:         deepDive.market_timing,
-    model_used:            model,
-    tokens_used:           tokensUsed,
-    estimated_cost:        estimatedCost,
-    signals_used:          signals.length,
+    insight_id:                  insightRow?.id ?? null,
+    competitive_landscape:       deepDive.competitive_landscape,
+    approach_sequence:           deepDive.approach_sequence,
+    signal_analysis:             deepDive.signal_analysis,
+    risk_factors:                deepDive.risk_factors,
+    market_timing:               deepDive.market_timing,
+    recommended_person_name:     deepDive.recommended_person_name,
+    recommended_person_role:     deepDive.recommended_person_role,
+    recommended_person_why:      deepDive.recommended_person_why,
+    recommended_person_signal:   deepDive.recommended_person_signal,
+    recommended_person_hook:     deepDive.recommended_person_hook,
+    model_used:                  model,
+    tokens_used:                 tokensUsed,
+    estimated_cost:              estimatedCost,
+    signals_used:                signals.length,
   });
 }

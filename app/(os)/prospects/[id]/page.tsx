@@ -156,7 +156,11 @@ export default async function ProspectDetailPage({
   // Fetch latest deep dive insight
   const { data: deepInsight } = await supabase
     .from("prospect_insights")
-    .select("competitive_landscape, approach_sequence, signal_analysis, risk_factors, market_timing, created_at")
+    .select(`
+      competitive_landscape, approach_sequence, signal_analysis, risk_factors, market_timing,
+      recommended_person_name, recommended_person_role, recommended_person_why,
+      recommended_person_signal, recommended_person_hook, created_at
+    `)
     .eq("company_id", id)
     .eq("depth_level", "deep")
     .order("created_at", { ascending: false })
@@ -285,6 +289,35 @@ export default async function ProspectDetailPage({
                 <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
                   <p className="text-xs font-medium text-amber-600 uppercase tracking-wider mb-1">Risk Factors</p>
                   <p className="text-sm text-neutral-700 whitespace-pre-line">{deepInsight.risk_factors}</p>
+                </div>
+              )}
+              {/* Who to Approach */}
+              {deepInsight.recommended_person_role && (
+                <div className="bg-neutral-900 rounded-lg px-4 py-4 space-y-3">
+                  <p className="text-xs font-medium text-neutral-400 uppercase tracking-wider">Who to Approach First</p>
+                  <div>
+                    <p className="text-base font-bold text-white">
+                      {deepInsight.recommended_person_name && deepInsight.recommended_person_name !== "Not identified in signals"
+                        ? deepInsight.recommended_person_name
+                        : "Name not in signals"}
+                    </p>
+                    <p className="text-sm text-neutral-300 mt-0.5">{deepInsight.recommended_person_role}</p>
+                  </div>
+                  {deepInsight.recommended_person_why && (
+                    <p className="text-sm text-neutral-300">{deepInsight.recommended_person_why}</p>
+                  )}
+                  {deepInsight.recommended_person_signal && (
+                    <div className="border-t border-neutral-700 pt-3">
+                      <p className="text-xs text-neutral-500 uppercase tracking-wider mb-1">Signal source</p>
+                      <p className="text-xs text-neutral-400">{deepInsight.recommended_person_signal}</p>
+                    </div>
+                  )}
+                  {deepInsight.recommended_person_hook && (
+                    <div className="bg-neutral-800 rounded-lg px-3 py-2">
+                      <p className="text-xs text-neutral-500 uppercase tracking-wider mb-1">Opening line</p>
+                      <p className="text-sm text-white italic">&ldquo;{deepInsight.recommended_person_hook}&rdquo;</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
