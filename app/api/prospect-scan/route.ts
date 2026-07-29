@@ -231,32 +231,40 @@ export async function POST(req: NextRequest) {
 
   const queue_id = queueJob?.id ?? null;
 
-  // 3. Scrape — parallel: LinkedIn + Apify RAG browser + Google News RSS (zero-config)
+  // 3. Scrape — ALL sources run in parallel to stay within Vercel 60s budget.
+  // Each source has its own timeout. Total parallel phase = max(20, 20, 12, 20) = 20s,
+  // leaving 40s for AI classification + DB writes.
   const rawChunks: string[] = [];
   const evidenceMap: Record<string, { url?: string; headline?: string; published_at?: string }> = {};
 
-  // Run all sources in parallel; RSS is always attempted regardless of APIFY_TOKEN
-  const [liItems, newsItems, rssChunks] = await Promise.all([
-    // LinkedIn company page scraper (Apify — needs token; 30s timeout)
+  const [liItems, newsItems, rssChunks, gnItems] = await Promise.all([
+    // 1. LinkedIn company page scraper (needs Apify token; 20s)
     linkedinUrl && APIFY_TOKEN
       ? runApifyActor("anchor/linkedin-company-detail-scraper", {
           startUrls: [{ url: linkedinUrl }],
           maxResults: 1,
-        }, 30, 1).catch(() => [] as Record<string, unknown>[])
+        }, 20, 1).catch(() => [] as Record<string, unknown>[])
       : Promise.resolve([] as Record<string, unknown>[]),
 
-    // RAG web browser (Apify — needs token; 35s timeout to stay within Vercel 60s budget)
-    // Use short name (e.g. "Gardenia" not "Gardenia Malaysia") for broader coverage
+    // 2. RAG web browser — use short name for broader coverage (20s)
     APIFY_TOKEN
       ? runApifyActor("apify/rag-web-browser", {
           query: `"${companyShort}" (award OR funding OR launch OR partnership OR expansion OR recognition OR milestone OR growth) 2024 OR 2025 OR 2026`,
           maxResults: 5,
-        }, 35, 5).catch(() => [] as Record<string, unknown>[])
+        }, 20, 5).catch(() => [] as Record<string, unknown>[])
       : Promise.resolve([] as Record<string, unknown>[]),
 
-    // Google News RSS — no API key required, always runs
-    // Pass companyName so shortName() is derived inside (handles "Gardenia Malaysia" → "Gardenia")
+    // 3. Google News RSS — zero-config, always runs (12s abort inside)
     fetchGoogleNewsRSS(companyName, company.market_code as string ?? "MY"),
+
+    // 4. Apify Google Search — runs in parallel now, not as a sequential fallback (20s)
+    APIFY_TOKEN
+      ? runApifyActor("apify/google-search-scraper", {
+          queries: `${companyShort} company news 2024 OR 2025 OR 2026`,
+          maxPagesPerQuery: 1,
+          resultsPerPage: 8,
+        }, 20, 8).catch(() => [] as Record<string, unknown>[])
+      : Promise.resolve([] as Record<string, unknown>[]),
   ]);
 
   try {
@@ -285,25 +293,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Add Google News RSS chunks (always available)
+    // Add Google News RSS chunks
     rawChunks.push(...rssChunks);
 
-    // Apify Google Search as last resort (only if still sparse + token exists; 25s timeout)
-    if (rawChunks.length < 2 && APIFY_TOKEN) {
-      const gnItems = await runApifyActor("apify/google-search-scraper", {
-        queries: `${searchQuery} company news 2025 OR 2026`,
-        maxPagesPerQuery: 1,
-        resultsPerPage: 8,
-      }, 25, 8).catch(() => [] as Record<string, unknown>[]);
-
-      for (const r of gnItems.slice(0, 8)) {
-        const title   = (r.title   || "") as string;
-        const snippet = (r.snippet || "") as string;
-        const url     = (r.url     || "") as string;
-        if (snippet) {
-          rawChunks.push(`[Search Result: ${title}]\nURL: ${url}\n${snippet}`);
-          evidenceMap[title] = { url, headline: title };
-        }
+    // Process Google Search results
+    for (const r of gnItems.slice(0, 8)) {
+      const title   = (r.title   || "") as string;
+      const snippet = (r.snippet || "") as string;
+      const url     = (r.url     || "") as string;
+      if (snippet) {
+        rawChunks.push(`[Search Result: ${title}]\nURL: ${url}\n${snippet}`);
+        evidenceMap[title] = { url, headline: title };
       }
     }
   } catch (scrapeErr) {
