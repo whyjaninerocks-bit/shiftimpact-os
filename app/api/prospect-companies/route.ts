@@ -105,8 +105,8 @@ export async function PATCH(req: NextRequest) {
   // Whitelist updatable fields
   const allowed = [
     "name","industry","size_band","market_code","website","linkedin_url",
-    "status","source_notes","is_suppressed","business_model","growth_stage",
-    "employee_band","company_profile_summary",
+    "status","prospect_tier","partner_tag","source_notes","is_suppressed",
+    "business_model","growth_stage","employee_band","company_profile_summary",
   ];
   const update: Record<string, unknown> = {};
   for (const key of allowed) {

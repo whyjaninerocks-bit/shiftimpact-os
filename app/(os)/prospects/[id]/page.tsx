@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Badge, Card, SectionTitle, buttonClass } from "@/app/_components/ui";
 import { ProspectActions } from "./ProspectActions";
+import { StatusUpdatePanel } from "./StatusUpdatePanel";
 
 export const dynamic = "force-dynamic";
 
@@ -200,6 +201,14 @@ export default async function ProspectDetailPage({
           <ProspectActions companyId={id} companyName={company.name} />
         </div>
       </div>
+
+      {/* ── Pipeline controls ───────────────────────────────────────────── */}
+      <StatusUpdatePanel
+        companyId={id}
+        currentStatus={(company.status ?? "Watching") as "Watching" | "Qualified" | "Pursuing" | "Client" | "Archived"}
+        currentTier={(company.prospect_tier ?? null) as "Tier 1 Hot" | "Tier 2 Warm" | "Tier 3 Watch" | null}
+        currentPartner={((company as Record<string, unknown>).partner_tag ?? null) as "ShiftImpact" | "AOAI" | "Both" | null}
+      />
 
       {/* ── Score summary ────────────────────────────────────────────────── */}
       {latestScore && (
