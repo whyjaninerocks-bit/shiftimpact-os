@@ -5,6 +5,7 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Badge, Card, SectionTitle, buttonClass } from "@/app/_components/ui";
+import { BatchScanButton } from "./BatchScanButton";
 
 export const dynamic = "force-dynamic";
 
@@ -88,6 +89,10 @@ export default async function ProspectsPage({
               {pendingApproval} draft{pendingApproval === 1 ? "" : "s"} awaiting approval
             </span>
           )}
+          <BatchScanButton />
+          <Link href="/prospects/discover" className="px-3 py-1.5 rounded-lg border border-neutral-300 bg-white text-neutral-700 text-sm font-medium hover:bg-neutral-50 transition-colors">
+            Discover
+          </Link>
           <Link href="/prospects/new" className={buttonClass}>
             Add Company
           </Link>
