@@ -132,7 +132,11 @@ export default async function ProspectDetailPage({
     .order("surfaced_at", { ascending: false })
     .limit(5);
 
-  const latestScore = scores?.[0] ?? null;
+  // Fall back to scores nested on the assessment if direct query is empty
+  // (direct query needs company_id column from migration 0028; nested join only needs assessment_id FK)
+  type ScoreRow = { opportunity_score: number; pursuit_score: number; composite_score?: number | null; surfaced_at: string };
+  const nestedScores = (assessment?.prospect_scores ?? []) as ScoreRow[];
+  const latestScore: ScoreRow | null = (scores?.[0] as ScoreRow | undefined) ?? nestedScores[0] ?? null;
 
   return (
     <div className="space-y-6">
@@ -166,7 +170,7 @@ export default async function ProspectDetailPage({
           {[
             { label: "Opportunity", value: latestScore.opportunity_score },
             { label: "Pursuit",     value: latestScore.pursuit_score },
-            { label: "Composite",   value: latestScore.composite_score },
+            { label: "Composite",   value: latestScore.composite_score ?? "—" },
           ].map(s => (
             <div key={s.label} className="bg-white border border-neutral-200 rounded-lg px-4 py-3 text-center">
               <p className="text-2xl font-bold text-neutral-900">{s.value}</p>

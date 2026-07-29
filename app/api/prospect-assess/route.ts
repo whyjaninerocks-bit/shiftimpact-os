@@ -266,11 +266,11 @@ Generate a precise, commercially grounded assessment. Opportunity Score = how si
   }));
   try { await supabase.from("assessment_signals").insert(junctionRows); } catch { /* non-fatal */ }
 
-  // Persist scores — include company_id so trigger can update prospect_tier directly
+  // Persist scores — try with company_id (migration 0028), fall back without it
   const oppScore    = Math.round(assessment.opportunity_score as number);
   const pursuitScore = Math.round(assessment.pursuit_score as number);
 
-  const { data: scoreRow } = await supabase
+  const { error: scoreErr } = await supabase
     .from("prospect_scores")
     .insert({
       assessment_id:         assessmentRow.id,
@@ -280,9 +280,23 @@ Generate a precise, commercially grounded assessment. Opportunity Score = how si
       opportunity_rationale: assessment.opportunity_rationale ?? "",
       pursuit_rationale:     assessment.pursuit_rationale     ?? "",
       surfaced_at:           new Date().toISOString(),
-    })
-    .select()
-    .single();
+    });
+
+  if (scoreErr) {
+    // company_id column may not exist yet (migration 0028 pending) — retry without it
+    console.error("[prospect-assess] scores insert failed:", scoreErr.message, "— retrying without company_id");
+    const { error: scoreErr2 } = await supabase
+      .from("prospect_scores")
+      .insert({
+        assessment_id:         assessmentRow.id,
+        opportunity_score:     oppScore,
+        pursuit_score:         pursuitScore,
+        opportunity_rationale: assessment.opportunity_rationale ?? "",
+        pursuit_rationale:     assessment.pursuit_rationale     ?? "",
+        surfaced_at:           new Date().toISOString(),
+      });
+    if (scoreErr2) console.error("[prospect-assess] scores fallback insert also failed:", scoreErr2.message);
+  }
 
   // 6. Auto-qualify company if pursuit_score >= 50
   if (pursuitScore >= 50 && company.status === "Watching") {
