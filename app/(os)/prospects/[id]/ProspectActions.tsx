@@ -14,9 +14,11 @@ export function ProspectActions({ companyId, companyName, showGoDeepOnly = false
   const [scanning, setScanning]     = useState(false);
   const [assessing, setAssessing]   = useState(false);
   const [goingDeep, setGoingDeep]   = useState(false);
+  const [enriching, setEnriching]   = useState(false);
   const [scanMsg, setScanMsg]       = useState<string | null>(null);
   const [assessMsg, setAssessMsg]   = useState<string | null>(null);
   const [deepMsg, setDeepMsg]       = useState<string | null>(null);
+  const [enrichMsg, setEnrichMsg]   = useState<string | null>(null);
   const [showAddPerson, setShowAddPerson] = useState(false);
   const [savingPerson, setSavingPerson]   = useState(false);
   const [personError, setPersonError]     = useState<string | null>(null);
@@ -111,6 +113,32 @@ export function ProspectActions({ companyId, companyName, showGoDeepOnly = false
     router.refresh();
   }
 
+  async function runEnrich() {
+    setEnriching(true);
+    setEnrichMsg(null);
+    try {
+      const res = await fetch("/api/prospect-enrich", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ company_id: companyId }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setEnrichMsg(`Enrichment failed: ${json.error ?? "unknown error"}`); return; }
+      if (json.warning) { setEnrichMsg(json.warning); return; }
+      const fields = Object.keys(json.enriched_fields ?? {});
+      setEnrichMsg(
+        fields.length > 0
+          ? `Enriched: ${fields.join(", ")} · Confidence: ${json.confidence ?? "?"}`
+          : "No new data found to enrich."
+      );
+      router.refresh();
+    } catch (e) {
+      setEnrichMsg(`Enrichment error: ${String(e)}`);
+    } finally {
+      setEnriching(false);
+    }
+  }
+
   // "Go Deep" inline button — rendered inside the Intelligence Read card
   if (showGoDeepOnly) {
     return (
@@ -140,6 +168,9 @@ export function ProspectActions({ companyId, companyName, showGoDeepOnly = false
         <button onClick={runAssess} disabled={assessing} className={buttonSecondaryClass}>
           {assessing ? "Assessing..." : "Run Assessment"}
         </button>
+        <button onClick={runEnrich} disabled={enriching} className={buttonSecondaryClass}>
+          {enriching ? "Enriching..." : "Enrich Profile"}
+        </button>
         <button
           onClick={() => setShowAddPerson(v => !v)}
           className={buttonSecondaryClass}
@@ -151,6 +182,7 @@ export function ProspectActions({ companyId, companyName, showGoDeepOnly = false
       {scanMsg   && <p className="text-sm text-neutral-600">{scanMsg}</p>}
       {assessMsg && <p className="text-sm text-neutral-600">{assessMsg}</p>}
       {deepMsg   && <p className="text-sm text-neutral-600">{deepMsg}</p>}
+      {enrichMsg && <p className="text-sm text-neutral-600">{enrichMsg}</p>}
 
       {showAddPerson && (
         <Card className="max-w-sm">
