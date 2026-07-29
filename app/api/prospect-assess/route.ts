@@ -91,32 +91,26 @@ AOAI delivers the Acquisition OS™ — a complete 6-pillar lead operating syste
 
 THE 6 PILLARS — KNOW THESE PRECISELY:
 
-P00 STRATEGISE (RM 3,500 one-time, delivered in 2 weeks):
-Delivers a 30–50 page Strategy Blueprint. Includes: ICP research (2–3 psychographic personas with booking triggers, objections, decision hierarchy), competitive positioning map, master messaging document, 90-day activation roadmap, KPI scorecard. RM 3,500 is fully credited toward any retainer. THIS IS THE ENTRY POINT for first engagements.
+P00 STRATEGISE — Entry point for new engagements (delivered in ~2 weeks):
+Delivers a full Strategy Blueprint: ICP research (psychographic personas with booking triggers, objections, decision hierarchy), competitive positioning map, master messaging document, 90-day activation roadmap, KPI scorecard.
 
-P01 ATTRACT (part of Growth retainer RM 8,800/month):
-Demand generation. Includes: content marketing engine (SEO blogs, LinkedIn articles, short-form video), paid traffic campaigns (Meta, Google, LinkedIn ads with retargeting — target ROAS 3x+), social proof architecture (case studies, testimonials, media features), high-conversion landing pages (single CTA, A/B tested copy, 15–30% CVR target). 30–50% MoM organic traffic growth target.
+P01 ATTRACT — Demand generation:
+Content marketing engine (SEO blogs, LinkedIn articles, short-form video), paid traffic campaigns (Meta, Google, LinkedIn ads with retargeting — target ROAS 3x+), social proof architecture (case studies, testimonials, media features), high-conversion landing pages (single CTA, A/B tested copy, 15–30% CVR target). Target: 30–50% MoM organic traffic growth.
 
-P02 CAPTURE (part of Growth retainer):
-Lead conversion infrastructure. Includes: lead magnet ecosystem (tools, audits, e-books, webinars — high-value content for contact data), CRM + lead scoring + tagging (source attribution, automated lead scoring — hottest leads always visible), AI chatbot & instant response (24/7 qualifying chat that books calls automatically, <5 min response time). 100% lead source attribution.
+P02 CAPTURE — Lead conversion infrastructure:
+Lead magnet ecosystem (tools, audits, e-books, webinars), CRM + lead scoring + tagging (full source attribution, automated lead scoring), AI chatbot with instant response (24/7 qualifying chat that books calls automatically, <5 min response time). Outcome: 100% lead source attribution.
 
-P03 NURTURE (part of Growth retainer):
-Trust acceleration. Includes: behaviour-triggered email flows (welcome, education, objection handling, re-engagement — zero manual effort), value-based content drip (weekly tips, case studies), multi-channel retargeting (email, SMS, WhatsApp, social ads — "they're everywhere" presence), personalisation by industry/behaviour/funnel stage. Email open rates 35%+, 20%+ cold lead revival in 60 days, SQL from MQL up 30–50%.
+P03 NURTURE — Trust acceleration:
+Behaviour-triggered email flows (welcome, education, objection handling, re-engagement), value-based content drip (weekly tips, case studies), multi-channel retargeting (email, SMS, WhatsApp, social ads), personalisation by industry/behaviour/funnel stage. Benchmarks: email open rates 35%+, 20%+ cold lead revival in 60 days, SQL from MQL up 30–50%.
 
-P04 CONVERT (part of Full OS RM 18,800/month):
-Sales activation. Includes: consultative sales framework (repeatable discovery-to-close process), automated booking system (calendar sync, reminders, no-show recovery), proposal & offer optimisation (ROI calculators, risk reversals, tiered pricing), objection handling playbooks. Close rate +20–40%, sales cycle cut 40–50%.
+P04 CONVERT — Sales activation:
+Consultative sales framework (repeatable discovery-to-close process), automated booking system (calendar sync, reminders, no-show recovery), proposal & offer optimisation (ROI calculators, risk reversals, tiered pricing), objection handling playbooks. Benchmarks: close rate +20–40%, sales cycle cut 40–50%.
 
-P05 RETAIN (part of Full OS):
-Growth engine. Includes: client success & onboarding, referral & affiliate programme, upsell/cross-sell triggers, live ROI dashboard (CPL, CAC, LTV, churn, NPS tracked monthly). LTV 2–3x in 12 months, churn below 5%, 30%+ leads from referrals.
+P05 RETAIN — Growth engine:
+Client success & onboarding system, referral & affiliate programme, upsell/cross-sell triggers, live ROI dashboard (CPL, CAC, LTV, churn, NPS tracked monthly). Benchmarks: LTV 2–3x in 12 months, churn below 5%, 30%+ leads from referrals.
 
 ACTIVATIONOS AI LEAD ENGINE (add-on or integrated):
 AI agent that responds to every lead within 30 seconds, 24/7, across WhatsApp, Facebook Messenger, Instagram DM, web widget, email, SMS, Telegram. Qualifies by budget/timeline/urgency/pain point, books meetings directly into calendars, hands off to sales with full conversation history. Used by: OSC Orthopaedic Hospital (40% no-show reduction), India International Insurance (projected $2M revenue uplift, 10x call centre capacity). Best for high-volume lead environments.
-
-PRICING:
-• Starter (P00 only): RM 3,500 one-time → ideal for first-engagement pilots, fully credited toward retainer
-• Growth (P00–P03): RM 8,800/month → strategy + traffic + capture + nurture, targeting 30%+ growth in 90 days
-• Full OS (all 6 pillars): RM 18,800/month → complete self-funding acquisition infrastructure
-• Ad spend billed separately; no ad management fee charged on top
 
 AOAI FIT CRITERIA — map signals to pillars:
 • Brand launching a product (FMCG, D2C, health) → P01 ATTRACT (paid traffic to health-conscious consumers) + P02 CAPTURE (AI chatbot + landing pages to convert trial to repeat) → Growth retainer
@@ -231,7 +225,7 @@ const ASSESS_TOOL: Anthropic.Tool = {
           "ActivationOS AI Lead Engine",
           "Not a fit",
         ],
-        description: "Which specific Acquisition OS tier fits this company's lead/acquisition problem? P00 Starter = strategy clarity only; P00-P03 Growth = strategy + paid traffic + capture + nurture (RM 8,800/month); All 6 Pillars = add conversion + retention (RM 18,800/month); ActivationOS = high-volume lead response (medical, insurance, real estate, education). Reference the actual signals.",
+        description: "Which specific Acquisition OS tier fits this company's lead/acquisition problem? P00 Starter = strategy clarity only; P00-P03 Growth = strategy + paid traffic + capture + nurture; All 6 Pillars = add conversion + retention systems; ActivationOS = high-volume lead response (medical, insurance, real estate, education). Reference the actual signals — match the execution gap, not a price point.",
       },
       aoai_entry_angle: {
         type: "string",
