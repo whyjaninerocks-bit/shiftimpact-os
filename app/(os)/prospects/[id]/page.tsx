@@ -241,12 +241,15 @@ export default async function ProspectDetailPage({
                   <p className="text-sm font-medium text-neutral-900">{toplineInsight.best_entry_angle}</p>
                 </div>
               )}
-              {/* Go Deep button — shown when not already pursuing */}
-              {company.status !== "Pursuing" && (
-                <div className="pt-1 border-t border-neutral-100">
-                  <ProspectActions companyId={id} companyName={company.name} showGoDeepOnly />
-                </div>
-              )}
+              {/* Go Deep / Refresh Deep Dive — always available when topline exists */}
+              <div className="pt-1 border-t border-neutral-100">
+                <ProspectActions
+                  companyId={id}
+                  companyName={company.name}
+                  showGoDeepOnly
+                  alreadyPursuing={company.status === "Pursuing"}
+                />
+              </div>
             </div>
           </Card>
         </div>

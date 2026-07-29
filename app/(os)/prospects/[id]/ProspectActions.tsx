@@ -7,9 +7,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { buttonClass, buttonSecondaryClass, inputClass, labelClass, Card } from "@/app/_components/ui";
 
-type Props = { companyId: string; companyName: string; showGoDeepOnly?: boolean };
+type Props = { companyId: string; companyName: string; showGoDeepOnly?: boolean; alreadyPursuing?: boolean };
 
-export function ProspectActions({ companyId, companyName, showGoDeepOnly = false }: Props) {
+export function ProspectActions({ companyId, companyName, showGoDeepOnly = false, alreadyPursuing = false }: Props) {
   const router = useRouter();
   const [scanning, setScanning]     = useState(false);
   const [assessing, setAssessing]   = useState(false);
@@ -120,7 +120,11 @@ export function ProspectActions({ companyId, companyName, showGoDeepOnly = false
           disabled={goingDeep}
           className="w-full text-sm font-medium px-4 py-2 rounded-lg bg-neutral-900 text-white hover:bg-neutral-700 disabled:opacity-50 transition-colors"
         >
-          {goingDeep ? "Generating deep dive..." : "Go Deep — I'm pursuing this"}
+          {goingDeep
+            ? "Generating deep dive..."
+            : alreadyPursuing
+              ? "Refresh Deep Dive"
+              : "Go Deep — I'm pursuing this"}
         </button>
         {deepMsg && <p className="text-sm text-neutral-600">{deepMsg}</p>}
       </div>
