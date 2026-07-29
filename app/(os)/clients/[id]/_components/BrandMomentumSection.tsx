@@ -223,7 +223,7 @@ function BmsForm({ clientId, onResult }: BmsFormProps) {
 
       <div className="space-y-4">
         {/* Period meta */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="col-span-1">
             <label className={labelClass}>Period label</label>
             <input value={periodLabel} onChange={e => setPeriodLabel(e.target.value)} placeholder="e.g. Q3 2026" className={inputClass + " mt-1"} />
@@ -241,7 +241,7 @@ function BmsForm({ clientId, onResult }: BmsFormProps) {
         {/* D1 — SOV trajectory */}
         <fieldset className="border border-neutral-200 rounded p-3 space-y-2">
           <legend className="text-xs font-semibold text-neutral-600 px-1">D1 — Share of Voice Trajectory</legend>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 gap-2">
             <div>
               <label className={labelClass}>SOV direction</label>
               <select value={sosTraj} onChange={e => setSosTraj(e.target.value)} className={selectCls}>{selectOpts(TREND_OPTS)}</select>

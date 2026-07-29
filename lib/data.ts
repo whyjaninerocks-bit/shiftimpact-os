@@ -53,6 +53,26 @@ export async function getClients(): Promise<ClientWithRollups[]> {
   return data as ClientWithRollups[];
 }
 
+export type ClaritySignalRow = {
+  id: string;
+  brand_name: string;
+  campaign_name: string;
+  industry: string;
+  created_at: string;
+};
+
+export async function getRecentClaritySignals(limit = 8): Promise<ClaritySignalRow[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("quick_audits")
+    .select("id, brand_name, campaign_name, industry, created_at")
+    .eq("result->>_clarity_signal", "true")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) return [];
+  return data as ClaritySignalRow[];
+}
+
 export async function getClient(id: string): Promise<ClientWithRollups | null> {
   const supabase = createAdminClient();
   const { data, error } = await supabase

@@ -53,6 +53,7 @@ import { CampaignReportSection } from "./_components/CampaignReportSection";
 import { ConsumerPulseSection } from "./_components/ConsumerPulseSection";
 import { ShareBriefWidget } from "./_components/ShareBriefWidget";
 import { ShareReportWidget } from "./_components/ShareReportWidget";
+import { BackToTop } from "@/app/_components/BackToTop";
 import { IqEvaluateSection } from "./_components/IqEvaluateSection";
 import { SignalLayer0Section } from "./_components/SignalLayer0Section";
 import { AiBrandVisibilitySection } from "./_components/AiBrandVisibilitySection";
@@ -62,34 +63,54 @@ import { DataSourceSetupSection } from "./_components/DataSourceSetupSection";
 import { CstrSection } from "./_components/CstrSection";
 import { DbaSection } from "./_components/DbaSection";
 
-const sectionLinks = [
-  { href: "#info", label: "Campaign" },
-  { href: "#data-configuration", label: "Data Config" },
-  { href: "#frame", label: "FRAME Brief" },
-  { href: "#bip", label: "Big Idea Platform" },
-  { href: "#iq-evaluate", label: "IQ Evaluate ✦" },
-  { href: "#ai-brand-visibility", label: "AI Visibility F23 ✦" },
-  { href: "#social-currency", label: "Social Currency F23 ✦" },
-  { href: "#review-platform", label: "Review Platform F30 ✦" },
-  { href: "#kill-switches", label: "Kill Switches" },
-  { href: "#stage-briefs", label: "STAGE Briefs" },
-  { href: "#phase-gates", label: "Phase Gates" },
-  { href: "#signal-layer-0", label: "Layer 0 — MDH ⚿" },
-  { href: "#signal-intelligence", label: "Signal Intelligence ⚿" },
-  { href: "#cross-channel", label: "Cross-Channel Hub ⚿" },
-  { href: "#consumer-state-transition", label: "CSTR F27 ⚿" },
-  { href: "#dba-intelligence", label: "Brand Assets F29 ⚿" },
-  { href: "#behaviour-state", label: "Behaviour State ⚿" },
-  { href: "#market-context", label: "Market Context ⚿" },
-  { href: "#attribution", label: "Attribution ⚿" },
-  { href: "#intelligence-query", label: "Intelligence Query ✦" },
-  { href: "#consumer-pulse", label: "Consumer Pulse ⚿" },
-  { href: "#campaign-report", label: "Campaign Report ✦" },
-  { href: "#dashboard", label: "Dashboard" },
-  { href: "#business-outcomes", label: "Business Outcomes" },
-  { href: "#signal-log", label: "Signal Log" },
-  { href: "#idea-extensions", label: "Idea Extensions" },
-  { href: "#diagnostics", label: "Diagnostics" },
+const sectionGroups = [
+  {
+    label: "Overview",
+    links: [
+      { href: "#dashboard", label: "Dashboard" },
+      { href: "#campaign-report", label: "Campaign Report ✦" },
+      { href: "#intelligence-query", label: "Campaign Intelligence ✦" },
+      { href: "#business-outcomes", label: "Business Outcomes" },
+      { href: "#signal-log", label: "Signal Log" },
+      { href: "#diagnostics", label: "Diagnostics" },
+    ],
+  },
+  {
+    label: "Strategy",
+    links: [
+      { href: "#info", label: "Campaign" },
+      { href: "#data-configuration", label: "Data Config" },
+      { href: "#frame", label: "FRAME Brief" },
+      { href: "#bip", label: "Big Idea Platform" },
+      { href: "#iq-evaluate", label: "IQ Evaluate ✦" },
+      { href: "#kill-switches", label: "Kill Switches" },
+      { href: "#stage-briefs", label: "STAGE Briefs" },
+      { href: "#phase-gates", label: "Phase Gates" },
+      { href: "#idea-extensions", label: "Channel Briefs" },
+    ],
+  },
+  {
+    label: "Signal Intel",
+    links: [
+      { href: "#signal-layer-0", label: "Layer 0 MDH ⚿" },
+      { href: "#signal-intelligence", label: "Signal Intelligence ⚿" },
+      { href: "#cross-channel", label: "Cross-Channel ⚿" },
+      { href: "#consumer-state-transition", label: "CSTR F27 ⚿" },
+      { href: "#consumer-pulse", label: "Consumer Pulse ⚿" },
+      { href: "#behaviour-state", label: "Behaviour State ⚿" },
+      { href: "#market-context", label: "Market Context ⚿" },
+    ],
+  },
+  {
+    label: "Brand Intel",
+    links: [
+      { href: "#ai-brand-visibility", label: "AI Visibility F23 ✦" },
+      { href: "#social-currency", label: "Social Currency F23 ✦" },
+      { href: "#review-platform", label: "Review Platform F30 ✦" },
+      { href: "#dba-intelligence", label: "Brand Assets F29 ⚿" },
+      { href: "#attribution", label: "Attribution ⚿" },
+    ],
+  },
 ];
 
 export default async function CampaignDetailPage({
@@ -165,14 +186,56 @@ export default async function CampaignDetailPage({
 
       <ErrorBanner message={error} />
 
-      <nav className="flex flex-wrap gap-1 text-xs">
-        {sectionLinks.map((s) => (
-          <a key={s.href} href={s.href} className="px-2 py-1 rounded bg-white border border-neutral-200 text-neutral-600 hover:text-neutral-900">
-            {s.label}
-          </a>
-        ))}
+      {/* Sticky section nav — grouped scrollable strip */}
+      <nav className="sticky top-0 z-20 -mx-4 sm:-mx-6 bg-neutral-50/95 backdrop-blur border-b border-neutral-100 overflow-x-auto scrollbar-hide">
+        <div className="flex items-stretch min-w-max px-4 sm:px-6">
+          {sectionGroups.map((group, gi) => (
+            <div
+              key={group.label}
+              className={`flex items-center gap-1 py-1.5 px-2 ${gi > 0 ? "border-l border-neutral-200" : ""}`}
+            >
+              <span className="text-[9px] font-semibold uppercase tracking-widest text-neutral-400 pr-1 whitespace-nowrap select-none">
+                {group.label}
+              </span>
+              {group.links.map((s) => (
+                <a
+                  key={s.href}
+                  href={s.href}
+                  className="shrink-0 px-2.5 py-1 rounded-full bg-white border border-neutral-200 text-[11px] text-neutral-600 hover:text-neutral-900 hover:border-neutral-400 transition-colors whitespace-nowrap"
+                >
+                  {s.label}
+                </a>
+              ))}
+            </div>
+          ))}
+        </div>
       </nav>
 
+      {/* ── OVERVIEW ────────────────────────────────────────────────── */}
+      <div id="overview-group" className="flex items-center gap-3 pt-2">
+        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400 whitespace-nowrap">Overview</span>
+        <div className="flex-1 h-px bg-neutral-200" />
+      </div>
+      <DashboardSection campaignId={id} dashboards={dashboards} />
+      <CampaignReportSection campaignId={id} campaignName={campaign.name} />
+      <IntelligenceQuerySection campaignId={id} campaignName={campaign.name} />
+      <BusinessOutcomesSection campaignId={id} campaign={campaign} outcomes={businessOutcomes} />
+      <SignalLogSection campaignId={id} signalLogs={signalLogs} phaseGates={phaseGates} />
+      <DiagnosticsSection
+        campaign={campaign}
+        frame={frame}
+        phaseGates={phaseGates}
+        stageBriefs={stageBriefs}
+        killSwitches={killSwitches}
+        signalLogs={signalLogs}
+        dashboards={dashboards}
+      />
+
+      {/* ── STRATEGY ────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-3 pt-4">
+        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400 whitespace-nowrap">Strategy</span>
+        <div className="flex-1 h-px bg-neutral-200" />
+      </div>
       <CampaignInfoSection campaign={campaign} teamMembers={teamMembers} />
       <DataSourceSetupSection campaignId={id} initialPrefs={dataPreferences} />
       <FrameBriefSection campaignId={id} frame={frame} />
@@ -185,29 +248,6 @@ export default async function CampaignDetailPage({
           lastEvaluation={iqEvaluation}
         />
       )}
-      <AiBrandVisibilitySection campaignId={id} lastScore={aiBrandVisibilityScore} />
-      <SocialCurrencySection
-        campaignId={id}
-        lastScore={socialCurrencyScore}
-        currentWeek={latestSignalWeek ?? 1}
-      />
-      <ReviewPlatformSection
-        campaignId={id}
-        lastScore={reviewScore}
-        currentWeek={latestSignalWeek ?? 1}
-      />
-      <CstrSection
-        campaignId={id}
-        lastReading={latestCstrReading}
-        currentWeek={latestSignalWeek ?? 1}
-      />
-      <DbaSection
-        campaignId={id}
-        clientId={campaign.client_id}
-        frameBriefId={frame.id}
-        initialAssets={brandAssets}
-        distinctiveAssetsDeployed={frame.distinctive_assets_deployed ?? ""}
-      />
       <KillSwitchesSection campaignId={id} frameBriefId={frame.id} killSwitches={killSwitches} />
       <StageBriefsSection
         campaignId={id}
@@ -217,6 +257,19 @@ export default async function CampaignDetailPage({
         stageBriefs={stageBriefs}
       />
       <PhaseGatesSection campaignId={id} phaseGates={phaseGates} />
+      <IdeaExtensionsSection
+        campaignId={id}
+        frame={frame}
+        bip={bip ?? null}
+        extensions={ideaExtensions}
+        clientChannels={clientChannels}
+      />
+
+      {/* ── SIGNAL INTEL ────────────────────────────────────────────── */}
+      <div className="flex items-center gap-3 pt-4">
+        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400 whitespace-nowrap">Signal Intel</span>
+        <div className="flex-1 h-px bg-neutral-200" />
+      </div>
       <SignalLayer0Section campaignId={id} records={mdhRecords} />
       <SignalIntelligenceSection
         campaignId={id}
@@ -229,6 +282,17 @@ export default async function CampaignDetailPage({
         channelReports={crossChannelReports}
         allChannelProfiles={allChannelProfiles}
       />
+      <CstrSection
+        campaignId={id}
+        lastReading={latestCstrReading}
+        currentWeek={latestSignalWeek ?? 1}
+      />
+      <ConsumerPulseSection
+        campaignId={id}
+        culturalContext={frame.primary_cultural_context}
+        industryCategory={frame.industry_category}
+        initialSnapshot={consumerSnapshot}
+      />
       <ConsumerBehaviourSection
         campaignId={id}
         behaviourStates={behaviourStates}
@@ -238,36 +302,36 @@ export default async function CampaignDetailPage({
         marketContexts={marketContexts}
         latestSignalWeek={latestSignalWeek}
       />
+
+      {/* ── BRAND INTEL ─────────────────────────────────────────────── */}
+      <div className="flex items-center gap-3 pt-4">
+        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400 whitespace-nowrap">Brand Intel</span>
+        <div className="flex-1 h-px bg-neutral-200" />
+      </div>
+      <AiBrandVisibilitySection campaignId={id} lastScore={aiBrandVisibilityScore} />
+      <SocialCurrencySection
+        campaignId={id}
+        lastScore={socialCurrencyScore}
+        currentWeek={latestSignalWeek ?? 1}
+      />
+      <ReviewPlatformSection
+        campaignId={id}
+        lastScore={reviewScore}
+        currentWeek={latestSignalWeek ?? 1}
+      />
+      <DbaSection
+        campaignId={id}
+        clientId={campaign.client_id}
+        frameBriefId={frame.id}
+        initialAssets={brandAssets}
+        distinctiveAssetsDeployed={frame.distinctive_assets_deployed ?? ""}
+      />
       <AttributionSection
         campaignId={id}
         attributionRecords={attributionRecords}
       />
-      <ConsumerPulseSection
-        campaignId={id}
-        culturalContext={frame.primary_cultural_context}
-        industryCategory={frame.industry_category}
-        initialSnapshot={consumerSnapshot}
-      />
-      <IntelligenceQuerySection campaignId={id} campaignName={campaign.name} />
-      <CampaignReportSection campaignId={id} campaignName={campaign.name} />
-      <DashboardSection campaignId={id} dashboards={dashboards} />
-      <BusinessOutcomesSection campaignId={id} campaign={campaign} outcomes={businessOutcomes} />
-      <SignalLogSection campaignId={id} signalLogs={signalLogs} phaseGates={phaseGates} />
-      <IdeaExtensionsSection
-        campaignId={id}
-        frame={frame}
-        extensions={ideaExtensions}
-        clientChannels={clientChannels}
-      />
-      <DiagnosticsSection
-        campaign={campaign}
-        frame={frame}
-        phaseGates={phaseGates}
-        stageBriefs={stageBriefs}
-        killSwitches={killSwitches}
-        signalLogs={signalLogs}
-        dashboards={dashboards}
-      />
+
+      <BackToTop />
     </div>
   );
 }
