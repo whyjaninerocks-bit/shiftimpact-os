@@ -86,16 +86,17 @@ export default async function ProspectDetailPage({
     .order("detected_at", { ascending: false })
     .limit(20);
 
-  // Fetch latest assessment
+  // Fetch latest assessment + scores (scores live in prospect_scores, not prospect_assessments)
   const { data: assessment } = await supabase
     .from("prospect_assessments")
     .select(`
       id, business_moment_summary, shiftimpact_entry_point,
-      recommended_offer, offer_rationale, opportunity_score,
-      pursuit_score, confidence_level, created_at, status
+      recommended_approach, recommended_offer, offer_rationale,
+      status, generated_at,
+      prospect_scores ( opportunity_score, pursuit_score, opportunity_rationale, pursuit_rationale, surfaced_at )
     `)
     .eq("company_id", id)
-    .order("created_at", { ascending: false })
+    .order("generated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
@@ -121,12 +122,12 @@ export default async function ProspectDetailPage({
     .order("drafted_at", { ascending: false })
     .limit(10);
 
-  // Score history (last 5)
+  // Score history (last 5) — column is surfaced_at not scored_at
   const { data: scores } = await supabase
     .from("prospect_scores")
-    .select("opportunity_score, pursuit_score, composite_score, scored_at")
+    .select("opportunity_score, pursuit_score, composite_score, surfaced_at")
     .eq("company_id", id)
-    .order("scored_at", { ascending: false })
+    .order("surfaced_at", { ascending: false })
     .limit(5);
 
   const latestScore = scores?.[0] ?? null;
@@ -181,12 +182,10 @@ export default async function ProspectDetailPage({
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
-                  <Badge tone={assessment.confidence_level === "High" ? "green" : assessment.confidence_level === "Medium" ? "amber" : "red"}>
-                    {assessment.confidence_level} confidence
-                  </Badge>
                   <Badge tone="neutral">{assessment.recommended_offer}</Badge>
+                  <Badge tone={assessment.status === "ready" ? "green" : "amber"}>{assessment.status}</Badge>
                 </div>
-                <span className="text-xs text-neutral-400">{daysSince(assessment.created_at)}</span>
+                <span className="text-xs text-neutral-400">{daysSince(assessment.generated_at)}</span>
               </div>
               <div>
                 <p className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-1">Business moment</p>
