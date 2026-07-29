@@ -223,6 +223,26 @@ export async function POST(req: NextRequest) {
     assessment_id  = assessmentData?.id as string | null ?? null;
   }
 
+  // Load latest topline insight — includes new pitch-ready fields
+  const { data: toplineInsight } = await supabase
+    .from("prospect_insights")
+    .select("best_entry_angle, first_engagement_offer, decision_window_weeks, spend_signal, partner_lens, aoai_recommended_offer")
+    .eq("company_id", person.company_id)
+    .eq("depth_level", "topline")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  // Load latest deep dive — for person-specific hook if available
+  const { data: deepInsight } = await supabase
+    .from("prospect_insights")
+    .select("recommended_person_name, recommended_person_role, recommended_person_hook, meeting_objective, competitive_moat")
+    .eq("company_id", person.company_id)
+    .eq("depth_level", "deep")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   // Load top signals for context
   const { data: signalRows } = await supabase
     .from("business_signals")
@@ -250,14 +270,37 @@ export async function POST(req: NextRequest) {
     ? signals.map((s) => `- [${s.signal_category}] ${s.signal_type}: ${s.signal_text}`).join("\n")
     : "No specific signals detected — write a general positioning message.";
 
-  const assessmentContext = assessmentData
-    ? [
-        `Business moment: ${assessmentData.business_moment_summary}`,
-        `Entry point: ${assessmentData.shiftimpact_entry_point}`,
-        `Recommended offer: ${assessmentData.recommended_offer}`,
-        `Offer rationale: ${assessmentData.offer_rationale}`,
-      ].join("\n")
-    : "No assessment available — write based on signals only.";
+  const ti = toplineInsight as Record<string, unknown> | null;
+  const di = deepInsight as Record<string, unknown> | null;
+
+  const assessmentContext = [
+    assessmentData ? [
+      `Business moment: ${assessmentData.business_moment_summary}`,
+      `Entry point: ${assessmentData.shiftimpact_entry_point}`,
+      `Recommended offer: ${assessmentData.recommended_offer}`,
+      `Offer rationale: ${assessmentData.offer_rationale}`,
+    ].join("\n") : "No assessment — write based on signals only.",
+
+    ti?.best_entry_angle
+      ? `\nBEST ENTRY ANGLE (use this as the core of your opening — do NOT copy verbatim, adapt to Janine's voice):\n"${ti.best_entry_angle}"`
+      : "",
+
+    ti?.first_engagement_offer
+      ? `\nFIRST ENGAGEMENT OFFER (how to position the offer — use this framing, adapted to prose):\n${ti.first_engagement_offer}`
+      : "",
+
+    di?.recommended_person_hook && di?.recommended_person_name === person.name
+      ? `\nPERSON-SPECIFIC HOOK (written for ${person.name} — adapt to Janine's voice):\n"${di.recommended_person_hook}"`
+      : "",
+
+    di?.meeting_objective
+      ? `\nMEETING OBJECTIVE (the ONE thing this message should set up):\n${di.meeting_objective}`
+      : "",
+
+    ti?.decision_window_weeks
+      ? `\nURGENCY: Decision window is ~${ti.decision_window_weeks} weeks — the message should feel timely, not forced.`
+      : "",
+  ].filter(Boolean).join("\n");
 
   // 5. Generate draft via Sonnet
   const model = await getModel("model_outreach_draft", "claude-sonnet-4-6");

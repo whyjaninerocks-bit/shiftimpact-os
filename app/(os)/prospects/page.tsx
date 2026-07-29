@@ -90,6 +90,9 @@ export default async function ProspectsPage({
             </span>
           )}
           <BatchScanButton />
+          <Link href="/prospects/digest" className="px-3 py-1.5 rounded-lg border border-neutral-300 bg-white text-neutral-700 text-sm font-medium hover:bg-neutral-50 transition-colors">
+            Digest
+          </Link>
           <Link href="/prospects/discover" className="px-3 py-1.5 rounded-lg border border-neutral-300 bg-white text-neutral-700 text-sm font-medium hover:bg-neutral-50 transition-colors">
             Discover
           </Link>
