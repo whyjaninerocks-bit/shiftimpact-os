@@ -264,7 +264,7 @@ Generate a precise, commercially grounded assessment. Opportunity Score = how si
     signal_weight: i === 0 ? 1.00 : Math.max(0.50, 1.00 - i * 0.07),
     signal_role:   i === 0 ? "primary" : i < 3 ? "supporting" : "contextual",
   }));
-  await supabase.from("assessment_signals").insert(junctionRows).catch(() => {});
+  try { await supabase.from("assessment_signals").insert(junctionRows); } catch { /* non-fatal */ }
 
   // Persist scores — include company_id so trigger can update prospect_tier directly
   const oppScore    = Math.round(assessment.opportunity_score as number);
