@@ -58,6 +58,14 @@ interface GenerateRequest {
   };
 }
 
+interface AqsSnapshot {
+  aqs_band: string | null;
+  attention_gap_flag: boolean;
+  attention_gap_action: string;
+  aqs_benchmark_delta: number | null;
+  week_number: number;
+}
+
 interface ComponentSnapshot {
   signal_reports: unknown[];
   consumer_state_readings: unknown[];
@@ -68,6 +76,7 @@ interface ComponentSnapshot {
   report_week: number;
   campaign_name: string;
   client_name: string;
+  aqs: AqsSnapshot | null;
 }
 
 // ─── Data collection ──────────────────────────────────────────────────────────
@@ -153,6 +162,31 @@ async function collectCampaignData(
     .limit(1)
     .single();
 
+  // Latest AQS reading (F25 — INTERNAL)
+  let aqs: AqsSnapshot | null = null;
+  try {
+    const { data: aqsRow } = await supabase
+      .from("signal_media_delivery")
+      .select("week_number, aqs_band, attention_gap_flag, attention_gap_action, aqs_benchmark_delta")
+      .eq("campaign_id", campaign_id)
+      .not("aqs_score", "is", null)
+      .order("week_number", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (aqsRow) {
+      aqs = {
+        aqs_band:            (aqsRow.aqs_band as string | null) ?? null,
+        attention_gap_flag:  (aqsRow.attention_gap_flag as boolean) ?? false,
+        attention_gap_action:(aqsRow.attention_gap_action as string) ?? "",
+        aqs_benchmark_delta: (aqsRow.aqs_benchmark_delta as number | null) ?? null,
+        week_number:         aqsRow.week_number as number,
+      };
+    }
+  } catch {
+    // AQS columns may not exist on older instances; non-blocking
+  }
+
   // Determine latest report week
   const latestWeek = (signal_reports ?? [])[0]?.week_number ?? 0;
 
@@ -166,6 +200,7 @@ async function collectCampaignData(
     report_week: latestWeek,
     campaign_name: campaignName,
     client_name: clientName,
+    aqs,
   };
 }
 
@@ -176,6 +211,18 @@ async function synthesiseReport(
   anthropic: Anthropic
 ): Promise<{ risk_posture: string | null; report_data: Record<string, unknown>; executive_summary: string }> {
 
+  // Build AQS context note for synthesis (INTERNAL — directional language only in output)
+  let aqsContext: Record<string, unknown> | null = null;
+  if (data.aqs) {
+    aqsContext = {
+      attention_status:       data.aqs.aqs_band,         // e.g. "Attention Weak"
+      attention_gap_flag:     data.aqs.attention_gap_flag,
+      attention_gap_action:   data.aqs.attention_gap_action,
+      vs_category_benchmark:  data.aqs.aqs_benchmark_delta,
+      as_of_week:             data.aqs.week_number,
+    };
+  }
+
   const dataStr = JSON.stringify({
     campaign_name: data.campaign_name,
     report_week: data.report_week,
@@ -184,6 +231,8 @@ async function synthesiseReport(
     brand_momentum_scores: data.brand_momentum_scores.slice(0, 2),
     attribution_records: data.attribution_records.slice(0, 4),
     orchestration_chain_summary: data.orchestration_chain_summary,
+    // INTERNAL — for signal_summary only; do NOT surface band label or score in client copy
+    attention_quality: aqsContext,
   }, null, 2);
 
   const REPORT_TOOL = {
@@ -239,7 +288,13 @@ BOUNDARY RULES — STRICT:
 2. No competitor names — directional language only.
 3. No internal system names (MDH, CSTR, BMS, ICS, FRAME, BIP, orchestration_runs, etc.)
 4. The executive_summary is CLIENT SAFE — write it as if presenting to the brand team.
-5. The section summaries are INTERNAL — can use more technical framing.`;
+5. The section summaries are INTERNAL — can use more technical framing.
+6. ATTENTION QUALITY (if present in data): incorporate into signal_summary using directional language only.
+   NEVER expose the band label ("Attention Weak", "Attention Gap", etc.) or any numeric score.
+   Use phrasing like: "Creative is reaching the target audience but losing active attention mid-video."
+   or "Video attention is holding above category norms — sustained viewing is supporting brand message delivery."
+   If attention_gap_flag is true, reference the gap_action directionally in risk_adjusted_playbook.
+   Do NOT mention "AQS", "attention score", or any internal system name.`;
 
   const reportModel = await getModel("model_campaign_report", "claude-sonnet-4-6");
   const msg = await anthropic.messages.create({

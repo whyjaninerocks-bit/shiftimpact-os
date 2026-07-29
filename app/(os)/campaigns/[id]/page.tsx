@@ -29,6 +29,7 @@ import {
   getLatestConsumerStateReading,
   getBrandAssets,
   getDataPreferences,
+  getCascadeRecords,
 } from "@/lib/data";
 import { getLatestReviewPlatformScore } from "@/lib/data-review-platform";
 import { Badge, ErrorBanner, gateSignalTone, phaseTone } from "@/app/_components/ui";
@@ -58,6 +59,7 @@ import { IqEvaluateSection } from "./_components/IqEvaluateSection";
 import { SignalLayer0Section } from "./_components/SignalLayer0Section";
 import { AiBrandVisibilitySection } from "./_components/AiBrandVisibilitySection";
 import { SocialCurrencySection } from "./_components/SocialCurrencySection";
+import { CascadeSection } from "./_components/CascadeSection";
 import { ReviewPlatformSection } from "./_components/ReviewPlatformSection";
 import { DataSourceSetupSection } from "./_components/DataSourceSetupSection";
 import { CstrSection } from "./_components/CstrSection";
@@ -99,6 +101,7 @@ const sectionGroups = [
       { href: "#consumer-pulse", label: "Consumer Pulse ⚿" },
       { href: "#behaviour-state", label: "Behaviour State ⚿" },
       { href: "#market-context", label: "Market Context ⚿" },
+      { href: "#social-proof-cascade", label: "Cascade F28 ⚿" },
     ],
   },
   {
@@ -131,7 +134,7 @@ export default async function CampaignDetailPage({
 
   const clientChannels = await getClientChannels(campaign.client_id);
 
-  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions, bip, signalThreshold, signalReports, campaignChannels, crossChannelReports, allChannelProfiles, behaviourStates, marketContexts, attributionRecords, consumerSnapshot, iqEvaluation, mdhRecords, aiBrandVisibilityScore, socialCurrencyScore, latestCstrReading, brandAssets, reviewScore, dataPreferences] = await Promise.all([
+  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions, bip, signalThreshold, signalReports, campaignChannels, crossChannelReports, allChannelProfiles, behaviourStates, marketContexts, attributionRecords, consumerSnapshot, iqEvaluation, mdhRecords, aiBrandVisibilityScore, socialCurrencyScore, latestCstrReading, brandAssets, reviewScore, dataPreferences, cascadeRecords] = await Promise.all([
     getKillSwitches(frame.id),
     getStageBriefs(id),
     getPhaseGates(id),
@@ -158,6 +161,7 @@ export default async function CampaignDetailPage({
     getBrandAssets(campaign.client_id),
     getLatestReviewPlatformScore(id),
     getDataPreferences(id),
+    getCascadeRecords(id),
   ]);
 
   const latestSignalWeek = signalReports[0]?.week_number ?? null;
@@ -301,6 +305,11 @@ export default async function CampaignDetailPage({
         campaignId={id}
         marketContexts={marketContexts}
         latestSignalWeek={latestSignalWeek}
+      />
+      <CascadeSection
+        campaignId={id}
+        records={cascadeRecords}
+        currentWeek={latestSignalWeek ?? 1}
       />
 
       {/* ── BRAND INTEL ─────────────────────────────────────────────── */}

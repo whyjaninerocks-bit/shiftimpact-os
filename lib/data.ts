@@ -676,6 +676,37 @@ export async function getLatestCampaignReport(
   };
 }
 
+// ─── F28 — Social Proof Cascade Detection (Sprint 5) ─────────────────────────
+// All cascade readings for a campaign, newest first.
+// amplification_window: INTERNAL ONLY — no client export.
+// CASCADE ACTIVE / CASCADE PEAK → in-app alert for Janine only.
+export type CascadeRecord = {
+  id: string;
+  week_number: number;
+  ugc_volume_this_week: number | null;
+  ugc_volume_last_week: number | null;
+  comment_count: number | null;
+  post_count: number | null;
+  velocity_acceleration: number | null;
+  comment_to_post_ratio: number | null;
+  cascade_status: "NO CASCADE" | "EARLY SIGNAL" | "CASCADE ACTIVE" | "CASCADE PEAK";
+  amplification_window: string;
+  strategy_notes: string;
+  created_at: string;
+};
+
+export async function getCascadeRecords(campaignId: string): Promise<CascadeRecord[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("social_proof_cascade")
+    .select("id, week_number, ugc_volume_this_week, ugc_volume_last_week, comment_count, post_count, velocity_acceleration, comment_to_post_ratio, cascade_status, amplification_window, strategy_notes, created_at")
+    .eq("campaign_id", campaignId)
+    .order("week_number", { ascending: false })
+    .limit(12);
+  if (error) return [];
+  return (data ?? []) as CascadeRecord[];
+}
+
 // ─── F34 — Data Source Preferences (Sprint 31) ───────────────────────────────
 // Returns the data source preference configuration for a campaign, or null
 // if the strategy lead has not yet completed setup.
