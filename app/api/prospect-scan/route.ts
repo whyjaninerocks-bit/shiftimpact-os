@@ -10,8 +10,12 @@ const APIFY_TOKEN = process.env.APIFY_API_TOKEN;
 const APIFY_BASE  = "https://api.apify.com/v2";
 
 // ─── Derive a short search name by stripping corporate suffixes ───────────────
-// "Gardenia Malaysia" → "Gardenia"
-// "Alliance Bank Malaysia Berhad" → "Alliance Bank"
+// Rules:
+//   • Strip common legal/geographic suffixes from the end
+//   • But only if the result has 2+ words — single-word results are too ambiguous
+//     (e.g. "Gardenia Malaysia" → strip → "Gardenia" = 1 word → keep original)
+//   • "Alliance Bank Malaysia Berhad" → "Alliance Bank" (2 words ✓)
+//   • "Spritzer Berhad" → "Spritzer" (1 word → keep "Spritzer Berhad")
 function shortName(companyName: string): string {
   const suffixes = [
     /\s+(Malaysia|Singapore|Philippines|Thailand|Indonesia)\s+Berhad\s*$/i,
@@ -27,7 +31,8 @@ function shortName(companyName: string): string {
   let name = companyName.trim();
   for (const re of suffixes) {
     const cleaned = name.replace(re, "").trim();
-    if (cleaned.length >= 3) { name = cleaned; break; }
+    // Only accept the stripped version if it has 2+ words (avoids ambiguous single words)
+    if (cleaned.length >= 3 && cleaned.includes(" ")) { name = cleaned; break; }
   }
   return name;
 }
@@ -87,10 +92,16 @@ async function fetchGoogleNewsRSS(
         const srcName = item.match(/<source[^>]*>(.*?)<\/source>/)?.[1]?.trim() ?? "";
         const date    = item.match(/<pubDate>(.*?)<\/pubDate>/)?.[1]?.trim() ?? "";
 
-        const nameLower  = companyName.toLowerCase();
-        const shortLower = short.toLowerCase();
+        // Accept if any meaningful word from the company name appears in the article.
+        // We trust the search query (which already includes market + context) to find
+        // relevant articles; the filter just removes obvious off-topic results.
+        const significantWords = companyName
+          .toLowerCase()
+          .split(/\s+/)
+          .filter(w => w.length > 3 && !["berhad","malaysia","singapore","philippines","thailand","indonesia","group","sdn","bhd","pte","ltd"].includes(w));
         const textToCheck = (title + " " + desc).toLowerCase();
-        if (title && (textToCheck.includes(nameLower) || textToCheck.includes(shortLower))) {
+        const isRelevant = significantWords.length === 0 || significantWords.some(w => textToCheck.includes(w));
+        if (title && isRelevant) {
           chunks.push(`[News RSS: ${title}]\nSource: ${srcName} (${srcUrl})\nDate: ${date}\n${desc}`);
           count++;
         }
@@ -299,12 +310,13 @@ export async function POST(req: NextRequest) {
     rawChunks.push(...rssChunks);
 
     // Process Google Search results
+    // Apify google-search-scraper returns "description" not "snippet"
     for (const r of gnItems.slice(0, 8)) {
-      const title   = (r.title   || "") as string;
-      const snippet = (r.snippet || "") as string;
-      const url     = (r.url     || "") as string;
-      if (snippet) {
-        rawChunks.push(`[Search Result: ${title}]\nURL: ${url}\n${snippet}`);
+      const title   = (r.title || "") as string;
+      const text    = (r.description || r.snippet || r.text || "") as string; // handle all field name variants
+      const url     = (r.url || r.link || "") as string;
+      if (text) {
+        rawChunks.push(`[Search Result: ${title}]\nURL: ${url}\n${text}`);
         evidenceMap[title] = { url, headline: title };
       }
     }
