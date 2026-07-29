@@ -53,6 +53,19 @@ const DEEP_TOOL: Anthropic.Tool = {
         type: "string",
         description: "One specific opening line tailored to THIS person — not a generic intro. Reference something specific about them or their role in the current situation that makes it impossible to ignore.",
       },
+      // ── Pursuit specificity fields (migration 0032) ──────────────────────────
+      meeting_objective: {
+        type: "string",
+        description: "The ONE thing ShiftImpact must achieve in the first meeting — not just 'learn their needs'. Be specific: what decision, insight, or relationship must be established? E.g. 'Establish that the Breakthru Bread launch narrative is fragmented across packaging, social, and trade media — and that this gap is costing them shelf confidence at key retailers.' One sentence, commercially sharp.",
+      },
+      competitive_moat: {
+        type: "string",
+        description: "2-3 sentences: why ShiftImpact specifically — not Publicis, not BCG, not a local agency. What does ShiftImpact offer that none of them can? Reference this company's specific situation: what would Publicis do (campaign execution, not strategy), what would BCG do (frameworks, not narrative), and why the gap ShiftImpact fills is the actual problem this company has right now.",
+      },
+      revenue_estimate: {
+        type: "string",
+        description: "Estimated engagement value range for ShiftImpact, based on the likely service and company size. Format: 'MYR [low]–[high]K' (e.g. 'MYR 60–100K' for a FRAME Brief). Base this on the recommended_offer from the assessment and the company's scale. Do NOT invent numbers — anchor to ShiftImpact's real ranges: Brand Clarity Audit MYR 80–150K, FRAME Brief MYR 60–100K, Campaign Intelligence MYR 40–80K, Launch Readiness Audit MYR 50–80K, Command Desk MYR 25–50K/month.",
+      },
     },
     required: [
       "competitive_landscape",
@@ -65,6 +78,9 @@ const DEEP_TOOL: Anthropic.Tool = {
       "recommended_person_why",
       "recommended_person_signal",
       "recommended_person_hook",
+      "meeting_objective",
+      "competitive_moat",
+      "revenue_estimate",
     ],
   },
 };
@@ -108,10 +124,14 @@ export async function POST(req: NextRequest) {
     .limit(1)
     .maybeSingle();
 
-  // Load latest topline insight
+  // Load latest topline insight (include new specificity fields from migration 0032)
   const { data: topline } = await supabase
     .from("prospect_insights")
-    .select("recommendation,benchmark_context,market_context,best_entry_angle")
+    .select(`
+      recommendation, benchmark_context, market_context, best_entry_angle,
+      decision_window_weeks, spend_signal, first_engagement_offer,
+      aoai_recommended_offer, aoai_campaign_mechanic, aoai_joint_pitch
+    `)
     .eq("company_id", company_id as string)
     .eq("depth_level", "topline")
     .order("created_at", { ascending: false })
@@ -153,9 +173,29 @@ export async function POST(req: NextRequest) {
     ].filter(Boolean).join("\n");
   }).join("\n\n");
 
-  const toplineContext = topline
-    ? `TOPLINE ASSESSMENT:\nRecommendation: ${topline.recommendation}\nBenchmark: ${topline.benchmark_context}\nMarket context: ${topline.market_context}\nBest entry angle: ${topline.best_entry_angle}`
-    : "";
+  const toplineContextParts = topline ? [
+    `TOPLINE ASSESSMENT (from Intelligence Read):`,
+    `Recommendation: ${topline.recommendation}`,
+    `Benchmark: ${topline.benchmark_context}`,
+    `Market context: ${topline.market_context}`,
+    `Best entry angle: ${topline.best_entry_angle}`,
+    (topline as Record<string,unknown>).decision_window_weeks
+      ? `Decision window: ${(topline as Record<string,unknown>).decision_window_weeks} weeks`
+      : "",
+    (topline as Record<string,unknown>).spend_signal
+      ? `Spend signal: ${(topline as Record<string,unknown>).spend_signal}`
+      : "",
+    (topline as Record<string,unknown>).first_engagement_offer
+      ? `First engagement offer framing: ${(topline as Record<string,unknown>).first_engagement_offer}`
+      : "",
+    (topline as Record<string,unknown>).aoai_recommended_offer
+      ? `AOAI recommended tier: ${(topline as Record<string,unknown>).aoai_recommended_offer}`
+      : "",
+    (topline as Record<string,unknown>).aoai_joint_pitch
+      ? `AOAI joint pitch: ${(topline as Record<string,unknown>).aoai_joint_pitch}`
+      : "",
+  ].filter(Boolean).join("\n") : "";
+  const toplineContext = toplineContextParts;
 
   const assessmentContext = assessment
     ? `PRIOR ASSESSMENT:\nBusiness moment: ${assessment.business_moment_summary}\nEntry point: ${assessment.shiftimpact_entry_point}\nRecommended offer: ${assessment.recommended_offer}\nOffer rationale: ${assessment.offer_rationale}`
@@ -175,7 +215,13 @@ export async function POST(req: NextRequest) {
       tools: [DEEP_TOOL],
       messages: [{
         role: "user",
-        content: `You are a senior strategist at ShiftImpact OS, a strategic intelligence consultancy in Southeast Asia. The team has decided to PURSUE this prospect. Generate a full in-depth intelligence report to guide the pursuit.
+        content: `You are a senior pursuit strategist at ShiftImpact OS, a strategic intelligence consultancy in Southeast Asia. The team has decided to PURSUE this company. This is a Sonnet-quality deep dive — every field must be specific to ${company.name}'s exact situation. No generic language.
+
+SHIFTIMPACT CONTEXT:
+- ShiftImpact is a strategic intelligence and narrative consultancy. NOT a creative agency. NOT a management consultancy.
+- Services: Brand Clarity Audit (MYR 80–150K, 4–6 weeks), FRAME Brief (MYR 60–100K, 3–4 weeks), Campaign Intelligence (MYR 40–80K, 2–3 weeks), Launch Readiness Audit (MYR 50–80K, 2–3 weeks), Command Desk retainer (MYR 25–50K/month).
+- Moat: ShiftImpact sits between brand strategy and execution — we see what agencies execute without asking, and what consultancies never get to (the actual creative brief, the campaign, the launch moment). No one else in MY/SG does this specific thing.
+- Target: Mid-to-large brand at inflection point (product launch, M&A, leadership change, regional expansion) with a NARRATIVE GAP — doing bold things but the story is fragmented.
 
 COMPANY: ${company.name}
 Industry: ${company.industry} | Market: ${company.market_code} | Size: ${company.size_band ?? "Unknown"} | Stage: ${company.growth_stage ?? "Unknown"}
@@ -188,7 +234,15 @@ ${assessmentContext}
 ALL BUSINESS SIGNALS DETECTED (${signals.length}):
 ${signalContext}
 
-Generate a precise, commercially grounded deep dive. For the person recommendation: scan the signal evidence headlines carefully for any named individuals (executives, award winners, signatories, speakers). If a real name appears, use it. If not, recommend the most strategically relevant role to target. Be specific — name real competitors, real market events, real risks. No generic advice.`,
+INSTRUCTIONS:
+1. competitive_landscape: Name the actual firms likely pitching this company — Publicis, Grey, Leo Burnett, BCG, Kearney, local consultancies. Be specific about what THEY offer vs what ShiftImpact offers.
+2. approach_sequence: 4–5 steps, name the METHOD (LinkedIn → email → event → referral), what each step establishes, and what "success" looks like at each step.
+3. signal_analysis: For each major signal, explain the internal dynamic it reveals — who is under pressure, what decision is pending, and why that creates a door for ShiftImpact.
+4. meeting_objective: The ONE thing to establish in the first conversation — not "learn their needs" but the specific insight or decision that changes the relationship.
+5. competitive_moat: Be direct — what would Publicis propose (a campaign), what would BCG propose (a framework report), and why NEITHER addresses the actual problem this company has right now.
+6. revenue_estimate: Base on recommended offer and company scale. Format: 'MYR [low]–[high]K'.
+7. For the person recommendation: scan the evidence headlines for named individuals. If found, use the real name. Otherwise, name the most strategically relevant ROLE (not "senior executive").
+8. recommended_person_hook: Must be specific to this person's current situation — one line that demonstrates ShiftImpact already understands their problem before the first meeting.`,
       }],
     });
 
@@ -201,7 +255,7 @@ Generate a precise, commercially grounded deep dive. For the person recommendati
     return NextResponse.json({ error: "Deep dive generation failed", detail: String(aiErr) }, { status: 500 });
   }
 
-  // 5. Persist deep insight
+  // 5. Persist deep insight (includes new fields from migration 0032)
   const { data: insightRow, error: insightErr } = await supabase
     .from("prospect_insights")
     .insert({
@@ -218,6 +272,10 @@ Generate a precise, commercially grounded deep dive. For the person recommendati
       recommended_person_why:      deepDive.recommended_person_why       ?? null,
       recommended_person_signal:   deepDive.recommended_person_signal    ?? null,
       recommended_person_hook:     deepDive.recommended_person_hook      ?? null,
+      // High-specificity fields (migration 0032)
+      meeting_objective:           deepDive.meeting_objective            ?? null,
+      competitive_moat:            deepDive.competitive_moat             ?? null,
+      revenue_estimate:            deepDive.revenue_estimate             ?? null,
     })
     .select("id")
     .single();
@@ -240,6 +298,9 @@ Generate a precise, commercially grounded deep dive. For the person recommendati
     recommended_person_why:      deepDive.recommended_person_why,
     recommended_person_signal:   deepDive.recommended_person_signal,
     recommended_person_hook:     deepDive.recommended_person_hook,
+    meeting_objective:           deepDive.meeting_objective,
+    competitive_moat:            deepDive.competitive_moat,
+    revenue_estimate:            deepDive.revenue_estimate,
     model_used:                  model,
     tokens_used:                 tokensUsed,
     estimated_cost:              estimatedCost,

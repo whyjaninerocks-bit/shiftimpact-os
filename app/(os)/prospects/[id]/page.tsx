@@ -143,23 +143,31 @@ export default async function ProspectDetailPage({
   const nestedScores = (assessment?.prospect_scores ?? []) as ScoreRow[];
   const latestScore: ScoreRow | null = (scores?.[0] as ScoreRow | undefined) ?? nestedScores[0] ?? null;
 
-  // Fetch latest topline insight
+  // Fetch latest topline insight (includes new high-specificity fields from migration 0032)
   const { data: toplineInsight } = await supabase
     .from("prospect_insights")
-    .select("recommendation, benchmark_context, market_context, best_entry_angle, partner_lens, aoai_recommended_offer, aoai_entry_angle, created_at")
+    .select(`
+      recommendation, benchmark_context, market_context, best_entry_angle,
+      partner_lens, aoai_recommended_offer, aoai_entry_angle,
+      decision_window_weeks, spend_signal, first_engagement_offer,
+      aoai_campaign_mechanic, aoai_joint_pitch,
+      created_at
+    `)
     .eq("company_id", id)
     .eq("depth_level", "topline")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  // Fetch latest deep dive insight
+  // Fetch latest deep dive insight (includes meeting_objective, competitive_moat, revenue_estimate from migration 0032)
   const { data: deepInsight } = await supabase
     .from("prospect_insights")
     .select(`
       competitive_landscape, approach_sequence, signal_analysis, risk_factors, market_timing,
       recommended_person_name, recommended_person_role, recommended_person_why,
-      recommended_person_signal, recommended_person_hook, created_at
+      recommended_person_signal, recommended_person_hook,
+      meeting_objective, competitive_moat, revenue_estimate,
+      created_at
     `)
     .eq("company_id", id)
     .eq("depth_level", "deep")
@@ -215,36 +223,64 @@ export default async function ProspectDetailPage({
           <SectionTitle>Intelligence Read</SectionTitle>
           <Card>
             <div className="space-y-4">
-              {/* Recommendation */}
-              <div className="flex items-center gap-3">
+
+              {/* ── Row: Recommendation + Decision Window + Spend Signal ── */}
+              <div className="flex items-center gap-3 flex-wrap">
                 <Badge tone={recTone(toplineInsight.recommendation)}>{toplineInsight.recommendation ?? "—"}</Badge>
-                <span className="text-xs text-neutral-400">ShiftImpact recommendation</span>
+                {(toplineInsight as Record<string,unknown>).decision_window_weeks && (
+                  <span className="px-2 py-0.5 rounded-md border border-neutral-200 bg-neutral-50 text-xs font-medium text-neutral-600">
+                    ⏱ {(toplineInsight as Record<string,unknown>).decision_window_weeks as number}w window
+                  </span>
+                )}
+                {(toplineInsight as Record<string,unknown>).spend_signal && (
+                  <span className={`px-2 py-0.5 rounded-md border text-xs font-medium ${
+                    (toplineInsight as Record<string,unknown>).spend_signal === "Budget likely available"
+                      ? "bg-green-50 border-green-200 text-green-700"
+                      : (toplineInsight as Record<string,unknown>).spend_signal === "Budget possibly frozen"
+                      ? "bg-red-50 border-red-200 text-red-700"
+                      : "bg-neutral-50 border-neutral-200 text-neutral-600"
+                  }`}>
+                    {(toplineInsight as Record<string,unknown>).spend_signal as string}
+                  </span>
+                )}
               </div>
-              {/* Benchmark */}
+
+              {/* ── Benchmark ── */}
               {toplineInsight.benchmark_context && (
                 <div>
                   <p className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-1">Benchmark</p>
                   <p className="text-sm text-neutral-700">{toplineInsight.benchmark_context}</p>
                 </div>
               )}
-              {/* Market context */}
+
+              {/* ── Market context ── */}
               {toplineInsight.market_context && (
                 <div>
                   <p className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-1">Market &amp; Competitive Context</p>
                   <p className="text-sm text-neutral-700">{toplineInsight.market_context}</p>
                 </div>
               )}
-              {/* Best entry angle */}
+
+              {/* ── Best entry angle ── */}
               {toplineInsight.best_entry_angle && (
                 <div className="bg-neutral-50 border border-neutral-200 rounded-lg px-4 py-3">
                   <p className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-1">Best Entry Angle</p>
                   <p className="text-sm font-medium text-neutral-900">{toplineInsight.best_entry_angle}</p>
                 </div>
               )}
-              {/* AOAI opportunity block */}
+
+              {/* ── First Engagement Offer (pitch framing) ── */}
+              {(toplineInsight as Record<string,unknown>).first_engagement_offer && (
+                <div className="bg-neutral-900 rounded-lg px-4 py-3">
+                  <p className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-1">First Engagement Offer</p>
+                  <p className="text-sm text-white">{(toplineInsight as Record<string,unknown>).first_engagement_offer as string}</p>
+                </div>
+              )}
+
+              {/* ── AOAI opportunity block ── */}
               {toplineInsight.aoai_recommended_offer && toplineInsight.aoai_recommended_offer !== "Not a fit" && (
-                <div className="border border-green-200 bg-green-50 rounded-lg px-4 py-3 space-y-2">
-                  <div className="flex items-center gap-2">
+                <div className="border border-green-200 bg-green-50 rounded-lg px-4 py-3 space-y-3">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-[10px] font-bold text-green-700 uppercase tracking-widest">AOAI Opportunity</span>
                     <span className="px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-800">
                       {toplineInsight.aoai_recommended_offer}
@@ -253,10 +289,22 @@ export default async function ProspectDetailPage({
                   {toplineInsight.aoai_entry_angle && (
                     <p className="text-sm text-green-900">{toplineInsight.aoai_entry_angle}</p>
                   )}
+                  {(toplineInsight as Record<string,unknown>).aoai_campaign_mechanic && (
+                    <div className="border-t border-green-200 pt-2">
+                      <p className="text-[10px] font-bold text-green-600 uppercase tracking-widest mb-1">Campaign Mechanic</p>
+                      <p className="text-sm text-green-900">{(toplineInsight as Record<string,unknown>).aoai_campaign_mechanic as string}</p>
+                    </div>
+                  )}
+                  {(toplineInsight as Record<string,unknown>).aoai_joint_pitch && (
+                    <div className="border-t border-green-200 pt-2">
+                      <p className="text-[10px] font-bold text-green-600 uppercase tracking-widest mb-1">Joint Pitch (ShiftImpact + AOAI)</p>
+                      <p className="text-sm text-green-900">{(toplineInsight as Record<string,unknown>).aoai_joint_pitch as string}</p>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Go Deep / Refresh Deep Dive — always available when topline exists */}
+              {/* ── Go Deep / Refresh Deep Dive ── */}
               <div className="pt-1 border-t border-neutral-100">
                 <ProspectActions
                   companyId={id}
@@ -307,6 +355,27 @@ export default async function ProspectDetailPage({
                 <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
                   <p className="text-xs font-medium text-amber-600 uppercase tracking-wider mb-1">Risk Factors</p>
                   <p className="text-sm text-neutral-700 whitespace-pre-line">{deepInsight.risk_factors}</p>
+                </div>
+              )}
+              {/* Meeting Objective */}
+              {(deepInsight as Record<string,unknown>).meeting_objective && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                  <p className="text-xs font-medium text-blue-600 uppercase tracking-wider mb-1">First Meeting Objective</p>
+                  <p className="text-sm text-blue-900 font-medium">{(deepInsight as Record<string,unknown>).meeting_objective as string}</p>
+                </div>
+              )}
+              {/* Competitive Moat */}
+              {(deepInsight as Record<string,unknown>).competitive_moat && (
+                <div>
+                  <p className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-1">Why ShiftImpact (Not Publicis or BCG)</p>
+                  <p className="text-sm text-neutral-700">{(deepInsight as Record<string,unknown>).competitive_moat as string}</p>
+                </div>
+              )}
+              {/* Revenue Estimate */}
+              {(deepInsight as Record<string,unknown>).revenue_estimate && (
+                <div className="flex items-center justify-between gap-4 bg-neutral-50 border border-neutral-200 rounded-lg px-4 py-3">
+                  <p className="text-xs font-medium text-neutral-400 uppercase tracking-wider">Estimated Engagement Value</p>
+                  <p className="text-sm font-bold text-neutral-900">{(deepInsight as Record<string,unknown>).revenue_estimate as string}</p>
                 </div>
               )}
               {/* Who to Approach */}
