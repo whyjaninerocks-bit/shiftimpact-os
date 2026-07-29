@@ -103,12 +103,34 @@ const ASSESS_TOOL: Anthropic.Tool = {
         type: "string",
         description: "One crisp sentence: the single sharpest way ShiftImpact can open this conversation — the hook that makes the prospect lean in.",
       },
+      // ── Partner lens — ShiftImpact vs AOAI classification ─────────────────
+      partner_lens: {
+        type: "string",
+        enum: ["ShiftImpact", "AOAI", "Both"],
+        description: "Which partner does this opportunity fit? ShiftImpact = needs strategic intelligence, narrative, or positioning work. AOAI = needs performance marketing execution, ecosystem infrastructure, or marketing growth/sales activation. Both = needs strategic intelligence AND marketing execution.",
+      },
+      aoai_recommended_offer: {
+        type: "string",
+        enum: [
+          "Performance Marketing Funnel",
+          "Ecosystem Infrastructure Build",
+          "Marketing Growth & Sales Strategy",
+          "Brand Activation Program",
+          "Not a fit",
+        ],
+        description: "Which AOAI service fits this company's current moment? Only select 'Not a fit' if the company clearly has no marketing execution gap.",
+      },
+      aoai_entry_angle: {
+        type: "string",
+        description: "One sentence: the sharpest way AOAI can open a conversation with this company — focused on marketing acquisition, funnel performance, or activation execution. Only required if partner_lens is AOAI or Both.",
+      },
     },
     required: [
       "business_moment_summary","shiftimpact_entry_point","recommended_approach",
       "recommended_offer","offer_rationale",
       "opportunity_score","pursuit_score","opportunity_rationale","pursuit_rationale",
       "recommendation","benchmark_context","market_context","best_entry_angle",
+      "partner_lens","aoai_recommended_offer","aoai_entry_angle",
     ],
   },
 };
@@ -223,9 +245,13 @@ ShiftImpact Offer Guide:
       tools: [ASSESS_TOOL],
       messages: [{
         role: "user",
-        content: `You are a senior business development strategist at ShiftImpact OS, a strategic intelligence consultancy in Southeast Asia.
+        content: `You are a senior business development strategist at ShiftImpact OS, a strategic intelligence platform in Southeast Asia.
 
-Analyse this prospect company and generate a full assessment.
+ShiftImpact OS serves two partners:
+1. ShiftImpact — strategic intelligence consultancy (narrative, positioning, brand clarity, decision support)
+2. AOAI (Academy of AI) — marketing execution partner (performance marketing funnels, ecosystem infrastructure builds, marketing growth and sales activation, brand activation programs)
+
+Analyse this prospect company and generate a full assessment including which partner(s) it fits.
 
 COMPANY: ${company.name}
 Industry: ${company.industry} | Market: ${company.market_code} | Size: ${company.size_band ?? "Unknown"}
@@ -236,7 +262,7 @@ ${signalContext}
 
 ${OFFER_GUIDE}
 
-Generate a precise, commercially grounded assessment. Opportunity Score = how significant the business moment is (rare timing window = 80-100). Pursuit Score = should ShiftImpact invest time pursuing this (realistic conversion likelihood, strategic fit, effort required).`,
+Generate a precise, commercially grounded assessment. Opportunity Score = how significant the business moment is (rare timing window = 80-100). Pursuit Score = should ShiftImpact invest time pursuing this (realistic conversion likelihood, strategic fit, effort required). For partner_lens: classify whether this opportunity is best for ShiftImpact (strategic work), AOAI (marketing execution), or Both.`,
       }],
     });
 
@@ -317,21 +343,30 @@ Generate a precise, commercially grounded assessment. Opportunity Score = how si
     if (scoreErr2) console.error("[prospect-assess] scores fallback insert also failed:", scoreErr2.message);
   }
 
-  // 6. Persist topline insight (recommendation, benchmark, market context, best angle)
+  // 6. Persist topline insight (recommendation, benchmark, market context, best angle, partner lens)
   const { error: insightErr } = await supabase
     .from("prospect_insights")
     .insert({
-      company_id:        company_id as string,
-      assessment_id:     assessmentRow.id,
-      depth_level:       "topline",
-      recommendation:    assessment.recommendation    ?? null,
-      benchmark_context: assessment.benchmark_context ?? null,
-      market_context:    assessment.market_context    ?? null,
-      best_entry_angle:  assessment.best_entry_angle  ?? null,
+      company_id:             company_id as string,
+      assessment_id:          assessmentRow.id,
+      depth_level:            "topline",
+      recommendation:         assessment.recommendation         ?? null,
+      benchmark_context:      assessment.benchmark_context      ?? null,
+      market_context:         assessment.market_context         ?? null,
+      best_entry_angle:       assessment.best_entry_angle       ?? null,
+      partner_lens:           assessment.partner_lens           ?? null,
+      aoai_recommended_offer: assessment.aoai_recommended_offer ?? null,
+      aoai_entry_angle:       assessment.aoai_entry_angle       ?? null,
     });
   if (insightErr) console.error("[prospect-assess] insight insert failed:", insightErr.message);
 
-  // 7. Auto-qualify company if pursuit_score >= 50
+  // 7. Update company partner_tag from assessment
+  const partnerLens = (assessment.partner_lens as string | null) ?? null;
+  if (partnerLens) {
+    await supabase.from("companies").update({ partner_tag: partnerLens }).eq("id", company_id as string);
+  }
+
+  // 8. Auto-qualify company if pursuit_score >= 50
   if (pursuitScore >= 50 && company.status === "Watching") {
     await supabase.from("companies").update({ status: "Qualified" }).eq("id", company_id as string);
   }

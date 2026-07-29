@@ -146,7 +146,7 @@ export default async function ProspectDetailPage({
   // Fetch latest topline insight
   const { data: toplineInsight } = await supabase
     .from("prospect_insights")
-    .select("recommendation, benchmark_context, market_context, best_entry_angle, created_at")
+    .select("recommendation, benchmark_context, market_context, best_entry_angle, partner_lens, aoai_recommended_offer, aoai_entry_angle, created_at")
     .eq("company_id", id)
     .eq("depth_level", "topline")
     .order("created_at", { ascending: false })
@@ -241,6 +241,21 @@ export default async function ProspectDetailPage({
                   <p className="text-sm font-medium text-neutral-900">{toplineInsight.best_entry_angle}</p>
                 </div>
               )}
+              {/* AOAI opportunity block */}
+              {toplineInsight.aoai_recommended_offer && toplineInsight.aoai_recommended_offer !== "Not a fit" && (
+                <div className="border border-green-200 bg-green-50 rounded-lg px-4 py-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-green-700 uppercase tracking-widest">AOAI Opportunity</span>
+                    <span className="px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-800">
+                      {toplineInsight.aoai_recommended_offer}
+                    </span>
+                  </div>
+                  {toplineInsight.aoai_entry_angle && (
+                    <p className="text-sm text-green-900">{toplineInsight.aoai_entry_angle}</p>
+                  )}
+                </div>
+              )}
+
               {/* Go Deep / Refresh Deep Dive — always available when topline exists */}
               <div className="pt-1 border-t border-neutral-100">
                 <ProspectActions

@@ -29,27 +29,35 @@ function daysSince(date: string | null): string {
   return `${days}d ago`;
 }
 
+function partnerTone(tag: string | null): "blue" | "green" | "purple" | "neutral" {
+  if (tag === "ShiftImpact") return "blue";
+  if (tag === "AOAI")        return "green";
+  if (tag === "Both")        return "purple";
+  return "neutral";
+}
+
 export default async function ProspectsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; tier?: string; q?: string }>;
+  searchParams: Promise<{ status?: string; tier?: string; q?: string; partner?: string }>;
 }) {
   const supabase = createAdminClient();
-  const { status, tier, q } = await searchParams;
+  const { status, tier, q, partner } = await searchParams;
 
   let query = supabase
     .from("companies")
     .select(`
       id, name, industry, market_code, status, prospect_tier,
-      last_signal_date, is_suppressed,
+      last_signal_date, is_suppressed, partner_tag,
       business_signals ( count )
     `)
     .eq("is_suppressed", false)
     .order("last_signal_date", { ascending: false, nullsFirst: false });
 
-  if (status) query = query.eq("status", status);
-  if (tier)   query = query.eq("prospect_tier", tier);
-  if (q)      query = query.ilike("name", `%${q}%`);
+  if (status)  query = query.eq("status", status);
+  if (tier)    query = query.eq("prospect_tier", tier);
+  if (q)       query = query.ilike("name", `%${q}%`);
+  if (partner) query = query.eq("partner_tag", partner);
 
   const { data: companies, error } = await query.limit(100);
 
@@ -100,6 +108,34 @@ export default async function ProspectsPage({
         ))}
       </div>
 
+      {/* ── Partner filter tabs ──────────────────────────────────────────── */}
+      <div className="flex gap-1 bg-neutral-100 rounded-lg p-1 w-fit">
+        {[
+          { label: "All", value: "" },
+          { label: "ShiftImpact", value: "ShiftImpact" },
+          { label: "AOAI", value: "AOAI" },
+          { label: "Both", value: "Both" },
+        ].map(tab => {
+          const isActive = (partner ?? "") === tab.value;
+          const href = tab.value
+            ? `/prospects?partner=${tab.value}${status ? `&status=${status}` : ""}${tier ? `&tier=${tier}` : ""}${q ? `&q=${q}` : ""}`
+            : `/prospects?${status ? `status=${status}&` : ""}${tier ? `tier=${tier}&` : ""}${q ? `q=${q}` : ""}`;
+          return (
+            <Link
+              key={tab.value}
+              href={href}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                isActive
+                  ? "bg-white text-neutral-900 shadow-sm"
+                  : "text-neutral-500 hover:text-neutral-700"
+              }`}
+            >
+              {tab.label}
+            </Link>
+          );
+        })}
+      </div>
+
       {/* ── Filters ─────────────────────────────────────────────────────── */}
       <form method="GET" className="flex flex-wrap gap-2 items-center">
         <input
@@ -108,10 +144,12 @@ export default async function ProspectsPage({
           placeholder="Search company…"
           className="flex-1 min-w-40 border border-neutral-200 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-neutral-300"
         />
+        {partner && <input type="hidden" name="partner" value={partner} />}
         <select name="status" defaultValue={status ?? ""} className="border border-neutral-200 rounded-lg px-3 py-1.5 text-sm bg-white">
           <option value="">All statuses</option>
           <option value="Watching">Watching</option>
           <option value="Qualified">Qualified</option>
+          <option value="Pursuing">Pursuing</option>
           <option value="Client">Client</option>
           <option value="Archived">Archived</option>
         </select>
@@ -124,7 +162,7 @@ export default async function ProspectsPage({
         <button type="submit" className="px-3 py-1.5 rounded-lg bg-neutral-900 text-white text-sm font-medium hover:bg-neutral-700 transition-colors">
           Filter
         </button>
-        {(status || tier || q) && (
+        {(status || tier || q || partner) && (
           <Link href="/prospects" className="text-sm text-neutral-400 hover:text-neutral-700 underline">
             Clear
           </Link>
@@ -166,6 +204,11 @@ export default async function ProspectsPage({
                         <Badge tone={tierTone(c.prospect_tier)}>{c.prospect_tier}</Badge>
                       )}
                       <Badge tone={statusTone(c.status ?? "Watching")}>{c.status ?? "Watching"}</Badge>
+                      {(c as Record<string,unknown>).partner_tag && (
+                        <Badge tone={partnerTone((c as Record<string,unknown>).partner_tag as string)}>
+                          {(c as Record<string,unknown>).partner_tag as string}
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-xs text-neutral-400 mt-0.5">
                       {[c.industry, c.market_code].filter(Boolean).join(" · ")}
