@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
   if (compErr || !company) return NextResponse.json({ error: "Company not found" }, { status: 404 });
   if (company.is_suppressed) return NextResponse.json({ error: "Company is suppressed" }, { status: 403 });
 
-  // Load signals (non-duplicates, most recent 15)
+  // Load signals (non-duplicates, most recent 8 — keep prompt lean for Vercel 60s budget)
   const { data: signals } = await supabase
     .from("business_signals")
     .select(`
@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
     .eq("company_id", company_id)
     .is("duplicate_of_id", null)
     .order("detected_at", { ascending: false })
-    .limit(15);
+    .limit(8);
 
   if (!signals || signals.length === 0) {
     return NextResponse.json(
@@ -153,10 +153,10 @@ export async function POST(req: NextRequest) {
   );
   const roughScore = Math.min(signals.length * 8, 80); // simple proxy: 8pts per signal, cap 80
 
-  const modelTier = await resolveModel(supabase, roughScore, evidenceCount, signalCategories);
-  const modelKey  = modelTier === "sonnet" ? "model_prospect_assess" : "model_prospect_scan";
-  const modelFallback = modelTier === "sonnet" ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001";
-  const model     = await getModel(modelKey, modelFallback);
+  // Use Haiku for all assessments — Sonnet exceeds Vercel 60s budget with rich signal context.
+  // Upgrade path: move to background queue (Sprint 5+) when async assess is needed.
+  const modelTier = "haiku" as const;
+  const model     = await getModel("model_prospect_scan", "claude-haiku-4-5-20251001");
 
   // Enqueue job
   const { data: queueJob } = await supabase
@@ -175,11 +175,12 @@ export async function POST(req: NextRequest) {
 
   const queue_id = queueJob?.id ?? null;
 
-  // 3. Build signal context for AI
+  // 3. Build signal context for AI — truncate signal_text to keep prompt small
   const signalContext = signals.map((s, i) => {
     const evid = (s.evidence_sources as Array<{ source_confidence?: string; headline?: string }> | null) ?? [];
     const conf = evid[0]?.source_confidence ?? "Medium";
-    return `${i + 1}. [${s.signal_category}] ${s.signal_type}: ${s.signal_text} (confidence: ${conf})`;
+    const text = (s.signal_text ?? "").slice(0, 160);
+    return `${i + 1}. [${s.signal_category}] ${s.signal_type}: ${text} (confidence: ${conf})`;
   }).join("\n");
 
   const OFFER_GUIDE = `
@@ -198,7 +199,7 @@ ShiftImpact Offer Guide:
   try {
     const aiResp = await anthropic.messages.create({
       model,
-      max_tokens: 1500,
+      max_tokens: 800,
       tool_choice: { type: "tool", name: "generate_assessment" },
       tools: [ASSESS_TOOL],
       messages: [{
