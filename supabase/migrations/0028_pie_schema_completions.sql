@@ -105,12 +105,12 @@ ALTER TABLE outreach
   CHECK (status IN ('Drafted','Approved','Sent','Replied','Meeting Booked','No Reply','Archived'));
 
 -- ─── 6. os_settings ──────────────────────────────────────────────────────────
-INSERT INTO os_settings (setting_key, setting_value, description)
+INSERT INTO os_settings (key, value, label, description)
 VALUES
-  ('pie_freshness_decay_rate', '0.015',
-   'PIE signal freshness decay per day (0.015 = loses full score in ~67 days)'),
-  ('pie_tier1_threshold', '75',
-   'PIE composite score threshold for Tier 1 Hot'),
-  ('pie_tier2_threshold', '50',
-   'PIE composite score threshold for Tier 2 Warm (below = Tier 3 Watch)')
-ON CONFLICT (setting_key) DO NOTHING;
+  ('pie_freshness_decay_rate', '0.015', 'PIE: Freshness Decay Rate',
+   'Signal freshness decay per day (0.015 = loses full score in ~67 days)'),
+  ('pie_tier1_threshold', '75', 'PIE: Tier 1 Threshold',
+   'Composite score threshold for Tier 1 Hot'),
+  ('pie_tier2_threshold', '50', 'PIE: Tier 2 Threshold',
+   'Composite score threshold for Tier 2 Warm (below = Tier 3 Watch)')
+ON CONFLICT (key) DO NOTHING;
