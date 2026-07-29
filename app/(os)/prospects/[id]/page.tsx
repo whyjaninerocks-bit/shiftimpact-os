@@ -14,6 +14,12 @@ function tierTone(tier: string | null): "red" | "amber" | "neutral" {
   return "neutral";
 }
 
+function recTone(rec: string | null): "green" | "amber" | "red" {
+  if (rec === "Pursue") return "green";
+  if (rec === "Watch")  return "amber";
+  return "red";
+}
+
 function categoryTone(cat: string): "blue" | "green" | "purple" | "amber" | "neutral" {
   switch (cat) {
     case "Growth":      return "blue";
@@ -133,10 +139,29 @@ export default async function ProspectDetailPage({
     .limit(5);
 
   // Fall back to scores nested on the assessment if direct query is empty
-  // (direct query needs company_id column from migration 0028; nested join only needs assessment_id FK)
   type ScoreRow = { opportunity_score: number; pursuit_score: number; composite_score?: number | null; surfaced_at: string };
   const nestedScores = (assessment?.prospect_scores ?? []) as ScoreRow[];
   const latestScore: ScoreRow | null = (scores?.[0] as ScoreRow | undefined) ?? nestedScores[0] ?? null;
+
+  // Fetch latest topline insight
+  const { data: toplineInsight } = await supabase
+    .from("prospect_insights")
+    .select("recommendation, benchmark_context, market_context, best_entry_angle, created_at")
+    .eq("company_id", id)
+    .eq("depth_level", "topline")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  // Fetch latest deep dive insight
+  const { data: deepInsight } = await supabase
+    .from("prospect_insights")
+    .select("competitive_landscape, approach_sequence, signal_analysis, risk_factors, market_timing, created_at")
+    .eq("company_id", id)
+    .eq("depth_level", "deep")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   return (
     <div className="space-y-6">
@@ -177,6 +202,93 @@ export default async function ProspectDetailPage({
               <p className="text-xs text-neutral-400 mt-0.5">{s.label}</p>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ── Topline intelligence ─────────────────────────────────────────── */}
+      {toplineInsight && (
+        <div className="space-y-2">
+          <SectionTitle>Intelligence Read</SectionTitle>
+          <Card>
+            <div className="space-y-4">
+              {/* Recommendation */}
+              <div className="flex items-center gap-3">
+                <Badge tone={recTone(toplineInsight.recommendation)}>{toplineInsight.recommendation ?? "—"}</Badge>
+                <span className="text-xs text-neutral-400">ShiftImpact recommendation</span>
+              </div>
+              {/* Benchmark */}
+              {toplineInsight.benchmark_context && (
+                <div>
+                  <p className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-1">Benchmark</p>
+                  <p className="text-sm text-neutral-700">{toplineInsight.benchmark_context}</p>
+                </div>
+              )}
+              {/* Market context */}
+              {toplineInsight.market_context && (
+                <div>
+                  <p className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-1">Market &amp; Competitive Context</p>
+                  <p className="text-sm text-neutral-700">{toplineInsight.market_context}</p>
+                </div>
+              )}
+              {/* Best entry angle */}
+              {toplineInsight.best_entry_angle && (
+                <div className="bg-neutral-50 border border-neutral-200 rounded-lg px-4 py-3">
+                  <p className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-1">Best Entry Angle</p>
+                  <p className="text-sm font-medium text-neutral-900">{toplineInsight.best_entry_angle}</p>
+                </div>
+              )}
+              {/* Go Deep button — shown when not already pursuing */}
+              {company.status !== "Pursuing" && (
+                <div className="pt-1 border-t border-neutral-100">
+                  <ProspectActions companyId={id} companyName={company.name} showGoDeepOnly />
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ── Deep dive ────────────────────────────────────────────────────── */}
+      {deepInsight && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <SectionTitle>Deep Dive</SectionTitle>
+            <Badge tone="green">Pursuing</Badge>
+          </div>
+          <Card>
+            <div className="space-y-4">
+              {deepInsight.market_timing && (
+                <div>
+                  <p className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-1">Market Timing</p>
+                  <p className="text-sm text-neutral-700">{deepInsight.market_timing}</p>
+                </div>
+              )}
+              {deepInsight.competitive_landscape && (
+                <div>
+                  <p className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-1">Competitive Landscape</p>
+                  <p className="text-sm text-neutral-700">{deepInsight.competitive_landscape}</p>
+                </div>
+              )}
+              {deepInsight.approach_sequence && (
+                <div>
+                  <p className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-1">Approach Sequence</p>
+                  <p className="text-sm text-neutral-700 whitespace-pre-line">{deepInsight.approach_sequence}</p>
+                </div>
+              )}
+              {deepInsight.signal_analysis && (
+                <div>
+                  <p className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-1">Signal Analysis</p>
+                  <p className="text-sm text-neutral-700 whitespace-pre-line">{deepInsight.signal_analysis}</p>
+                </div>
+              )}
+              {deepInsight.risk_factors && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                  <p className="text-xs font-medium text-amber-600 uppercase tracking-wider mb-1">Risk Factors</p>
+                  <p className="text-sm text-neutral-700 whitespace-pre-line">{deepInsight.risk_factors}</p>
+                </div>
+              )}
+            </div>
+          </Card>
         </div>
       )}
 

@@ -7,14 +7,16 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { buttonClass, buttonSecondaryClass, inputClass, labelClass, Card } from "@/app/_components/ui";
 
-type Props = { companyId: string; companyName: string };
+type Props = { companyId: string; companyName: string; showGoDeepOnly?: boolean };
 
-export function ProspectActions({ companyId, companyName }: Props) {
+export function ProspectActions({ companyId, companyName, showGoDeepOnly = false }: Props) {
   const router = useRouter();
-  const [scanning, setScanning]   = useState(false);
-  const [assessing, setAssessing] = useState(false);
-  const [scanMsg, setScanMsg]     = useState<string | null>(null);
-  const [assessMsg, setAssessMsg] = useState<string | null>(null);
+  const [scanning, setScanning]     = useState(false);
+  const [assessing, setAssessing]   = useState(false);
+  const [goingDeep, setGoingDeep]   = useState(false);
+  const [scanMsg, setScanMsg]       = useState<string | null>(null);
+  const [assessMsg, setAssessMsg]   = useState<string | null>(null);
+  const [deepMsg, setDeepMsg]       = useState<string | null>(null);
   const [showAddPerson, setShowAddPerson] = useState(false);
   const [savingPerson, setSavingPerson]   = useState(false);
   const [personError, setPersonError]     = useState<string | null>(null);
@@ -67,6 +69,26 @@ export function ProspectActions({ companyId, companyName }: Props) {
     }
   }
 
+  async function goDeep() {
+    setGoingDeep(true);
+    setDeepMsg(null);
+    try {
+      const res = await fetch("/api/prospect-pursue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ company_id: companyId }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setDeepMsg(`Deep dive failed: ${json.error ?? "unknown error"}`); return; }
+      setDeepMsg("Deep dive complete. Full intelligence report ready.");
+      router.refresh();
+    } catch (e) {
+      setDeepMsg(`Deep dive error: ${String(e)}`);
+    } finally {
+      setGoingDeep(false);
+    }
+  }
+
   async function addPerson(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSavingPerson(true);
@@ -88,6 +110,22 @@ export function ProspectActions({ companyId, companyName }: Props) {
     router.refresh();
   }
 
+  // "Go Deep" inline button — rendered inside the Intelligence Read card
+  if (showGoDeepOnly) {
+    return (
+      <div className="space-y-2">
+        <button
+          onClick={goDeep}
+          disabled={goingDeep}
+          className="w-full text-sm font-medium px-4 py-2 rounded-lg bg-neutral-900 text-white hover:bg-neutral-700 disabled:opacity-50 transition-colors"
+        >
+          {goingDeep ? "Generating deep dive..." : "Go Deep — I'm pursuing this"}
+        </button>
+        {deepMsg && <p className="text-sm text-neutral-600">{deepMsg}</p>}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 flex-wrap">
@@ -107,6 +145,7 @@ export function ProspectActions({ companyId, companyName }: Props) {
 
       {scanMsg   && <p className="text-sm text-neutral-600">{scanMsg}</p>}
       {assessMsg && <p className="text-sm text-neutral-600">{assessMsg}</p>}
+      {deepMsg   && <p className="text-sm text-neutral-600">{deepMsg}</p>}
 
       {showAddPerson && (
         <Card className="max-w-sm">

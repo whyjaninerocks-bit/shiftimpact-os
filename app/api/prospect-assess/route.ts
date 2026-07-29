@@ -38,7 +38,7 @@ async function resolveModel(
 // ─── Assessment tool ──────────────────────────────────────────────────────────
 const ASSESS_TOOL: Anthropic.Tool = {
   name: "generate_assessment",
-  description: "Generate a prospect assessment with offer mapping and two-score evaluation",
+  description: "Generate a prospect assessment with offer mapping, two-score evaluation, and topline strategic intelligence",
   input_schema: {
     type: "object" as const,
     properties: {
@@ -85,11 +85,30 @@ const ASSESS_TOOL: Anthropic.Tool = {
         type: "string",
         description: "One sentence justifying the pursuit score",
       },
+      // ── Topline strategic intelligence ────────────────────────────────────
+      recommendation: {
+        type: "string",
+        enum: ["Pursue", "Watch", "Pass"],
+        description: "ShiftImpact's pursuit recommendation: Pursue = invest time now, Watch = keep on radar, Pass = not the right moment",
+      },
+      benchmark_context: {
+        type: "string",
+        description: "One sentence: how do these scores compare to typical prospects in this market and sector? Give a concrete comparison (e.g. 'Above median for MY Finance sector, where average composite sits around 48').",
+      },
+      market_context: {
+        type: "string",
+        description: "2-3 sentences: what market forces, competitive dynamics, or macro environment are shaping this company's current moment? Include specific named competitors or market events where relevant.",
+      },
+      best_entry_angle: {
+        type: "string",
+        description: "One crisp sentence: the single sharpest way ShiftImpact can open this conversation — the hook that makes the prospect lean in.",
+      },
     },
     required: [
       "business_moment_summary","shiftimpact_entry_point","recommended_approach",
       "recommended_offer","offer_rationale",
       "opportunity_score","pursuit_score","opportunity_rationale","pursuit_rationale",
+      "recommendation","benchmark_context","market_context","best_entry_angle",
     ],
   },
 };
@@ -298,7 +317,21 @@ Generate a precise, commercially grounded assessment. Opportunity Score = how si
     if (scoreErr2) console.error("[prospect-assess] scores fallback insert also failed:", scoreErr2.message);
   }
 
-  // 6. Auto-qualify company if pursuit_score >= 50
+  // 6. Persist topline insight (recommendation, benchmark, market context, best angle)
+  const { error: insightErr } = await supabase
+    .from("prospect_insights")
+    .insert({
+      company_id:        company_id as string,
+      assessment_id:     assessmentRow.id,
+      depth_level:       "topline",
+      recommendation:    assessment.recommendation    ?? null,
+      benchmark_context: assessment.benchmark_context ?? null,
+      market_context:    assessment.market_context    ?? null,
+      best_entry_angle:  assessment.best_entry_angle  ?? null,
+    });
+  if (insightErr) console.error("[prospect-assess] insight insert failed:", insightErr.message);
+
+  // 7. Auto-qualify company if pursuit_score >= 50
   if (pursuitScore >= 50 && company.status === "Watching") {
     await supabase.from("companies").update({ status: "Qualified" }).eq("id", company_id as string);
   }
@@ -338,6 +371,12 @@ Generate a precise, commercially grounded assessment. Opportunity Score = how si
       pursuit_score:         pursuitScore,
       opportunity_rationale: assessment.opportunity_rationale,
       pursuit_rationale:     assessment.pursuit_rationale,
+    },
+    insight: {
+      recommendation:    assessment.recommendation,
+      benchmark_context: assessment.benchmark_context,
+      market_context:    assessment.market_context,
+      best_entry_angle:  assessment.best_entry_angle,
     },
     model_used:    model,
     model_tier:    modelTier,
