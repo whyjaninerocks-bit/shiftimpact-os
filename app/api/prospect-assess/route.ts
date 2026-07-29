@@ -218,7 +218,7 @@ ShiftImpact Offer Guide:
   try {
     const aiResp = await anthropic.messages.create({
       model,
-      max_tokens: 800,
+      max_tokens: 1200,
       tool_choice: { type: "tool", name: "generate_assessment" },
       tools: [ASSESS_TOOL],
       messages: [{
