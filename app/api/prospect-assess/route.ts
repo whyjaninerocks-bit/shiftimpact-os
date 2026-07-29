@@ -3,6 +3,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getModel } from "@/lib/ai-model";
 
+export const maxDuration = 60;
+
 const SONNET_CATEGORIES = ["Leadership", "Growth"];
 
 // ─── Two-pass model resolution ────────────────────────────────────────────────

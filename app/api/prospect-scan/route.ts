@@ -4,6 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getModel } from "@/lib/ai-model";
 import { createHash } from "crypto";
 
+export const maxDuration = 60; // seconds — Apify actors need time to run
+
 const APIFY_TOKEN = process.env.APIFY_API_TOKEN;
 const APIFY_BASE  = "https://api.apify.com/v2";
 

@@ -30,7 +30,14 @@ export function ProspectActions({ companyId, companyName }: Props) {
       });
       const json = await res.json();
       if (!res.ok) { setScanMsg(`Scan failed: ${json.error ?? "unknown error"}`); return; }
-      setScanMsg(`Scan complete. ${json.signals_inserted ?? 0} new signals detected.`);
+      const newCount  = json.signals_new       ?? 0;
+      const dupCount  = json.signals_duplicate ?? 0;
+      const warning   = json.warning ? ` Warning: ${json.warning}` : "";
+      setScanMsg(
+        newCount > 0
+          ? `Scan complete. ${newCount} new signal${newCount !== 1 ? "s" : ""} detected${dupCount > 0 ? `, ${dupCount} duplicate${dupCount !== 1 ? "s" : ""} skipped` : ""}.`
+          : `Scan complete. No new signals found${dupCount > 0 ? ` (${dupCount} already tracked)` : ""}.${warning}`
+      );
       router.refresh();
     } catch (e) {
       setScanMsg(`Scan error: ${String(e)}`);
