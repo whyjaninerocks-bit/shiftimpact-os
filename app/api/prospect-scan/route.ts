@@ -48,13 +48,15 @@ async function fetchGoogleNewsRSS(
   const { hl, gl, ceid } = marketMap[marketCode] ?? marketMap.MY;
 
   const short = shortName(companyName);
-  // Use short name in quotes for more results; full name as fallback
+  // Use short name but add market context to avoid generic-word collisions
+  // e.g. "Gardenia MY" not just "Gardenia" which hits flower/garden results
   const searchTerm = short !== companyName ? short : companyName;
+  const marketSuffix = marketCode !== "MY" ? ` ${marketCode}` : " Malaysia";
 
   const queries = [
-    `"${searchTerm}" award OR recognition OR win`,
-    `"${searchTerm}" launch OR expansion OR investment OR funding`,
-    `"${searchTerm}" partnership OR milestone OR appointed OR leadership`,
+    `"${searchTerm}"${marketSuffix} award OR recognition OR win`,
+    `"${searchTerm}"${marketSuffix} launch OR expansion OR investment OR funding`,
+    `"${searchTerm}"${marketSuffix} partnership OR milestone OR appointed OR leadership`,
   ];
 
   const chunks: string[] = [];
@@ -246,10 +248,10 @@ export async function POST(req: NextRequest) {
         }, 20, 1).catch(() => [] as Record<string, unknown>[])
       : Promise.resolve([] as Record<string, unknown>[]),
 
-    // 2. RAG web browser — use short name for broader coverage (20s)
+    // 2. RAG web browser — short name + market + industry for specificity (20s)
     APIFY_TOKEN
       ? runApifyActor("apify/rag-web-browser", {
-          query: `"${companyShort}" (award OR funding OR launch OR partnership OR expansion OR recognition OR milestone OR growth) 2024 OR 2025 OR 2026`,
+          query: `"${companyShort}" ${company.market_code ?? "Malaysia"} ${company.industry ?? ""} (award OR funding OR launch OR partnership OR expansion OR recognition OR milestone OR growth) 2024 OR 2025 OR 2026`,
           maxResults: 5,
         }, 20, 5).catch(() => [] as Record<string, unknown>[])
       : Promise.resolve([] as Record<string, unknown>[]),
@@ -257,10 +259,10 @@ export async function POST(req: NextRequest) {
     // 3. Google News RSS — zero-config, always runs (12s abort inside)
     fetchGoogleNewsRSS(companyName, company.market_code as string ?? "MY"),
 
-    // 4. Apify Google Search — runs in parallel now, not as a sequential fallback (20s)
+    // 4. Apify Google Search — runs in parallel, not as a sequential fallback (20s)
     APIFY_TOKEN
       ? runApifyActor("apify/google-search-scraper", {
-          queries: `${companyShort} company news 2024 OR 2025 OR 2026`,
+          queries: `${companyShort} ${company.market_code ?? "Malaysia"} ${company.industry ?? ""} news 2024 OR 2025 OR 2026`,
           maxPagesPerQuery: 1,
           resultsPerPage: 8,
         }, 20, 8).catch(() => [] as Record<string, unknown>[])
