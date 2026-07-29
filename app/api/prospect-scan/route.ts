@@ -9,6 +9,68 @@ export const maxDuration = 60; // seconds — Apify actors need time to run
 const APIFY_TOKEN = process.env.APIFY_API_TOKEN;
 const APIFY_BASE  = "https://api.apify.com/v2";
 
+// ─── Google News RSS — zero-config fallback (no API key needed) ───────────────
+// Returns raw text chunks in the same format as Apify results.
+async function fetchGoogleNewsRSS(
+  companyName: string,
+  marketCode: string = "MY"
+): Promise<string[]> {
+  const marketMap: Record<string, { hl: string; gl: string; ceid: string }> = {
+    MY: { hl: "en-MY", gl: "MY", ceid: "MY:en" },
+    SG: { hl: "en-SG", gl: "SG", ceid: "SG:en" },
+    PH: { hl: "en-PH", gl: "PH", ceid: "PH:en" },
+    TH: { hl: "th-TH", gl: "TH", ceid: "TH:th" },
+    ID: { hl: "id-ID", gl: "ID", ceid: "ID:id" },
+  };
+  const { hl, gl, ceid } = marketMap[marketCode] ?? marketMap.MY;
+
+  const queries = [
+    `"${companyName}" award OR recognition OR win`,
+    `"${companyName}" funding OR investment OR expansion OR launch`,
+    `"${companyName}" partnership OR milestone OR appointed OR leadership`,
+  ];
+
+  const chunks: string[] = [];
+
+  await Promise.all(queries.map(async (q) => {
+    const url = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=${hl}&gl=${gl}&ceid=${ceid}`;
+    try {
+      const res = await fetch(url, {
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; ShiftImpactOS/1.0)" },
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!res.ok) return;
+      const xml = await res.text();
+      const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+      let match: RegExpExecArray | null;
+      let count = 0;
+      while ((match = itemRegex.exec(xml)) !== null && count < 5) {
+        const item = match[1];
+        const title = (
+          item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1] ??
+          item.match(/<title>(.*?)<\/title>/)?.[1] ?? ""
+        ).trim();
+        const desc = (
+          item.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/)?.[1] ??
+          item.match(/<description>(.*?)<\/description>/)?.[1] ?? ""
+        ).replace(/<[^>]+>/g, "").trim().slice(0, 500);
+        const srcUrl  = item.match(/source url="([^"]+)"/)?.[1]?.trim() ?? "";
+        const srcName = item.match(/<source[^>]*>(.*?)<\/source>/)?.[1]?.trim() ?? "";
+        const date    = item.match(/<pubDate>(.*?)<\/pubDate>/)?.[1]?.trim() ?? "";
+
+        if (title && (title.toLowerCase().includes(companyName.toLowerCase()) || desc.toLowerCase().includes(companyName.toLowerCase()))) {
+          chunks.push(`[News RSS: ${title}]\nSource: ${srcName} (${srcUrl})\nDate: ${date}\n${desc}`);
+          count++;
+        }
+      }
+    } catch {
+      // silently skip on timeout or fetch error
+    }
+  }));
+
+  return chunks;
+}
+
 // ─── Apify runner ─────────────────────────────────────────────────────────────
 async function runApifyActor(
   actorId: string,
@@ -136,37 +198,47 @@ export async function POST(req: NextRequest) {
 
   const queue_id = queueJob?.id ?? null;
 
-  // 3. Scrape — parallel: LinkedIn company + web news
+  // 3. Scrape — parallel: LinkedIn + Apify RAG browser + Google News RSS (zero-config)
   const rawChunks: string[] = [];
   const evidenceMap: Record<string, { url?: string; headline?: string; published_at?: string }> = {};
 
-  try {
-    // LinkedIn company page scraper
-    if (linkedinUrl) {
-      const liItems = await runApifyActor("anchor/linkedin-company-detail-scraper", {
-        startUrls: [{ url: linkedinUrl }],
-        maxResults: 1,
-      }, 60, 1).catch(() => []);
+  // Run all sources in parallel; RSS is always attempted regardless of APIFY_TOKEN
+  const [liItems, newsItems, rssChunks] = await Promise.all([
+    // LinkedIn company page scraper (Apify — needs token)
+    linkedinUrl && APIFY_TOKEN
+      ? runApifyActor("anchor/linkedin-company-detail-scraper", {
+          startUrls: [{ url: linkedinUrl }],
+          maxResults: 1,
+        }, 60, 1).catch(() => [] as Record<string, unknown>[])
+      : Promise.resolve([] as Record<string, unknown>[]),
 
-      if (liItems.length > 0) {
-        const li = liItems[0];
-        const text = [
-          li.description,
-          li.specialities,
-          `Employees: ${li.employeeCount}`,
-          `Founded: ${li.founded}`,
-          li.tagline,
-        ].filter(Boolean).join(" | ");
-        if (text) rawChunks.push(`[LinkedIn Company Profile]\n${text.slice(0, 1000)}`);
-      }
+    // RAG web browser (Apify — needs token)
+    APIFY_TOKEN
+      ? runApifyActor("apify/rag-web-browser", {
+          query: `"${searchQuery}" (award OR funding OR launch OR partnership OR expansion OR recognition OR milestone OR growth) Malaysia OR Singapore 2024 OR 2025 OR 2026`,
+          maxResults: 8,
+        }, 60, 8).catch(() => [] as Record<string, unknown>[])
+      : Promise.resolve([] as Record<string, unknown>[]),
+
+    // Google News RSS — no API key required, always runs
+    fetchGoogleNewsRSS(searchQuery, company.market_code as string ?? "MY"),
+  ]);
+
+  try {
+    // Process LinkedIn
+    if (liItems.length > 0) {
+      const li = liItems[0];
+      const text = [
+        li.description,
+        li.specialities,
+        `Employees: ${li.employeeCount}`,
+        `Founded: ${li.founded}`,
+        li.tagline,
+      ].filter(Boolean).join(" | ");
+      if (text) rawChunks.push(`[LinkedIn Company Profile]\n${(text as string).slice(0, 1000)}`);
     }
 
-    // Web news — RAG web browser actor
-    const newsItems = await runApifyActor("apify/rag-web-browser", {
-      query: `"${searchQuery}" (award OR funding OR launch OR partnership OR expansion OR recognition OR milestone OR growth) Malaysia OR Singapore 2024 OR 2025 OR 2026`,
-      maxResults: 8,
-    }, 60, 8).catch(() => []);
-
+    // Process Apify RAG news
     for (const item of newsItems.slice(0, 8)) {
       const text   = ((item.text || item.markdown || item.description || "") as string).slice(0, 600);
       const url    = (item.url  || item.canonicalUrl || "") as string;
@@ -178,13 +250,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Also try Google News via web search if no results
-    if (rawChunks.length < 2) {
+    // Add Google News RSS chunks (always available)
+    rawChunks.push(...rssChunks);
+
+    // Apify Google Search as last resort (only if still sparse + token exists)
+    if (rawChunks.length < 2 && APIFY_TOKEN) {
       const gnItems = await runApifyActor("apify/google-search-scraper", {
         queries: `${searchQuery} company news 2025 OR 2026`,
         maxPagesPerQuery: 1,
         resultsPerPage: 10,
-      }, 45, 10).catch(() => []);
+      }, 45, 10).catch(() => [] as Record<string, unknown>[]);
 
       for (const r of gnItems.slice(0, 8)) {
         const title   = (r.title   || "") as string;
@@ -206,7 +281,7 @@ export async function POST(req: NextRequest) {
       await supabase.from("ai_processing_queue").update({
         status: "failed",
         completed_at: new Date().toISOString(),
-        error_log: [{ ts: new Date().toISOString(), msg: "No content retrieved from scrapers" }],
+        error_log: [{ ts: new Date().toISOString(), msg: "No content retrieved from scrapers", apify_configured: !!APIFY_TOKEN }],
       }).eq("id", queue_id);
     }
     return NextResponse.json({
@@ -215,7 +290,10 @@ export async function POST(req: NextRequest) {
       signals_duplicate: 0,
       company_profile_summary: "",
       queue_id,
-      warning: "No content retrieved from public sources",
+      apify_configured: !!APIFY_TOKEN,
+      warning: APIFY_TOKEN
+        ? "No content retrieved from public sources. Company may have limited online presence."
+        : "No content retrieved. APIFY_API_TOKEN is not configured in environment. Add it in Vercel → Settings → Environment Variables.",
     });
   }
 
@@ -244,19 +322,32 @@ export async function POST(req: NextRequest) {
       messages: [
         {
           role: "user",
-          content: `You are analysing public information about the company "${companyName}" (${company.industry}, ${company.market_code}).
+          content: `You are the Growth Intelligence Layer™ of ShiftImpact OS, a strategic intelligence consultancy in Southeast Asia.
 
-Extract every meaningful business signal from the content below. A signal is a real, observable event that indicates business momentum — funding, awards, partnerships, product launches, leadership changes, market expansion, brand recognition.
+Your job is NOT to record company activity. Your job is to identify BUSINESS MOMENTS — specific events that indicate a company may be entering a period where stronger decisions, clearer narratives, better communication or strategic alignment could create business value.
 
-Ignore generic marketing copy, evergreen website content, and social posts with no specific event.
+For every signal you detect, apply the 5-question intelligence model:
+1. What happened? (the specific event)
+2. Why does this matter now? (strategic importance)
+3. What tension may exist? (hidden challenge behind the event)
+4. What opportunity exists? (potential strategic intervention)
+5. Which ShiftImpact capability applies?
 
-For each signal:
-- signal_category: Growth | Recognition | Milestone | Activation | Leadership
-- signal_type: specific sub-type (e.g. "Series A Funding", "Industry Award", "Market Expansion")
-- signal_text: one factual sentence describing the specific event
-- source_confidence: High (named source, date, specific amount) | Medium (referenced but vague) | Low (inferred)
+SIGNAL TAXONOMY — classify using these categories:
+- Growth: Funding, investment, market expansion, physical expansion, new partnerships
+- Recognition: Awards, ESG/sustainability recognition, employer recognition, leadership recognition
+- Milestone: Heritage anniversaries, customer milestones, business achievement milestones
+- Activation: Product/service launches, rebranding, corporate/industry events, sponsorships
+- Leadership: Executive appointments, founder transitions, leadership visibility changes
 
-Also write a company_profile_summary: 2-3 sentences on what this company does and its current business trajectory.
+RULES:
+- Only extract signals that are SPECIFIC, REAL, OBSERVABLE events — not generic marketing copy
+- Ignore evergreen website content, boilerplate PR phrases, generic social posts
+- signal_text must be a factual one-sentence description of the specific event
+- source_confidence: High = named source + date + specific details; Medium = referenced but vague; Low = inferred
+- If content mentions "${companyName}" winning an award, record it even if no date is given
+
+COMPANY: "${companyName}" — Industry: ${company.industry}, Market: ${company.market_code}
 
 RAW CONTENT:
 ${rawContent}`,
@@ -363,6 +454,7 @@ ${rawContent}`,
     signals_new,
     signals_duplicate,
     company_profile_summary: companyProfileSummary,
+    apify_configured:        !!APIFY_TOKEN,
     queue_id,
   });
 }
