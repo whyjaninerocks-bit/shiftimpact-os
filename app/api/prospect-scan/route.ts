@@ -204,20 +204,20 @@ export async function POST(req: NextRequest) {
 
   // Run all sources in parallel; RSS is always attempted regardless of APIFY_TOKEN
   const [liItems, newsItems, rssChunks] = await Promise.all([
-    // LinkedIn company page scraper (Apify — needs token)
+    // LinkedIn company page scraper (Apify — needs token; 30s timeout)
     linkedinUrl && APIFY_TOKEN
       ? runApifyActor("anchor/linkedin-company-detail-scraper", {
           startUrls: [{ url: linkedinUrl }],
           maxResults: 1,
-        }, 60, 1).catch(() => [] as Record<string, unknown>[])
+        }, 30, 1).catch(() => [] as Record<string, unknown>[])
       : Promise.resolve([] as Record<string, unknown>[]),
 
-    // RAG web browser (Apify — needs token)
+    // RAG web browser (Apify — needs token; 35s timeout to stay within Vercel 60s budget)
     APIFY_TOKEN
       ? runApifyActor("apify/rag-web-browser", {
           query: `"${searchQuery}" (award OR funding OR launch OR partnership OR expansion OR recognition OR milestone OR growth) Malaysia OR Singapore 2024 OR 2025 OR 2026`,
-          maxResults: 8,
-        }, 60, 8).catch(() => [] as Record<string, unknown>[])
+          maxResults: 5,
+        }, 35, 5).catch(() => [] as Record<string, unknown>[])
       : Promise.resolve([] as Record<string, unknown>[]),
 
     // Google News RSS — no API key required, always runs
@@ -253,13 +253,13 @@ export async function POST(req: NextRequest) {
     // Add Google News RSS chunks (always available)
     rawChunks.push(...rssChunks);
 
-    // Apify Google Search as last resort (only if still sparse + token exists)
+    // Apify Google Search as last resort (only if still sparse + token exists; 25s timeout)
     if (rawChunks.length < 2 && APIFY_TOKEN) {
       const gnItems = await runApifyActor("apify/google-search-scraper", {
         queries: `${searchQuery} company news 2025 OR 2026`,
         maxPagesPerQuery: 1,
-        resultsPerPage: 10,
-      }, 45, 10).catch(() => [] as Record<string, unknown>[]);
+        resultsPerPage: 8,
+      }, 25, 8).catch(() => [] as Record<string, unknown>[]);
 
       for (const r of gnItems.slice(0, 8)) {
         const title   = (r.title   || "") as string;
