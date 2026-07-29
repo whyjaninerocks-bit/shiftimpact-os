@@ -210,6 +210,43 @@ export default async function ProspectDetailPage({
         currentPartner={((company as Record<string, unknown>).partner_tag ?? null) as "ShiftImpact" | "AOAI" | "Both" | null}
       />
 
+      {/* ── Company profile (enriched fields) ──────────────────────────── */}
+      {(company.company_profile_summary || company.employee_band || company.business_model || company.growth_stage) && (
+        <div className="rounded-xl border border-neutral-200 bg-white px-4 py-3 space-y-3 shadow-sm">
+          <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Company Profile</p>
+          {company.company_profile_summary && (
+            <p className="text-sm text-neutral-700">{company.company_profile_summary}</p>
+          )}
+          <div className="flex flex-wrap gap-2 text-xs">
+            {company.employee_band && (
+              <span className="px-2 py-1 rounded-md border border-neutral-200 bg-neutral-50 text-neutral-600">
+                👥 {company.employee_band} employees
+              </span>
+            )}
+            {company.business_model && (
+              <span className="px-2 py-1 rounded-md border border-neutral-200 bg-neutral-50 text-neutral-600">
+                {company.business_model}
+              </span>
+            )}
+            {company.growth_stage && (
+              <span className="px-2 py-1 rounded-md border border-neutral-200 bg-neutral-50 text-neutral-600">
+                {company.growth_stage}
+              </span>
+            )}
+            {company.linkedin_url && (
+              <a
+                href={company.linkedin_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-2 py-1 rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+              >
+                LinkedIn ↗
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Score summary ────────────────────────────────────────────────── */}
       {latestScore && (
         <div className="grid grid-cols-3 gap-3">
