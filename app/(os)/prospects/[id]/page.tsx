@@ -73,18 +73,20 @@ export default async function ProspectDetailPage({
 
   if (error || !company) notFound();
 
-  // Fetch signals
-  const { data: signals } = await supabase
+  // Fetch signals — source_confidence lives on evidence_sources, not business_signals
+  const { data: signals, error: signalErr } = await supabase
     .from("business_signals")
     .select(`
       id, signal_category, signal_type, signal_text,
-      signal_freshness_score, source_confidence, detected_at,
-      evidence_sources ( id, source_url, headline, published_at )
+      signal_freshness_score, detected_at, source_url,
+      evidence_sources ( id, source_url, headline, published_at, source_confidence )
     `)
     .eq("company_id", id)
     .is("duplicate_of_id", null)
     .order("detected_at", { ascending: false })
     .limit(20);
+
+  if (signalErr) console.error("[prospects/detail] signal query error:", signalErr.message);
 
   // Fetch latest assessment + scores (scores live in prospect_scores, not prospect_assessments)
   const { data: assessment } = await supabase
@@ -233,7 +235,10 @@ export default async function ProspectDetailPage({
                   <span className="text-xs text-neutral-500">{s.signal_type}</span>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
-                  <Badge tone={confidenceTone(s.source_confidence)}>{s.source_confidence}</Badge>
+                  {(() => {
+                    const conf = (s.evidence_sources as Array<{source_confidence?: string}> | null)?.[0]?.source_confidence ?? "Medium";
+                    return <Badge tone={confidenceTone(conf)}>{conf}</Badge>;
+                  })()}
                   <span className="text-xs text-neutral-400">{daysSince(s.detected_at)}</span>
                 </div>
               </div>
