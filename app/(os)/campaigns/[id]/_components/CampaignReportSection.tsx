@@ -19,6 +19,10 @@ interface ReportData {
   signal_summary?: string;
   consumer_state_summary?: string;
   bms_summary?: string;
+  risk_posture?: string;
+  risk_posture_rationale?: string;
+  risk_adjusted_playbook?: string;
+  // Legacy text field — kept for old reports
   risk_summary?: string;
   activation_summary?: string;
   attribution_summary?: string;
@@ -48,6 +52,7 @@ interface CampaignReport {
   executive_summary: string;
   report_data: ReportData;
   findings: Finding[];
+  risk_posture: string | null;
   status: "draft" | "ready" | "exported";
   report_week: number;
   created_at: string;
@@ -67,11 +72,48 @@ const CONFIDENCE_BADGE: Record<string, string> = {
   Speculative: "bg-red-100 text-red-800 border border-red-200",
 };
 
-const SECTION_LABELS: Record<keyof ReportData, string> = {
+// ─── Risk Posture colour + icon ─────────────────────────────────────────────
+type PostureKey = "Gaining" | "Plateauing" | "Under Threat" | "Fragile" | "Eroding Slowly";
+
+const POSTURE_STYLES: Record<PostureKey, { badge: string; card: string; dot: string }> = {
+  "Gaining": {
+    badge: "bg-green-100 text-green-800 border border-green-300",
+    card:  "bg-green-50 border-green-200",
+    dot:   "bg-green-500",
+  },
+  "Plateauing": {
+    badge: "bg-amber-100 text-amber-800 border border-amber-300",
+    card:  "bg-amber-50 border-amber-200",
+    dot:   "bg-amber-400",
+  },
+  "Under Threat": {
+    badge: "bg-orange-100 text-orange-800 border border-orange-300",
+    card:  "bg-orange-50 border-orange-200",
+    dot:   "bg-orange-500",
+  },
+  "Fragile": {
+    badge: "bg-red-100 text-red-800 border border-red-300",
+    card:  "bg-red-50 border-red-200",
+    dot:   "bg-red-600",
+  },
+  "Eroding Slowly": {
+    badge: "bg-red-50 text-red-700 border border-red-200",
+    card:  "bg-red-50/60 border-red-200",
+    dot:   "bg-red-400",
+  },
+};
+
+function getPostureStyles(posture: string | null) {
+  if (!posture) return null;
+  return POSTURE_STYLES[posture as PostureKey] ?? null;
+}
+
+const SECTION_LABELS: Record<string, string> = {
   signal_summary: "Signal & Delivery",
   consumer_state_summary: "Consumer Behaviour",
   bms_summary: "Brand Momentum",
-  risk_summary: "Risk Posture",
+  risk_summary: "Risk Context",
+  risk_posture_rationale: "Posture Rationale",
   activation_summary: "Activation",
   attribution_summary: "Attribution & ROI",
   generated_components: "Coverage",
@@ -274,10 +316,51 @@ export function CampaignReportSection({ campaignId, campaignName }: Props) {
             </div>
           )}
 
+          {/* ── Risk Posture — headline badge ─────────────────────────────── */}
+          {(() => {
+            const posture = report.risk_posture ?? report.report_data?.risk_posture ?? null;
+            const styles = getPostureStyles(posture);
+            if (!posture || !styles) return null;
+            return (
+              <div className={`rounded-xl border px-4 py-3 flex items-start gap-3 ${styles.card}`}>
+                <div className="flex items-center gap-2 shrink-0 pt-0.5">
+                  <span className={`w-2.5 h-2.5 rounded-full ${styles.dot}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">Risk Posture</p>
+                    <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${styles.badge}`}>
+                      {posture}
+                    </span>
+                    <span className="text-[10px] text-neutral-400 uppercase tracking-wider">INTERNAL</span>
+                  </div>
+                  {report.report_data?.risk_posture_rationale && (
+                    <p className="text-sm text-neutral-700 leading-relaxed">
+                      {report.report_data.risk_posture_rationale}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ── Risk-Adjusted Playbook ─────────────────────────────────────── */}
+          {report.report_data?.risk_adjusted_playbook && (
+            <div className="rounded-xl border border-neutral-800 bg-neutral-900 px-4 py-3 space-y-1.5">
+              <div className="flex items-center gap-2">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">Risk-Adjusted Playbook</p>
+                <span className="text-[10px] text-neutral-500 uppercase tracking-wider">INTERNAL</span>
+              </div>
+              <p className="text-sm text-white leading-relaxed">
+                {report.report_data.risk_adjusted_playbook}
+              </p>
+            </div>
+          )}
+
           {/* Report data sections */}
           <div className="grid grid-cols-1 gap-3">
             {(["signal_summary", "consumer_state_summary", "bms_summary",
-               "risk_summary", "activation_summary", "attribution_summary"] as const).map((key) => {
+               "activation_summary", "attribution_summary"] as const).map((key) => {
               const text = report.report_data?.[key];
               if (!text) return null;
               return (
@@ -289,6 +372,15 @@ export function CampaignReportSection({ campaignId, campaignName }: Props) {
                 </div>
               );
             })}
+            {/* Legacy risk_summary fallback for old reports */}
+            {!report.report_data?.risk_adjusted_playbook && report.report_data?.risk_summary && (
+              <div className="rounded-lg border border-gray-200 bg-white px-4 py-3">
+                <p className="text-xs font-semibold text-blue-900 uppercase tracking-wide mb-1">
+                  Risk Context
+                </p>
+                <p className="text-sm text-gray-700 leading-relaxed">{report.report_data.risk_summary}</p>
+              </div>
+            )}
           </div>
 
           {/* Findings from F33 */}

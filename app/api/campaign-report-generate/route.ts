@@ -174,7 +174,7 @@ async function collectCampaignData(
 async function synthesiseReport(
   data: ComponentSnapshot,
   anthropic: Anthropic
-): Promise<{ report_data: Record<string, unknown>; executive_summary: string }> {
+): Promise<{ risk_posture: string | null; report_data: Record<string, unknown>; executive_summary: string }> {
 
   const dataStr = JSON.stringify({
     campaign_name: data.campaign_name,
@@ -195,12 +195,40 @@ async function synthesiseReport(
         signal_summary:         { type: "string", description: "2–3 sentences on delivery health trend." },
         consumer_state_summary: { type: "string", description: "2–3 sentences on audience behaviour and velocity. No state codes." },
         bms_summary:            { type: "string", description: "2 sentences on brand momentum direction." },
-        risk_summary:           { type: "string", description: "2 sentences on current risk posture." },
+        risk_posture: {
+          type: "string",
+          enum: ["Gaining", "Plateauing", "Under Threat", "Fragile", "Eroding Slowly"],
+          description: [
+            "The headline Risk Posture for this brand at this moment.",
+            "Gaining: BMS Positive + Accelerating or Stable. Brand winning ground, signals compounding.",
+            "Plateauing: BMS Neutral + Stable. Holding but not growing — risk of Eroding if demand signals weaken.",
+            "Under Threat: BMS Negative + competitive pressure evident in SOV or consumer behaviour. External threat driving decline.",
+            "Fragile: BMS Negative + Decelerating + low confidence. Multiple signals deteriorating simultaneously. Structural weakness.",
+            "Eroding Slowly: BMS Negative + Stable velocity. Gradual consistent decline — less acute than Fragile but cumulative risk is high.",
+            "Choose the posture that best fits the combined signal picture. When in doubt, Fragile > Under Threat > Eroding Slowly.",
+          ].join(" "),
+        },
+        risk_posture_rationale: {
+          type: "string",
+          description: "2–3 sentences (INTERNAL). Explain which specific signals drove the posture classification. Name the dominant evidence pattern. No state codes.",
+        },
+        risk_adjusted_playbook: {
+          type: "string",
+          description: [
+            "3–5 sentences (INTERNAL). Prescribed strategy modification based on this specific Risk Posture × Consumer State combination.",
+            "Be directive: 'The priority shift is X. Reduce/increase Y. The next 4 weeks should focus on Z.'",
+            "Do NOT give generic advice. Reference the actual posture and dominant consumer state in plain language.",
+          ].join(" "),
+        },
         activation_summary:     { type: "string", description: "2 sentences on priority actions." },
         attribution_summary:    { type: "string", description: "2 sentences on what attribution data shows." },
         executive_summary:      { type: "string", description: "2 paragraphs — CLIENT SAFE. What is happening, what it means, what happens next. No state codes, no internal names, no metric numbers unless from attribution." },
       },
-      required: ["signal_summary", "consumer_state_summary", "bms_summary", "risk_summary", "activation_summary", "attribution_summary", "executive_summary"],
+      required: [
+        "signal_summary", "consumer_state_summary", "bms_summary",
+        "risk_posture", "risk_posture_rationale", "risk_adjusted_playbook",
+        "activation_summary", "attribution_summary", "executive_summary",
+      ],
     },
   } as const;
 
@@ -226,6 +254,7 @@ BOUNDARY RULES — STRICT:
   const toolBlock = msg.content.find((b) => b.type === "tool_use");
   if (!toolBlock || toolBlock.type !== "tool_use") {
     return {
+      risk_posture: null,
       report_data: {
         error: "Synthesis failed — AI did not return structured output",
       },
@@ -236,20 +265,25 @@ BOUNDARY RULES — STRICT:
     signal_summary?: string;
     consumer_state_summary?: string;
     bms_summary?: string;
-    risk_summary?: string;
+    risk_posture?: string;
+    risk_posture_rationale?: string;
+    risk_adjusted_playbook?: string;
     activation_summary?: string;
     attribution_summary?: string;
     executive_summary?: string;
   };
 
   return {
+    risk_posture: r.risk_posture ?? null,
     report_data: {
       signal_summary:         r.signal_summary         ?? "",
       consumer_state_summary: r.consumer_state_summary ?? "",
       bms_summary:            r.bms_summary            ?? "",
-      risk_summary:           r.risk_summary           ?? "",
+      risk_posture:           r.risk_posture           ?? "",
+      risk_posture_rationale: r.risk_posture_rationale ?? "",
+      risk_adjusted_playbook: r.risk_adjusted_playbook ?? "",
       activation_summary:     r.activation_summary     ?? "",
-      attribution_summary:    r.attribution_summary     ?? "",
+      attribution_summary:    r.attribution_summary    ?? "",
       generated_components: {
         signal_weeks:          data.signal_reports.length,
         consumer_state_weeks:  data.consumer_state_readings.length,
@@ -353,7 +387,7 @@ export async function POST(req: NextRequest) {
     const data = await collectCampaignData(campaign_id, supabase);
 
     // Synthesise report
-    const { report_data, executive_summary } = await synthesiseReport(data, anthropic);
+    const { risk_posture, report_data, executive_summary } = await synthesiseReport(data, anthropic);
 
     // Upsert report record (create new for each generation — full history)
     const reportLabel = data.report_week > 0
@@ -368,9 +402,10 @@ export async function POST(req: NextRequest) {
         report_label: reportLabel,
         report_data,
         executive_summary,
+        risk_posture,
         status: "ready",
       })
-      .select("id, report_label, executive_summary, status, created_at")
+      .select("id, report_label, executive_summary, risk_posture, status, created_at")
       .single();
 
     if (error) throw new Error(error.message);
@@ -379,6 +414,7 @@ export async function POST(req: NextRequest) {
       report_id: report.id,
       report_label: report.report_label,
       executive_summary: report.executive_summary,
+      risk_posture: report.risk_posture,
       status: report.status,
       report_data,           // INTERNAL — consumer in strategy lead UI only
       data_coverage: {
@@ -406,7 +442,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from("campaign_reports")
-    .select("id, report_label, executive_summary, report_data, findings, status, report_week, created_at, updated_at, exported_at")
+    .select("id, report_label, executive_summary, report_data, findings, risk_posture, status, report_week, created_at, updated_at, exported_at")
     .eq("campaign_id", campaign_id)
     .order("created_at", { ascending: false })
     .limit(1)
