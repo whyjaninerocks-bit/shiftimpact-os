@@ -15,6 +15,15 @@ const NAV = [
     ),
   },
   {
+    href: "/prospects",
+    label: "Prospects",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+      </svg>
+    ),
+  },
+  {
     href: "/clarity-signal",
     label: "Clarity Signal™",
     icon: (
