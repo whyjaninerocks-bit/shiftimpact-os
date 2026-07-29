@@ -79,7 +79,7 @@ export default async function ProspectDetailPage({
     .select(`
       id, signal_category, signal_type, signal_text,
       signal_freshness_score, detected_at, source_url,
-      evidence_sources ( id, source_url, headline, published_at, source_confidence )
+      evidence_sources ( id, url, headline, published_at, source_confidence )
     `)
     .eq("company_id", id)
     .is("duplicate_of_id", null)
@@ -256,15 +256,15 @@ export default async function ProspectDetailPage({
               {/* Evidence sources */}
               {Array.isArray(s.evidence_sources) && s.evidence_sources.length > 0 && (
                 <div className="pt-1 border-t border-neutral-100 space-y-1">
-                  {(s.evidence_sources as { id: string; source_url: string; headline: string }[]).map(e => (
+                  {(s.evidence_sources as { id: string; url: string; headline: string }[]).map(e => (
                     <a
                       key={e.id}
-                      href={e.source_url}
+                      href={e.url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="block text-xs text-neutral-400 hover:text-neutral-700 underline truncate"
                     >
-                      {e.headline || e.source_url}
+                      {e.headline || e.url}
                     </a>
                   ))}
                 </div>
