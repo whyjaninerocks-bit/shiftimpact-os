@@ -59,8 +59,9 @@ export function ProspectActions({ companyId, companyName, showGoDeepOnly = false
       });
       const json = await res.json();
       if (!res.ok) { setAssessMsg(`Assessment failed: ${json.error ?? "unknown error"}`); return; }
-      const a = json.assessment;
-      setAssessMsg(`Assessment complete. Opportunity: ${a?.opportunity_score}, Pursuit: ${a?.pursuit_score}. Offer: ${a?.recommended_offer}.`);
+      const s = json.scores;
+      const rec = json.insight?.recommendation ? ` · ${json.insight.recommendation}` : "";
+      setAssessMsg(`Assessment complete. Opportunity: ${s?.opportunity_score}, Pursuit: ${s?.pursuit_score}${rec}. Offer: ${json.assessment?.recommended_offer}.`);
       router.refresh();
     } catch (e) {
       setAssessMsg(`Assessment error: ${String(e)}`);
