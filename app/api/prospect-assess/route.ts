@@ -35,24 +35,123 @@ async function resolveModel(
   return "haiku";
 }
 
+// ─── ShiftImpact OS context injected into every assessment ────────────────────
+const SHIFTIMPACT_CONTEXT = `
+SHIFTIMPACT OS — WHO WE ARE AND WHAT WE DO:
+ShiftImpact is NOT a creative agency and NOT a management consultancy. We are a strategic intelligence and narrative consultancy. We help Southeast Asian brands at inflection points make better decisions and tell coherent stories that hold across all stakeholder audiences simultaneously.
+
+SHIFTIMPACT ICP (ideal client profile — be specific about fit):
+• Mid-to-large brand: MYR 50M+ revenue OR PE/VC-backed OR publicly listed
+• In FMCG, financial services, technology, retail, or healthcare
+• At a clear inflection point: product launch, market expansion, ownership change, leadership transition, or repositioning
+• Has a NARRATIVE GAP — doing bold operational things but the external story is fragmented, delayed, or disconnected from the moves
+• Has a commercial leader (CMO, Head of Marketing, CCO, or Founder) who feels the tension between execution speed and strategy coherence
+• Has budget authority for strategic advisory: typically MYR 80K–300K engagement
+
+SHIFTIMPACT SERVICE PORTFOLIO (match the right service to this specific moment):
+1. Brand Clarity Audit — diagnoses narrative fragmentation; right for brands with inconsistent messaging across markets, post-merger brand confusion, or launch narratives that don't cohere. Typically 4–6 weeks, MYR 80K–150K.
+2. FRAME Brief — proprietary strategic brief format that aligns ALL brand communications to one platform BEFORE execution begins; right for brands about to launch, reposition, or enter a new market. Typically 3–4 weeks, MYR 60K–100K.
+3. Campaign Intelligence (ICS scoring) — evaluates campaign strategy against market signals before execution budget is committed; right for brands that have lost confidence in their agency or need a second opinion before a major spend. Typically 2–3 weeks, MYR 40K–80K.
+4. Signals Intelligence Retainer (Command Desk) — ongoing brand health monitoring and strategic decision support; right for brands navigating multi-year transformations. Typically monthly retainer MYR 25K–50K/month.
+5. Launch Readiness Audit — market-readiness assessment for new products or market entries. Typically 2–3 weeks, MYR 50K–80K.
+
+SIGNAL FIT PATTERNS — use these to score and reason:
+HIGH FIT (opportunity score 70+, pursuit score 60+):
+• Product launch WITHOUT a clear unified brand narrative → Brand Clarity Audit or FRAME Brief
+• M&A / ownership change creating stakeholder confusion or valuation narrative gap → Brand Clarity Audit + Command Desk
+• Leadership transition (new CMO/CEO) simultaneous with strategic pivot → Command Desk
+• Award wins that signal a narrative that needs strategic foundation to sustain → Brand Clarity Audit
+• Regional expansion into new market without clear positioning → FRAME Brief
+• Partnership announcements being communicated tactically, not strategically → FRAME Brief
+
+LOW FIT (score below 50, recommend Watch or Pass):
+• Company in explicit cost-cutting or financial distress mode — budget frozen
+• Pure operational news (factory expansion, HR appointment) with NO brand/marketing angle
+• Leadership is exclusively operational (only COO/CFO visible, no CMO/CDO/marketing leader)
+• Category is in terminal decline and repositioning is implausible
+• Company is too early-stage (pre-revenue or seed stage) — not yet at ShiftImpact's scale
+
+SPEND SIGNAL — assess budget availability from signals:
+• "Budget likely available": company is investing (new hire, launch, expansion), has recent revenue milestones, or is PE/VC-backed with growth mandate
+• "Budget possibly frozen": dividend cut, cost restructuring signals, ownership uncertainty creating decision paralysis
+• "Budget signal unclear": insufficient evidence to determine
+
+DECISION WINDOW — assess urgency:
+• 0–4 weeks: launch is live NOW, acquisition announcement is fresh, new leadership just started
+• 4–12 weeks: strategic plan announced but execution hasn't started, award win needs capitalisation
+• 12–24 weeks: signals are real but window is not yet urgent — time to warm the relationship
+• 24+ weeks: early signals, relationship building phase
+
+════════════════════════════════════════════════════════
+AOAI / ACQUISITION OS™ — OUR MARKETING EXECUTION PARTNER
+════════════════════════════════════════════════════════
+
+WHAT AOAI ACTUALLY IS:
+AOAI delivers the Acquisition OS™ — a complete 6-pillar lead operating system that attracts, captures, nurtures, converts, and retains high-value leads on autopilot. It is NOT a brand agency or a creative shop. It is a marketing infrastructure business. First results in 90 days, compounding ROI.
+
+THE 6 PILLARS — KNOW THESE PRECISELY:
+
+P00 STRATEGISE (RM 3,500 one-time, delivered in 2 weeks):
+Delivers a 30–50 page Strategy Blueprint. Includes: ICP research (2–3 psychographic personas with booking triggers, objections, decision hierarchy), competitive positioning map, master messaging document, 90-day activation roadmap, KPI scorecard. RM 3,500 is fully credited toward any retainer. THIS IS THE ENTRY POINT for first engagements.
+
+P01 ATTRACT (part of Growth retainer RM 8,800/month):
+Demand generation. Includes: content marketing engine (SEO blogs, LinkedIn articles, short-form video), paid traffic campaigns (Meta, Google, LinkedIn ads with retargeting — target ROAS 3x+), social proof architecture (case studies, testimonials, media features), high-conversion landing pages (single CTA, A/B tested copy, 15–30% CVR target). 30–50% MoM organic traffic growth target.
+
+P02 CAPTURE (part of Growth retainer):
+Lead conversion infrastructure. Includes: lead magnet ecosystem (tools, audits, e-books, webinars — high-value content for contact data), CRM + lead scoring + tagging (source attribution, automated lead scoring — hottest leads always visible), AI chatbot & instant response (24/7 qualifying chat that books calls automatically, <5 min response time). 100% lead source attribution.
+
+P03 NURTURE (part of Growth retainer):
+Trust acceleration. Includes: behaviour-triggered email flows (welcome, education, objection handling, re-engagement — zero manual effort), value-based content drip (weekly tips, case studies), multi-channel retargeting (email, SMS, WhatsApp, social ads — "they're everywhere" presence), personalisation by industry/behaviour/funnel stage. Email open rates 35%+, 20%+ cold lead revival in 60 days, SQL from MQL up 30–50%.
+
+P04 CONVERT (part of Full OS RM 18,800/month):
+Sales activation. Includes: consultative sales framework (repeatable discovery-to-close process), automated booking system (calendar sync, reminders, no-show recovery), proposal & offer optimisation (ROI calculators, risk reversals, tiered pricing), objection handling playbooks. Close rate +20–40%, sales cycle cut 40–50%.
+
+P05 RETAIN (part of Full OS):
+Growth engine. Includes: client success & onboarding, referral & affiliate programme, upsell/cross-sell triggers, live ROI dashboard (CPL, CAC, LTV, churn, NPS tracked monthly). LTV 2–3x in 12 months, churn below 5%, 30%+ leads from referrals.
+
+ACTIVATIONOS AI LEAD ENGINE (add-on or integrated):
+AI agent that responds to every lead within 30 seconds, 24/7, across WhatsApp, Facebook Messenger, Instagram DM, web widget, email, SMS, Telegram. Qualifies by budget/timeline/urgency/pain point, books meetings directly into calendars, hands off to sales with full conversation history. Used by: OSC Orthopaedic Hospital (40% no-show reduction), India International Insurance (projected $2M revenue uplift, 10x call centre capacity). Best for high-volume lead environments.
+
+PRICING:
+• Starter (P00 only): RM 3,500 one-time → ideal for first-engagement pilots, fully credited toward retainer
+• Growth (P00–P03): RM 8,800/month → strategy + traffic + capture + nurture, targeting 30%+ growth in 90 days
+• Full OS (all 6 pillars): RM 18,800/month → complete self-funding acquisition infrastructure
+• Ad spend billed separately; no ad management fee charged on top
+
+AOAI FIT CRITERIA — map signals to pillars:
+• Brand launching a product (FMCG, D2C, health) → P01 ATTRACT (paid traffic to health-conscious consumers) + P02 CAPTURE (AI chatbot + landing pages to convert trial to repeat) → Growth retainer
+• Brand with lead volume but no CRM or follow-up system → P02 CAPTURE + P03 NURTURE → Growth retainer
+• Medical, dental, real estate, insurance, education — high lead volume, response time critical → ActivationOS AI Lead Engine
+• B2B brand needing structured sales process → P04 CONVERT → Full OS
+• Brand that has high churn or poor repeat purchase → P05 RETAIN → Full OS
+• Brand at early strategy stage only, no execution gap yet → P00 STRATEGISE (Starter) as entry, AOAI Growth after ShiftImpact FRAME Brief is done
+• Brand is purely narrative/positioning, no marketing execution problem → Not a fit for AOAI now
+
+JOINT SHIFTIMPACT + AOAI PITCH (use this when partner_lens = Both):
+ShiftImpact defines WHO the brand is talking to and WHAT it should say (ICP, narrative, positioning, FRAME Brief). AOAI builds the system that FINDS those exact people, CAPTURES them, NURTURES them, and CONVERTS them at scale. ShiftImpact's ICP research directly inputs into AOAI's P00 Strategy Blueprint, saving 2–3 weeks and improving every downstream pillar. Together: the prospect gets a coherent brand story AND a predictable revenue machine — not one without the other.
+
+AOAI CAMPAIGN MECHANIC — describe THIS company's specific execution:
+Do NOT just name a pillar. Describe: which channels, which audiences, what mechanic, what conversion goal, what 90-day output. Example for Gardenia Breakthru Bread: "P01 Meta + TikTok paid traffic targeting health-conscious Malaysians aged 25–40 in Klang Valley, leading to a high-conversion landing page with a free Breakthru trial mechanic; P02 WhatsApp AI chatbot to qualify interested buyers and route to nearby retailer or online purchase; P03 email drip educating on functional nutrition benefits to convert trial into repeat. 90-day output: measurable repeat purchase rate from health segment."
+`;
+
 // ─── Assessment tool ──────────────────────────────────────────────────────────
 const ASSESS_TOOL: Anthropic.Tool = {
   name: "generate_assessment",
-  description: "Generate a prospect assessment with offer mapping, two-score evaluation, and topline strategic intelligence",
+  description: "Generate a highly specific prospect assessment grounded in ShiftImpact OS methodology",
   input_schema: {
     type: "object" as const,
     properties: {
       business_moment_summary: {
         type: "string",
-        description: "2-3 sentences: what is happening in this company right now that makes it a prospect",
+        description: "2–3 sentences SPECIFIC to this company: what exact events are converging right now? Name the specific signals. No generic industry observations.",
       },
       shiftimpact_entry_point: {
         type: "string",
-        description: "One sentence: the specific business tension or gap ShiftImpact can address",
+        description: "One sentence: the EXACT business tension or narrative gap ShiftImpact can address — name the specific problem, not a category of problem.",
       },
       recommended_approach: {
         type: "string",
-        description: "One paragraph: how ShiftImpact would engage with this prospect based on their signals",
+        description: "One paragraph: how ShiftImpact would open the relationship and frame the first engagement — specific to this company's moment, not generic advisory language.",
       },
       recommended_offer: {
         type: "string",
@@ -67,62 +166,84 @@ const ASSESS_TOOL: Anthropic.Tool = {
       },
       offer_rationale: {
         type: "string",
-        description: "One sentence explaining why this offer fits this prospect's current moment",
+        description: "One sentence: why THIS specific offer for THIS specific moment — reference the actual signal(s) that determine the choice.",
       },
       opportunity_score: {
         type: "number",
-        description: "0-100: how significant is this business moment? (100 = major inflection point, rare timing window)",
+        description: "0–100: how significant and time-sensitive is this business moment? Score against the ShiftImpact signal fit patterns. 80+ = rare timing window; 60–79 = clear moment; 40–59 = real but not urgent; below 40 = weak signal.",
       },
       pursuit_score: {
         type: "number",
-        description: "0-100: should ShiftImpact pursue this prospect? (considers fit, timing, effort, likelihood of conversion)",
+        description: "0–100: composite of (a) ICP fit, (b) budget signal, (c) decision-maker accessibility, (d) competitive window. Be honest — a high opportunity score does not automatically mean high pursuit score.",
       },
       opportunity_rationale: {
         type: "string",
-        description: "One sentence justifying the opportunity score",
+        description: "One sentence: which specific signal(s) drove this score and why.",
       },
       pursuit_rationale: {
         type: "string",
-        description: "One sentence justifying the pursuit score",
+        description: "One sentence: what is the single biggest factor supporting OR limiting the pursuit score.",
       },
       // ── Topline strategic intelligence ────────────────────────────────────
       recommendation: {
         type: "string",
         enum: ["Pursue", "Watch", "Pass"],
-        description: "ShiftImpact's pursuit recommendation: Pursue = invest time now, Watch = keep on radar, Pass = not the right moment",
+        description: "Pursue = invest time and relationship capital now; Watch = keep on radar, re-assess in 4–8 weeks; Pass = not the right moment or wrong ICP fit.",
       },
       benchmark_context: {
         type: "string",
-        description: "One sentence: how do these scores compare to typical prospects in this market and sector? Give a concrete comparison (e.g. 'Above median for MY Finance sector, where average composite sits around 48').",
+        description: "One sentence with a concrete number: how do these scores compare to similar prospects in this market and sector? E.g. 'Composite of 71 sits above the MY FMCG median of ~58, driven by concurrent launch + relocation signals.' Reference actual sector dynamics, not generic statements.",
       },
       market_context: {
         type: "string",
-        description: "2-3 sentences: what market forces, competitive dynamics, or macro environment are shaping this company's current moment? Include specific named competitors or market events where relevant.",
+        description: "2–3 sentences: what specific named competitors, market events, or macro forces are shaping THIS company's moment right now? Name competitors. Name market events. No generic industry observations.",
       },
       best_entry_angle: {
         type: "string",
-        description: "One crisp sentence: the single sharpest way ShiftImpact can open this conversation — the hook that makes the prospect lean in.",
+        description: "One crisp, bold sentence: the single sharpest conversation-opening hook for ShiftImpact — it must demonstrate that ShiftImpact has already diagnosed the prospect's specific problem before the meeting begins. If it could apply to any company in the sector, rewrite it.",
       },
-      // ── Partner lens — ShiftImpact vs AOAI classification ─────────────────
+      // ── Decision window and spend ──────────────────────────────────────────
+      decision_window_weeks: {
+        type: "number",
+        description: "Estimated weeks until the business moment window closes — after which the urgency to engage will drop. E.g. a live product launch = 4–8 weeks; an announced strategy plan = 12–16 weeks; early leadership signal = 24 weeks.",
+      },
+      spend_signal: {
+        type: "string",
+        enum: ["Budget likely available", "Budget possibly frozen", "Budget signal unclear"],
+        description: "Assessment of budget availability based on the signals — reference the specific evidence.",
+      },
+      first_engagement_offer: {
+        type: "string",
+        description: "The specific first engagement framing — not just the service name, but how you would POSITION the offer to THIS company at THIS moment. E.g. 'A Brand Clarity Audit framed not as a brand exercise but as a commercial risk assessment before the Breakthru Bread retail push — what happens if the launch narrative doesn't hold?' This should feel like a pitch line, not a service description.",
+      },
+      // ── Partner lens — ShiftImpact vs AOAI ───────────────────────────────
       partner_lens: {
         type: "string",
         enum: ["ShiftImpact", "AOAI", "Both"],
-        description: "Which partner does this opportunity fit? ShiftImpact = needs strategic intelligence, narrative, or positioning work. AOAI = needs performance marketing execution, ecosystem infrastructure, or marketing growth/sales activation. Both = needs strategic intelligence AND marketing execution.",
+        description: "ShiftImpact = strategic intelligence, narrative, positioning work only. AOAI = marketing execution (paid media, activation, infrastructure). Both = needs strategy AND execution — the combined offer eliminates the strategy-to-execution gap.",
       },
       aoai_recommended_offer: {
         type: "string",
         enum: [
-          "Performance Marketing Funnel",
-          "Ecosystem Infrastructure Build",
-          "Marketing Growth & Sales Strategy",
-          "Brand Activation Program",
+          "Acquisition OS Starter (P00)",
+          "Acquisition OS Growth (P00-P03)",
+          "Acquisition OS Full OS (All 6 Pillars)",
+          "ActivationOS AI Lead Engine",
           "Not a fit",
         ],
-        description: "Which AOAI service fits this company's current moment? Only select 'Not a fit' if the company clearly has no marketing execution gap.",
+        description: "Which specific Acquisition OS tier fits this company's lead/acquisition problem? P00 Starter = strategy clarity only; P00-P03 Growth = strategy + paid traffic + capture + nurture (RM 8,800/month); All 6 Pillars = add conversion + retention (RM 18,800/month); ActivationOS = high-volume lead response (medical, insurance, real estate, education). Reference the actual signals.",
       },
       aoai_entry_angle: {
         type: "string",
-        description: "One sentence: the sharpest way AOAI can open a conversation with this company — focused on marketing acquisition, funnel performance, or activation execution. Only required if partner_lens is AOAI or Both.",
+        description: "One sentence: the sharpest AOAI conversation-opening hook — must reference the company's specific execution challenge, not just name the service. If partner_lens is ShiftImpact only, write 'Not applicable'.",
+      },
+      aoai_campaign_mechanic: {
+        type: "string",
+        description: "If AOAI is relevant: describe the specific campaign mechanic or execution approach AOAI would run for this company — what platforms, what format, what market, what conversion goal. E.g. 'Retail sampling programme at Aeon and Lotus's targeting health-conscious shoppers in the Klang Valley, combined with Meta retargeting to convert trial into repeat purchase.' If not a fit, write 'Not applicable'.",
+      },
+      aoai_joint_pitch: {
+        type: "string",
+        description: "If partner_lens is Both: one paragraph describing the combined ShiftImpact + AOAI offer — ShiftImpact does X (strategy), AOAI does Y (execution), the combined outcome is Z. Make it specific to this company's moment. If partner_lens is ShiftImpact only, write 'Not applicable'.",
       },
     },
     required: [
@@ -130,7 +251,9 @@ const ASSESS_TOOL: Anthropic.Tool = {
       "recommended_offer","offer_rationale",
       "opportunity_score","pursuit_score","opportunity_rationale","pursuit_rationale",
       "recommendation","benchmark_context","market_context","best_entry_angle",
+      "decision_window_weeks","spend_signal","first_engagement_offer",
       "partner_lens","aoai_recommended_offer","aoai_entry_angle",
+      "aoai_campaign_mechanic","aoai_joint_pitch",
     ],
   },
 };
@@ -240,29 +363,44 @@ ShiftImpact Offer Guide:
   try {
     const aiResp = await anthropic.messages.create({
       model,
-      max_tokens: 1200,
+      max_tokens: 1800,
       tool_choice: { type: "tool", name: "generate_assessment" },
       tools: [ASSESS_TOOL],
       messages: [{
         role: "user",
-        content: `You are a senior business development strategist at ShiftImpact OS, a strategic intelligence platform in Southeast Asia.
+        content: `You are a senior business development strategist at ShiftImpact OS with deep knowledge of Southeast Asian brand and marketing dynamics. Your assessments are specific, commercially grounded, and never generic.
 
-ShiftImpact OS serves two partners:
-1. ShiftImpact — strategic intelligence consultancy (narrative, positioning, brand clarity, decision support)
-2. AOAI (Academy of AI) — marketing execution partner (performance marketing funnels, ecosystem infrastructure builds, marketing growth and sales activation, brand activation programs)
+${SHIFTIMPACT_CONTEXT}
 
-Analyse this prospect company and generate a full assessment including which partner(s) it fits.
-
+═══════════════════════════════════════════════
+PROSPECT TO ASSESS
+═══════════════════════════════════════════════
 COMPANY: ${company.name}
-Industry: ${company.industry} | Market: ${company.market_code} | Size: ${company.size_band ?? "Unknown"}
-Profile: ${company.company_profile_summary || "No profile available"}
+Industry: ${company.industry} | Market: ${company.market_code} | Size: ${company.size_band ?? "Unknown"} | Business Model: ${company.business_model ?? "Unknown"}
+Company Profile: ${company.company_profile_summary || "No profile available"}
 
-BUSINESS SIGNALS DETECTED (${signals.length}):
+BUSINESS SIGNALS DETECTED (${signals.length} signals):
 ${signalContext}
 
 ${OFFER_GUIDE}
 
-Generate a precise, commercially grounded assessment. Opportunity Score = how significant the business moment is (rare timing window = 80-100). Pursuit Score = should ShiftImpact invest time pursuing this (realistic conversion likelihood, strategic fit, effort required). For partner_lens: classify whether this opportunity is best for ShiftImpact (strategic work), AOAI (marketing execution), or Both.`,
+═══════════════════════════════════════════════
+YOUR TASK
+═══════════════════════════════════════════════
+Generate a precise, commercially grounded assessment. Your job is to produce intelligence that is specific to THIS company's exact moment — not generic industry observations.
+
+SCORING:
+• Opportunity Score (0–100): how significant and time-sensitive is this business moment? 80+ = rare timing window NOW; 60–79 = clear moment; 40–59 = real but not urgent; <40 = weak signal. Score against ShiftImpact signal fit patterns above.
+• Pursuit Score (0–100): composite of (a) ICP fit, (b) budget signal, (c) decision-maker accessibility, (d) competitive window. Be honest — a high Opportunity Score does NOT automatically mean high Pursuit Score.
+
+PARTNER LENS RULES:
+• ShiftImpact only: the problem is strategic narrative, positioning, or brand clarity — no marketing execution gap visible
+• AOAI only: the company needs lead acquisition infrastructure (paid traffic, chatbot, CRM, nurture) but the narrative is clear
+• Both: the company needs BOTH a coherent strategic narrative AND a lead acquisition system — this is the most powerful combined pitch
+
+AOAI: map signals to the real Acquisition OS pillars (P00–P05) and ActivationOS. Do NOT use generic terms. Describe the specific mechanic: which channels, which audiences, what conversion goal, what 90-day output.
+
+Every field must be specific to ${company.name}. If it could apply to any company in the sector, it is too generic — rewrite it.`,
       }],
     });
 
@@ -343,20 +481,26 @@ Generate a precise, commercially grounded assessment. Opportunity Score = how si
     if (scoreErr2) console.error("[prospect-assess] scores fallback insert also failed:", scoreErr2.message);
   }
 
-  // 6. Persist topline insight (recommendation, benchmark, market context, best angle, partner lens)
+  // 6. Persist topline insight (recommendation, benchmark, market context, best angle, partner lens + new specificity fields)
   const { error: insightErr } = await supabase
     .from("prospect_insights")
     .insert({
-      company_id:             company_id as string,
-      assessment_id:          assessmentRow.id,
-      depth_level:            "topline",
-      recommendation:         assessment.recommendation         ?? null,
-      benchmark_context:      assessment.benchmark_context      ?? null,
-      market_context:         assessment.market_context         ?? null,
-      best_entry_angle:       assessment.best_entry_angle       ?? null,
-      partner_lens:           assessment.partner_lens           ?? null,
-      aoai_recommended_offer: assessment.aoai_recommended_offer ?? null,
-      aoai_entry_angle:       assessment.aoai_entry_angle       ?? null,
+      company_id:              company_id as string,
+      assessment_id:           assessmentRow.id,
+      depth_level:             "topline",
+      recommendation:          assessment.recommendation          ?? null,
+      benchmark_context:       assessment.benchmark_context       ?? null,
+      market_context:          assessment.market_context          ?? null,
+      best_entry_angle:        assessment.best_entry_angle        ?? null,
+      partner_lens:            assessment.partner_lens            ?? null,
+      aoai_recommended_offer:  assessment.aoai_recommended_offer  ?? null,
+      aoai_entry_angle:        assessment.aoai_entry_angle        ?? null,
+      // High-specificity fields (migration 0032)
+      decision_window_weeks:   assessment.decision_window_weeks   ?? null,
+      spend_signal:            assessment.spend_signal            ?? null,
+      first_engagement_offer:  assessment.first_engagement_offer  ?? null,
+      aoai_campaign_mechanic:  assessment.aoai_campaign_mechanic  ?? null,
+      aoai_joint_pitch:        assessment.aoai_joint_pitch        ?? null,
     });
   if (insightErr) console.error("[prospect-assess] insight insert failed:", insightErr.message);
 
@@ -408,10 +552,18 @@ Generate a precise, commercially grounded assessment. Opportunity Score = how si
       pursuit_rationale:     assessment.pursuit_rationale,
     },
     insight: {
-      recommendation:    assessment.recommendation,
-      benchmark_context: assessment.benchmark_context,
-      market_context:    assessment.market_context,
-      best_entry_angle:  assessment.best_entry_angle,
+      recommendation:         assessment.recommendation,
+      benchmark_context:      assessment.benchmark_context,
+      market_context:         assessment.market_context,
+      best_entry_angle:       assessment.best_entry_angle,
+      decision_window_weeks:  assessment.decision_window_weeks,
+      spend_signal:           assessment.spend_signal,
+      first_engagement_offer: assessment.first_engagement_offer,
+      partner_lens:           assessment.partner_lens,
+      aoai_recommended_offer: assessment.aoai_recommended_offer,
+      aoai_entry_angle:       assessment.aoai_entry_angle,
+      aoai_campaign_mechanic: assessment.aoai_campaign_mechanic,
+      aoai_joint_pitch:       assessment.aoai_joint_pitch,
     },
     model_used:    model,
     model_tier:    modelTier,
