@@ -27,6 +27,7 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
         allowTaint: true,
         backgroundColor: "#ffffff",
         logging: false,
+        foreignObjectRendering: true, // bypasses oklch/P3 color parsing (Tailwind v4)
       });
 
       const A4_W_MM = 210;
