@@ -1,8 +1,7 @@
 "use client";
 
-// Captures the rendered page with html2canvas → jsPDF.
-// This produces a pixel-perfect PDF that matches what the user sees on screen —
-// dark backgrounds, correct colours, no browser chrome.
+// Uses dom-to-image-more (SVG foreignObject renderer) → jsPDF.
+// dom-to-image-more uses the browser's native renderer so oklch/P3 colours work correctly.
 
 import { useState } from "react";
 
@@ -12,55 +11,52 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
   async function handleDownload() {
     setLoading(true);
     try {
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-        import("html2canvas"),
+      const [domtoimage, { jsPDF }] = await Promise.all([
+        import("dom-to-image-more").then(m => m.default ?? m),
         import("jspdf"),
       ]);
 
       const content = document.getElementById(contentId);
-      if (!content) return;
+      if (!content) throw new Error("Content element not found");
 
-      // Capture the full content at 2× resolution for sharpness
-      const canvas = await html2canvas(content, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-        foreignObjectRendering: true, // bypasses oklch/P3 color parsing (Tailwind v4)
-      });
+      // Capture at 2× for sharpness
+      const dataUrl = await (domtoimage as { toPng: (node: HTMLElement, opts: object) => Promise<string> })
+        .toPng(content, { scale: 2 });
 
-      const A4_W_MM = 210;
-      const A4_H_MM = 297;
+      const A4_W = 210;
+      const A4_H = 297;
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
-      const imgW = A4_W_MM;
-      const imgH = (canvas.height * imgW) / canvas.width;
-      const pageH = A4_H_MM;
+      // Calculate image height maintaining aspect ratio at A4 width
+      const img = new Image();
+      await new Promise<void>((resolve) => { img.onload = () => resolve(); img.src = dataUrl; });
 
+      const imgH = (img.height * A4_W) / img.width;
+
+      // Split into A4 pages
       let yOffset = 0;
-      let remainingH = imgH;
-      let isFirstPage = true;
+      let remaining = imgH;
+      let first = true;
 
-      while (remainingH > 0) {
-        if (!isFirstPage) pdf.addPage();
+      while (remaining > 0) {
+        if (!first) pdf.addPage();
+        const slice = Math.min(A4_H, remaining);
 
-        // Crop the canvas slice that fits this page
-        const sliceH = Math.min(pageH, remainingH);
-        const srcY = (yOffset / imgH) * canvas.height;
-        const srcH = (sliceH / imgH) * canvas.height;
+        // Crop the slice out of the source image via a canvas
+        const cv = document.createElement("canvas");
+        cv.width = img.width;
+        cv.height = Math.round((slice / imgH) * img.height);
+        const ctx = cv.getContext("2d")!;
+        ctx.drawImage(img,
+          0, Math.round((yOffset / imgH) * img.height),
+          img.width, cv.height,
+          0, 0, img.width, cv.height,
+        );
 
-        const sliceCanvas = document.createElement("canvas");
-        sliceCanvas.width = canvas.width;
-        sliceCanvas.height = srcH;
-        const ctx = sliceCanvas.getContext("2d")!;
-        ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
-
-        pdf.addImage(sliceCanvas.toDataURL("image/png"), "PNG", 0, 0, imgW, sliceH);
-
-        yOffset += sliceH;
-        remainingH -= sliceH;
-        isFirstPage = false;
+        pdf.addImage(cv.toDataURL("image/png"), "PNG", 0, 0, A4_W, slice);
+        yOffset += slice;
+        remaining -= slice;
+        first = false;
       }
 
       pdf.save(`Clarity Signal — ${brandName}.pdf`);
