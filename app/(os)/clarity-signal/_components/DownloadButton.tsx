@@ -12,7 +12,7 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
   async function handleDownload() {
     setLoading(true);
     try {
-      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
         import("html2canvas"),
         import("jspdf"),
       ]);
@@ -63,6 +63,9 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
       }
 
       pdf.save(`Clarity Signal — ${brandName}.pdf`);
+    } catch (err) {
+      console.error("[DownloadButton]", err);
+      alert(`PDF generation failed: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setLoading(false);
     }
