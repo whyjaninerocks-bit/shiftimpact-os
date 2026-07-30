@@ -707,6 +707,57 @@ export async function getCascadeRecords(campaignId: string): Promise<CascadeReco
   return (data ?? []) as CascadeRecord[];
 }
 
+// ─── F30 — Dark Social Estimation Model (DSEM) ───────────────────────────────
+
+export type DsemRecord = {
+  id: string;
+  campaign_id: string;
+  week_number: number;
+  // Signal A
+  dta_direct_sessions: number | null;
+  dta_baseline_sessions: number | null;
+  dta_pct_above_baseline: number | null;
+  dta_paid_active: boolean;
+  dta_triggered: boolean;
+  // Signal B
+  bswm_search_volume: number | null;
+  bswm_baseline_volume: number | null;
+  bswm_pct_above_baseline: number | null;
+  bswm_paid_search_active: boolean;
+  bswm_triggered: boolean;
+  // Signal C
+  gucl_tier1_post_count: number | null;
+  gucl_location_available: boolean;
+  gucl_activation_event: boolean;
+  gucl_triggered: boolean;
+  // Multiplier (INTERNAL)
+  signals_fired: number;
+  multiplier_min: number | null;
+  multiplier_max: number | null;
+  multiplier_label: string | null;
+  // Adjusted S3 (INTERNAL)
+  signal3_raw_score: number | null;
+  signal3_adjusted_score: number | null;
+  // Client output
+  dark_social_narrative: string;
+  category_calibration: string | null;
+  strategy_notes: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function getDsemRecords(campaignId: string): Promise<DsemRecord[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("dark_social_readings")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .order("week_number", { ascending: false })
+    .limit(12);
+  if (error) return [];
+  return (data ?? []) as DsemRecord[];
+}
+
 // ─── F34 — Data Source Preferences (Sprint 31) ───────────────────────────────
 // Returns the data source preference configuration for a campaign, or null
 // if the strategy lead has not yet completed setup.
