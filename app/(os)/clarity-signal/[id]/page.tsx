@@ -168,8 +168,11 @@ export default async function ClaritySignalOutputPage({
 
       {/* ── Download bar ─────────────────────────────────────────────────── */}
       <div className="no-print flex justify-end mb-4">
-        <DownloadButton brandName={row.brand_name} />
+        <DownloadButton brandName={row.brand_name} contentId="clarity-signal-content" />
       </div>
+
+      {/* ── CONTENT (captured by html2canvas) ────────────────────────────── */}
+      <div id="clarity-signal-content">
 
       {/* ── WINDOW FRAME HERO ───────────────────────────────────────────── */}
       <div className="print-avoid-break print-section rounded-2xl text-white p-8 mb-6 overflow-hidden"
@@ -389,6 +392,8 @@ export default async function ClaritySignalOutputPage({
       <p className="text-center text-[11px] text-neutral-400 mt-2 pb-4">
         Shift Impact™ · Clarity Signal™ · Public signals only · {formatDate(row.created_at)}
       </p>
+
+      </div>{/* end #clarity-signal-content */}
 
     </div>
   );
