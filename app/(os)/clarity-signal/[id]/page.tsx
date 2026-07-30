@@ -152,10 +152,22 @@ export default async function ClaritySignalOutputPage({
       {/* ── Print CSS ────────────────────────────────────────────────────── */}
       <style>{`
         @media print {
+          /* Force all background colours and images to print */
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          /* Hide browser chrome and UI */
           .no-print { display: none !important; }
-          nav, aside, header { display: none !important; }
+          nav, aside, header, footer,
+          [data-radix-popper-content-wrapper] { display: none !important; }
+          /* Page setup — remove browser margin so header/footer area collapses */
+          @page { margin: 12mm 14mm; size: A4; }
           body { background: white !important; }
-          @page { margin: 16mm 14mm; }
+          /* Prevent cards from breaking mid-content */
+          .print-card { break-inside: avoid; page-break-inside: avoid; }
+          /* Tighten spacing for print */
+          .print-section { margin-bottom: 12px !important; }
         }
       `}</style>
 
@@ -165,7 +177,7 @@ export default async function ClaritySignalOutputPage({
       </div>
 
       {/* ── WINDOW FRAME HERO ───────────────────────────────────────────── */}
-      <div className="rounded-2xl bg-slate-900 text-white p-8 mb-6 overflow-hidden">
+      <div className="print-card print-section rounded-2xl bg-slate-900 text-white p-8 mb-6 overflow-hidden">
 
         {/* Header row */}
         <div className="flex items-start justify-between gap-4 mb-7 pb-7 border-b border-slate-700">
@@ -209,7 +221,7 @@ export default async function ClaritySignalOutputPage({
       </div>
 
       {/* ── TOP 5 SIGNALS — Intelligence Briefs ──────────────────────── */}
-      <div className="bg-white rounded-2xl border border-neutral-100 p-8 mb-6 shadow-sm">
+      <div className="print-card print-section bg-white rounded-2xl border border-neutral-100 p-8 mb-6 shadow-sm">
         <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
           Signal Intelligence
         </p>
@@ -267,7 +279,7 @@ export default async function ClaritySignalOutputPage({
       </div>
 
       {/* ── OPPORTUNITY + RISK ────────────────────────────────────────── */}
-      <div className="grid sm:grid-cols-2 gap-4 mb-6">
+      <div className="print-card print-section grid sm:grid-cols-2 gap-4 mb-6">
 
         <div className="bg-white rounded-2xl border border-neutral-100 p-6 shadow-sm">
           <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-3">
@@ -286,7 +298,7 @@ export default async function ClaritySignalOutputPage({
       </div>
 
       {/* ── QUESTIONS WORTH ASKING ────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-neutral-100 p-8 mb-6 shadow-sm">
+      <div className="print-card print-section bg-white rounded-2xl border border-neutral-100 p-8 mb-6 shadow-sm">
         <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
           Decision Intelligence
         </p>
@@ -304,7 +316,7 @@ export default async function ClaritySignalOutputPage({
       </div>
 
       {/* ── INTELLIGENCE BOUNDARY ─────────────────────────────────────── */}
-      <div className="bg-neutral-50 rounded-2xl border border-neutral-200 p-6 mb-6">
+      <div className="print-card print-section bg-neutral-50 rounded-2xl border border-neutral-200 p-6 mb-6">
         <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3">
           Intelligence Boundary
         </p>
@@ -312,7 +324,7 @@ export default async function ClaritySignalOutputPage({
       </div>
 
       {/* ── HIDDEN SIGNAL ─────────────────────────────────────────────── */}
-      <div className="bg-neutral-50 rounded-2xl border border-neutral-200 p-6 mb-8">
+      <div className="print-card print-section bg-neutral-50 rounded-2xl border border-neutral-200 p-6 mb-8">
         <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3">
           Hidden Signal
         </p>
@@ -320,7 +332,7 @@ export default async function ClaritySignalOutputPage({
       </div>
 
       {/* ── CTA ──────────────────────────────────────────────────────── */}
-      <div className="rounded-2xl bg-slate-900 text-white p-8 text-center">
+      <div className="print-card print-section rounded-2xl bg-slate-900 text-white p-8 text-center">
         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
           Shift Impact™
         </p>
