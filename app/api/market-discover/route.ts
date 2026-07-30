@@ -39,12 +39,15 @@ async function fetchMarketRss(
 ): Promise<string[]> {
   const { hl, gl, ceid } = MARKET_RSS_PARAMS[marketCode] ?? MARKET_RSS_PARAMS.MY;
 
-  // Build 4 targeted queries covering different signal types
+  // Use the first 1-2 words of sector to keep queries short enough for Google News to match
+  const sectorShort = sector.split(" ").slice(0, 2).join(" ");
+
+  // Short, targeted queries — long queries return 0 results from Google News RSS
   const queries = [
-    `${sector} ${market} brand company ${focusKeywords} 2025 OR 2026`,
-    `${sector} ${market} company award OR launch OR expansion 2025 OR 2026`,
-    `${sector} ${market} brand CEO OR CMO OR appointed OR partnership 2025 OR 2026`,
-    `${sector} ${market} company investment OR funding OR milestone 2025 OR 2026`,
+    `${sectorShort} ${market} company 2026`,
+    `${sectorShort} ${market} brand launch 2026`,
+    `${sectorShort} ${market} award recognition 2026`,
+    `${sectorShort} ${market} ${focusKeywords.split(" ").slice(0, 2).join(" ")} 2026`,
   ];
 
   const chunks: string[] = [];
@@ -177,15 +180,15 @@ export async function POST(req: NextRequest) {
       ? runApifyActor("apify/rag-web-browser", {
           query: `${sector} ${market} company ${focusKeywords} 2025 OR 2026`,
           maxResults: 8,
-        }, 20, 8).catch(() => [] as Record<string, unknown>[])
+        }, 20, 8).catch((e) => { console.error("[market-discover] rag-web-browser:", e?.message); return [] as Record<string, unknown>[]; })
       : Promise.resolve([] as Record<string, unknown>[]),
 
     APIFY_TOKEN
       ? runApifyActor("apify/google-search-scraper", {
-          queries: `${sector} ${market} brand OR company news 2025 OR 2026 ${focusKeywords}`,
+          queries: `${sector} ${market} brand OR company news 2026`,
           maxPagesPerQuery: 1,
           resultsPerPage: 10,
-        }, 20, 10).catch(() => [] as Record<string, unknown>[])
+        }, 20, 10).catch((e) => { console.error("[market-discover] google-search-scraper:", e?.message); return [] as Record<string, unknown>[]; })
       : Promise.resolve([] as Record<string, unknown>[]),
   ]);
 
