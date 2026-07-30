@@ -288,7 +288,7 @@ export default async function ClaritySignalOutputPage({
       </div>
 
       {/* ── OPPORTUNITY + RISK ────────────────────────────────────────── */}
-      <div className="print-avoid-break print-section grid sm:grid-cols-2 gap-4 mb-6">
+      <div data-pdf-break="before" className="print-avoid-break print-section grid sm:grid-cols-2 gap-4 mb-6">
 
         <div className="bg-white rounded-2xl border border-neutral-100 p-6 shadow-sm">
           <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-3">
@@ -341,7 +341,7 @@ export default async function ClaritySignalOutputPage({
       </div>
 
       {/* ── CTA ──────────────────────────────────────────────────────── */}
-      <div className="print-avoid-break print-section rounded-2xl text-white p-8 text-center"
+      <div data-pdf-break="before" className="print-avoid-break print-section rounded-2xl text-white p-8 text-center"
         style={{ backgroundColor: '#0f172a', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' } as React.CSSProperties}>
         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
           Shift Impact™

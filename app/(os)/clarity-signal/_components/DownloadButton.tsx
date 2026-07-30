@@ -2,6 +2,11 @@
 
 // Uses dom-to-image-more (SVG foreignObject renderer) → jsPDF.
 // dom-to-image-more uses the browser's native renderer so oklch/P3 colours work correctly.
+//
+// Smart page breaks: before capturing, the component measures the y-positions of all
+// elements marked data-pdf-break="before". When slicing the captured image into A4 pages,
+// if any such element would land in the last 28% of a page (the "orphan zone"), the page is
+// cut early at that element's position so the section starts fresh on the next page.
 
 import { useState } from "react";
 
@@ -19,44 +24,76 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
       const content = document.getElementById(contentId);
       if (!content) throw new Error("Content element not found");
 
-      // Capture at 2× for sharpness
+      // ── Measure preferred break points BEFORE capture ───────────────
+      // These positions are in CSS pixels relative to the content top.
+      const contentRect = content.getBoundingClientRect();
+      const breakEls = content.querySelectorAll("[data-pdf-break='before']");
+      const breakPosCssPx = Array.from(breakEls).map(el => {
+        return (el as HTMLElement).getBoundingClientRect().top - contentRect.top;
+      });
+
+      // ── Capture at 2× for sharpness ─────────────────────────────────
+      const SCALE = 2;
       const dataUrl = await (domtoimage as { toPng: (node: HTMLElement, opts: object) => Promise<string> })
-        .toPng(content, { scale: 2 });
+        .toPng(content, { scale: SCALE });
 
-      const A4_W = 210;
-      const A4_H = 297;
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const A4_W = 210; // mm
+      const A4_H = 297; // mm
 
-      // Calculate image height maintaining aspect ratio at A4 width
       const img = new Image();
       await new Promise<void>((resolve) => { img.onload = () => resolve(); img.src = dataUrl; });
 
-      const imgH = (img.height * A4_W) / img.width;
+      // ── Coordinate conversion factors ────────────────────────────────
+      // img.width = content.offsetWidth * SCALE  (dom-to-image-more doubles physical px)
+      // mm per img-px  = A4_W / img.width
+      // css-px to img-px = SCALE
+      // css-px to mm   = SCALE * (A4_W / img.width)
+      const cssPxToMm = SCALE * (A4_W / img.width);
+      const imgH = (img.height * A4_W) / img.width; // total image height in mm
 
-      // Split into A4 pages
-      let yOffset = 0;
-      let remaining = imgH;
+      // Convert break-before positions to mm
+      const breakPosMm = breakPosCssPx.map(px => px * cssPxToMm);
+
+      // ── Build pages with smart page breaks ───────────────────────────
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+      let yMm = 0;   // current top of the current page slice (in mm)
       let first = true;
+      const ORPHAN_THRESHOLD = 0.72; // break-before markers in the last 28% of a page trigger an early cut
 
-      while (remaining > 0) {
+      while (yMm < imgH - 0.5) {
         if (!first) pdf.addPage();
-        const slice = Math.min(A4_H, remaining);
-
-        // Crop the slice out of the source image via a canvas
-        const cv = document.createElement("canvas");
-        cv.width = img.width;
-        cv.height = Math.round((slice / imgH) * img.height);
-        const ctx = cv.getContext("2d")!;
-        ctx.drawImage(img,
-          0, Math.round((yOffset / imgH) * img.height),
-          img.width, cv.height,
-          0, 0, img.width, cv.height,
-        );
-
-        pdf.addImage(cv.toDataURL("image/png"), "PNG", 0, 0, A4_W, slice);
-        yOffset += slice;
-        remaining -= slice;
         first = false;
+
+        // Nominal end of this page
+        let pageEndMm = yMm + A4_H;
+
+        // If there's still more content after this page, check for orphaned sections
+        if (pageEndMm < imgH) {
+          const orphanZoneStart = yMm + A4_H * ORPHAN_THRESHOLD;
+          const earlyBreak = breakPosMm.find(bp => bp > orphanZoneStart && bp < pageEndMm);
+          if (earlyBreak !== undefined) {
+            pageEndMm = earlyBreak; // cut before the orphaned section
+          }
+        }
+
+        pageEndMm = Math.min(pageEndMm, imgH);
+        const sliceMm = pageEndMm - yMm;
+
+        // Convert slice boundaries back to source img pixels
+        const yPx    = Math.round((yMm      / imgH) * img.height);
+        const slicePx = Math.round((sliceMm  / imgH) * img.height);
+
+        const cv = document.createElement("canvas");
+        cv.width  = img.width;
+        cv.height = slicePx;
+        const ctx = cv.getContext("2d")!;
+        ctx.drawImage(img, 0, yPx, img.width, slicePx, 0, 0, img.width, slicePx);
+
+        // The slice may be shorter than A4_H (early cut or last page) — that's fine,
+        // jsPDF places it at the top of the page and the rest is blank white.
+        pdf.addImage(cv.toDataURL("image/png"), "PNG", 0, 0, A4_W, sliceMm);
+        yMm = pageEndMm;
       }
 
       pdf.save(`Clarity Signal — ${brandName}.pdf`);
