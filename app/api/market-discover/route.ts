@@ -21,6 +21,62 @@ export const maxDuration = 60;
 const APIFY_TOKEN = process.env.APIFY_API_TOKEN;
 const APIFY_BASE  = "https://api.apify.com/v2";
 
+// ─── Google News RSS fallback (zero config, no API key) ───────────────────────
+
+const MARKET_RSS_PARAMS: Record<string, { hl: string; gl: string; ceid: string }> = {
+  MY: { hl: "en-MY", gl: "MY", ceid: "MY:en" },
+  SG: { hl: "en-SG", gl: "SG", ceid: "SG:en" },
+  PH: { hl: "en-PH", gl: "PH", ceid: "PH:en" },
+  TH: { hl: "th-TH", gl: "TH", ceid: "TH:th" },
+  ID: { hl: "id-ID", gl: "ID", ceid: "ID:id" },
+};
+
+async function fetchMarketRss(
+  sector: string,
+  market: string,
+  marketCode: string,
+  focusKeywords: string
+): Promise<string[]> {
+  const { hl, gl, ceid } = MARKET_RSS_PARAMS[marketCode] ?? MARKET_RSS_PARAMS.MY;
+
+  // Build 4 targeted queries covering different signal types
+  const queries = [
+    `${sector} ${market} brand company ${focusKeywords} 2025 OR 2026`,
+    `${sector} ${market} company award OR launch OR expansion 2025 OR 2026`,
+    `${sector} ${market} brand CEO OR CMO OR appointed OR partnership 2025 OR 2026`,
+    `${sector} ${market} company investment OR funding OR milestone 2025 OR 2026`,
+  ];
+
+  const chunks: string[] = [];
+
+  await Promise.allSettled(queries.map(async (q) => {
+    const url = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=${hl}&gl=${gl}&ceid=${ceid}`;
+    try {
+      const res = await fetch(url, {
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; ShiftImpactOS/1.0)" },
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) return;
+      const xml = await res.text();
+      const itemRe = /<item>([\s\S]*?)<\/item>/g;
+      let m: RegExpExecArray | null;
+      let count = 0;
+      while ((m = itemRe.exec(xml)) !== null && count < 5) {
+        const block = m[1];
+        const title = (/<title><!\[CDATA\[(.*?)\]\]><\/title>/.exec(block)?.[1] ?? /<title>(.*?)<\/title>/.exec(block)?.[1] ?? "").trim();
+        const link  = (/<link>(.*?)<\/link>/.exec(block)?.[1] ?? "").trim();
+        const desc  = (/<description><!\[CDATA\[(.*?)\]\]><\/description>/.exec(block)?.[1] ?? "").replace(/<[^>]+>/g, "").trim().slice(0, 400);
+        if (title && desc) {
+          chunks.push(`[${title}]\nURL: ${link}\n${desc}`);
+          count++;
+        }
+      }
+    } catch { /* non-fatal */ }
+  }));
+
+  return chunks;
+}
+
 // ─── Signal focus → search keyword map ───────────────────────────────────────
 
 const SIGNAL_FOCUS_QUERIES: Record<string, string> = {
@@ -147,10 +203,16 @@ export async function POST(req: NextRequest) {
     if (text) rawChunks.push(`[Search: ${title}]\nURL: ${url}\n${text}`);
   }
 
+  // Fallback: Google News RSS when Apify is not configured (zero cost)
+  if (rawChunks.length === 0) {
+    const rssChunks = await fetchMarketRss(sector, market, marketCode, focusKeywords);
+    rawChunks.push(...rssChunks);
+  }
+
   if (rawChunks.length === 0) {
     return NextResponse.json({
       companies: [],
-      warning: "No content retrieved. Check that APIFY_API_TOKEN is configured.",
+      warning: "No content retrieved. Try a different sector or market.",
     });
   }
 
