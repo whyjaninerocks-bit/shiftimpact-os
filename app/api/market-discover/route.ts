@@ -172,41 +172,48 @@ export async function POST(req: NextRequest) {
     ? SIGNAL_FOCUS_QUERIES[signalFocus]
     : "award launch expansion partnership leadership hiring";
 
-  // 1. Scrape — run both sources in parallel
+  // 1. Scrape via easyapi/google-news-scraper (99.1% success rate)
   const rawChunks: string[] = [];
 
-  const [ragItems, gnItems] = await Promise.all([
-    APIFY_TOKEN
-      ? runApifyActor("apify/rag-web-browser", {
-          query: `${sector} ${market} company ${focusKeywords} 2025 OR 2026`,
-          maxResults: 8,
-        }, 20, 8).catch((e) => { console.error("[market-discover] rag-web-browser:", e?.message); return [] as Record<string, unknown>[]; })
-      : Promise.resolve([] as Record<string, unknown>[]),
+  if (APIFY_TOKEN) {
+    // Use the sector's first 3 words so queries stay short enough for news matching
+    const sectorShort = sector.split(" ").slice(0, 3).join(" ");
+    const focusShort  = focusKeywords.split(" ").slice(0, 3).join(" ");
 
-    APIFY_TOKEN
-      ? runApifyActor("apify/google-search-scraper", {
-          queries: `${sector} ${market} brand OR company news 2026`,
-          maxPagesPerQuery: 1,
-          resultsPerPage: 10,
-        }, 20, 10).catch((e) => { console.error("[market-discover] google-search-scraper:", e?.message); return [] as Record<string, unknown>[]; })
-      : Promise.resolve([] as Record<string, unknown>[]),
-  ]);
+    const newsQueries = [
+      `${sectorShort} ${market} company brand 2026`,
+      `${sectorShort} ${market} ${focusShort} 2026`,
+      `${sectorShort} ${market} CEO launch award expansion 2026`,
+    ];
 
-  for (const item of ragItems.slice(0, 8)) {
-    const text  = ((item.text || item.markdown || item.description || "") as string).slice(0, 500);
-    const url   = (item.url || item.canonicalUrl || "") as string;
-    const title = (item.title || "") as string;
-    if (text) rawChunks.push(`[Article: ${title}]\nURL: ${url}\n${text}`);
+    const newsResults = await Promise.allSettled(
+      newsQueries.map(q =>
+        runApifyActor("easyapi/google-news-scraper", {
+          query: q,
+          maxItems: 8,
+          gl: marketCode,
+          hl: `en-${marketCode}`,
+          time_period: "30d",
+        }, 45, 8)
+      )
+    );
+
+    for (const result of newsResults) {
+      if (result.status === "fulfilled") {
+        for (const item of result.value.slice(0, 8)) {
+          const title = ((item.title || item.headline || "") as string).trim();
+          const desc  = ((item.description || item.snippet || item.body || item.text || "") as string)
+            .replace(/<[^>]+>/g, "").trim().slice(0, 400);
+          const url   = ((item.url || item.link || "") as string).trim();
+          if (title || desc) rawChunks.push(`[${title}]\nURL: ${url}\n${desc}`);
+        }
+      } else {
+        console.error("[market-discover] easyapi/google-news-scraper:", result.reason?.message);
+      }
+    }
   }
 
-  for (const r of gnItems.slice(0, 10)) {
-    const title = (r.title || "") as string;
-    const text  = (r.description || r.snippet || r.text || "") as string;
-    const url   = (r.url || r.link || "") as string;
-    if (text) rawChunks.push(`[Search: ${title}]\nURL: ${url}\n${text}`);
-  }
-
-  // Fallback: Google News RSS when Apify is not configured (zero cost)
+  // Last-resort fallback (works locally, often blocked from cloud IPs)
   if (rawChunks.length === 0) {
     const rssChunks = await fetchMarketRss(sector, market, marketCode, focusKeywords);
     rawChunks.push(...rssChunks);
