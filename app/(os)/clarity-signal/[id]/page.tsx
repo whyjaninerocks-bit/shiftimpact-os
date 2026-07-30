@@ -7,6 +7,7 @@
 
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { DownloadButton } from "../_components/DownloadButton";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -147,6 +148,21 @@ export default async function ClaritySignalOutputPage({
 
   return (
     <div className="max-w-3xl mx-auto">
+
+      {/* ── Print CSS ────────────────────────────────────────────────────── */}
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          nav, aside, header { display: none !important; }
+          body { background: white !important; }
+          @page { margin: 16mm 14mm; }
+        }
+      `}</style>
+
+      {/* ── Download bar ─────────────────────────────────────────────────── */}
+      <div className="no-print flex justify-end mb-4">
+        <DownloadButton brandName={row.brand_name} />
+      </div>
 
       {/* ── WINDOW FRAME HERO ───────────────────────────────────────────── */}
       <div className="rounded-2xl bg-slate-900 text-white p-8 mb-6 overflow-hidden">
