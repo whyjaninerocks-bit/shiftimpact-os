@@ -152,22 +152,17 @@ export default async function ClaritySignalOutputPage({
       {/* ── Print CSS ────────────────────────────────────────────────────── */}
       <style>{`
         @media print {
-          /* Force all background colours and images to print */
-          * {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          /* Hide browser chrome and UI */
           .no-print { display: none !important; }
           nav, aside, header, footer,
           [data-radix-popper-content-wrapper] { display: none !important; }
-          /* Page setup — remove browser margin so header/footer area collapses */
-          @page { margin: 12mm 14mm; size: A4; }
-          body { background: white !important; }
-          /* Prevent cards from breaking mid-content */
-          .print-card { break-inside: avoid; page-break-inside: avoid; }
-          /* Tighten spacing for print */
-          .print-section { margin-bottom: 12px !important; }
+          @page { margin: 10mm 12mm; size: A4; }
+          body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          /* Compact spacing for print */
+          .print-section { margin-bottom: 10px !important; }
+          /* Only avoid breaks on smaller cards, not the tall signals list */
+          .print-avoid-break { break-inside: avoid; page-break-inside: avoid; }
+          /* Force signal row items not to break */
+          .print-signal-row { break-inside: avoid; page-break-inside: avoid; }
         }
       `}</style>
 
@@ -177,7 +172,8 @@ export default async function ClaritySignalOutputPage({
       </div>
 
       {/* ── WINDOW FRAME HERO ───────────────────────────────────────────── */}
-      <div className="print-card print-section rounded-2xl bg-slate-900 text-white p-8 mb-6 overflow-hidden">
+      <div className="print-avoid-break print-section rounded-2xl text-white p-8 mb-6 overflow-hidden"
+        style={{ backgroundColor: '#0f172a', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' } as React.CSSProperties}>
 
         {/* Header row */}
         <div className="flex items-start justify-between gap-4 mb-7 pb-7 border-b border-slate-700">
@@ -221,7 +217,7 @@ export default async function ClaritySignalOutputPage({
       </div>
 
       {/* ── TOP 5 SIGNALS — Intelligence Briefs ──────────────────────── */}
-      <div className="print-card print-section bg-white rounded-2xl border border-neutral-100 p-8 mb-6 shadow-sm">
+      <div className="print-section bg-white rounded-2xl border border-neutral-100 p-8 mb-6 shadow-sm">
         <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
           Signal Intelligence
         </p>
@@ -235,7 +231,7 @@ export default async function ClaritySignalOutputPage({
             const statusStyle = signalStatusStyle(sig.status);
 
             return (
-              <div key={i} className="py-6 flex gap-5">
+              <div key={i} className="print-signal-row py-6 flex gap-5">
 
                 {/* Index number */}
                 <div className="flex-shrink-0 w-7 pt-0.5">
@@ -279,7 +275,7 @@ export default async function ClaritySignalOutputPage({
       </div>
 
       {/* ── OPPORTUNITY + RISK ────────────────────────────────────────── */}
-      <div className="print-card print-section grid sm:grid-cols-2 gap-4 mb-6">
+      <div className="print-avoid-break print-section grid sm:grid-cols-2 gap-4 mb-6">
 
         <div className="bg-white rounded-2xl border border-neutral-100 p-6 shadow-sm">
           <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-3">
@@ -298,7 +294,7 @@ export default async function ClaritySignalOutputPage({
       </div>
 
       {/* ── QUESTIONS WORTH ASKING ────────────────────────────────────── */}
-      <div className="print-card print-section bg-white rounded-2xl border border-neutral-100 p-8 mb-6 shadow-sm">
+      <div className="print-avoid-break print-section bg-white rounded-2xl border border-neutral-100 p-8 mb-6 shadow-sm">
         <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
           Decision Intelligence
         </p>
@@ -316,7 +312,7 @@ export default async function ClaritySignalOutputPage({
       </div>
 
       {/* ── INTELLIGENCE BOUNDARY ─────────────────────────────────────── */}
-      <div className="print-card print-section bg-neutral-50 rounded-2xl border border-neutral-200 p-6 mb-6">
+      <div className="print-avoid-break print-section bg-neutral-50 rounded-2xl border border-neutral-200 p-6 mb-6">
         <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3">
           Intelligence Boundary
         </p>
@@ -324,7 +320,7 @@ export default async function ClaritySignalOutputPage({
       </div>
 
       {/* ── HIDDEN SIGNAL ─────────────────────────────────────────────── */}
-      <div className="print-card print-section bg-neutral-50 rounded-2xl border border-neutral-200 p-6 mb-8">
+      <div className="print-avoid-break print-section bg-neutral-50 rounded-2xl border border-neutral-200 p-6 mb-8">
         <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3">
           Hidden Signal
         </p>
@@ -332,7 +328,8 @@ export default async function ClaritySignalOutputPage({
       </div>
 
       {/* ── CTA ──────────────────────────────────────────────────────── */}
-      <div className="print-card print-section rounded-2xl bg-slate-900 text-white p-8 text-center">
+      <div className="print-avoid-break print-section rounded-2xl text-white p-8 text-center"
+        style={{ backgroundColor: '#0f172a', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' } as React.CSSProperties}>
         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
           Shift Impact™
         </p>
