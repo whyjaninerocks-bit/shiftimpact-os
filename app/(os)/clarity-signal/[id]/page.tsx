@@ -216,6 +216,16 @@ export default async function ClaritySignalOutputPage({
 
       </div>
 
+      {/* ── HOW TO READ THIS SNAPSHOT ────────────────────────────────── */}
+      <div className="print-avoid-break print-section rounded-2xl border border-neutral-200 bg-neutral-50 px-6 py-5 mb-6">
+        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">
+          How to read this snapshot
+        </p>
+        <p className="text-sm text-neutral-600 leading-relaxed">
+          This assessment is based solely on publicly available signals observed at the time of analysis. It is not an evaluation of campaign effectiveness, commercial performance, media investment or internal business objectives. Its purpose is to identify visible opportunities, risks and decision signals that can be validated against internal data.
+        </p>
+      </div>
+
       {/* ── TOP 5 SIGNALS — Intelligence Briefs ──────────────────────── */}
       <div className="print-section bg-white rounded-2xl border border-neutral-100 p-8 mb-6 shadow-sm">
         <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
