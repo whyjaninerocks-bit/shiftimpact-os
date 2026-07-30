@@ -1,14 +1,14 @@
 "use client";
 // AiBrandVisibilitySection.tsx
-// F23 Phase 1 — AI Brand Visibility Layer
-// Sprint 19 · 17 July 2026
+// F23 Phase 1 + Phase 2 — AI Brand Visibility + Trust Gap Diagnosis
+// Sprint 19–20 · 17–30 July 2026
 //
 // ACCESS RULES:
-//   eligibility_score (number): INTERNAL — shown here, never in client portal
-//   eligibility_band (label):   INTERNAL — use directional language with client
-//   trust_gap_owned / _cep:     INTERNAL ONLY
-//   priority_action:            INTERNAL — Janine decides when/how to share
-//   ai_narrative:               Client-shareable (plain language)
+//   eligibility_score, all trust_gap_*, competitor gap: INTERNAL ONLY
+//   trust_gap_competitor: INTERNAL ONLY — NEVER shared with client under any circumstances
+//   ai_visibility_risk: INTERNAL — Risk Posture modifier
+//   priority_action: INTERNAL — Janine decides when/how to share
+//   ai_narrative: Client-shareable (plain language, no scores or competitor mention)
 //
 // Visible on campaign page after IQ Evaluate section.
 // Monthly cadence recommended — not weekly.
@@ -132,22 +132,73 @@ function VisibilityResult({ score }: { score: AiBrandVisibilityScore }) {
         </div>
       )}
 
-      {/* Trust gaps — INTERNAL */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {score.trust_gap_owned && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-            <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-wide mb-1">
-              Owned Content Gap · Internal
+      {/* AI Visibility Risk (Phase 2) */}
+      {score.ai_visibility_risk && (
+        <div className={`rounded-lg border px-4 py-3 flex items-start gap-3 ${
+          score.ai_visibility_risk === "Critical" ? "bg-red-50 border-red-200" :
+          score.ai_visibility_risk === "High"     ? "bg-orange-50 border-orange-200" :
+          score.ai_visibility_risk === "Moderate" ? "bg-amber-50 border-amber-200" :
+          "bg-emerald-50 border-emerald-200"
+        }`}>
+          <div className="flex-1">
+            <p className={`text-[10px] font-bold uppercase tracking-widest mb-0.5 ${
+              score.ai_visibility_risk === "Critical" ? "text-red-700" :
+              score.ai_visibility_risk === "High"     ? "text-orange-700" :
+              score.ai_visibility_risk === "Moderate" ? "text-amber-700" :
+              "text-emerald-700"
+            }`}>
+              AI Visibility Risk: {score.ai_visibility_risk}
+              <span className="font-normal normal-case ml-2 text-neutral-400">(INTERNAL — Risk Posture modifier)</span>
             </p>
-            <p className="text-xs text-amber-900 leading-relaxed">{score.trust_gap_owned}</p>
+            {score.trust_gap_priority_note && (
+              <p className="text-xs text-neutral-700 mt-0.5">{score.trust_gap_priority_note}</p>
+            )}
           </div>
-        )}
-        {score.trust_gap_cep && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-            <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-wide mb-1">
-              CEP Coverage Gap · Internal
+          {score.trust_gap_priority && (
+            <span className="text-[10px] rounded px-2 py-1 bg-white border border-neutral-200 text-neutral-600 font-medium shrink-0">
+              Priority gap: {score.trust_gap_priority}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Trust Gaps — INTERNAL (Phase 1 + Phase 2) */}
+      <div className="space-y-2">
+        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+          Trust Gap Diagnosis <span className="font-normal normal-case text-neutral-400">(INTERNAL — all 5 gap types)</span>
+        </p>
+
+        {[
+          { key: "Owned",     label: "Owned Content Gap",      val: score.trust_gap_owned,     clientSafe: false },
+          { key: "Community", label: "Community Depth Gap",    val: score.trust_gap_community,  clientSafe: false },
+          { key: "CEP",       label: "CEP Coverage Gap",       val: score.trust_gap_cep,        clientSafe: false },
+          { key: "Platform",  label: "Platform Blind Spot",    val: score.trust_gap_platform,   clientSafe: false },
+        ].map(({ key, label, val }) => val ? (
+          <div key={key} className={`rounded-lg border px-3 py-2 ${
+            score.trust_gap_priority === key
+              ? "border-orange-300 bg-orange-50"
+              : "border-amber-200 bg-amber-50"
+          }`}>
+            <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide mb-1 flex items-center gap-2">
+              {label}
+              {score.trust_gap_priority === key && (
+                <span className="text-[9px] rounded px-1 py-0.5 bg-orange-200 text-orange-800 font-bold normal-case">Priority</span>
+              )}
             </p>
-            <p className="text-xs text-amber-900 leading-relaxed">{score.trust_gap_cep}</p>
+            <p className="text-xs text-amber-900 leading-relaxed">{val}</p>
+          </div>
+        ) : null)}
+
+        {/* Competitor Gap — DOUBLE-GATED INTERNAL */}
+        {score.trust_gap_competitor && (
+          <div className="rounded-lg border-2 border-red-200 bg-red-50 px-3 py-2">
+            <p className="text-[10px] font-bold text-red-700 uppercase tracking-wide mb-1">
+              Competitor AI Advantage
+              <span className="ml-2 font-semibold rounded px-1 py-0.5 bg-red-200 text-red-900 text-[9px]">
+                INTERNAL ONLY — NEVER SHARE WITH CLIENT
+              </span>
+            </p>
+            <p className="text-xs text-red-900 leading-relaxed">{score.trust_gap_competitor}</p>
           </div>
         )}
       </div>

@@ -1101,6 +1101,9 @@ export type MediaDeliveryRecord = {
 
 export type AiEligibilityBand = "AI-Ready" | "Developing" | "Emerging" | "At Risk";
 
+export type TrustGapPriority = "Owned" | "Community" | "CEP" | "Platform" | "Competitor";
+export type AiVisibilityRisk = "Low" | "Moderate" | "High" | "Critical";
+
 export type AiBrandVisibilityScore = {
   id: string;
   campaign_id: string;
@@ -1116,9 +1119,17 @@ export type AiBrandVisibilityScore = {
   // Eligibility — INTERNAL
   eligibility_score: number | null;
   eligibility_band: AiEligibilityBand | null;
-  // Trust gaps — INTERNAL
+  // Trust gaps Phase 1 — INTERNAL
   trust_gap_owned: string;
   trust_gap_cep: string;
+  // Phase 2 — Trust Gap Diagnosis (INTERNAL)
+  trust_gap_community: string | null;   // UGC depth vs CEP requirements
+  trust_gap_platform: string | null;    // AI platform-specific blind spots
+  trust_gap_competitor: string | null;  // INTERNAL ONLY — never shared with client
+  trust_gap_priority: TrustGapPriority | null;  // which gap to close first
+  trust_gap_priority_note: string | null;        // plain language rationale
+  // Phase 2 — AI Visibility Risk (modifier for Risk Posture)
+  ai_visibility_risk: AiVisibilityRisk | null;
   // Priority action — INTERNAL
   priority_action: string;
   // Client-shareable narrative

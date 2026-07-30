@@ -1,6 +1,6 @@
 // app/api/ai-brand-visibility/route.ts
-// F23 Phase 1 — AI Brand Visibility Layer
-// Sprint 19 · 17 July 2026
+// F23 Phase 1 + Phase 2 — AI Brand Visibility Layer + Trust Gap Diagnosis
+// Sprint 19–20 · 17–30 July 2026
 //
 // INTERNAL ONLY — never expose eligibility_score, trust gap matrix,
 // or competitor data to any client-facing route.
@@ -80,28 +80,59 @@ function computeEligibility(
 
 const AI_VISIBILITY_TOOL = {
   name: "submit_ai_visibility_assessment",
-  description: "Submit the AI Brand Visibility trust gap diagnosis and narrative.",
+  description: "Submit the full AI Brand Visibility trust gap diagnosis, risk classification, and narrative.",
   input_schema: {
     type: "object" as const,
     properties: {
       trust_gap_owned: {
         type: "string",
-        description: "The most significant gap in owned content or brand information that reduces AI recommendation eligibility. 1–2 sentences. Specific to this brand/campaign.",
+        description: "Gap in owned content or brand information that reduces AI recommendation eligibility. 1–2 sentences. Specific to this brand/campaign. INTERNAL.",
+      },
+      trust_gap_community: {
+        type: "string",
+        description: "Gap between current UGC depth and what AI tools need to triangulate brand reputation across voices. 1–2 sentences. INTERNAL.",
       },
       trust_gap_cep: {
         type: "string",
-        description: "The most significant gap in Category Entry Point coverage that limits when and how AI tools recommend this brand. 1–2 sentences. Specific to this brand/category.",
+        description: "Gap in Category Entry Point coverage — buying moments where AI tools would recommend this brand but cannot because signals are absent. 1–2 sentences. INTERNAL.",
+      },
+      trust_gap_platform: {
+        type: "string",
+        description: "Platform-specific AI blind spots — where this brand is invisible on a particular AI surface (ChatGPT, Perplexity, TikTok Search, Google AI Overview). 1–2 sentences. INTERNAL.",
+      },
+      trust_gap_competitor: {
+        type: "string",
+        description: "STRICTLY INTERNAL — never share with client. Where competitors hold a stronger AI visibility advantage and why. 1–2 sentences. INTERNAL ONLY.",
+      },
+      trust_gap_priority: {
+        type: "string",
+        enum: ["Owned", "Community", "CEP", "Platform", "Competitor"],
+        description: "Which gap type represents the single highest-impact closing opportunity for this brand right now.",
+      },
+      trust_gap_priority_note: {
+        type: "string",
+        description: "1 sentence. Why this gap is the priority — the specific leverage or urgency that makes it the highest-ROI focus.",
+      },
+      ai_visibility_risk: {
+        type: "string",
+        enum: ["Low", "Moderate", "High", "Critical"],
+        description: "Overall AI visibility risk level. Low: brand is in good shape. Moderate: 1–2 gaps need addressing. High: significant AI visibility gaps that competitors can exploit. Critical: brand is nearly invisible to AI tools in its category.",
       },
       priority_action: {
         type: "string",
-        description: "The single highest-leverage action the brand should take in the next 30 days to improve AI recommendation eligibility. Concrete and specific — not generic advice.",
+        description: "The single highest-leverage action in the next 30 days. Concrete — not generic.",
       },
       ai_narrative: {
         type: "string",
-        description: "3–4 sentences. Plain-language assessment of the brand's current AI visibility posture. Written for a marketer, not a technologist. No scores or band labels — directional language only. May be shared with the client.",
+        description: "3–4 sentences. Plain-language AI visibility posture for a marketer. No scores or band labels. May be shared with client. No competitor mention.",
       },
     },
-    required: ["trust_gap_owned", "trust_gap_cep", "priority_action", "ai_narrative"],
+    required: [
+      "trust_gap_owned", "trust_gap_community", "trust_gap_cep",
+      "trust_gap_platform", "trust_gap_competitor",
+      "trust_gap_priority", "trust_gap_priority_note",
+      "ai_visibility_risk", "priority_action", "ai_narrative",
+    ],
   },
 } as const;
 
@@ -120,17 +151,25 @@ Brands are recommended by AI tools when they have:
 4. **Search Intent Alignment**: Strong branded search signals that tell AI tools the brand is top-of-mind for its category (Signal 1)
 5. **Information Consistency**: Accurate, consistent brand information across owned platforms (website, Google Business, social bios, product descriptions)
 
-## TRUST GAP DIAGNOSIS
+## TRUST GAP DIAGNOSIS — PHASE 2 (5 Gap Types)
 
-Two types of gaps reduce AI recommendation eligibility:
-- **Owned Gap**: Brand's own content, website, or information architecture fails to give AI tools enough to work with
-- **CEP Gap**: Brand is missing from key buying moments that consumers use as mental shortcuts when reaching for the category
+Five types of gaps reduce AI recommendation eligibility:
+1. **Owned Gap**: Brand's own content, website, or information architecture fails to give AI tools enough to work with
+2. **Community Gap**: Insufficient UGC depth — AI tools can't triangulate the brand's reputation across enough independent voices
+3. **CEP Gap**: Brand is missing from key Category Entry Points — buying moments where AI would recommend it but can't find signal
+4. **Platform Gap**: The brand has specific blind spots on individual AI platforms (invisible on Perplexity but findable on ChatGPT, etc.)
+5. **Competitor Gap**: Where competitor brands have a stronger AI visibility advantage — INTERNAL ONLY, never mention this in client output
+
+## AI VISIBILITY RISK
+Classify the overall risk: Low / Moderate / High / Critical.
+This feeds the campaign Risk Posture modifier. Be honest — a High or Critical rating means the brand is genuinely vulnerable to AI recommendation displacement.
 
 ## OUTPUT RULES
-- trust_gap_owned and trust_gap_cep must be SPECIFIC to this brand and campaign — not generic
-- priority_action must be concrete: what exactly to do, not "create more content"
-- ai_narrative is client-shareable: write it for a marketer, use directional language only, no score numbers or band labels
-- Never mention competitors in any output field`;
+- All 5 trust gaps must be SPECIFIC to this brand and campaign — not generic
+- trust_gap_competitor: INTERNAL ONLY — never shown to client, but must be specific and actionable
+- trust_gap_priority: name the single gap with the highest closing leverage
+- priority_action: concrete — what exactly to do, not "create more content"
+- ai_narrative: client-shareable, directional language only, no scores, band labels, or competitor mentions`;
 
 // ─── Route handler ────────────────────────────────────────────────────────────
 
@@ -232,9 +271,11 @@ ${ai_visibility_observations || "No observations noted."}
 ${latestReport?.ai_narrative ?? "No signal report available yet."}
 
 ── TASK ──
-Diagnose the two trust gaps (owned and CEP) specific to this brand and its campaign context.
+Diagnose all 5 trust gaps (Owned, Community, CEP, Platform, Competitor) specific to this brand.
+Rank which gap to close first and explain why in one sentence.
+Classify the overall AI Visibility Risk (Low/Moderate/High/Critical).
 Identify the single highest-leverage action for the next 30 days.
-Write a 3–4 sentence client-friendly narrative about AI visibility posture.`;
+Write a 3–4 sentence client-friendly narrative about AI visibility posture (no competitor mention).`;
 
     const aiResponse = await anthropic.messages.create({
       model,
@@ -253,7 +294,13 @@ Write a 3–4 sentence client-friendly narrative about AI visibility posture.`;
 
     const result = toolBlock.input as {
       trust_gap_owned: string;
+      trust_gap_community: string;
       trust_gap_cep: string;
+      trust_gap_platform: string;
+      trust_gap_competitor: string;       // INTERNAL ONLY — never client-facing
+      trust_gap_priority: string;
+      trust_gap_priority_note: string;
+      ai_visibility_risk: string;
       priority_action: string;
       ai_narrative: string;
     };
@@ -272,11 +319,17 @@ Write a 3–4 sentence client-friendly narrative about AI visibility posture.`;
         search_intent_score:     searchIntentScore,
         eligibility_score:       eligibilityScore,
         eligibility_band:        eligibilityBand,
-        trust_gap_owned:         result.trust_gap_owned,
-        trust_gap_cep:           result.trust_gap_cep,
-        priority_action:         result.priority_action,
-        ai_narrative:            result.ai_narrative,
-        status:                  "ready",
+        trust_gap_owned:          result.trust_gap_owned,
+        trust_gap_community:      result.trust_gap_community,
+        trust_gap_cep:            result.trust_gap_cep,
+        trust_gap_platform:       result.trust_gap_platform,
+        trust_gap_competitor:     result.trust_gap_competitor,    // INTERNAL ONLY
+        trust_gap_priority:       result.trust_gap_priority,
+        trust_gap_priority_note:  result.trust_gap_priority_note,
+        ai_visibility_risk:       result.ai_visibility_risk,
+        priority_action:          result.priority_action,
+        ai_narrative:             result.ai_narrative,
+        status:                   "ready",
       })
       .select("id, created_at")
       .single();
@@ -297,11 +350,17 @@ Write a 3–4 sentence client-friendly narrative about AI visibility posture.`;
       search_intent_score:     searchIntentScore,
       eligibility_score:       eligibilityScore,
       eligibility_band:        eligibilityBand,
-      trust_gap_owned:         result.trust_gap_owned,
-      trust_gap_cep:           result.trust_gap_cep,
-      priority_action:         result.priority_action,
-      ai_narrative:            result.ai_narrative,
-      created_at:              saved?.created_at,
+      trust_gap_owned:          result.trust_gap_owned,
+      trust_gap_community:      result.trust_gap_community,
+      trust_gap_cep:            result.trust_gap_cep,
+      trust_gap_platform:       result.trust_gap_platform,
+      trust_gap_competitor:     result.trust_gap_competitor,     // INTERNAL ONLY
+      trust_gap_priority:       result.trust_gap_priority,
+      trust_gap_priority_note:  result.trust_gap_priority_note,
+      ai_visibility_risk:       result.ai_visibility_risk,
+      priority_action:          result.priority_action,
+      ai_narrative:             result.ai_narrative,
+      created_at:               saved?.created_at,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
