@@ -1,7 +1,7 @@
 "use client";
 // CascadeSection.tsx
-// F28 — Social Proof Cascade Detection (Phase 1)
-// Sprint 5 · 30 July 2026
+// F28 — Social Proof Cascade Detection (Phase 1 + Phase 2)
+// Sprint 5–6 · 30 July 2026
 //
 // GOVERNANCE:
 //   CASCADE ACTIVE / CASCADE PEAK → in-app alert for Janine only — no client notification
@@ -119,6 +119,14 @@ function CascadeEntryForm({
   const [comments, setComments]       = useState<string>("");
   const [posts, setPosts]             = useState<string>("");
   const [notes, setNotes]             = useState<string>("");
+  // Phase 2 — dark cascade co-signals
+  const [dtaFired, setDtaFired]       = useState(false);
+  const [bswmFired, setBswmFired]     = useState(false);
+  const [guclFired, setGuclFired]     = useState(false);
+  // Phase 2 — cross-platform
+  const [crossDetected, setCrossDetected]     = useState(false);
+  const [crossPlatforms, setCrossPlatforms]   = useState<string>("");
+  const [crossTheme, setCrossTheme]           = useState<string>("");
   const [saving, setSaving]           = useState(false);
   const [error, setError]             = useState<string | null>(null);
 
@@ -137,12 +145,21 @@ function CascadeEntryForm({
           comment_count:        comments  !== "" ? Number(comments)  : null,
           post_count:           posts     !== "" ? Number(posts)     : null,
           strategy_notes:       notes,
+          // Phase 2
+          dark_cascade_direct_traffic_spike: dtaFired,
+          dark_cascade_search_spike:         bswmFired,
+          dark_cascade_geo_clustering:       guclFired,
+          cross_platform_detected:           crossDetected,
+          cross_platform_platforms:          crossPlatforms || null,
+          cross_platform_theme:              crossTheme     || null,
         }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Save failed");
       onSaved(json as CascadeRecord);
       setUgcThis(""); setUgcLast(""); setComments(""); setPosts(""); setNotes("");
+      setDtaFired(false); setBswmFired(false); setGuclFired(false);
+      setCrossDetected(false); setCrossPlatforms(""); setCrossTheme("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -240,6 +257,60 @@ function CascadeEntryForm({
         />
       </div>
 
+      {/* Phase 2 — Dark Cascade Co-Signals (INTERNAL) */}
+      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+          Dark Cascade Inference <span className="font-normal normal-case text-slate-400">(INTERNAL · check if DSEM signals co-fired)</span>
+        </p>
+        <div className="flex flex-wrap gap-4">
+          {[
+            { label: "Direct traffic spike (DTA)", val: dtaFired, set: setDtaFired },
+            { label: "Branded search spike (BSWM)", val: bswmFired, set: setBswmFired },
+            { label: "Geographic UGC cluster (GUCL)", val: guclFired, set: setGuclFired },
+          ].map(({ label, val, set }) => (
+            <label key={label} className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+              <input type="checkbox" className="rounded" checked={val} onChange={e => set(e.target.checked)} />
+              {label}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Phase 2 — Cross-Platform Propagation (INTERNAL) */}
+      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+          Cross-Platform Propagation <span className="font-normal normal-case text-slate-400">(INTERNAL)</span>
+        </p>
+        <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+          <input type="checkbox" className="rounded" checked={crossDetected} onChange={e => setCrossDetected(e.target.checked)} />
+          UGC detected across 2 or more platforms this week
+        </label>
+        {crossDetected && (
+          <div className="space-y-2 pl-5">
+            <div>
+              <label className="block text-[10px] text-slate-500 mb-1">Platforms (comma-separated)</label>
+              <input
+                type="text"
+                placeholder="e.g. TikTok, Instagram, X"
+                value={crossPlatforms}
+                onChange={e => setCrossPlatforms(e.target.value)}
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-300"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-slate-500 mb-1">Observed theme (optional, INTERNAL)</label>
+              <input
+                type="text"
+                placeholder="e.g. Product taste reaction, before/after unboxing"
+                value={crossTheme}
+                onChange={e => setCrossTheme(e.target.value)}
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-300"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
       {error && (
         <p className="text-xs text-red-600">{error}</p>
       )}
@@ -303,6 +374,49 @@ function StatusCard({ record }: { record: CascadeRecord }) {
             Amplification Window <span className="normal-case font-normal text-neutral-400">(internal)</span>
           </p>
           <p className="text-xs text-neutral-700 leading-relaxed">{record.amplification_window}</p>
+        </div>
+      )}
+
+      {/* Phase 2 — Dark Cascade Inference (INTERNAL) */}
+      {(record.dark_cascade_flag || record.cross_platform_detected) && (
+        <div className="pt-2 border-t border-neutral-200 space-y-1.5">
+          <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
+            Dark Cascade Inference <span className="font-normal normal-case text-neutral-400">(INTERNAL — inferred only)</span>
+          </p>
+
+          {record.dark_cascade_flag && (
+            <div className="flex flex-wrap gap-2">
+              {record.dark_cascade_direct_traffic_spike && (
+                <span className="text-[10px] rounded px-1.5 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 font-medium">DTA co-fired</span>
+              )}
+              {record.dark_cascade_search_spike && (
+                <span className="text-[10px] rounded px-1.5 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 font-medium">BSWM co-fired</span>
+              )}
+              {record.dark_cascade_geo_clustering && (
+                <span className="text-[10px] rounded px-1.5 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 font-medium">GUCL co-fired</span>
+              )}
+            </div>
+          )}
+
+          {record.dark_cascade_inference_note && (
+            <p className="text-xs text-neutral-600 leading-relaxed italic">
+              {record.dark_cascade_inference_note}
+            </p>
+          )}
+
+          {record.cross_platform_detected && (
+            <div className="rounded bg-slate-50 border border-slate-100 px-2 py-1.5 space-y-0.5">
+              <p className="text-[10px] font-semibold text-slate-600">
+                Cross-platform propagation inferred
+                {record.cross_platform_platforms && `: ${record.cross_platform_platforms}`}
+              </p>
+              {record.cross_platform_theme && (
+                <p className="text-[10px] text-slate-500">
+                  Theme: {record.cross_platform_theme}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
 

@@ -1,12 +1,20 @@
 // app/api/cascade-detection/route.ts
-// F28 — Social Proof Cascade Detection (Phase 1)
+// F28 — Social Proof Cascade Detection (Phase 1 + Phase 2)
 //
 // POST /api/cascade-detection
 // Body: {
 //   campaign_id, week_number,
 //   ugc_volume_this_week?, ugc_volume_last_week?,
 //   comment_count?, post_count?,
-//   strategy_notes?
+//   strategy_notes?,
+//   -- Phase 2 (dark cascade inference) --
+//   dark_cascade_direct_traffic_spike?,   // DTA co-fired alongside cascade
+//   dark_cascade_search_spike?,           // BSWM co-fired alongside cascade
+//   dark_cascade_geo_clustering?,         // GUCL co-fired alongside cascade
+//   -- Phase 2 (cross-platform) --
+//   cross_platform_detected?,             // UGC appearing across ≥2 platforms
+//   cross_platform_platforms?,            // comma-separated platform list (INTERNAL)
+//   cross_platform_theme?,                // AI-observed theme (INTERNAL)
 // }
 //
 // Cascade Status Logic:
@@ -14,12 +22,17 @@
 //   comment_to_post_ratio  = comments / posts    (null if posts = 0)
 //
 //   NO CASCADE    — velocity_acceleration < 1.5  AND  comment_to_post_ratio < 5
-//   EARLY SIGNAL  — velocity_acceleration ≥ 1.5  OR   comment_to_post_ratio ≥ 5 (not both sustained)
+//   EARLY SIGNAL  — velocity_acceleration ≥ 1.5  OR   comment_to_post_ratio ≥ 5
 //   CASCADE ACTIVE — velocity_acceleration ≥ 2.0  AND  comment_to_post_ratio ≥ 5
 //   CASCADE PEAK  — velocity_acceleration ≥ 3.0  AND  comment_to_post_ratio ≥ 10
 //
+// Dark Cascade Flag:
+//   dark_cascade_flag = true when cascade_status ≠ NO CASCADE AND any DSEM signal co-fired
+//   dark_cascade_inference_note = INTERNAL summary (never client-facing)
+//
 // CASCADE ACTIVE and CASCADE PEAK trigger an in-app alert for Janine only.
 // No automated client notification — ever.
+// Dark cascade inference = INTERNAL ONLY, always stated as inferred.
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -36,6 +49,14 @@ interface CascadeRequest {
   comment_count?:        number | null;
   post_count?:           number | null;
   strategy_notes?:       string;
+  // Phase 2 — Dark Cascade Inference
+  dark_cascade_direct_traffic_spike?: boolean;
+  dark_cascade_search_spike?:         boolean;
+  dark_cascade_geo_clustering?:       boolean;
+  // Phase 2 — Cross-Platform Propagation
+  cross_platform_detected?:           boolean;
+  cross_platform_platforms?:          string | null;
+  cross_platform_theme?:              string | null;
 }
 
 // ─── Computation ─────────────────────────────────────────────────────────────
@@ -74,6 +95,45 @@ function computeCascadeStatus(
   return "NO CASCADE";
 }
 
+function buildDarkCascadeInferenceNote(
+  cascadeStatus: CascadeStatus,
+  dtaFired: boolean,
+  bswmFired: boolean,
+  guclFired: boolean,
+  crossPlatformDetected: boolean,
+  crossPlatformPlatforms: string | null,
+  crossPlatformTheme: string | null
+): { flag: boolean; note: string } {
+  const hasSignal = cascadeStatus !== "NO CASCADE";
+  const darkSignals = [dtaFired, bswmFired, guclFired].filter(Boolean);
+  const flag = hasSignal && darkSignals.length > 0;
+
+  if (!flag && !crossPlatformDetected) return { flag: false, note: "" };
+
+  const parts: string[] = [];
+
+  if (flag) {
+    const signalNames: string[] = [];
+    if (dtaFired) signalNames.push("direct traffic anomaly");
+    if (bswmFired) signalNames.push("branded search spike");
+    if (guclFired) signalNames.push("geographic UGC clustering");
+
+    parts.push(
+      `Dark cascade inferred: ${signalNames.join(", ")} co-occurred with ${cascadeStatus.toLowerCase().replace("cascade ", "")} cascade signal. This suggests organic conversation is spilling into dark channels. All dark cascade observations are inferred — not confirmed.`
+    );
+  }
+
+  if (crossPlatformDetected) {
+    const platStr = crossPlatformPlatforms ? ` across ${crossPlatformPlatforms}` : "";
+    const themeStr = crossPlatformTheme ? ` Theme observed: "${crossPlatformTheme}".` : "";
+    parts.push(
+      `Cross-platform propagation inferred${platStr}.${themeStr} INTERNAL — not for client distribution.`
+    );
+  }
+
+  return { flag, note: parts.join(" ") };
+}
+
 function buildAmplificationWindow(
   status: CascadeStatus,
   velocity: number | null,
@@ -104,6 +164,13 @@ export async function POST(req: NextRequest) {
       ugc_volume_this_week, ugc_volume_last_week,
       comment_count, post_count,
       strategy_notes = "",
+      // Phase 2
+      dark_cascade_direct_traffic_spike = false,
+      dark_cascade_search_spike         = false,
+      dark_cascade_geo_clustering       = false,
+      cross_platform_detected           = false,
+      cross_platform_platforms          = null,
+      cross_platform_theme              = null,
     } = body;
 
     if (!campaign_id || week_number == null) {
@@ -120,6 +187,17 @@ export async function POST(req: NextRequest) {
     const commentRatio  = computeCommentRatio(comment_count, post_count);
     const cascade_status = computeCascadeStatus(velocity, commentRatio);
     const amplification_window = buildAmplificationWindow(cascade_status, velocity, commentRatio);
+
+    // Phase 2 — Dark Cascade Inference (INTERNAL)
+    const { flag: dark_cascade_flag, note: dark_cascade_inference_note } = buildDarkCascadeInferenceNote(
+      cascade_status,
+      dark_cascade_direct_traffic_spike,
+      dark_cascade_search_spike,
+      dark_cascade_geo_clustering,
+      cross_platform_detected,
+      cross_platform_platforms ?? null,
+      cross_platform_theme ?? null
+    );
 
     // Determine if an alert should fire
     const alertFires = cascade_status === "CASCADE ACTIVE" || cascade_status === "CASCADE PEAK";
@@ -140,6 +218,16 @@ export async function POST(req: NextRequest) {
           cascade_status,
           amplification_window,
           strategy_notes,
+          // Phase 2 — Dark Cascade (INTERNAL)
+          dark_cascade_direct_traffic_spike,
+          dark_cascade_search_spike,
+          dark_cascade_geo_clustering,
+          dark_cascade_flag,
+          dark_cascade_inference_note,
+          // Phase 2 — Cross-Platform (INTERNAL)
+          cross_platform_detected,
+          cross_platform_platforms: cross_platform_platforms ?? null,
+          cross_platform_theme:     cross_platform_theme     ?? null,
           // cascade_alert_sent stays false until Janine dismisses the in-app alert
           updated_at: new Date().toISOString(),
         },
@@ -165,8 +253,18 @@ export async function POST(req: NextRequest) {
       comment_to_post_ratio: commentRatio,
       cascade_status,
       amplification_window,
-      // INTERNAL: alert flag for Janine — never in client export
-      alert_fires:           alertFires,
+      // INTERNAL — alert flag for Janine only
+      alert_fires:                        alertFires,
+      // INTERNAL — dark cascade inference
+      dark_cascade_flag,
+      dark_cascade_inference_note,
+      dark_cascade_direct_traffic_spike,
+      dark_cascade_search_spike,
+      dark_cascade_geo_clustering,
+      // INTERNAL — cross-platform
+      cross_platform_detected,
+      cross_platform_platforms,
+      cross_platform_theme,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

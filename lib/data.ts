@@ -682,6 +682,7 @@ export async function getLatestCampaignReport(
 // CASCADE ACTIVE / CASCADE PEAK → in-app alert for Janine only.
 export type CascadeRecord = {
   id: string;
+  campaign_id?: string;
   week_number: number;
   ugc_volume_this_week: number | null;
   ugc_volume_last_week: number | null;
@@ -692,6 +693,16 @@ export type CascadeRecord = {
   cascade_status: "NO CASCADE" | "EARLY SIGNAL" | "CASCADE ACTIVE" | "CASCADE PEAK";
   amplification_window: string;
   strategy_notes: string;
+  // F28 Phase 2 — Dark Cascade Inference (INTERNAL ONLY)
+  dark_cascade_direct_traffic_spike: boolean;
+  dark_cascade_search_spike: boolean;
+  dark_cascade_geo_clustering: boolean;
+  dark_cascade_flag: boolean;
+  dark_cascade_inference_note: string;
+  // F28 Phase 2 — Cross-Platform Propagation (INTERNAL ONLY)
+  cross_platform_detected: boolean;
+  cross_platform_platforms: string | null;
+  cross_platform_theme: string | null;
   created_at: string;
 };
 
