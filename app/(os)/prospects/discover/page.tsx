@@ -1,6 +1,10 @@
 // app/(os)/prospects/discover/page.tsx
 // Market Discovery Engine — AI scans a sector and surfaces companies with active
 // business signals that aren't yet in the pipeline.
+//
+// Signal Focus mode: search by signal type (Award Winners, Leadership Changes,
+// Hiring Campaigns, etc.) in addition to sector-based discovery.
+// All 7 KB signal categories supported.
 
 "use client";
 
@@ -17,8 +21,11 @@ type Discovered = {
   signal_text: string;
   source_url?: string;
   why_now: string;
+  shiftimpact_angle?: string;
   relevance_score: number;
 };
+
+// ─── Presets ─────────────────────────────────────────────────────────────────
 
 const SECTOR_PRESETS = [
   { label: "FMCG & Food", value: "FMCG food beverage consumer goods" },
@@ -37,6 +44,60 @@ const MARKET_PRESETS = [
   { label: "Indonesia", value: "Indonesia", code: "ID" },
 ];
 
+// 7 KB signal categories
+const SIGNAL_FOCUS_PRESETS = [
+  {
+    value: "",
+    label: "All signals",
+    description: "Find companies across any signal type",
+    icon: "🔍",
+  },
+  {
+    value: "Growth",
+    label: "Growth moments",
+    description: "Funding, expansion, new partnerships",
+    icon: "📈",
+  },
+  {
+    value: "Recognition",
+    label: "Award winners",
+    description: "Awards, ESG recognition, employer rankings",
+    icon: "🏆",
+  },
+  {
+    value: "Milestone",
+    label: "Milestones",
+    description: "Anniversaries, customer milestones, achievements",
+    icon: "🎯",
+  },
+  {
+    value: "Activation",
+    label: "Launches & events",
+    description: "Product launches, rebranding, sponsorships",
+    icon: "🚀",
+  },
+  {
+    value: "Leadership",
+    label: "Leadership changes",
+    description: "New CEO/CMO, founder transitions",
+    icon: "👤",
+  },
+  {
+    value: "Competitive",
+    label: "Market disruption",
+    description: "New entrants, regulation shifts, category change",
+    icon: "⚡",
+  },
+  {
+    value: "Talent",
+    label: "Hiring campaigns",
+    description: "Marketing, brand, digital, growth roles",
+    icon: "🧲",
+  },
+];
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
 function scoreTone(score: number): string {
   if (score >= 75) return "bg-green-50 text-green-700 border-green-200";
   if (score >= 55) return "bg-amber-50 text-amber-700 border-amber-200";
@@ -44,24 +105,33 @@ function scoreTone(score: number): string {
 }
 
 function signalTone(type: string): string {
-  if (type === "Growth")      return "bg-blue-50 text-blue-700";
-  if (type === "Recognition") return "bg-purple-50 text-purple-700";
-  if (type === "Leadership")  return "bg-orange-50 text-orange-700";
-  if (type === "Activation")  return "bg-green-50 text-green-700";
-  return "bg-neutral-50 text-neutral-600";
+  switch (type) {
+    case "Growth":      return "bg-blue-50 text-blue-700";
+    case "Recognition": return "bg-purple-50 text-purple-700";
+    case "Leadership":  return "bg-orange-50 text-orange-700";
+    case "Activation":  return "bg-green-50 text-green-700";
+    case "Competitive": return "bg-red-50 text-red-700";
+    case "Talent":      return "bg-teal-50 text-teal-700";
+    case "Milestone":   return "bg-indigo-50 text-indigo-700";
+    default:            return "bg-neutral-50 text-neutral-600";
+  }
 }
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DiscoverPage() {
   const router = useRouter();
-  const [sector, setSector]       = useState("");
-  const [market, setMarket]       = useState("Malaysia");
-  const [marketCode, setMarketCode] = useState("MY");
-  const [scanning, setScanning]   = useState(false);
-  const [results, setResults]     = useState<Discovered[] | null>(null);
-  const [warning, setWarning]     = useState<string | null>(null);
-  const [error, setError]         = useState<string | null>(null);
-  const [adding, setAdding]       = useState<Record<string, boolean>>({});
-  const [added, setAdded]         = useState<Record<string, boolean>>({});
+
+  const [sector, setSector]           = useState("");
+  const [market, setMarket]           = useState("Malaysia");
+  const [marketCode, setMarketCode]   = useState("MY");
+  const [signalFocus, setSignalFocus] = useState("");
+  const [scanning, setScanning]       = useState(false);
+  const [results, setResults]         = useState<Discovered[] | null>(null);
+  const [warning, setWarning]         = useState<string | null>(null);
+  const [error, setError]             = useState<string | null>(null);
+  const [adding, setAdding]           = useState<Record<string, boolean>>({});
+  const [added, setAdded]             = useState<Record<string, boolean>>({});
 
   async function runDiscover(e: React.FormEvent) {
     e.preventDefault();
@@ -75,14 +145,19 @@ export default function DiscoverPage() {
       const res = await fetch("/api/market-discover", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sector, market, market_code: marketCode }),
+        body: JSON.stringify({
+          sector,
+          market,
+          market_code: marketCode,
+          signal_focus: signalFocus || undefined,
+        }),
       });
       const json = await res.json();
       if (!res.ok) { setError(json.error ?? "Discovery failed."); return; }
       setResults(json.companies ?? []);
       if (json.warning) setWarning(json.warning);
-    } catch (e) {
-      setError(`Discovery error: ${String(e)}`);
+    } catch (err) {
+      setError(`Discovery error: ${String(err)}`);
     } finally {
       setScanning(false);
     }
@@ -111,23 +186,29 @@ export default function DiscoverPage() {
     }
   }
 
+  const focusLabel = SIGNAL_FOCUS_PRESETS.find(f => f.value === signalFocus)?.label ?? "All signals";
+
   return (
     <div className="space-y-6">
 
-      {/* ── Header ──────────────────────────────────────────────────────── */}
+      {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="rounded-xl border border-neutral-200 bg-white px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
         <div>
           <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-0.5">Market Discovery Engine</p>
-          <p className="text-sm text-neutral-500">AI scans a sector and surfaces companies with active business signals.</p>
+          <p className="text-sm text-neutral-500">
+            Find companies with active business signals — by sector, market, and signal type.
+          </p>
         </div>
         <Link href="/prospects" className="text-sm text-neutral-500 hover:text-neutral-800 underline shrink-0">
           Back to Prospects
         </Link>
       </div>
 
-      {/* ── Search form ──────────────────────────────────────────────────── */}
+      {/* ── Search form ────────────────────────────────────────────────── */}
       <Card>
-        <form onSubmit={runDiscover} className="space-y-4">
+        <form onSubmit={runDiscover} className="space-y-5">
+
+          {/* Sector */}
           <div>
             <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">Sector</p>
             <div className="flex flex-wrap gap-2 mb-3">
@@ -154,6 +235,36 @@ export default function DiscoverPage() {
             />
           </div>
 
+          {/* Signal Focus — all 7 KB categories */}
+          <div>
+            <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
+              Signal Focus
+              <span className="ml-2 font-normal normal-case text-neutral-400">
+                — narrow to a specific type of business moment
+              </span>
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {SIGNAL_FOCUS_PRESETS.map(p => (
+                <button
+                  key={p.value || "all"}
+                  type="button"
+                  onClick={() => setSignalFocus(p.value)}
+                  className={`px-3 py-2 rounded-lg text-left border transition-colors ${
+                    signalFocus === p.value
+                      ? "bg-neutral-900 text-white border-neutral-900"
+                      : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400"
+                  }`}
+                >
+                  <span className="block text-xs font-medium mb-0.5">{p.icon} {p.label}</span>
+                  <span className={`text-[10px] leading-tight ${signalFocus === p.value ? "text-neutral-300" : "text-neutral-400"}`}>
+                    {p.description}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Market */}
           <div>
             <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">Market</p>
             <div className="flex flex-wrap gap-2">
@@ -179,28 +290,37 @@ export default function DiscoverPage() {
             disabled={scanning || !sector.trim()}
             className="w-full py-2.5 rounded-lg bg-neutral-900 text-white text-sm font-medium hover:bg-neutral-700 disabled:opacity-40 transition-colors"
           >
-            {scanning ? "Scanning market…" : "Discover Companies"}
+            {scanning
+              ? `Scanning for ${focusLabel.toLowerCase()} in ${sector}…`
+              : "Discover Companies"}
           </button>
         </form>
       </Card>
 
-      {/* ── Error / warning ──────────────────────────────────────────────── */}
+      {/* ── Error / warning ────────────────────────────────────────────── */}
       {error   && <Card><p className="text-sm text-red-600">{error}</p></Card>}
       {warning && <Card><p className="text-sm text-amber-600">{warning}</p></Card>}
 
-      {/* ── Results ──────────────────────────────────────────────────────── */}
+      {/* ── Results ────────────────────────────────────────────────────── */}
       {results !== null && (
         <div className="space-y-3">
-          <SectionTitle>
-            {results.length > 0
-              ? `${results.length} compan${results.length === 1 ? "y" : "ies"} discovered`
-              : "No companies discovered"}
-          </SectionTitle>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <SectionTitle>
+              {results.length > 0
+                ? `${results.length} compan${results.length === 1 ? "y" : "ies"} discovered`
+                : "No companies discovered"}
+            </SectionTitle>
+            {signalFocus && (
+              <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${signalTone(signalFocus)}`}>
+                {SIGNAL_FOCUS_PRESETS.find(f => f.value === signalFocus)?.icon} {signalFocus} focus
+              </span>
+            )}
+          </div>
 
           {results.length === 0 && (
             <Card>
               <p className="text-sm text-neutral-500">
-                No companies with active signals found for this sector and market. Try a broader sector or different market.
+                No companies with active signals found. Try a broader sector, different market, or change the signal focus.
               </p>
             </Card>
           )}
@@ -208,8 +328,10 @@ export default function DiscoverPage() {
           {results.map(company => (
             <Card key={company.name}>
               <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                <div className="flex-1 min-w-0 space-y-2">
+
+                  {/* Header row */}
+                  <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-semibold text-neutral-900">{company.name}</p>
                     <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${scoreTone(company.relevance_score)}`}>
                       {company.relevance_score}% fit
@@ -218,23 +340,40 @@ export default function DiscoverPage() {
                       {company.signal_type}
                     </span>
                   </div>
-                  <p className="text-xs text-neutral-400 mb-2">{company.industry} · {company.market_code}</p>
-                  <p className="text-sm text-neutral-700 mb-2">{company.signal_text}</p>
+
+                  <p className="text-xs text-neutral-400">{company.industry} · {company.market_code}</p>
+
+                  {/* Signal */}
+                  <p className="text-sm text-neutral-700">{company.signal_text}</p>
+
+                  {/* Why now */}
                   <div className="bg-neutral-50 rounded-lg px-3 py-2 border border-neutral-100">
                     <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-0.5">Why now</p>
                     <p className="text-xs text-neutral-600">{company.why_now}</p>
                   </div>
+
+                  {/* ShiftImpact angle */}
+                  {company.shiftimpact_angle && (
+                    <div className="bg-neutral-900 rounded-lg px-3 py-2">
+                      <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-0.5">ShiftImpact angle</p>
+                      <p className="text-xs text-white">{company.shiftimpact_angle}</p>
+                    </div>
+                  )}
+
+                  {/* Source */}
                   {company.source_url && (
                     <a
                       href={company.source_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[10px] text-neutral-400 hover:text-neutral-600 underline mt-1.5 inline-block truncate max-w-xs"
+                      className="text-[10px] text-neutral-400 hover:text-neutral-600 underline inline-block truncate max-w-xs"
                     >
                       {company.source_url}
                     </a>
                   )}
                 </div>
+
+                {/* Add to pipeline */}
                 <div className="shrink-0">
                   {added[company.name] ? (
                     <span className="px-3 py-1.5 rounded-lg bg-green-50 text-green-700 text-xs font-medium border border-green-200">

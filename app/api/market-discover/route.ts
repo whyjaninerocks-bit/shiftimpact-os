@@ -1,12 +1,16 @@
 // app/api/market-discover/route.ts
-// Market Discovery Engine — given a sector + market, find companies with active
-// business signals that aren't yet in the pipeline.
+// Market Discovery Engine — given a sector + market (+ optional signal focus),
+// find companies with active business signals not yet in the pipeline.
+//
+// Signal focus options (from Growth Intelligence KB v1.0):
+//   Growth, Recognition, Milestone, Activation, Leadership, Competitive, Talent
 //
 // Flow:
-//   1. Use Apify RAG browser + Google Search to find recent news in the sector
-//   2. AI extracts company names + signals from the results
-//   3. Cross-check against existing companies in DB to filter already-tracked ones
-//   4. Return ranked discovery list with signal context
+//   1. Build targeted search queries from sector + signal_focus
+//   2. Scrape via Apify RAG browser + Google Search
+//   3. AI extracts company names + signals using all 7 KB categories
+//   4. Cross-check against existing companies in DB to filter already-tracked ones
+//   5. Return ranked discovery list with signal context
 
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
@@ -16,6 +20,18 @@ export const maxDuration = 60;
 
 const APIFY_TOKEN = process.env.APIFY_API_TOKEN;
 const APIFY_BASE  = "https://api.apify.com/v2";
+
+// ─── Signal focus → search keyword map ───────────────────────────────────────
+
+const SIGNAL_FOCUS_QUERIES: Record<string, string> = {
+  Growth:       "funding investment expansion partnership",
+  Recognition:  "award win recognition ESG sustainability employer",
+  Milestone:    "anniversary milestone achievement years customer",
+  Activation:   "launch rebranding campaign event sponsorship",
+  Leadership:   "appointed CEO CMO director leadership transition founder",
+  Competitive:  "disruption new entrant competitor market change regulation",
+  Talent:       "hiring marketing brand digital growth CMO communications vacancy",
+};
 
 async function runApifyActor(
   actorId: string,
@@ -34,6 +50,8 @@ async function runApifyActor(
   return res.json() as Promise<Record<string, unknown>[]>;
 }
 
+// ─── AI extraction tool — all 7 KB signal categories ─────────────────────────
+
 const DISCOVER_TOOL: Anthropic.Tool = {
   name: "extract_companies",
   description: "Extract companies with active business signals from news content",
@@ -48,13 +66,24 @@ const DISCOVER_TOOL: Anthropic.Tool = {
             name:         { type: "string", description: "Company name as it appears in the news" },
             industry:     { type: "string", description: "Industry sector" },
             market_code:  { type: "string", description: "2-letter market code: MY, SG, PH, TH, ID" },
-            signal_type:  { type: "string", description: "Type of business signal: Growth, Recognition, Milestone, Activation, Leadership" },
+            signal_type:  {
+              type: "string",
+              enum: ["Growth", "Recognition", "Milestone", "Activation", "Leadership", "Competitive", "Talent"],
+              description: "The KB signal category that best describes the business event",
+            },
             signal_text:  { type: "string", description: "One-sentence description of the specific business event" },
             source_url:   { type: "string", description: "URL of the news article" },
-            why_now:      { type: "string", description: "Why this company is worth approaching now — the strategic tension or opportunity" },
+            why_now:      {
+              type: "string",
+              description: "Why this company is worth approaching now — the specific tension or opportunity the signal reveals",
+            },
+            shiftimpact_angle: {
+              type: "string",
+              description: "One sentence: which ShiftImpact capability is most relevant (Brand Clarity Audit, FRAME Brief, Campaign Intelligence, Command Desk, Launch Readiness Audit)",
+            },
             relevance_score: { type: "number", description: "0-100 relevance score for ShiftImpact OS positioning" },
           },
-          required: ["name", "industry", "market_code", "signal_type", "signal_text", "why_now", "relevance_score"],
+          required: ["name", "industry", "market_code", "signal_type", "signal_text", "why_now", "shiftimpact_angle", "relevance_score"],
         },
       },
     },
@@ -63,20 +92,26 @@ const DISCOVER_TOOL: Anthropic.Tool = {
 };
 
 export async function POST(req: NextRequest) {
-  const supabase = createAdminClient();
+  const supabase  = createAdminClient();
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   let body: Record<string, unknown>;
   try { body = await req.json(); }
   catch { return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 }); }
 
-  const sector      = (body.sector      ?? "") as string;
-  const market      = (body.market      ?? "Malaysia") as string;
-  const marketCode  = (body.market_code ?? "MY") as string;
+  const sector       = (body.sector       ?? "") as string;
+  const market       = (body.market       ?? "Malaysia") as string;
+  const marketCode   = (body.market_code  ?? "MY") as string;
+  const signalFocus  = (body.signal_focus ?? "") as string; // optional
 
   if (!sector) {
     return NextResponse.json({ error: "sector is required" }, { status: 400 });
   }
+
+  // Build signal-focused search keywords
+  const focusKeywords = signalFocus && SIGNAL_FOCUS_QUERIES[signalFocus]
+    ? SIGNAL_FOCUS_QUERIES[signalFocus]
+    : "award launch expansion partnership leadership hiring";
 
   // 1. Scrape — run both sources in parallel
   const rawChunks: string[] = [];
@@ -84,14 +119,14 @@ export async function POST(req: NextRequest) {
   const [ragItems, gnItems] = await Promise.all([
     APIFY_TOKEN
       ? runApifyActor("apify/rag-web-browser", {
-          query: `${sector} ${market} company news award launch expansion partnership 2025 OR 2026`,
+          query: `${sector} ${market} company ${focusKeywords} 2025 OR 2026`,
           maxResults: 8,
         }, 20, 8).catch(() => [] as Record<string, unknown>[])
       : Promise.resolve([] as Record<string, unknown>[]),
 
     APIFY_TOKEN
       ? runApifyActor("apify/google-search-scraper", {
-          queries: `${sector} ${market} brand OR company news 2025 OR 2026 award OR launch OR expansion OR leadership`,
+          queries: `${sector} ${market} brand OR company news 2025 OR 2026 ${focusKeywords}`,
           maxPagesPerQuery: 1,
           resultsPerPage: 10,
         }, 20, 10).catch(() => [] as Record<string, unknown>[])
@@ -132,9 +167,13 @@ export async function POST(req: NextRequest) {
   // 3. Extract companies via AI
   const rawContent = rawChunks.join("\n\n---\n\n").slice(0, 10000);
 
+  const focusInstruction = signalFocus
+    ? `SIGNAL FOCUS: Prioritise companies with "${signalFocus}" signals — ${SIGNAL_FOCUS_QUERIES[signalFocus] ?? ""}. Score companies with this signal type higher.`
+    : "Find the highest-fit companies across all signal types.";
+
   const aiResp = await anthropic.messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 2000,
+    max_tokens: 2500,
     tool_choice: { type: "tool", name: "extract_companies" },
     tools: [DISCOVER_TOOL],
     messages: [
@@ -142,20 +181,33 @@ export async function POST(req: NextRequest) {
         role: "user",
         content: `You are the Market Discovery Engine for ShiftImpact OS — a strategic intelligence consultancy serving brands and marketing leaders in Southeast Asia.
 
-Your job: from the news content below, identify companies in the ${sector} sector in ${market} that have ACTIVE business signals — specific, real events that indicate they may need:
-- Strategic narrative clarity
-- Brand positioning work
-- Campaign intelligence
-- Communication strategy during a business transition
+Your job: from the news content below, identify companies in the ${sector} sector in ${market} that have ACTIVE business signals indicating they may need strategic narrative clarity, brand positioning, campaign intelligence, or communication strategy.
+
+SIGNAL TAXONOMY (Growth Intelligence Layer KB v1.0 — use all 7 categories):
+- Growth: Funding, investment, market expansion, new partnerships, physical expansion
+- Recognition: Awards, ESG/sustainability recognition, employer recognition, leadership recognition
+- Milestone: Heritage anniversaries, customer milestones, business achievement milestones
+- Activation: Product/service launches, rebranding, corporate/industry events, sponsorships
+- Leadership: Executive appointments, founder transitions, leadership visibility changes
+- Competitive: Competitor launches, new entrants, category disruption, regulation changes that create openings
+- Talent: Hiring campaigns for marketing/brand/digital/growth/communications roles
+
+${focusInstruction}
+
+SHIFTIMPACT SERVICES (match to signals):
+- Brand Clarity Audit → narrative fragmentation, post-merger confusion, inconsistent messaging
+- FRAME Brief → about to launch, reposition, or enter new market
+- Campaign Intelligence → pre-launch spend validation, agency second opinion
+- Command Desk → ongoing transformation, multi-year strategic navigation
+- Launch Readiness Audit → new product or market entry
 
 RULES:
-- Only extract companies with SPECIFIC, VERIFIABLE events (not generic mentions)
-- Each company must have a clear "why now" — what moment are they in?
-- Relevance score: 0-100 based on fit for ShiftImpact's services (brand strategy, narrative, intelligence)
-- market_code must be one of: MY, SG, PH, TH, ID
-- signal_type must be: Growth, Recognition, Milestone, Activation, or Leadership
+- Only extract companies with SPECIFIC, VERIFIABLE events
+- Each must have a clear "why now" — what business tension does the signal reveal?
+- relevance_score: 0-100 based on fit for ShiftImpact's services
+- market_code: MY, SG, PH, TH, or ID only
 - Maximum 10 companies
-- Do NOT include companies already in this list: ${Array.from(existingNames).join(", ")}
+- Do NOT include: ${Array.from(existingNames).slice(0, 30).join(", ")}
 
 SECTOR: ${sector}
 MARKET: ${market}
@@ -166,7 +218,7 @@ ${rawContent}`,
     ],
   });
 
-  let discovered: Array<{
+  type Discovered = {
     name: string;
     industry: string;
     market_code: string;
@@ -174,12 +226,15 @@ ${rawContent}`,
     signal_text: string;
     source_url?: string;
     why_now: string;
+    shiftimpact_angle: string;
     relevance_score: number;
-  }> = [];
+  };
+
+  let discovered: Discovered[] = [];
 
   const toolUse = aiResp.content.find(b => b.type === "tool_use");
   if (toolUse && toolUse.type === "tool_use") {
-    const inp = toolUse.input as { companies: typeof discovered };
+    const inp = toolUse.input as { companies: Discovered[] };
     discovered = (inp.companies ?? [])
       .filter(c => !existingNames.has(c.name.toLowerCase().trim()))
       .sort((a, b) => b.relevance_score - a.relevance_score)

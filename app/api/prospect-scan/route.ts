@@ -156,7 +156,7 @@ const CLASSIFY_TOOL: Anthropic.Tool = {
           properties: {
             signal_category: {
               type: "string",
-              enum: ["Growth","Recognition","Milestone","Activation","Leadership"],
+              enum: ["Growth","Recognition","Milestone","Activation","Leadership","Competitive","Talent"],
             },
             signal_type:  { type: "string", description: "Specific sub-type e.g. 'Series A Funding', 'Award Win', 'New Product Launch'" },
             signal_text:  { type: "string", description: "One-sentence summary of the signal" },
@@ -388,6 +388,8 @@ SIGNAL TAXONOMY — classify using these categories:
 - Milestone: Heritage anniversaries, customer milestones, business achievement milestones
 - Activation: Product/service launches, rebranding, corporate/industry events, sponsorships
 - Leadership: Executive appointments, founder transitions, leadership visibility changes
+- Competitive: Competitor launches, new market entrants, category disruption, pricing pressure, consumer behaviour shifts, regulation changes, industry disruption that creates market openings
+- Talent: Hiring campaigns for marketing/growth/brand/digital/ESG/communications roles — signals of capability investment and strategic direction change
 
 RULES:
 - Only extract signals that are SPECIFIC, REAL, OBSERVABLE events — not generic marketing copy
