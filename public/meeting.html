@@ -283,8 +283,8 @@
       content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
       background: var(--emerald); opacity: 0; transition: opacity 0.25s;
     }
-    .demo-card:hover { border-color: rgba(5,150,105,0.35); background: rgba(5,150,105,0.04); }
-    .demo-card:hover::before { opacity: 1; }
+    .demo-card:hover { border-color: var(--slate-800); background: rgba(255,255,255,0.025); }
+    .demo-card:hover::before { opacity: 0; }
 
     /* Browser chrome mockup */
     .demo-chrome {
@@ -310,7 +310,7 @@
       display: flex; align-items: center; gap: 5px;
     }
     .demo-link svg { transition: transform 0.2s; }
-    .demo-card:hover .demo-link svg { transform: translateX(4px); }
+
     .demo-note {
       margin-top: 16px; font-size: 11.5px; color: var(--slate-600);
       font-style: italic; text-align: center;
@@ -650,16 +650,8 @@
         The intelligence layer runs in the background. What comes out is a read the whole room can act on.
       </p>
 
-      <div class="pres-toggle-row fu d2">
-        <button class="pres-toggle-btn" id="presToggle" onclick="togglePresMode()">
-          <span class="dot"></span>
-          <span id="presToggleLabel">Deactivate live links</span>
-        </button>
-      </div>
-
       <div class="demo-grid fu d3">
-        <a href="https://shiftimpact-os.vercel.app/report/99dcd9c1-bbbd-4a7e-b8d8-d6023ea8a30c"
-           target="_blank" rel="noopener noreferrer" class="demo-card">
+        <div class="demo-card" style="cursor:default;">
           <!-- Browser chrome -->
           <div class="demo-chrome">
             <div class="demo-chrome-dot" style="background:#ef4444; opacity:0.6;"></div>
@@ -674,17 +666,13 @@
               What the brand sees every Monday: signal health, consumer movement,
               and what happens next.
             </div>
-            <div class="demo-link">
-              Open live view
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
+            <div class="demo-link" style="opacity:0.3; cursor:default;">
+              Live view
             </div>
           </div>
-        </a>
+        </div>
 
-        <a href="https://shiftimpact-os.vercel.app/audit/1995826a-fb21-46a4-b178-2ff4f3f4bbbd"
-           target="_blank" rel="noopener noreferrer" class="demo-card">
+        <div class="demo-card" style="cursor:default;">
           <div class="demo-chrome">
             <div class="demo-chrome-dot" style="background:#ef4444; opacity:0.6;"></div>
             <div class="demo-chrome-dot" style="background:#f59e0b; opacity:0.6;"></div>
@@ -699,17 +687,13 @@
               A fast read on campaign signal health, idea integrity, and where
               the gaps are.
             </div>
-            <div class="demo-link">
-              Open live view
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
+            <div class="demo-link" style="opacity:0.3; cursor:default;">
+              Live view
             </div>
           </div>
-        </a>
+        </div>
       </div>
 
-      <p class="pres-mode-label">⬤ Live links deactivated — presentation mode</p>
       <p class="demo-note fu d4">
         Demonstration environments only. Client data is never publicly accessible.
       </p>
