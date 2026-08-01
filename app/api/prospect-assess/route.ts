@@ -35,6 +35,38 @@ async function resolveModel(
   return "haiku";
 }
 
+// ─── B2B calibration context — injected when company.business_model === B2B ──
+const B2B_CONTEXT = `
+════════════════════════════════════════════════════════
+B2B CALIBRATION — THIS IS A B2B COMPANY
+════════════════════════════════════════════════════════
+
+Replace the B2C "Cultural Fit" lens with "Business Pain Fit":
+Cultural authenticity does not apply. The core question is whether there is a specific, well-evidenced operational or revenue pain that ShiftImpact can diagnose before anyone else has named it.
+
+AUDIENCE TENSION — B2B deals involve three buyers simultaneously:
+• Economic Buyer (CEO, CFO, Board): ROI certainty, risk reduction, defensible decision
+• Technical Buyer (CMO, Head of Marketing, VP Brand): capability, process clarity, ease of integration
+• End-User (Marketing team): reduced workload, clearer briefs, faster decisions
+An assessment that only addresses the Technical Buyer will stall at contract stage. Name the tension for each.
+
+STAGE GATE MODEL — evaluate all 5 gates before recommending Pursue:
+S = Signal: Is the business pain real and evidenced in the signals? (not assumed)
+T = Timing: Is there an open budget cycle, leadership entry, or contract renewal window NOW?
+A = Access: Is there a visible path to the economic buyer — not just the CMO?
+G = Gravity: How painful is inaction for this company? Will they act without external pressure?
+E = Entry: What is the single sharpest offer that addresses the confirmed pain with least friction?
+
+SCORING ADJUSTMENT FOR B2B:
+• A company with only T or only S = Watch, not Pursue (incomplete STAGE gate)
+• Pursuit Score should heavily discount for missing A (access to economic buyer)
+• Decision Window is typically longer for B2B: budget cycles = 8–12 weeks; leadership entry = 4–8 weeks
+• B2B recommended_offer is most often "Founder Growth Diagnostic" or "Marketing Decision Snapshot" as first engagement
+
+AOAI B2B RELEVANCE:
+AOAI Acquisition OS is highly relevant for B2B companies with a structured lead-generation or sales-pipeline problem (pillar P02 CAPTURE, P03 NURTURE, P04 CONVERT). ActivationOS AI Lead Engine is less relevant unless they run high-volume inbound enquiries.
+`;
+
 // ─── ShiftImpact OS context injected into every assessment ────────────────────
 const SHIFTIMPACT_CONTEXT = `
 SHIFTIMPACT OS — WHO WE ARE AND WHAT WE DO:
@@ -239,6 +271,15 @@ const ASSESS_TOOL: Anthropic.Tool = {
         type: "string",
         description: "If partner_lens is Both: one paragraph describing the combined ShiftImpact + AOAI offer — ShiftImpact does X (strategy), AOAI does Y (execution), the combined outcome is Z. Make it specific to this company's moment. If partner_lens is ShiftImpact only, write 'Not applicable'.",
       },
+      // ── B2B-only fields (omit for B2C) ───────────────────────────────────
+      business_pain_fit: {
+        type: "string",
+        description: "B2B only: In one sentence, name the specific operational or revenue pain this company has that ShiftImpact can diagnose. Must be grounded in the actual signals — not generic positioning language. Leave blank for B2C.",
+      },
+      stage_assessment: {
+        type: "string",
+        description: "B2B only: One sentence per STAGE gate (S/T/A/G/E), 5 sentences total. State whether each gate is Open, Partial, or Closed and why. E.g. 'S: Open — three signals confirm narrative fragmentation post-merger. T: Open — new CMO started 6 weeks ago. A: Partial — CMO visible but no CFO signal. G: High — competitor launched repositioning last month. E: Marketing Decision Snapshot framed as brand-risk triage.' Leave blank for B2C.",
+      },
     },
     required: [
       "business_moment_summary","shiftimpact_entry_point","recommended_approach",
@@ -284,6 +325,12 @@ export async function POST(req: NextRequest) {
 
   if (compErr || !company) return NextResponse.json({ error: "Company not found" }, { status: 404 });
   if (company.is_suppressed) return NextResponse.json({ error: "Company is suppressed" }, { status: 403 });
+
+  // Derive engagement_model from company.business_model for B2B calibration
+  const engagementModel =
+    company.business_model === "B2B"    ? "B2B"    :
+    company.business_model === "B2B2C"  ? "B2B2C"  : "B2C";
+  const isB2B = engagementModel === "B2B" || engagementModel === "B2B2C";
 
   // Load signals (non-duplicates, most recent 8 — keep prompt lean for Vercel 60s budget)
   const { data: signals } = await supabase
@@ -364,7 +411,7 @@ ShiftImpact Offer Guide:
         role: "user",
         content: `You are a senior business development strategist at ShiftImpact OS with deep knowledge of Southeast Asian brand and marketing dynamics. Your assessments are specific, commercially grounded, and never generic.
 
-${SHIFTIMPACT_CONTEXT}
+${SHIFTIMPACT_CONTEXT}${isB2B ? B2B_CONTEXT : ""}
 
 ═══════════════════════════════════════════════
 PROSPECT TO ASSESS
@@ -495,6 +542,7 @@ Every field must be specific to ${company.name}. If it could apply to any compan
       first_engagement_offer:  assessment.first_engagement_offer  ?? null,
       aoai_campaign_mechanic:  assessment.aoai_campaign_mechanic  ?? null,
       aoai_joint_pitch:        assessment.aoai_joint_pitch        ?? null,
+      engagement_model:        engagementModel,
     });
   if (insightErr) console.error("[prospect-assess] insight insert failed:", insightErr.message);
 
@@ -558,6 +606,9 @@ Every field must be specific to ${company.name}. If it could apply to any compan
       aoai_entry_angle:       assessment.aoai_entry_angle,
       aoai_campaign_mechanic: assessment.aoai_campaign_mechanic,
       aoai_joint_pitch:       assessment.aoai_joint_pitch,
+      engagement_model:       engagementModel,
+      business_pain_fit:      assessment.business_pain_fit      ?? null,
+      stage_assessment:       assessment.stage_assessment       ?? null,
     },
     model_used:    model,
     model_tier:    modelTier,

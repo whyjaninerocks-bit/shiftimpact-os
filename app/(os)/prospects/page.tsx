@@ -49,7 +49,7 @@ export default async function ProspectsPage({
     .from("companies")
     .select(`
       id, name, industry, market_code, status, prospect_tier,
-      last_signal_date, is_suppressed, partner_tag,
+      last_signal_date, is_suppressed, partner_tag, business_model,
       business_signals ( count )
     `)
     .eq("is_suppressed", false)
@@ -216,6 +216,9 @@ export default async function ProspectsPage({
                         <Badge tone={partnerTone((c as Record<string,unknown>).partner_tag as string)}>
                           {(c as Record<string,unknown>).partner_tag as string}
                         </Badge>
+                      )}
+                      {((c as Record<string,unknown>).business_model === "B2B" || (c as Record<string,unknown>).business_model === "B2B2C") && (
+                        <Badge tone="neutral">{(c as Record<string,unknown>).business_model as string}</Badge>
                       )}
                     </div>
                     <p className="text-xs text-neutral-400 mt-0.5">
