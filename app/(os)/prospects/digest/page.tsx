@@ -39,6 +39,78 @@ function spendTone(s: string | null): string {
   return "bg-neutral-50 border-neutral-200 text-neutral-500";
 }
 
+// ── Pitch synthesis ─────────────────────────────────────────────────────────
+// Given sorted window types (highest-priority first) for ONE company,
+// returns a single entry-point recommendation and a narrative that shows
+// how all open windows connect — so Janine walks into the room with ONE story.
+
+type SynthesisResult = {
+  narrative: string;
+  leadWindowType: string;
+};
+
+function synthesizePitchAngle(
+  windowTypes: string[],   // sorted by WINDOW_PRIORITY, highest first
+  leadLabel: string        // human label for the top window
+): SynthesisResult {
+  const has = (t: string) => windowTypes.includes(t);
+  const leadWindowType = windowTypes[0];
+  const n = windowTypes.length;
+
+  // ── Specific two-window combos ────────────────────────────────────────────
+  if (has("leadership_change") && has("funding_event"))
+    return { narrative: "New leadership with fresh capital — audit their strategy before they lock in the roadmap. One conversation that covers both doors.", leadWindowType };
+  if (has("leadership_change") && has("rfp_cycle"))
+    return { narrative: "Incoming leader triggering an agency review — get in before the brief is written, not after it is awarded.", leadWindowType };
+  if (has("leadership_change") && has("fiscal_cycle"))
+    return { narrative: "Leadership transition entering planning season — shape the new brief before anyone else is in the room.", leadWindowType };
+  if (has("leadership_change") && has("campaign_season"))
+    return { narrative: "New leader inheriting active campaigns — show them what is really performing before they make changes.", leadWindowType };
+  if (has("leadership_change") && has("conference_calendar"))
+    return { narrative: "New leader riding a recognition moment — enter on the win, not the pitch. Make the intelligence the trophy.", leadWindowType };
+  if (has("leadership_change") && has("product_launch"))
+    return { narrative: "Leadership change coinciding with a product push — they need to know if the launch is landing before they commit the next round of spend.", leadWindowType };
+
+  if (has("funding_event") && has("rfp_cycle"))
+    return { narrative: "Capital secured, vendor review open — they have budget and a decision to make. Lead with ROI clarity, not a capabilities deck.", leadWindowType };
+  if (has("funding_event") && has("campaign_season"))
+    return { narrative: "Investment secured with campaigns running — lead with attribution: show exactly what their capital is doing right now.", leadWindowType };
+  if (has("funding_event") && has("fiscal_cycle"))
+    return { narrative: "Fresh funding entering annual planning — position Growth Intelligence as the foundation for how they deploy capital next year.", leadWindowType };
+  if (has("funding_event") && has("product_launch"))
+    return { narrative: "Funded company launching a product — they are spending. The question is whether they know it is working.", leadWindowType };
+
+  if (has("rfp_cycle") && has("fiscal_cycle"))
+    return { narrative: "Budget season coinciding with agency review — do not compete as a vendor. Enter as the intelligence layer for the incoming brief.", leadWindowType };
+  if (has("rfp_cycle") && has("campaign_season"))
+    return { narrative: "Agency review with live campaigns — the campaigns are your proof of concept. Show them what better intelligence looks like on their own data.", leadWindowType };
+
+  if (has("campaign_season") && has("fiscal_cycle"))
+    return { narrative: "Active campaign overlapping with planning — this campaign's data is the anchor for next year's strategy conversation.", leadWindowType };
+  if (has("campaign_season") && has("conference_calendar"))
+    return { narrative: "Award/event momentum with live campaigns — lead with the story behind the numbers. Recognition opens the door, intelligence is the room.", leadWindowType };
+  if (has("campaign_season") && has("product_launch"))
+    return { narrative: "New product in market with campaigns active — one conversation on the full-cycle intelligence behind the launch.", leadWindowType };
+
+  if (has("fiscal_cycle") && has("product_launch"))
+    return { narrative: "Planning season with a product push underway — the launch data is the best argument for building the intelligence layer before next year's plan is locked.", leadWindowType };
+  if (has("conference_calendar") && has("product_launch"))
+    return { narrative: "Award momentum with a product launch — they are visible and moving. Enter with the numbers that explain the recognition.", leadWindowType };
+
+  // ── 3+ windows that did not match a specific pair ────────────────────────
+  if (n >= 3)
+    return {
+      narrative: `${n} signals converging on one company. Lead with the ${leadLabel.toLowerCase()} signal only — the others are supporting context you deploy in the room once you are in, not before.`,
+      leadWindowType,
+    };
+
+  // ── Single window ─────────────────────────────────────────────────────────
+  return {
+    narrative: "One clear signal. Lead with this, open the conversation, and let them surface the rest.",
+    leadWindowType,
+  };
+}
+
 export default async function DigestPage() {
   const supabase = createAdminClient();
   const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
@@ -239,14 +311,21 @@ export default async function DigestPage() {
                 return w.engagement_model === "B2B";
               });
 
+              // Derive ordered window types + labels for synthesis
+              const orderedWindowTypes = alerts.map(a => (a.opportunity_windows as { window_type: string }).window_type);
+              const leadAlertWin = alerts[0]?.opportunity_windows as { window_type: string; label: string };
+              const leadLabel = leadAlertWin?.label ?? "";
+              const synthesis = synthesizePitchAngle(orderedWindowTypes, leadLabel);
+
               return (
                 <div key={co.id} className={`rounded-xl border p-4 ${
                   hasHighPriority ? "border-amber-200 bg-amber-50" : "border-neutral-200 bg-white"
                 }`}>
                   <div className="flex items-start justify-between gap-3 flex-wrap">
-                    <div className="flex-1 min-w-0">
-                      {/* Company header */}
-                      <div className="flex items-center gap-2 flex-wrap mb-2">
+                    <div className="flex-1 min-w-0 space-y-2.5">
+
+                      {/* ── Company header ── */}
+                      <div className="flex items-center gap-2 flex-wrap">
                         <Link
                           href={`/prospects/${co.id}`}
                           className="font-semibold text-neutral-900 hover:underline"
@@ -262,31 +341,59 @@ export default async function DigestPage() {
                           {[co.industry, co.market_code].filter(Boolean).join(" · ")}
                         </span>
                       </div>
-                      {/* Window type badges */}
-                      <div className="flex flex-wrap gap-1.5 mb-2">
-                        {alerts.map(alert => {
+
+                      {/* ── Window badges: lead (dark) + supporting (muted) ── */}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mr-0.5">Lead with</span>
+                        {alerts.map((alert, idx) => {
                           const win = alert.opportunity_windows as { window_type: string; label: string };
-                          const isHigh = ["leadership_change", "funding_event"].includes(win.window_type);
-                          return (
-                            <span key={alert.id} className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wide ${
-                              isHigh
-                                ? "bg-amber-100 border-amber-300 text-amber-800"
-                                : "bg-neutral-100 border-neutral-200 text-neutral-600"
-                            }`}>
+                          const isLead = win.window_type === synthesis.leadWindowType && idx === alerts.findIndex(
+                            a => (a.opportunity_windows as { window_type: string }).window_type === synthesis.leadWindowType
+                          );
+                          return isLead ? (
+                            <span key={alert.id} className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-neutral-900 text-white uppercase tracking-wide">
                               {win.label}
                             </span>
-                          );
+                          ) : null;
                         })}
+                        {alerts.length > 1 && (
+                          <>
+                            <span className="text-[10px] text-neutral-300 mx-0.5">·</span>
+                            <span className="text-[10px] text-neutral-400 uppercase tracking-wider mr-0.5">Context</span>
+                            {alerts.map((alert, idx) => {
+                              const win = alert.opportunity_windows as { window_type: string; label: string };
+                              const isLead = win.window_type === synthesis.leadWindowType && idx === alerts.findIndex(
+                                a => (a.opportunity_windows as { window_type: string }).window_type === synthesis.leadWindowType
+                              );
+                              return !isLead ? (
+                                <span key={alert.id} className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-neutral-200 bg-neutral-50 text-neutral-500 uppercase tracking-wide">
+                                  {win.label}
+                                </span>
+                              ) : null;
+                            })}
+                          </>
+                        )}
                       </div>
-                      {/* Trigger reasons */}
-                      <p className="text-xs text-neutral-400">
-                        <span className="text-neutral-300">triggered by</span>{" "}
-                        {alerts.map(a => (
-                          <span key={a.id} className="font-medium text-neutral-500">{a.trigger_reason}</span>
-                        )).reduce<React.ReactNode[]>((acc, el, i) => i === 0 ? [el] : [...acc, <span key={`sep-${i}`} className="text-neutral-300"> · </span>, el], [])}
+
+                      {/* ── Pitch angle synthesis ── */}
+                      <div className={`rounded-lg px-3 py-2 text-xs ${
+                        hasHighPriority
+                          ? "bg-amber-100 border border-amber-200 text-amber-900"
+                          : "bg-neutral-900 text-neutral-200"
+                      }`}>
+                        <span className={`font-bold uppercase tracking-wider text-[10px] block mb-0.5 ${
+                          hasHighPriority ? "text-amber-600" : "text-neutral-400"
+                        }`}>Pitch angle</span>
+                        {synthesis.narrative}
+                      </div>
+
+                      {/* ── Trigger reasons (compact) ── */}
+                      <p className="text-[11px] text-neutral-400">
+                        Signals: {alerts.map(a => a.trigger_reason).join(" · ")}
                       </p>
+
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex flex-col items-end gap-2 shrink-0">
                       <span className="text-xs text-neutral-400">{daysSince(alerts[0]?.detected_at ?? null)}</span>
                       <Link
                         href={`/prospects/${co.id}`}
