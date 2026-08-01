@@ -106,7 +106,7 @@ export async function GET() {
       const windowTypes = alerts.map(a => (a.opportunity_windows as { window_type: string }).window_type);
       const leadWin = alerts[0]?.opportunity_windows as { label: string };
       const leadLabel = leadWin?.label ?? windowTypes[0];
-      const { narrative } = synthesizePitchAngle(windowTypes, leadLabel);
+      const { narrative } = synthesizePitchAngle(windowTypes, leadLabel, alerts.map(a => a.trigger_reason));
       const isB2B = alerts.some(a => (a.opportunity_windows as { engagement_model: string }).engagement_model === "B2B");
 
       lines.push(`${co.name}${isB2B ? " [B2B]" : ""} — ${[co.industry, co.market_code].filter(Boolean).join(", ")}`);
@@ -156,7 +156,8 @@ export async function GET() {
       all_windows: alerts.map(a => (a.opportunity_windows as { label: string }).label),
       pitch_angle: synthesizePitchAngle(
         alerts.map(a => (a.opportunity_windows as { window_type: string }).window_type),
-        (alerts[0]?.opportunity_windows as { label: string })?.label ?? ""
+        (alerts[0]?.opportunity_windows as { label: string })?.label ?? "",
+        alerts.map(a => a.trigger_reason)
       ).narrative,
       signals: alerts.map(a => a.trigger_reason),
     })),

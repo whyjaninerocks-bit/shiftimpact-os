@@ -53,10 +53,12 @@ function matchWindowType(signal: Signal): string | null {
     /\baward\b|speak(er|ing)\b|conference\b|summit\b|forum\b|sponsor(ship)?\b|keynote\b/.test(full)
   ) return "conference_calendar";
 
-  // Fiscal cycle — strategic planning, budget, expansion signals
+  // Fiscal cycle — explicit budget or annual planning cycle signals only.
+  // Does NOT fire on broad strategy/expansion language — a multi-year plan
+  // announcement is not evidence of an active budget cycle.
   if (
     cat === "growth" &&
-    /\bbudget\b|strateg(y|ic)\b|annual plan\b|fiscal\b|expansion\b|five.year\b|long.term plan\b/.test(full)
+    /\bfiscal (year|cycle|quarter)\b|annual (budget|plan|planning|media plan)\b|budget (review|allocation|planning|cycle|approved|finalise|finalize)\b|media plan(ning)?\b|q[1-4] planning\b|next year.{0,30}(budget|plan|spend)\b|(budget|spend).{0,30}next year\b/.test(full)
   ) return "fiscal_cycle";
 
   // Campaign season (B2C) — Activation category = campaign in market

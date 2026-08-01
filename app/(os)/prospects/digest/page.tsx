@@ -242,9 +242,10 @@ export default async function DigestPage() {
 
               // Derive ordered window types + labels for synthesis
               const orderedWindowTypes = alerts.map(a => (a.opportunity_windows as { window_type: string }).window_type);
+              const triggerReasons    = alerts.map(a => a.trigger_reason);
               const leadAlertWin = alerts[0]?.opportunity_windows as { window_type: string; label: string };
               const leadLabel = leadAlertWin?.label ?? "";
-              const synthesis = synthesizePitchAngle(orderedWindowTypes, leadLabel);
+              const synthesis = synthesizePitchAngle(orderedWindowTypes, leadLabel, triggerReasons);
 
               return (
                 <div key={co.id} className={`rounded-xl border p-4 ${
