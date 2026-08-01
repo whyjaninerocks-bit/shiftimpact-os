@@ -7,6 +7,7 @@ import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Badge, Card, SectionTitle } from "@/app/_components/ui";
 import { synthesizePitchAngle, type SynthesisResult } from "@/lib/window-synthesis";
+import { getAOAIScope } from "@/lib/aoai-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -120,7 +121,7 @@ export default async function DigestPage() {
     .select(`
       id, trigger_reason, detected_at, is_open,
       company_id,
-      companies!inner ( id, name, industry, market_code, status, business_model ),
+      companies!inner ( id, name, industry, market_code, status, business_model, partner_tag ),
       opportunity_windows!inner ( id, window_type, label, engagement_model )
     `)
     .eq("is_open", true)
@@ -148,13 +149,13 @@ export default async function DigestPage() {
   // Group window alerts by company, preserving priority sort within each group
   type WindowAlertRow = typeof sortedWindows[number];
   type CompanyWindowGroup = {
-    company: { id: string; name: string; industry: string | null; market_code: string | null; status: string | null; business_model: string | null };
+    company: { id: string; name: string; industry: string | null; market_code: string | null; status: string | null; business_model: string | null; partner_tag: string | null };
     alerts: WindowAlertRow[];
     topPriority: number;
   };
   const windowsByCompanyMap = new Map<string, CompanyWindowGroup>();
   for (const alert of sortedWindows) {
-    const co = alert.companies as { id: string; name: string; industry: string | null; market_code: string | null; status: string | null; business_model: string | null };
+    const co = alert.companies as { id: string; name: string; industry: string | null; market_code: string | null; status: string | null; business_model: string | null; partner_tag: string | null };
     const win = alert.opportunity_windows as { window_type: string };
     const priority = WINDOW_PRIORITY[win.window_type] ?? 9;
     if (!windowsByCompanyMap.has(co.id)) {
@@ -247,6 +248,10 @@ export default async function DigestPage() {
               const leadLabel = leadAlertWin?.label ?? "";
               const synthesis = synthesizePitchAngle(orderedWindowTypes, leadLabel, triggerReasons);
 
+              // AOAI scope — shown when company is tagged AOAI or Both
+              const isAOAI = co.partner_tag === "AOAI" || co.partner_tag === "Both";
+              const aoaiScope = isAOAI ? getAOAIScope(synthesis.leadWindowType) : null;
+
               return (
                 <div key={co.id} className={`rounded-xl border p-4 ${
                   hasHighPriority ? "border-amber-200 bg-amber-50" : "border-neutral-200 bg-white"
@@ -265,6 +270,16 @@ export default async function DigestPage() {
                         {hasB2B && (
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-blue-50 border-blue-200 text-blue-700 uppercase tracking-wide">
                             B2B
+                          </span>
+                        )}
+                        {co.partner_tag === "AOAI" && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-green-50 border-green-200 text-green-700 uppercase tracking-wide">
+                            AOAI
+                          </span>
+                        )}
+                        {co.partner_tag === "Both" && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-purple-50 border-purple-200 text-purple-700 uppercase tracking-wide">
+                            ShiftImpact + AOAI
                           </span>
                         )}
                         <span className="text-xs text-neutral-400">
@@ -316,6 +331,30 @@ export default async function DigestPage() {
                         }`}>Pitch angle</span>
                         {synthesis.narrative}
                       </div>
+
+                      {/* ── AOAI scope block ── */}
+                      {aoaiScope && (
+                        <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 space-y-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[10px] font-bold text-green-700 uppercase tracking-widest">AOAI — AcquisitionOS™</span>
+                            <div className="flex flex-wrap gap-1">
+                              {aoaiScope.pillars.map(p => (
+                                <span key={p} className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-green-100 text-green-800 uppercase tracking-wide">
+                                  {p}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-bold text-green-600 uppercase tracking-wider mb-0.5">AOAI executes</p>
+                            <p className="text-xs text-green-900">{aoaiScope.aoaiExecutes}</p>
+                          </div>
+                          <div className="border-t border-green-200 pt-2">
+                            <p className="text-[10px] font-bold text-green-600 uppercase tracking-wider mb-0.5">Janine preps AOAI on</p>
+                            <p className="text-xs text-green-800">{aoaiScope.janinePrepAOAI}</p>
+                          </div>
+                        </div>
+                      )}
 
                       {/* ── Trigger reasons (compact) ── */}
                       <p className="text-[11px] text-neutral-400">
