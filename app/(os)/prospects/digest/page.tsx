@@ -85,19 +85,25 @@ function synthesizePitchAngle(
   if (has("rfp_cycle") && has("campaign_season"))
     return { narrative: "Agency review with live campaigns — the campaigns are your proof of concept. Show them what better intelligence looks like on their own data.", leadWindowType };
 
+  // ── Conference combos — check before campaign+fiscal so recognition moment takes precedence ──
+  if (has("conference_calendar") && has("campaign_season") && has("fiscal_cycle"))
+    return { narrative: "Award momentum with active campaigns heading into planning season — lead on the recognition win, then show them the intelligence that made the campaign work. One meeting, one story.", leadWindowType };
+  if (has("conference_calendar") && has("campaign_season"))
+    return { narrative: "Award/event momentum with live campaigns — lead with the story behind the numbers. Recognition opens the door, intelligence is the room.", leadWindowType };
+  if (has("conference_calendar") && has("fiscal_cycle"))
+    return { narrative: "Recognition moment entering planning season — they are visible and budgeting. Enter with the data story before the next brief is written.", leadWindowType };
+  if (has("conference_calendar") && has("product_launch"))
+    return { narrative: "Award momentum with a product launch — they are visible and moving. Enter with the numbers that explain the recognition.", leadWindowType };
+
   if (has("campaign_season") && has("fiscal_cycle"))
     return { narrative: "Active campaign overlapping with planning — this campaign's data is the anchor for next year's strategy conversation.", leadWindowType };
-  if (has("campaign_season") && has("conference_calendar"))
-    return { narrative: "Award/event momentum with live campaigns — lead with the story behind the numbers. Recognition opens the door, intelligence is the room.", leadWindowType };
   if (has("campaign_season") && has("product_launch"))
     return { narrative: "New product in market with campaigns active — one conversation on the full-cycle intelligence behind the launch.", leadWindowType };
 
   if (has("fiscal_cycle") && has("product_launch"))
     return { narrative: "Planning season with a product push underway — the launch data is the best argument for building the intelligence layer before next year's plan is locked.", leadWindowType };
-  if (has("conference_calendar") && has("product_launch"))
-    return { narrative: "Award momentum with a product launch — they are visible and moving. Enter with the numbers that explain the recognition.", leadWindowType };
 
-  // ── 3+ windows that did not match a specific pair ────────────────────────
+  // ── 3+ windows that did not match a specific combo ───────────────────────
   if (n >= 3)
     return {
       narrative: `${n} signals converging on one company. Lead with the ${leadLabel.toLowerCase()} signal only — the others are supporting context you deploy in the room once you are in, not before.`,
