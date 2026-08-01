@@ -5,6 +5,7 @@
 
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { synthesizePitchAngle } from "@/lib/window-synthesis";
 
 export const dynamic = "force-dynamic";
 
@@ -18,39 +19,6 @@ const WINDOW_PRIORITY: Record<string, number> = {
   product_launch:      7,
   fiscal_cycle:        8,
 };
-
-function synthesizePitchAngle(windowTypes: string[], leadLabel: string): string {
-  const has = (t: string) => windowTypes.includes(t);
-  const n = windowTypes.length;
-
-  if (has("leadership_change") && has("funding_event"))
-    return "New leadership with fresh capital — audit their strategy before they lock in the roadmap. One conversation, two open doors.";
-  if (has("leadership_change") && has("rfp_cycle"))
-    return "Incoming leader triggering an agency review — get in before the brief is written, not after it is awarded.";
-  if (has("leadership_change") && has("fiscal_cycle"))
-    return "Leadership transition entering planning season — shape the new brief before anyone else is in the room.";
-  if (has("leadership_change") && has("campaign_season"))
-    return "New leader inheriting active campaigns — show them what is really performing before they make changes.";
-  if (has("leadership_change") && has("conference_calendar"))
-    return "New leader riding a recognition moment — enter on the win, not the pitch.";
-  if (has("funding_event") && has("rfp_cycle"))
-    return "Capital secured, vendor review open — lead with ROI clarity, not a capabilities deck.";
-  if (has("funding_event") && has("campaign_season"))
-    return "Investment secured with campaigns running — show exactly what their capital is doing right now.";
-  if (has("funding_event") && has("fiscal_cycle"))
-    return "Fresh funding entering annual planning — position Growth Intelligence as the foundation for how they deploy capital next year.";
-  if (has("rfp_cycle") && has("fiscal_cycle"))
-    return "Budget season + agency review — enter as the intelligence layer for the incoming brief, not another vendor to evaluate.";
-  if (has("campaign_season") && has("fiscal_cycle"))
-    return "Active campaign overlapping with planning — this campaign's data is the anchor for next year's strategy conversation.";
-  if (has("conference_calendar") && has("campaign_season"))
-    return "Award momentum with live campaigns — lead with the story behind the numbers.";
-  if (has("product_launch") && has("campaign_season"))
-    return "New product in market with campaigns active — one conversation on the full-cycle intelligence behind the launch.";
-  if (n >= 3)
-    return `${n} signals converging. Lead with the ${leadLabel.toLowerCase()} signal only — the others are context you deploy once you are in the room.`;
-  return "One clear signal. Lead with this, open the conversation, and let them surface the rest.";
-}
 
 export async function GET() {
   const supabase = createAdminClient();
@@ -138,9 +106,8 @@ export async function GET() {
       const windowTypes = alerts.map(a => (a.opportunity_windows as { window_type: string }).window_type);
       const leadWin = alerts[0]?.opportunity_windows as { label: string };
       const leadLabel = leadWin?.label ?? windowTypes[0];
-      const narrative = synthesizePitchAngle(windowTypes, leadLabel);
+      const { narrative } = synthesizePitchAngle(windowTypes, leadLabel);
       const isB2B = alerts.some(a => (a.opportunity_windows as { engagement_model: string }).engagement_model === "B2B");
-      const allLabels = alerts.map(a => (a.opportunity_windows as { label: string }).label).join(", ");
 
       lines.push(`${co.name}${isB2B ? " [B2B]" : ""} — ${[co.industry, co.market_code].filter(Boolean).join(", ")}`);
       lines.push(`  Lead with: ${leadLabel}`);
@@ -190,7 +157,7 @@ export async function GET() {
       pitch_angle: synthesizePitchAngle(
         alerts.map(a => (a.opportunity_windows as { window_type: string }).window_type),
         (alerts[0]?.opportunity_windows as { label: string })?.label ?? ""
-      ),
+      ).narrative,
       signals: alerts.map(a => a.trigger_reason),
     })),
     pursue: topPursue.map(r => {
