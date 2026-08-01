@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { detectWindowAlerts } from "@/lib/window-alerts";
 import { createHash } from "crypto";
 
 export const maxDuration = 60; // Hobby plan limit; upgrade to 300 on Pro
@@ -124,15 +125,16 @@ type ScanResult = {
   name: string;
   signals_new: number;
   signals_dup: number;
+  windows_triggered: number;
   error?: string;
 };
 
 async function scanCompany(
   supabase: ReturnType<typeof createAdminClient>,
   anthropic: Anthropic,
-  company: { id: string; name: string; market_code: string | null }
+  company: { id: string; name: string; market_code: string | null; business_model: string | null }
 ): Promise<ScanResult> {
-  const base: ScanResult = { company_id: company.id, name: company.name, signals_new: 0, signals_dup: 0 };
+  const base: ScanResult = { company_id: company.id, name: company.name, signals_new: 0, signals_dup: 0, windows_triggered: 0 };
 
   try {
     // 1. Fetch RSS
@@ -177,7 +179,9 @@ ${rawContent}`,
 
     const { signals = [] } = toolUse.input as { signals: Array<{ signal_category: string; signal_type: string; signal_text: string; source_url?: string; source_confidence: string }> };
 
-    // 3. Deduplicate + insert
+    // 3. Deduplicate + insert; collect new signals for window matching
+    const newSignals: { id: string; signal_category: string; signal_type: string; signal_text: string }[] = [];
+
     for (const sig of signals) {
       const fp = fingerprint(company.id, sig.signal_category, sig.signal_type, sig.signal_text);
 
@@ -189,7 +193,7 @@ ${rawContent}`,
 
       if (existing) { base.signals_dup++; continue; }
 
-      const { error: insertErr } = await supabase
+      const { data: inserted, error: insertErr } = await supabase
         .from("business_signals")
         .insert({
           company_id:        company.id,
@@ -199,16 +203,30 @@ ${rawContent}`,
           source_url:        sig.source_url ?? null,
           signal_fingerprint: fp,
           raw_evidence:      { source: "cron-weekly-rescan" },
-        });
+        })
+        .select("id, signal_category, signal_type, signal_text")
+        .single();
 
       if (insertErr && insertErr.code !== "23505") {
         console.error(`[cron/prospect-rescan] insert error for ${company.name}:`, insertErr.message);
         continue;
       }
+      if (inserted) newSignals.push(inserted);
       base.signals_new++;
     }
 
-    // 4. Update last_signal_date (always — marks the company as checked)
+    // 4. Detect opportunity windows from new signals
+    if (newSignals.length > 0) {
+      const engagementModel = company.business_model === "B2B"   ? "B2B"   :
+                              company.business_model === "B2B2C" ? "B2B2C" : "B2C";
+      try {
+        base.windows_triggered = await detectWindowAlerts(supabase, company.id, newSignals, engagementModel);
+      } catch (winErr) {
+        console.warn(`[cron/prospect-rescan] window detection failed for ${company.name}:`, winErr);
+      }
+    }
+
+    // 5. Update last_signal_date (always — marks the company as checked)
     await supabase
       .from("companies")
       .update({ last_signal_date: new Date().toISOString() })
@@ -237,7 +255,7 @@ export async function GET(req: NextRequest) {
 
   const { data: companies, error } = await supabase
     .from("companies")
-    .select("id, name, market_code, prospect_tier, last_signal_date")
+    .select("id, name, market_code, prospect_tier, last_signal_date, business_model")
     .eq("is_suppressed", false)
     .not("status", "eq", "Archived")
     .or(`last_signal_date.is.null,last_signal_date.lte.${sevenDaysAgo}`)
@@ -267,14 +285,16 @@ export async function GET(req: NextRequest) {
       : { company_id: "?", name: "?", signals_new: 0, signals_dup: 0, error: String(r.reason) }
   );
 
-  const totalNew = summary.reduce((s, r) => s + r.signals_new, 0);
-  const elapsed  = Date.now() - started;
+  const totalNew     = summary.reduce((s, r) => s + r.signals_new, 0);
+  const totalWindows = summary.reduce((s, r) => s + (r.windows_triggered ?? 0), 0);
+  const elapsed      = Date.now() - started;
 
-  console.log(`[cron/prospect-rescan] ${companies.length} companies scanned, ${totalNew} new signals, ${elapsed}ms`);
+  console.log(`[cron/prospect-rescan] ${companies.length} companies scanned, ${totalNew} new signals, ${totalWindows} windows triggered, ${elapsed}ms`);
 
   return NextResponse.json({
     scanned: companies.length,
     total_new_signals: totalNew,
+    total_windows_triggered: totalWindows,
     elapsed_ms: elapsed,
     results: summary,
   });
