@@ -2,6 +2,7 @@
 // Weekly Intelligence Digest — signals from the last 7 days across all tracked companies.
 // What to open Monday morning: who moved, who to call, who to watch.
 
+import React from "react";
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Badge, Card, SectionTitle } from "@/app/_components/ui";
@@ -143,6 +144,30 @@ export default async function DigestPage() {
     return (WINDOW_PRIORITY[wa.window_type] ?? 9) - (WINDOW_PRIORITY[wb.window_type] ?? 9);
   });
 
+  // Group window alerts by company, preserving priority sort within each group
+  type WindowAlertRow = typeof sortedWindows[number];
+  type CompanyWindowGroup = {
+    company: { id: string; name: string; industry: string | null; market_code: string | null; status: string | null; business_model: string | null };
+    alerts: WindowAlertRow[];
+    topPriority: number;
+  };
+  const windowsByCompanyMap = new Map<string, CompanyWindowGroup>();
+  for (const alert of sortedWindows) {
+    const co = alert.companies as { id: string; name: string; industry: string | null; market_code: string | null; status: string | null; business_model: string | null };
+    const win = alert.opportunity_windows as { window_type: string };
+    const priority = WINDOW_PRIORITY[win.window_type] ?? 9;
+    if (!windowsByCompanyMap.has(co.id)) {
+      windowsByCompanyMap.set(co.id, { company: co, alerts: [], topPriority: priority });
+    }
+    const group = windowsByCompanyMap.get(co.id)!;
+    group.alerts.push(alert);
+    if (priority < group.topPriority) group.topPriority = priority;
+  }
+  // Sort company groups so highest-priority-window company comes first
+  const windowsByCompany = Array.from(windowsByCompanyMap.values()).sort(
+    (a, b) => a.topPriority - b.topPriority
+  );
+
   // 5. Pipeline summary
   const { data: allCompanies } = await supabase
     .from("companies")
@@ -197,57 +222,72 @@ export default async function DigestPage() {
       </div>
 
       {/* ── Open opportunity windows ─────────────────────────────────────── */}
-      {sortedWindows.length > 0 && (
+      {windowsByCompany.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-baseline justify-between">
-            <SectionTitle>Open Opportunity Windows ({sortedWindows.length})</SectionTitle>
+            <SectionTitle>
+              Open Opportunity Windows ({sortedWindows.length} across {windowsByCompany.length} {windowsByCompany.length === 1 ? "client" : "clients"})
+            </SectionTitle>
             <span className="text-xs text-neutral-400">Act before the window closes</span>
           </div>
 
           <div className="space-y-2">
-            {sortedWindows.map(alert => {
-              const co  = alert.companies as { id: string; name: string; industry: string | null; market_code: string | null; status: string | null; business_model: string | null };
-              const win = alert.opportunity_windows as { window_type: string; label: string; engagement_model: string };
-              const isB2B = win.engagement_model === "B2B";
-              const isHighPriority = ["leadership_change", "funding_event"].includes(win.window_type);
+            {windowsByCompany.map(({ company: co, alerts, topPriority }) => {
+              const hasHighPriority = topPriority <= 2;
+              const hasB2B = alerts.some(a => {
+                const w = a.opportunity_windows as { engagement_model: string };
+                return w.engagement_model === "B2B";
+              });
 
               return (
-                <div key={alert.id} className={`rounded-xl border p-4 ${
-                  isHighPriority
-                    ? "border-amber-200 bg-amber-50"
-                    : "border-neutral-200 bg-white"
+                <div key={co.id} className={`rounded-xl border p-4 ${
+                  hasHighPriority ? "border-amber-200 bg-amber-50" : "border-neutral-200 bg-white"
                 }`}>
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                      {/* Company header */}
+                      <div className="flex items-center gap-2 flex-wrap mb-2">
                         <Link
                           href={`/prospects/${co.id}`}
                           className="font-semibold text-neutral-900 hover:underline"
                         >
                           {co.name}
                         </Link>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wide ${
-                          isHighPriority
-                            ? "bg-amber-100 border-amber-300 text-amber-800"
-                            : "bg-neutral-100 border-neutral-200 text-neutral-600"
-                        }`}>
-                          {win.label}
-                        </span>
-                        {isB2B && (
+                        {hasB2B && (
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-blue-50 border-blue-200 text-blue-700 uppercase tracking-wide">
                             B2B
                           </span>
                         )}
+                        <span className="text-xs text-neutral-400">
+                          {[co.industry, co.market_code].filter(Boolean).join(" · ")}
+                        </span>
                       </div>
-                      <p className="text-xs text-neutral-500">
-                        {[co.industry, co.market_code].filter(Boolean).join(" · ")}
-                        {" · "}
-                        <span className="text-neutral-400">triggered by</span>{" "}
-                        <span className="font-medium text-neutral-600">{alert.trigger_reason}</span>
+                      {/* Window type badges */}
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {alerts.map(alert => {
+                          const win = alert.opportunity_windows as { window_type: string; label: string };
+                          const isHigh = ["leadership_change", "funding_event"].includes(win.window_type);
+                          return (
+                            <span key={alert.id} className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wide ${
+                              isHigh
+                                ? "bg-amber-100 border-amber-300 text-amber-800"
+                                : "bg-neutral-100 border-neutral-200 text-neutral-600"
+                            }`}>
+                              {win.label}
+                            </span>
+                          );
+                        })}
+                      </div>
+                      {/* Trigger reasons */}
+                      <p className="text-xs text-neutral-400">
+                        <span className="text-neutral-300">triggered by</span>{" "}
+                        {alerts.map(a => (
+                          <span key={a.id} className="font-medium text-neutral-500">{a.trigger_reason}</span>
+                        )).reduce<React.ReactNode[]>((acc, el, i) => i === 0 ? [el] : [...acc, <span key={`sep-${i}`} className="text-neutral-300"> · </span>, el], [])}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs text-neutral-400">{daysSince(alert.detected_at)}</span>
+                      <span className="text-xs text-neutral-400">{daysSince(alerts[0]?.detected_at ?? null)}</span>
                       <Link
                         href={`/prospects/${co.id}`}
                         className="text-xs font-medium px-3 py-1.5 rounded-lg bg-neutral-900 text-white hover:bg-neutral-700 transition-colors"
