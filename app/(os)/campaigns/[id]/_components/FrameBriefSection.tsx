@@ -199,6 +199,21 @@ export function FrameBriefSection({
         <Gate1Badge frame={frame} />
       </div>
 
+      {/* Active channels from client brief */}
+      {(frame.active_channels ?? []).length > 0 && (
+        <div className="mb-4 px-3 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-neutral-500 shrink-0">Client channels:</span>
+          {(frame.active_channels ?? []).map((ch: string) => (
+            <span
+              key={ch}
+              className="text-xs px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 font-medium"
+            >
+              {ch}
+            </span>
+          ))}
+        </div>
+      )}
+
       {locked && (
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mb-4">
           FRAME Brief is locked. Unlock to edit. Unlocking resets Gate 1 and blocks BIP editing.

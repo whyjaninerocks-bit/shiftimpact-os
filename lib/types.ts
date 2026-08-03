@@ -267,6 +267,11 @@ export type FrameBrief = {
   brand_guidelines_notes: string;
   rfp_notes: string;
 
+  // ── Active Channels + Brief Submission (migration 0046) ───────────────────
+  // Channels selected by client on the brief link (e.g. ["Digital / Social", "KOL / Influencer"])
+  active_channels: string[];
+  brief_submitted_at: string | null;
+
   // ── F29 — Distinctive Brand Assets deployed in this brief (Sprint 22) ──────
   // Comma-separated brand_asset UUIDs | 'NONE_CONFIRMED' | '' (not set)
   // '' → BIP co-pilot DBA flag fires; 'NONE_CONFIRMED' → flag suppressed

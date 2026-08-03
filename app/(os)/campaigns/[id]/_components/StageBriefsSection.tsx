@@ -5,7 +5,7 @@
 // Inherits anchor and mood from the locked FRAME Brief.
 // INTERNAL ONLY — not shown in Client Interface.
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useCallback } from "react";
 import { createStageBrief, updateStageBrief } from "@/lib/actions";
 import type { StageBrief, Stage, IdeaOrSpend } from "@/lib/types";
 import {
@@ -210,12 +210,90 @@ function AddForm({ campaignId, defaultStage, frameAnchor, moodRegister }: AddFor
 
 // ─── Main section ─────────────────────────────────────────────────────────────
 
+// ─── AI Generate button ────────────────────────────────────────────────────────
+
+function GenerateChannelBriefsButton({
+  campaignId,
+  activeChannels,
+  existingCount,
+}: {
+  campaignId: string;
+  activeChannels: string[];
+  existingCount: number;
+}) {
+  const [genState, setGenState] = useState<"idle" | "generating" | "done" | "error">("idle");
+  const [genMessage, setGenMessage] = useState("");
+
+  const handleGenerate = useCallback(async () => {
+    setGenState("generating");
+    setGenMessage("");
+    try {
+      const res = await fetch("/api/channel-briefs/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaign_id: campaignId }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        setGenState("error");
+        setGenMessage(json.error ?? "Generation failed");
+      } else {
+        setGenState("done");
+        setGenMessage(
+          json.generated?.length > 0
+            ? `Generated ${json.generated.length} channel brief${json.generated.length > 1 ? "s" : ""}: ${json.generated.join(", ")}. Refresh to see them below.`
+            : "All channel briefs already exist."
+        );
+      }
+    } catch {
+      setGenState("error");
+      setGenMessage("Network error — try again.");
+    }
+  }, [campaignId]);
+
+  if (activeChannels.length === 0) return null;
+
+  const unbriefedChannels = activeChannels.length - existingCount;
+
+  return (
+    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <p className="text-xs font-semibold text-blue-800">
+          {activeChannels.length} channel{activeChannels.length > 1 ? "s" : ""} active from client brief
+          {unbriefedChannels > 0 && ` · ${unbriefedChannels} not yet briefed`}
+        </p>
+        <p className="text-xs text-blue-600 mt-0.5">
+          {activeChannels.join(", ")}
+        </p>
+        {genMessage && (
+          <p className={`text-xs mt-1 ${genState === "error" ? "text-red-600" : "text-emerald-700"}`}>
+            {genMessage}
+          </p>
+        )}
+      </div>
+      {unbriefedChannels > 0 && (
+        <button
+          type="button"
+          onClick={handleGenerate}
+          disabled={genState === "generating"}
+          className="shrink-0 px-3 py-1.5 text-xs font-semibold rounded-md bg-blue-700 text-white hover:bg-blue-800 disabled:opacity-50 transition-colors"
+        >
+          {genState === "generating" ? "Generating…" : "AI Generate Discipline Briefs"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─── Main section ─────────────────────────────────────────────────────────────
+
 interface StageBriefsSectionProps {
   campaignId: string;
   frameLocked: boolean;
   frameAnchor: string;
   moodRegister: string;
   stageBriefs: StageBrief[];
+  activeChannels?: string[];
 }
 
 export function StageBriefsSection({
@@ -224,6 +302,7 @@ export function StageBriefsSection({
   frameAnchor,
   moodRegister,
   stageBriefs,
+  activeChannels = [],
 }: StageBriefsSectionProps) {
   const byStage = STAGE_ORDER.reduce<Record<Stage, StageBrief[]>>(
     (acc, stage) => {
@@ -233,6 +312,10 @@ export function StageBriefsSection({
     { Demand: [], Conversion: [], Retention: [] }
   );
 
+  // Channels from brief that don't yet have a stage brief
+  const existingChannels = new Set(stageBriefs.map((b) => b.channel));
+  const existingCount = activeChannels.filter((c) => existingChannels.has(c)).length;
+
   return (
     <section id="stage-briefs">
       <SectionTitle>STAGE Briefs</SectionTitle>
@@ -241,6 +324,15 @@ export function StageBriefsSection({
         <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
           <p className="text-xs text-amber-700">Lock the FRAME Brief before writing Stage Briefs.</p>
         </div>
+      )}
+
+      {/* AI generate button — only when FRAME locked and client has set channels */}
+      {frameLocked && (
+        <GenerateChannelBriefsButton
+          campaignId={campaignId}
+          activeChannels={activeChannels}
+          existingCount={existingCount}
+        />
       )}
 
       <div className="space-y-6">

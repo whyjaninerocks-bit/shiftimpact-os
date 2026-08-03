@@ -31,6 +31,15 @@ export type AOAIScopeResult = {
 export function getAOAIScope(windowType: string): AOAIScopeResult | null {
   switch (windowType) {
 
+    case "strategic_move":
+      return {
+        pillars: ["P00 STRATEGISE", "P01 ATTRACT"],
+        aoaiExecutes:
+          "Strategy Blueprint mapped to the new strategic direction — ICP research for any new market or audience the move opens, competitive positioning against the new landscape, and a 90-day paid traffic plan to activate the expanded territory before competitors catch up.",
+        janinePrepAOAI:
+          "What the strategic move opens up (new market, new product, new partnership channel). Who the new or expanded ICP is. What success looks like in 90 days — leads, signups, trial users, or qualified enquiries.",
+      };
+
     case "leadership_change":
       return {
         pillars: ["P00 STRATEGISE", "P01 ATTRACT"],

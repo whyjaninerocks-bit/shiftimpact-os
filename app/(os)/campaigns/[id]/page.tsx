@@ -263,6 +263,7 @@ export default async function CampaignDetailPage({
         frameAnchor={frame.anchor}
         moodRegister={frame.mood}
         stageBriefs={stageBriefs}
+        activeChannels={frame.active_channels ?? []}
       />
       <PhaseGatesSection campaignId={id} phaseGates={phaseGates} />
       <IdeaExtensionsSection

@@ -47,11 +47,28 @@ function matchWindowType(signal: Signal): string | null {
   if (/\bcontract\b|renewal\b|renew(ed|ing)\b|retainer\b|service agreement\b/.test(full))
     return "renewal_season";
 
-  // Conference / awards — Recognition or Milestone with event keywords
+  // Strategic move — MOU, signed partnership/agreement, market expansion, joint venture.
+  // These are active strategic commitments that create a narrative gap: the external
+  // story rarely keeps pace with the move itself. That gap is the entry point.
+  // Note: pure award wins are conversation starters (handled below), not opportunity windows.
   if (
-    (cat === "recognition" || cat === "milestone") &&
-    /\baward\b|speak(er|ing)\b|conference\b|summit\b|forum\b|sponsor(ship)?\b|keynote\b/.test(full)
+    (cat === "growth" || cat === "milestone" || cat === "recognition") &&
+    /\bmou\b|memorandum of understanding\b|strategic (partnership|alliance|agreement|collaboration)\b|joint venture\b|distribution (partner|agreement|deal)\b|(signed|signing|announced?)\b.{0,50}\b(agreement|deal|partnership|alliance|collaboration|mou)\b|(agreement|deal|partnership|alliance)\b.{0,30}\b(signed|announced)\b|market expansion\b|expand(ed|ing) (into|to)\b|\bnew market\b|entered\b.{0,25}\bmarket\b/.test(full)
+  ) return "strategic_move";
+
+  // Conference / active event participation — speaking, keynoting, sponsoring, exhibiting.
+  // Does NOT include pure award wins — those are relationship openers shown in the signals
+  // log, not opportunity windows. An award win with a conference context (e.g. "won at
+  // Cannes Lions") correctly fires here because the conference keyword is present.
+  if (
+    (cat === "recognition" || cat === "milestone" || cat === "activation") &&
+    /\bspeak(er|ing|s)\b|keynote\b|conference\b|summit\b|forum\b|sponsor(ship|ing|s|ed)?\b|exhibitor?\b|panel(list|led)?\b/.test(full)
   ) return "conference_calendar";
+
+  // Award-only signals (Recognition + award keyword, no event context) are intentionally
+  // not matched here. They remain in business_signals as conversation-starter evidence
+  // and surface in the prospect signals log, but do not generate window_alerts.
+  // Use them as warm openers, not urgency signals.
 
   // Fiscal cycle — explicit budget or annual planning cycle signals only.
   // Does NOT fire on broad strategy/expansion language — a multi-year plan

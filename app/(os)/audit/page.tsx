@@ -20,6 +20,7 @@ const INDUSTRIES = [
   { value: "Financial Services",  label: "Financial Services / Insurance" },
   { value: "Healthcare",          label: "Healthcare / Wellness" },
   { value: "Automotive",          label: "Automotive" },
+  { value: "B2B SaaS",            label: "B2B SaaS / Technology" },
   { value: "Other",               label: "Other" },
 ];
 

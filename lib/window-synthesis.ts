@@ -41,6 +41,29 @@ export function synthesizePitchAngle(
     return `${base} — signals show: ${leadEvidence}${otherEvidence.length ? ` alongside ${otherEvidence.join(" and ")}` : ""}.`;
   };
 
+  // ── Strategic move combos ────────────────────────────────────────────────
+  // strategic_move = MOU, signed partnership, market expansion, joint venture
+  // The external narrative rarely keeps pace with strategic commitments.
+  if (has("strategic_move") && has("leadership_change"))
+    return { narrative: withEvidence("New leadership in the middle of a strategic announcement — two major signals running simultaneously. The external story needs to hold through both, and that's hard to manage without a clear narrative framework."), leadWindowType };
+  if (has("strategic_move") && has("campaign_season"))
+    return { narrative: withEvidence("Strategic commitment announced with campaigns active — two narratives competing for stakeholder attention. The risk is disconnect: what the campaigns say versus what the move signals. One conversation on alignment before the next briefing cycle is locked."), leadWindowType };
+  if (has("strategic_move") && has("conference_calendar"))
+    return { narrative: withEvidence("Strategic announcement with a public platform ahead — rare that both land together. Enter now before the conference messaging is finalised and the narrative is locked into the wrong frame."), leadWindowType };
+  if (has("strategic_move") && has("fiscal_cycle"))
+    return { narrative: withEvidence("Strategic commitment announced with a budget cycle active — how they allocate next should connect directly to the direction they've just announced publicly. That alignment rarely happens without intentional work."), leadWindowType };
+  if (has("strategic_move") && has("product_launch"))
+    return { narrative: withEvidence("Strategic partnership alongside a product push — two signals with separate momentum competing for the same stakeholder attention. The question is whether both are telling the same story."), leadWindowType };
+  if (has("strategic_move") && has("funding_event"))
+    return { narrative: withEvidence("Capital secured alongside a strategic commitment — the pace of execution is about to accelerate. Get in before the agency roster and communications priorities are set by whoever gets there first."), leadWindowType };
+  if (has("strategic_move"))
+    return {
+      narrative: leadEvidence
+        ? `${leadEvidence}. Strategic commitments like this typically outpace the external communications narrative — there's a brief window to help them shape the story before internal momentum locks the communications into reactive mode.`
+        : "A strategic commitment is in play. The external story rarely keeps pace with moves like this — that gap is the conversation.",
+      leadWindowType,
+    };
+
   // ── Leadership combos ─────────────────────────────────────────────────────
   if (has("leadership_change") && has("funding_event"))
     return { narrative: withEvidence("New leadership in place with fresh capital confirmed — get in before they lock down the vendor roster and budget priorities"), leadWindowType };
@@ -51,7 +74,7 @@ export function synthesizePitchAngle(
   if (has("leadership_change") && has("campaign_season"))
     return { narrative: withEvidence("New leader has inherited live campaigns — they need to know what is working before they change anything or sign off on the next round"), leadWindowType };
   if (has("leadership_change") && has("conference_calendar"))
-    return { narrative: withEvidence("New leader with a recognition moment in market — enter on the award win, not a cold pitch"), leadWindowType };
+    return { narrative: withEvidence("New leader with a public platform in market — enter on the event, not a cold pitch. They're visible and meeting people; this is the moment to be one of them"), leadWindowType };
   if (has("leadership_change") && has("product_launch"))
     return { narrative: withEvidence("Leadership change coinciding with a product push — they need early read on whether the launch is landing before committing the next phase of spend"), leadWindowType };
 
@@ -74,14 +97,14 @@ export function synthesizePitchAngle(
   // ── Conference combos — checked before campaign+fiscal so recognition takes precedence ──
   if (has("conference_calendar") && has("campaign_season") && has("fiscal_cycle"))
     return { narrative: leadEvidence
-      ? `${leadEvidence} puts them in public momentum — campaigns are live and budget decisions are active. Lead on the recognition win, then ground the conversation in what the campaign data is showing against their stated growth direction.`
-      : "Recognition in market with live campaigns and active budget signals — lead on the win, show what the intelligence layer reveals about campaign performance, then connect it to where they say they are going.", leadWindowType };
+      ? `${leadEvidence} puts them in public momentum — campaigns are live and budget decisions are active. Lead on the event presence, ground the conversation in what the campaign data is showing against their stated direction.`
+      : "Active event presence with live campaigns and budget signals converging — lead on the visibility moment, show what the intelligence layer reveals about campaign performance, then connect it to where they say they are going.", leadWindowType };
   if (has("conference_calendar") && has("campaign_season"))
-    return { narrative: withEvidence("Recognition moment with campaigns live — lead with the story behind the numbers; the award opens the door, campaign intelligence is the room"), leadWindowType };
+    return { narrative: withEvidence("Active event presence with campaigns live — lead with the story behind the numbers; the conference platform opens the door, campaign intelligence is the room"), leadWindowType };
   if (has("conference_calendar") && has("fiscal_cycle"))
-    return { narrative: withEvidence("Recognition signal alongside active budget indicators — they are visible and making resource decisions; enter with data that makes the recognition defensible"), leadWindowType };
+    return { narrative: withEvidence("Visible in market alongside active budget decisions — enter with data that makes their event investment defensible, before the next budget allocation is locked"), leadWindowType };
   if (has("conference_calendar") && has("product_launch"))
-    return { narrative: withEvidence("Award momentum with a product launch confirmed — they are visible and moving; enter with the intelligence that explains what is driving the recognition"), leadWindowType };
+    return { narrative: withEvidence("Event platform with a product launch confirmed — they are visible and moving simultaneously; enter with the intelligence that connects the launch performance to the story they're telling at the event"), leadWindowType };
 
   // ── Campaign + planning ───────────────────────────────────────────────────
   if (has("campaign_season") && has("fiscal_cycle"))

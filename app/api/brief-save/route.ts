@@ -47,6 +47,9 @@ const FRAME_ALLOWED_FIELDS = new Set([
   "brand_guidelines_url",
   "brand_guidelines_notes",
   "rfp_notes",
+  // Active channels + submission (migration 0046)
+  "active_channels",
+  "brief_submitted_at",
 ]);
 
 // ─── Allowed BIP fields from client intake ─────────────────────────────────
