@@ -405,7 +405,7 @@ export default async function DigestPage() {
                       }`}>
                         <span className={`font-bold uppercase tracking-wider text-[10px] block mb-0.5 ${
                           hasHighPriority ? "text-amber-600" : "text-neutral-400"
-                        }`}>Pitch angle</span>
+                        }`}>Engagement angle</span>
                         {synthesis.narrative}
                       </div>
 

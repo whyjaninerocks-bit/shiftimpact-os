@@ -343,7 +343,7 @@ export default async function ProspectDetailPage({
                   )}
                   {(toplineInsight as Record<string,unknown>).aoai_joint_pitch && (
                     <div className="border-t border-green-200 pt-2">
-                      <p className="text-[10px] font-bold text-green-600 uppercase tracking-widest mb-1">Joint Pitch (ShiftImpact + AOAI)</p>
+                      <p className="text-[10px] font-bold text-green-600 uppercase tracking-widest mb-1">Engagement Approach (ShiftImpact + AOAI)</p>
                       <p className="text-sm text-green-900">{(toplineInsight as Record<string,unknown>).aoai_joint_pitch as string}</p>
                     </div>
                   )}

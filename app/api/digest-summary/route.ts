@@ -184,7 +184,7 @@ export async function GET() {
         const supporting = alerts.slice(1).map(a => (a.opportunity_windows as { label: string }).label).join(", ");
         lines.push(`  Context windows: ${supporting}`);
       }
-      lines.push(`  Pitch angle: ${narrative}`);
+      lines.push(`  Engagement angle: ${narrative}`);
       lines.push(`  Signals: ${alerts.map(a => a.trigger_reason).join(" · ")}`);
       lines.push(``);
     }
