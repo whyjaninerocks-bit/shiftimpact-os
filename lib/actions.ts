@@ -353,18 +353,52 @@ export async function createKillSwitch(campaignId: string, frameBriefId: string,
 
 export async function updateKillSwitch(campaignId: string, killSwitchId: string, formData: FormData) {
   const supabase = createAdminClient();
+  const newStatus   = str(formData, "trigger_status");
+  const condition   = str(formData, "condition");
+  const priority    = str(formData, "priority");
+
   const { error } = await supabase
     .from("kill_switches")
-    .update({
-      condition: str(formData, "condition"),
-      trigger_status: str(formData, "trigger_status"),
-      priority: str(formData, "priority"),
-    })
+    .update({ condition, trigger_status: newStatus, priority })
     .eq("id", killSwitchId);
 
   if (error) {
     redirect(`/campaigns/${campaignId}?error=${encodeURIComponent(error.message)}#kill-switches`);
   }
+
+  // ── Auto Decision Snapshot when a kill switch is Triggered ────────────────
+  if (newStatus === "Triggered") {
+    const weekOf = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const snapshotLine = `[KILL SWITCH TRIGGERED — ${priority} priority] ${condition}`;
+
+    // Check for an existing dashboard entry this week
+    const { data: existing } = await supabase
+      .from("campaign_dashboards")
+      .select("id, decision_snapshot")
+      .eq("campaign_id", campaignId)
+      .eq("week_of", weekOf)
+      .maybeSingle();
+
+    if (existing) {
+      // Prepend to existing decision_snapshot
+      const updated = `${snapshotLine}\n\n${existing.decision_snapshot ?? ""}`.trim();
+      await supabase.from("campaign_dashboards").update({ decision_snapshot: updated }).eq("id", existing.id);
+    } else {
+      // Create a minimal dashboard entry seeded with the kill switch note
+      await supabase.from("campaign_dashboards").insert({
+        campaign_id:              campaignId,
+        week_of:                  weekOf,
+        decision_snapshot:        snapshotLine,
+        funnel_health_demand:     "Red",
+        funnel_health_conversion: "Amber",
+        funnel_health_retention:  "Amber",
+        ssic:                     "Kill switch triggered — review immediately.",
+        triggers:                 condition,
+        idea_integrity_observation: "",
+      });
+    }
+  }
+  // ──────────────────────────────────────────────────────────────────────────
 
   revalidatePath(`/campaigns/${campaignId}`);
   redirect(`/campaigns/${campaignId}#kill-switches`);
@@ -568,13 +602,107 @@ export async function updateTeamMember(memberId: string, formData: FormData) {
 export async function toggleOsRule(ruleId: string, active: boolean) {
   const supabase = createAdminClient();
   const { error } = await supabase.from("os_rules").update({ active }).eq("id", ruleId);
-
-  if (error) {
-    redirect(`/os-rules?error=${encodeURIComponent(error.message)}`);
-  }
-
+  if (error) redirect(`/os-rules?error=${encodeURIComponent(error.message)}`);
   revalidatePath("/os-rules");
   redirect("/os-rules");
+}
+
+export async function createOsRule(formData: FormData) {
+  const supabase = createAdminClient();
+  const configRaw = (formData.get("config") as string) || "{}";
+  let config: Record<string, unknown> = {};
+  try { config = JSON.parse(configRaw); } catch { config = {}; }
+
+  const { error } = await supabase.from("os_rules").insert({
+    rule_name:   formData.get("rule_name") as string,
+    rule_type:   formData.get("rule_type") as string,
+    description: formData.get("description") as string,
+    config,
+    active: true,
+  });
+  if (error) redirect(`/os-rules?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/os-rules");
+  redirect("/os-rules");
+}
+
+export async function updateOsRule(ruleId: string, formData: FormData) {
+  const supabase = createAdminClient();
+  const configRaw = (formData.get("config") as string) || "{}";
+  let config: Record<string, unknown> = {};
+  try { config = JSON.parse(configRaw); } catch { config = {}; }
+
+  const { error } = await supabase.from("os_rules").update({
+    rule_name:   formData.get("rule_name") as string,
+    rule_type:   formData.get("rule_type") as string,
+    description: formData.get("description") as string,
+    config,
+  }).eq("id", ruleId);
+  if (error) redirect(`/os-rules?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/os-rules");
+  redirect("/os-rules");
+}
+
+export async function deleteOsRule(ruleId: string) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("os_rules").delete().eq("id", ruleId);
+  if (error) redirect(`/os-rules?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/os-rules");
+  redirect("/os-rules");
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Partner Workspaces
+// ───────────────────────────────────────────────────────────────────────
+
+export async function createPartner(formData: FormData) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("partner_workspaces").insert({
+    partner_name:  str(formData, "partner_name"),
+    partner_slug:  str(formData, "partner_slug"),
+    description:   str(formData, "description") || null,
+    direction:     str(formData, "direction") || "referral_out_only",
+    contact_name:  str(formData, "contact_name") || null,
+    contact_email: str(formData, "contact_email") || null,
+    notes:         str(formData, "notes") || null,
+    is_active:     true,
+  });
+  if (error) redirect(`/partners?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/partners");
+  redirect("/partners");
+}
+
+export async function updatePartner(partnerId: string, formData: FormData) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("partner_workspaces").update({
+    partner_name:  str(formData, "partner_name"),
+    partner_slug:  str(formData, "partner_slug"),
+    description:   str(formData, "description") || null,
+    direction:     str(formData, "direction"),
+    contact_name:  str(formData, "contact_name") || null,
+    contact_email: str(formData, "contact_email") || null,
+    notes:         str(formData, "notes") || null,
+  }).eq("id", partnerId);
+  if (error) redirect(`/partners?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/partners");
+  redirect("/partners");
+}
+
+export async function togglePartner(partnerId: string, active: boolean) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("partner_workspaces")
+    .update({ is_active: active })
+    .eq("id", partnerId);
+  if (error) redirect(`/partners?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/partners");
+  redirect("/partners");
+}
+
+export async function deletePartner(partnerId: string) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("partner_workspaces").delete().eq("id", partnerId);
+  if (error) redirect(`/partners?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/partners");
+  redirect("/partners");
 }
 
 // ───────────────────────────────────────────────────────────────────────
