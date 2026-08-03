@@ -916,11 +916,11 @@ export function BriefIntakeForm({
       {/* KB upload zone */}
       <KbUploadZone onExtracted={handleExtracted} />
 
-      {/* Tab bar — Brand | Agency */}
-      <div className="border-b border-neutral-200 overflow-x-auto">
-        <div className="flex items-end min-w-max">
-          {/* Brand section */}
-          <span className="pr-2 pb-2.5 text-[10px] font-bold uppercase tracking-widest text-neutral-400 shrink-0">
+      {/* Tab bar — two rows: Brand / Agency */}
+      <div className="space-y-0">
+        {/* Row 1: Brand */}
+        <div className="flex items-end border-b border-neutral-200 flex-wrap">
+          <span className="pr-3 pb-2.5 text-[10px] font-bold uppercase tracking-widest text-neutral-400 shrink-0 self-end">
             Brand
           </span>
           {BRAND_TABS.map((t) => (
@@ -928,9 +928,9 @@ export function BriefIntakeForm({
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
-              className={`px-4 py-2 text-sm font-semibold rounded-t-md border-b-2 transition-colors whitespace-nowrap ${
+              className={`px-3 py-2 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
                 tab === t.id
-                  ? "border-neutral-900 text-neutral-900"
+                  ? "border-neutral-900 text-neutral-900 -mb-px"
                   : "border-transparent text-neutral-400 hover:text-neutral-700"
               }`}
             >
@@ -942,32 +942,31 @@ export function BriefIntakeForm({
               )}
             </button>
           ))}
-
-          {/* Agency section — separated by gap + label */}
-          <div className="ml-8 pl-6 border-l border-neutral-200 flex items-end">
-            <span className="pr-2 pb-2.5 text-[10px] font-bold uppercase tracking-widest text-neutral-400 shrink-0">
-              Agency
-            </span>
-            {AGENCY_TABS.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTab(t.id)}
-                className={`px-4 py-2 text-sm font-semibold rounded-t-md border-b-2 transition-colors whitespace-nowrap ${
-                  tab === t.id
-                    ? "border-neutral-900 text-neutral-900"
-                    : "border-transparent text-neutral-400 hover:text-neutral-700"
-                }`}
-              >
-                {t.label}
-                {t.id === "discipline" && stageBriefs.length > 0 && (
-                  <span className="ml-1.5 text-xs bg-emerald-600 text-white rounded-full px-1.5 py-0.5">
-                    {stageBriefs.length}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+        </div>
+        {/* Row 2: Agency */}
+        <div className="flex items-end border-b border-neutral-200 flex-wrap">
+          <span className="pr-3 pb-2.5 text-[10px] font-bold uppercase tracking-widest text-neutral-400 shrink-0 self-end">
+            Agency
+          </span>
+          {AGENCY_TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={`px-3 py-2 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
+                tab === t.id
+                  ? "border-neutral-900 text-neutral-900 -mb-px"
+                  : "border-transparent text-neutral-400 hover:text-neutral-700"
+              }`}
+            >
+              {t.label}
+              {t.id === "discipline" && stageBriefs.length > 0 && (
+                <span className="ml-1.5 text-xs bg-emerald-600 text-white rounded-full px-1.5 py-0.5">
+                  {stageBriefs.length}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
       </div>
 
