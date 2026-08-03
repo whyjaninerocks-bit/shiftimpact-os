@@ -13,6 +13,7 @@
 //   6. Discipline Briefs — AI-generated per-channel briefs (read-only when available)
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import type { FrameBrief, BigIdeaPlatform, StageBrief } from "@/lib/types";
 
 // ─── Extracted data types ─────────────────────────────────────────────────────
@@ -257,13 +258,16 @@ function KbUploadZone({ onExtracted }: {
 function ChannelsSection({
   campaignId,
   frame,
+  onChannelsSaved,
 }: {
   campaignId: string;
   frame: FrameBrief | null;
+  onChannelsSaved?: () => Promise<void>;
 }) {
   const [selected, setSelected] = useState<string[]>(frame?.active_channels ?? []);
   const [saveState, setSaveState]   = useState<SaveState>("idle");
   const [saveError, setSaveError]   = useState("");
+  const [genState, setGenState]     = useState<"idle" | "generating" | "done">("idle");
 
   const toggle = (channel: string) => {
     setSelected((prev) =>
@@ -288,9 +292,22 @@ function ChannelsSection({
       });
       const json = await res.json();
       if (!res.ok || json.error) { setSaveError(json.error ?? "Save failed"); setSaveState("error"); }
-      else { setSaveState("saved"); }
+      else {
+        setSaveState("saved");
+        // Auto-generate discipline briefs after channels are saved
+        setGenState("generating");
+        try {
+          await fetch("/api/channel-briefs/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ campaign_id: campaignId }),
+          });
+        } catch { /* silent — briefs will generate next time */ }
+        setGenState("done");
+        await onChannelsSaved?.();
+      }
     } catch { setSaveError("Network error — try again."); setSaveState("error"); }
-  }, [campaignId, frame, selected]);
+  }, [campaignId, frame, selected, onChannelsSaved]);
 
   if (!frame) {
     return (
@@ -344,6 +361,12 @@ function ChannelsSection({
       )}
 
       <SaveBar state={saveState} onSave={handleSave} error={saveError} />
+      {genState === "generating" && (
+        <p className="text-xs text-neutral-400 animate-pulse">Generating discipline briefs for your selected channels…</p>
+      )}
+      {genState === "done" && (
+        <p className="text-xs text-emerald-600">Discipline briefs ready — check the Agency tab below.</p>
+      )}
     </div>
   );
 }
@@ -779,29 +802,10 @@ function BipSection({
 // ─── Discipline Briefs section (read-only, client-facing) ────────────────────
 
 function DisciplineBriefsSection({
-  stageBriefs, frameLocked, activeChannels,
+  stageBriefs, activeChannels,
 }: {
-  stageBriefs: StageBrief[]; frameLocked: boolean; activeChannels: string[];
+  stageBriefs: StageBrief[]; activeChannels: string[];
 }) {
-  if (!frameLocked) {
-    return (
-      <div className="space-y-4">
-        <div className="space-y-1">
-          <h2 className="text-lg font-bold text-neutral-900">Discipline Briefs</h2>
-          <p className="text-sm text-neutral-500">Channel-specific execution briefs for your team and agency partners.</p>
-        </div>
-        <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-8 text-center">
-          <div className="text-3xl mb-3">⏳</div>
-          <p className="text-sm font-semibold text-neutral-700 mb-1">Brief under ShiftImpact review</p>
-          <p className="text-xs text-neutral-500 max-w-sm mx-auto">
-            Once your FRAME Brief is reviewed and approved, your ShiftImpact lead will generate a
-            tailored discipline brief for each active channel. They will appear here.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   if (stageBriefs.length === 0) {
     return (
       <div className="space-y-4">
@@ -812,9 +816,9 @@ function DisciplineBriefsSection({
         {activeChannels.length > 0 ? (
           <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-8 text-center">
             <div className="text-3xl mb-3">📋</div>
-            <p className="text-sm font-semibold text-neutral-700 mb-1">Channel briefs are being prepared</p>
+            <p className="text-sm font-semibold text-neutral-700 mb-1">Select your channels to generate briefs</p>
             <p className="text-xs text-neutral-500">
-              Your ShiftImpact lead is generating briefs for: {activeChannels.join(", ")}. Check back shortly.
+              Go to the <strong>Channels</strong> tab, select your channels, and hit Save. Discipline briefs will generate automatically.
             </p>
           </div>
         ) : (
@@ -888,6 +892,7 @@ export function BriefIntakeForm({
   clientName: string;
   stageBriefs: StageBrief[];
 }) {
+  const router = useRouter();
   const [tab, setTab] = useState<"channels" | "kpis" | "assets" | "frame" | "bip" | "discipline">("frame");
   const [extractedFrame, setExtractedFrame] = useState<FrameExtracted | null>(null);
   const [extractedBip,   setExtractedBip]   = useState<BipExtracted   | null>(null);
@@ -895,6 +900,11 @@ export function BriefIntakeForm({
   const handleExtracted = useCallback((frame: FrameExtracted, bip: BipExtracted) => {
     setExtractedFrame(frame); setExtractedBip(bip);
   }, []);
+
+  const handleChannelsSaved = useCallback(async () => {
+    router.refresh();
+    setTab("discipline");
+  }, [router]);
 
   const frameLocked    = frame?.lock_status === "Locked";
   const activeChannels = frame?.active_channels ?? [];
@@ -972,7 +982,7 @@ export function BriefIntakeForm({
 
       {/* Tab panels */}
       {tab === "channels" && (
-        <ChannelsSection campaignId={campaignId} frame={frame} />
+        <ChannelsSection campaignId={campaignId} frame={frame} onChannelsSaved={handleChannelsSaved} />
       )}
       {tab === "kpis" && (
         <CampaignKpiSection
@@ -996,7 +1006,6 @@ export function BriefIntakeForm({
       {tab === "discipline" && (
         <DisciplineBriefsSection
           stageBriefs={stageBriefs}
-          frameLocked={frameLocked}
           activeChannels={activeChannels}
         />
       )}

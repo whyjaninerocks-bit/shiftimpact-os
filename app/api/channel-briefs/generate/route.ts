@@ -113,12 +113,6 @@ export async function POST(req: NextRequest) {
 
     if (frameErr) return NextResponse.json({ error: frameErr.message }, { status: 500 });
     if (!frame) return NextResponse.json({ error: "FRAME Brief not found" }, { status: 404 });
-    if (frame.lock_status !== "Locked") {
-      return NextResponse.json(
-        { error: "FRAME Brief must be Locked before generating discipline briefs" },
-        { status: 422 }
-      );
-    }
 
     const activeChannels: string[] = frame.active_channels ?? [];
     if (activeChannels.length === 0) {
