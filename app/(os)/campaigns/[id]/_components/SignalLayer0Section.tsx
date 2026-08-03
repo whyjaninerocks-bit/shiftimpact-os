@@ -11,6 +11,7 @@
 // Attention Gap Flag + named action shown to strategy lead when flag fires.
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, SectionTitle, Badge } from "@/app/_components/ui";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -87,6 +88,7 @@ function deltaBadge(delta: number | null): string {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function SignalLayer0Section({ campaignId, records }: SignalLayer0SectionProps) {
+  const router = useRouter();
   const [localRecords, setLocalRecords] = useState<MediaDeliveryRecord[]>(records);
 
   // MDH inputs
@@ -139,6 +141,8 @@ export function SignalLayer0Section({ campaignId, records }: SignalLayer0Section
 
       setWeekNumber(""); setReach(""); setImpressions(""); setFreqOverride(""); setNotes("");
       setRate3s(""); setRate10s(""); setCompletion("");
+      // Refresh server component so CreativeFatigueSection gets fresh mdhRecords
+      router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
