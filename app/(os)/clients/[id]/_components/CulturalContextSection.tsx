@@ -17,6 +17,7 @@ type CulturalSignal = {
   status: string;
   geographic_scope: string;
   relevant_industries: string[];
+  is_generic: boolean;
   client_id: string | null;
   created_at: string;
 };
@@ -95,6 +96,11 @@ export function CulturalContextSection({
                 {s.is_trending && (
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 uppercase tracking-wide shrink-0">
                     Trending
+                  </span>
+                )}
+                {s.is_generic && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-teal-100 text-teal-700 uppercase tracking-wide shrink-0">
+                    All brands
                   </span>
                 )}
                 {s.client_id === clientId && (

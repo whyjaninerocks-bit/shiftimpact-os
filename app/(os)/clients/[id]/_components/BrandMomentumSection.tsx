@@ -118,6 +118,8 @@ function BmsForm({ clientId, onResult }: BmsFormProps) {
   const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestNote, setSuggestNote] = useState<string | null>(null);
   const todayStr = new Date().toISOString().slice(0, 10);
 
   const [periodLabel,    setPeriodLabel]    = useState("Q" + Math.ceil((new Date().getMonth() + 1) / 3) + " " + new Date().getFullYear());
@@ -136,6 +138,27 @@ function BmsForm({ clientId, onResult }: BmsFormProps) {
   const [cepNote,        setCepNote]        = useState("");
   const [compCtx,        setCompCtx]        = useState("");
   const [compNote,       setCompNote]       = useState("");
+
+  async function suggestFromData() {
+    setSuggesting(true);
+    setSuggestNote(null);
+    try {
+      const res = await fetch(`/api/brand-momentum/suggest?client_id=${clientId}`);
+      if (!res.ok) { setSuggestNote("Could not fetch suggestions"); return; }
+      const { suggestions, source_campaigns, note } = await res.json();
+      const s = suggestions;
+      if (s.sos_trajectory)      setSosTraj(s.sos_trajectory);
+      if (s.sos_note)            setSosNote(s.sos_note);
+      if (s.save_rate_trend)     setSaveRateTrend(s.save_rate_trend);
+      if (s.save_rate_note)      setSaveRateNote(s.save_rate_note);
+      if (s.ugc_trend)           setUgcTrend(s.ugc_trend);
+      if (s.ugc_note)            setUgcNote(s.ugc_note);
+      const campaigns = source_campaigns?.join(", ");
+      setSuggestNote(`D1–D3 pre-filled from: ${campaigns || "system data"}. ${note}`);
+    } finally {
+      setSuggesting(false);
+    }
+  }
 
   const handleSave = () => {
     if (!periodStart) {
@@ -222,6 +245,28 @@ function BmsForm({ clientId, onResult }: BmsFormProps) {
       {error && <p className="text-xs text-red-600 mb-2">{error}</p>}
 
       <div className="space-y-4">
+        {/* Auto-suggest from system data */}
+        <div className="flex items-start gap-3 rounded-lg bg-blue-50 border border-blue-100 px-3 py-2.5">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-blue-700 mb-0.5">Pre-fill from campaign data</p>
+            {suggestNote ? (
+              <p className="text-[11px] text-blue-600 leading-relaxed">{suggestNote}</p>
+            ) : (
+              <p className="text-[11px] text-blue-500">
+                Pulls D1 from gate signals, D2 from save rate history, D3 from Clarity Signal audits. D4–D6 still manual.
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={suggestFromData}
+            disabled={suggesting}
+            className="shrink-0 text-xs font-semibold text-blue-700 border border-blue-300 bg-white rounded px-3 py-1.5 hover:bg-blue-50 transition-colors disabled:opacity-50"
+          >
+            {suggesting ? "Fetching…" : "Suggest D1–D3"}
+          </button>
+        </div>
+
         {/* Period meta */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="col-span-1">

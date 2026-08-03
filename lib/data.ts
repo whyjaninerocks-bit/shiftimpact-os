@@ -63,14 +63,26 @@ export type ClaritySignalRow = {
 
 export async function getRecentClaritySignals(limit = 8): Promise<ClaritySignalRow[]> {
   const supabase = createAdminClient();
+  // Pull more than `limit` so we can deduplicate by brand_name and still show `limit` unique brands
   const { data, error } = await supabase
     .from("quick_audits")
     .select("id, brand_name, campaign_name, industry, created_at")
     .eq("result->>_clarity_signal", "true")
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(limit * 5); // over-fetch to survive deduplication
   if (error) return [];
-  return data as ClaritySignalRow[];
+  // Keep only the most recent entry per brand_name
+  const seen = new Set<string>();
+  const deduped: ClaritySignalRow[] = [];
+  for (const row of (data as ClaritySignalRow[])) {
+    const key = row.brand_name.toLowerCase().trim();
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduped.push(row);
+    }
+    if (deduped.length >= limit) break;
+  }
+  return deduped;
 }
 
 export async function getClient(id: string): Promise<ClientWithRollups | null> {
@@ -255,14 +267,14 @@ export async function getClientChannels(clientId: string): Promise<ClientChannel
 
 export async function getClientSignalSources(clientId: string): Promise<ClientSignalSource[]> {
   const supabase = createAdminClient();
+  // Return ALL sources (active + inactive) so the toggle UI is meaningful
   const { data, error } = await supabase
     .from("client_signal_sources")
     .select("*")
     .eq("client_id", clientId)
-    .eq("active", true)
     .order("source_name");
   if (error) throw error;
-  return data as ClientSignalSource[];
+  return (data ?? []) as ClientSignalSource[];
 }
 
 export async function getIdeaExtensions(campaignId: string): Promise<IdeaExtension[]> {

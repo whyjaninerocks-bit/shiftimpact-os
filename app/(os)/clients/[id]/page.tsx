@@ -42,38 +42,51 @@ export default async function ClientDetailPage({
     getBrandMomentumScores(id),
   ]);
 
-  // Cultural signals: pull by direct client_id association OR industry match
+  // Cultural signals: pull by direct client_id association, industry match, OR generic (applies to all brands)
   // Falls back gracefully if the columns don't exist yet (pre-migration 0042)
   let culturalSignals: {
     id: string; signal_name: string; signal_type: string; is_trending: boolean;
     evidence: string; why_it_matters: string | null; brand_fit_status: string;
     status: string; geographic_scope: string; relevant_industries: string[];
-    client_id: string | null; created_at: string;
+    is_generic: boolean; client_id: string | null; created_at: string;
   }[] = [];
   try {
-    // Signals directly linked to this client
+    const SELECT_COLS = "id,signal_name,signal_type,is_trending,evidence,why_it_matters,brand_fit_status,status,geographic_scope,relevant_industries,is_generic,client_id,created_at";
+
+    // 1. Signals directly linked to this client
     const { data: byClient } = await supabase
       .from("cultural_signals")
-      .select("id,signal_name,signal_type,is_trending,evidence,why_it_matters,brand_fit_status,status,geographic_scope,relevant_industries,client_id,created_at")
+      .select(SELECT_COLS)
       .eq("client_id", id)
       .neq("status", "archived")
       .order("created_at", { ascending: false });
 
-    // Signals tagged with this client's industry (exclude ones already in byClient)
+    // 2. Signals tagged with this client's industry — use industry_profile (not .industry)
+    const clientIndustry = client.industry_profile;
     let byIndustry: typeof byClient = [];
-    if (client.industry) {
+    if (clientIndustry) {
       const { data } = await supabase
         .from("cultural_signals")
-        .select("id,signal_name,signal_type,is_trending,evidence,why_it_matters,brand_fit_status,status,geographic_scope,relevant_industries,client_id,created_at")
-        .contains("relevant_industries", [client.industry])
+        .select(SELECT_COLS)
+        .contains("relevant_industries", [clientIndustry])
         .neq("status", "archived")
-        .neq("client_id", id)
+        .is("client_id", null)       // only unattached-to-specific-client ones
         .order("created_at", { ascending: false });
       byIndustry = data ?? [];
     }
 
+    // 3. Generic signals — applies to every MY/SEA brand regardless of industry
+    const { data: generic } = await supabase
+      .from("cultural_signals")
+      .select(SELECT_COLS)
+      .eq("is_generic", true)
+      .neq("status", "archived")
+      .is("client_id", null)
+      .order("created_at", { ascending: false })
+      .limit(10);
+
     const seen = new Set<string>();
-    for (const s of [...(byClient ?? []), ...(byIndustry ?? [])]) {
+    for (const s of [...(byClient ?? []), ...(byIndustry ?? []), ...(generic ?? [])]) {
       if (!seen.has(s.id)) {
         seen.add(s.id);
         culturalSignals.push(s as typeof culturalSignals[number]);
@@ -167,9 +180,20 @@ export default async function ClientDetailPage({
             <div>
               <label className={labelClass} htmlFor="industry_profile">Industry Profile</label>
               <select className={inputClass} id="industry_profile" name="industry_profile" defaultValue={client.industry_profile} required>
+                <option value="FMCG">FMCG</option>
                 <option value="QSR">QSR</option>
-                <option value="B2B">B2B</option>
                 <option value="Retail">Retail</option>
+                <option value="Financial Services">Financial Services</option>
+                <option value="Telco">Telco</option>
+                <option value="Healthcare">Healthcare</option>
+                <option value="Insurance">Insurance</option>
+                <option value="Automotive">Automotive</option>
+                <option value="Hospitality">Hospitality</option>
+                <option value="Media & Entertainment">Media & Entertainment</option>
+                <option value="E-Commerce">E-Commerce</option>
+                <option value="Education">Education</option>
+                <option value="B2B">B2B</option>
+                <option value="B2B SaaS">B2B SaaS</option>
                 <option value="Other">Other</option>
               </select>
             </div>
@@ -208,7 +232,7 @@ export default async function ClientDetailPage({
 
       <CulturalContextSection
         clientId={id}
-        clientIndustry={client.industry ?? null}
+        clientIndustry={client.industry_profile ?? null}
         signals={culturalSignals}
       />
     </div>

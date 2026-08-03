@@ -25,6 +25,32 @@ function dateOrNull(formData: FormData, key: string): string | null {
 // Clients
 // ───────────────────────────────────────────────────────────────────────
 
+// Default channels seeded for every new client
+const DEFAULT_CHANNELS = [
+  { channel_name: "Digital / Social", channel_category: "DIGITAL", translation_hint: "Platform-native brand mechanics." },
+  { channel_name: "KOL / Influencer",  channel_category: "KOL",     translation_hint: "Creator-native storytelling." },
+  { channel_name: "PR / Earned Media", channel_category: "PR",      translation_hint: "Journalist angle, not brand angle." },
+  { channel_name: "Radio",             channel_category: "RADIO",   translation_hint: "Audio-only hook. Human tension in 15 seconds." },
+  { channel_name: "Retail / In-Store", channel_category: "RETAIL",  translation_hint: "Last-mile conversion trigger." },
+];
+
+// Default signal sources seeded for every new client
+const DEFAULT_SIGNAL_SOURCES = [
+  { source_name: "TikTok Save Rate",                   source_type: "social",        unit: "%",     description: "Hero content saves as % of views — primary Demand signal" },
+  { source_name: "TikTok Share Rate",                  source_type: "social",        unit: "%",     description: "Shares as % of views — secondary virality signal" },
+  { source_name: "Google Search Intent",               source_type: "behavioral",    unit: "%",     description: "Search volume lift vs baseline for category/brand terms" },
+  { source_name: "Google Search Console (Branded)",    source_type: "behavioral",    unit: "%",     description: "Branded search volume movement from Google Search Console" },
+  { source_name: "Meta ROAS",                          source_type: "quantitative",  unit: "x",     description: "Return on ad spend from Meta campaigns" },
+  { source_name: "TikTok Shop CTR",                    source_type: "quantitative",  unit: "%",     description: "Click-through rate on TikTok Shop product links" },
+  { source_name: "TikTok Shop CVR",                    source_type: "quantitative",  unit: "%",     description: "Conversion rate on TikTok Shop (clicks to purchase)" },
+  { source_name: "Cart Abandonment Rate",              source_type: "quantitative",  unit: "%",     description: "Shopping cart abandonment rate — lower is better" },
+  { source_name: "Repeat Purchase Rate (60-day)",      source_type: "quantitative",  unit: "%",     description: "Customers who repurchased within 60 days" },
+  { source_name: "Organic UGC Volume",                 source_type: "social",        unit: "#",     description: "Volume of organic user-generated content mentioning brand" },
+  { source_name: "NPS Score",                          source_type: "qualitative",   unit: "score", description: "Net Promoter Score from post-purchase survey" },
+  { source_name: "In-Store Footfall Lift",             source_type: "behavioral",    unit: "%",     description: "Store footfall lift vs baseline period" },
+  { source_name: "Loyalty App Opens",                  source_type: "behavioral",    unit: "%",     description: "Loyalty app open rate during campaign period" },
+];
+
 export async function createClient(formData: FormData) {
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -44,8 +70,20 @@ export async function createClient(formData: FormData) {
     redirect(`/clients?error=${encodeURIComponent(error.message)}`);
   }
 
+  const clientId = data.id;
+
+  // Auto-seed standard channels
+  await supabase.from("client_channels").insert(
+    DEFAULT_CHANNELS.map(ch => ({ client_id: clientId, ...ch }))
+  );
+
+  // Auto-seed signal sources
+  await supabase.from("client_signal_sources").insert(
+    DEFAULT_SIGNAL_SOURCES.map(src => ({ client_id: clientId, ...src }))
+  );
+
   revalidatePath("/clients");
-  redirect(`/clients/${data.id}`);
+  redirect(`/clients/${clientId}`);
 }
 
 export async function updateClient(clientId: string, formData: FormData) {

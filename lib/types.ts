@@ -131,7 +131,12 @@ export type BrandMomentumScore = {
 
 // ─── Industry / Category ─────────────────────────────────────────────────────
 // Client-level profile (legacy — broad classification on the client record)
-export type IndustryProfile = "QSR" | "B2B" | "Retail" | "Other";
+export type IndustryProfile =
+  | "QSR" | "B2B" | "Retail" | "FMCG"
+  | "Financial Services" | "Telco" | "Healthcare"
+  | "Insurance" | "Automotive" | "Hospitality"
+  | "Media & Entertainment" | "E-Commerce" | "Education"
+  | "Other";
 
 // FRAME Brief-level category (Sprint 1 addition — drives Gate Signal Library,
 // holding periods, ICS weighting, Benchmark Library filter, Pitch Intel priming)
@@ -251,6 +256,16 @@ export type FrameBrief = {
   ics_weighted_total: number;
   ics_any_dimension_blocker: boolean;
   ics_threshold: IcsThreshold;
+
+  // ── Campaign KPIs + Budget (migration 0045) ───────────────────────────────
+  budget_total: number | null;
+  budget_notes: string;
+  secondary_kpis: string;
+
+  // ── Brand Assets / CI / RFP (migration 0045) ──────────────────────────────
+  brand_guidelines_url: string;
+  brand_guidelines_notes: string;
+  rfp_notes: string;
 
   // ── F29 — Distinctive Brand Assets deployed in this brief (Sprint 22) ──────
   // Comma-separated brand_asset UUIDs | 'NONE_CONFIRMED' | '' (not set)

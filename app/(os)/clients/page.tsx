@@ -94,13 +94,21 @@ export default async function ClientsPage() {
             </div>
             <div>
               <label className={labelClass} htmlFor="industry_profile">Industry Profile</label>
-              <select className={inputClass} id="industry_profile" name="industry_profile" defaultValue="QSR">
-                <option value="QSR">QSR</option>
-                <option value="B2B">B2B</option>
-                <option value="Retail">Retail</option>
+              <select className={inputClass} id="industry_profile" name="industry_profile" defaultValue="FMCG">
                 <option value="FMCG">FMCG</option>
+                <option value="QSR">QSR</option>
+                <option value="Retail">Retail</option>
                 <option value="Financial Services">Financial Services</option>
                 <option value="Telco">Telco</option>
+                <option value="Healthcare">Healthcare</option>
+                <option value="Insurance">Insurance</option>
+                <option value="Automotive">Automotive</option>
+                <option value="Hospitality">Hospitality</option>
+                <option value="Media & Entertainment">Media & Entertainment</option>
+                <option value="E-Commerce">E-Commerce</option>
+                <option value="Education">Education</option>
+                <option value="B2B">B2B</option>
+                <option value="B2B SaaS">B2B SaaS</option>
                 <option value="Other">Other</option>
               </select>
             </div>

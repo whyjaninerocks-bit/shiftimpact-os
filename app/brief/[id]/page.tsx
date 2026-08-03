@@ -59,6 +59,11 @@ export default async function BriefIntakePage({
           campaignId={id}
           frame={frame}
           bip={bip}
+          businessOutcomeLabel={campaign.business_outcome_label ?? "Business Outcome"}
+          businessOutcomeTarget={campaign.business_outcome_target ?? null}
+          retentionLabel={campaign.retention_metric_label ?? "Retention Metric"}
+          retentionTarget={campaign.retention_metric_target ?? null}
+          clientName={campaign.client_name ?? ""}
         />
       </main>
     </div>

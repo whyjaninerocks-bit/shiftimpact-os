@@ -16,9 +16,11 @@ const TYPE_COLOR: Record<string, string> = {
   social:       "bg-pink-50 text-pink-700 border-pink-200",
 };
 
-export function SignalSourcesSection({ sources = [] }: Props) {
+export function SignalSourcesSection({ clientId, sources = [] }: Props) {
   const [local, setLocal] = useState<ClientSignalSource[]>(sources);
   const [toggling, setToggling] = useState<string | null>(null);
+  const [seeding, setSeeding] = useState(false);
+  const [seedError, setSeedError] = useState<string | null>(null);
 
   async function toggle(id: string, current: boolean) {
     setToggling(id);
@@ -36,32 +38,67 @@ export function SignalSourcesSection({ sources = [] }: Props) {
     }
   }
 
+  async function seedDefaults() {
+    setSeeding(true);
+    setSeedError(null);
+    try {
+      const res = await fetch(`/api/signal-sources/seed`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ client_id: clientId }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setSeedError(d.error ?? "Failed to seed signal sources");
+        return;
+      }
+      const { sources: seeded } = await res.json();
+      setLocal(seeded);
+    } finally {
+      setSeeding(false);
+    }
+  }
+
   const activeCount = local.filter(s => s.active).length;
 
   if (local.length === 0) {
     return (
       <section className="rounded-lg border border-neutral-200 bg-white p-6">
-        <h2 className="font-semibold text-neutral-900 mb-2">Signal Sources</h2>
-        <p className="text-sm text-neutral-400">No signal sources configured.</p>
+        <h2 className="font-semibold text-neutral-900 mb-1">Signal Sources</h2>
+        <p className="text-sm text-neutral-400 mb-4">
+          Signal sources define which metrics you track to confirm campaign health.
+          These feed the BMS dimensions and weekly digest.
+        </p>
+        {seedError && <p className="text-xs text-red-600 mb-2">{seedError}</p>}
+        <button
+          onClick={seedDefaults}
+          disabled={seeding}
+          className="text-sm font-semibold text-neutral-700 border border-neutral-300 rounded-lg px-4 py-2 hover:bg-neutral-50 transition-colors disabled:opacity-50"
+        >
+          {seeding ? "Setting up…" : "Set up 13 standard signal sources"}
+        </button>
       </section>
     );
   }
 
   return (
-    <section className="rounded-lg border border-neutral-200 bg-white p-6">
+    <section className="rounded-lg border border-neutral-200 bg-white p-6" id="signal-sources">
       <div className="flex items-baseline justify-between mb-4">
         <h2 className="font-semibold text-neutral-900">Signal Sources</h2>
         <span className="text-xs text-neutral-400">{activeCount} of {local.length} active</span>
       </div>
+      <p className="text-xs text-neutral-400 mb-3">
+        Toggle sources you're actively tracking. Active sources appear in the BMS form and weekly digest.
+      </p>
 
       <div className="space-y-2">
         {local.map(src => {
-          const typeCls = TYPE_COLOR[src.source_type.toLowerCase()] ?? "bg-neutral-100 text-neutral-600 border-neutral-200";
+          const typeCls = TYPE_COLOR[src.source_type?.toLowerCase()] ?? "bg-neutral-100 text-neutral-600 border-neutral-200";
           return (
             <div
               key={src.id}
               className={`flex items-start gap-3 rounded-lg border p-3 transition-opacity ${
-                src.active ? "border-neutral-100 bg-neutral-50 opacity-100" : "border-neutral-50 bg-white opacity-40"
+                src.active ? "border-neutral-100 bg-neutral-50 opacity-100" : "border-dashed border-neutral-200 bg-white opacity-50"
               }`}
             >
               <button

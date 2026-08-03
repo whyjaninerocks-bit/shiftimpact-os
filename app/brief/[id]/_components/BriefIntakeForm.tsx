@@ -619,18 +619,298 @@ function BipSection({
   );
 }
 
+// ─── Campaign KPI + Budget section ───────────────────────────────────────────
+
+function CampaignKpiSection({
+  campaignId,
+  businessOutcomeLabel,
+  businessOutcomeTarget,
+  retentionLabel,
+  retentionTarget,
+  frame,
+}: {
+  campaignId: string;
+  businessOutcomeLabel: string;
+  businessOutcomeTarget: number | null;
+  retentionLabel: string;
+  retentionTarget: number | null;
+  frame: FrameBrief | null;
+}) {
+  const [boTarget,      setBoTarget]      = useState<string>(businessOutcomeTarget != null ? String(businessOutcomeTarget) : "");
+  const [rmTarget,      setRmTarget]      = useState<string>(retentionTarget != null ? String(retentionTarget) : "");
+  const [budgetTotal,   setBudgetTotal]   = useState<string>(frame?.budget_total != null ? String(frame.budget_total) : "");
+  const [budgetNotes,   setBudgetNotes]   = useState<string>(frame?.budget_notes ?? "");
+  const [secondaryKpis, setSecondaryKpis] = useState<string>(frame?.secondary_kpis ?? "");
+  const [saveState,     setSaveState]     = useState<SaveState>("idle");
+  const [saveError,     setSaveError]     = useState("");
+
+  const handleSave = useCallback(async () => {
+    setSaveState("saving");
+    setSaveError("");
+
+    try {
+      // Save campaign-level KPI targets
+      const campRes = await fetch("/api/brief-save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          section: "campaign_kpi",
+          campaign_id: campaignId,
+          record_id: campaignId,
+          fields: {
+            business_outcome_target: boTarget ? Number(boTarget) : null,
+            retention_metric_target: rmTarget ? Number(rmTarget) : null,
+          },
+        }),
+      });
+      if (!campRes.ok) {
+        const e = await campRes.json().catch(() => ({}));
+        setSaveError(e.error ?? "Save failed");
+        setSaveState("error");
+        return;
+      }
+
+      // Save FRAME brief KPI + budget fields
+      if (frame) {
+        const frameRes = await fetch("/api/brief-save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            section: "frame",
+            campaign_id: campaignId,
+            record_id: frame.id,
+            fields: {
+              budget_total:   budgetTotal ? Number(budgetTotal) : null,
+              budget_notes:   budgetNotes,
+              secondary_kpis: secondaryKpis,
+            },
+          }),
+        });
+        if (!frameRes.ok) {
+          const e = await frameRes.json().catch(() => ({}));
+          setSaveError(e.error ?? "Save failed");
+          setSaveState("error");
+          return;
+        }
+      }
+
+      setSaveState("saved");
+    } catch {
+      setSaveError("Network error — try again.");
+      setSaveState("error");
+    }
+  }, [campaignId, frame, boTarget, rmTarget, budgetTotal, budgetNotes, secondaryKpis]);
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <h2 className="text-lg font-bold text-neutral-900">Campaign KPIs</h2>
+        <p className="text-sm text-neutral-500">
+          Set your success targets. These anchor every strategic decision ShiftImpact makes.
+        </p>
+      </div>
+
+      <div className="grid gap-5">
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label className={labelCls}>{businessOutcomeLabel} — Target</label>
+            <p className={hintCls}>The primary business outcome number you're aiming for this campaign.</p>
+            <input
+              type="number"
+              value={boTarget}
+              onChange={e => { setBoTarget(e.target.value); setSaveState("idle"); }}
+              placeholder="e.g. 12 (for 12% lift)"
+              className={inputCls}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className={labelCls}>{retentionLabel} — Target</label>
+            <p className={hintCls}>Your retention or repeat-purchase target for this period.</p>
+            <input
+              type="number"
+              value={rmTarget}
+              onChange={e => { setRmTarget(e.target.value); setSaveState("idle"); }}
+              placeholder="e.g. 25 (for 25% repeat rate)"
+              className={inputCls}
+            />
+          </div>
+        </div>
+
+        <FieldRow
+          label="Secondary KPIs"
+          hint="Any additional metrics you're tracking — share of voice targets, reach, downloads, app installs, NPS improvement, etc."
+          name="secondary_kpis"
+          value={secondaryKpis}
+          onChange={v => { setSecondaryKpis(v); setSaveState("idle"); }}
+          rows={3}
+          placeholder="e.g. TikTok Save Rate above 3.5% / Branded search lift of 8% / 50K Loyalty app activations"
+        />
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label className={labelCls}>Total Campaign Budget (RM)</label>
+            <p className={hintCls}>Optional — helps ShiftImpact right-size the idea.</p>
+            <input
+              type="number"
+              value={budgetTotal}
+              onChange={e => { setBudgetTotal(e.target.value); setSaveState("idle"); }}
+              placeholder="e.g. 500000"
+              className={inputCls}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className={labelCls}>Budget Notes / Media Split</label>
+            <p className={hintCls}>Paid vs organic split, channel budget guidance, or any budget constraints.</p>
+            <textarea
+              rows={2}
+              value={budgetNotes}
+              onChange={e => { setBudgetNotes(e.target.value); setSaveState("idle"); }}
+              placeholder="e.g. 60% digital, 40% OOH + radio. Hard cap on influencer fees at RM80K."
+              className={inputCls}
+            />
+          </div>
+        </div>
+      </div>
+
+      <SaveBar state={saveState} onSave={handleSave} error={saveError} />
+    </div>
+  );
+}
+
+// ─── Brand Assets / CI / RFP section ─────────────────────────────────────────
+
+function BrandAssetsSection({
+  campaignId,
+  clientName,
+  frame,
+}: {
+  campaignId: string;
+  clientName: string;
+  frame: FrameBrief | null;
+}) {
+  const [guidelinesUrl,   setGuidelinesUrl]   = useState<string>(frame?.brand_guidelines_url ?? "");
+  const [guidelinesNotes, setGuidelinesNotes] = useState<string>(frame?.brand_guidelines_notes ?? "");
+  const [rfpNotes,        setRfpNotes]        = useState<string>(frame?.rfp_notes ?? "");
+  const [saveState,       setSaveState]       = useState<SaveState>("idle");
+  const [saveError,       setSaveError]       = useState("");
+
+  const handleSave = useCallback(async () => {
+    if (!frame) return;
+    setSaveState("saving");
+    setSaveError("");
+    try {
+      const res = await fetch("/api/brief-save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          section: "frame",
+          campaign_id: campaignId,
+          record_id: frame.id,
+          fields: {
+            brand_guidelines_url:   guidelinesUrl,
+            brand_guidelines_notes: guidelinesNotes,
+            rfp_notes:              rfpNotes,
+          },
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        setSaveError(json.error ?? "Save failed");
+        setSaveState("error");
+      } else {
+        setSaveState("saved");
+      }
+    } catch {
+      setSaveError("Network error — try again.");
+      setSaveState("error");
+    }
+  }, [campaignId, frame, guidelinesUrl, guidelinesNotes, rfpNotes]);
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <h2 className="text-lg font-bold text-neutral-900">Brand Assets, CI & RFP</h2>
+        <p className="text-sm text-neutral-500">
+          Share your brand guidelines, corporate identity documents, and any RFP or scope requirements
+          for {clientName || "this campaign"}. ShiftImpact uses these to ensure every brief and idea
+          stays true to your brand.
+        </p>
+      </div>
+
+      <div className="grid gap-5">
+        <div className="space-y-1">
+          <label className={labelCls}>Brand Guidelines / CI — Link</label>
+          <p className={hintCls}>
+            Paste a link to your brand guidelines, CI manual, or identity deck
+            (Dropbox, Google Drive, SharePoint, etc.).
+          </p>
+          <input
+            type="url"
+            value={guidelinesUrl}
+            onChange={e => { setGuidelinesUrl(e.target.value); setSaveState("idle"); }}
+            placeholder="https://drive.google.com/... or Dropbox link"
+            className={inputCls}
+          />
+        </div>
+
+        <FieldRow
+          label="Brand Identity Notes"
+          hint="Key brand rules, tone restrictions, visual identity notes, or anything ShiftImpact must know before developing creative. Paste excerpts from your CI manual here."
+          name="brand_guidelines_notes"
+          value={guidelinesNotes}
+          onChange={v => { setGuidelinesNotes(v); setSaveState("idle"); }}
+          rows={5}
+          placeholder={`e.g.
+• Brand colours: Primary — Yeo's Red (#C8102E). Never use pink.
+• Logo: No tagline lockup in digital formats. Minimum clearspace = 1x logo height.
+• Tone: Warm, confident, practical. Not preachy, not try-hard.
+• Must-include: Always show product in context of a real meal, not floating.
+• Prohibited: Competitor product mentions. Any cooking fail imagery.`}
+        />
+
+        <FieldRow
+          label="RFP / Scope Notes"
+          hint="Paste your RFP scope, deliverables list, or any brief requirements ShiftImpact needs to address. Include timelines, mandatories, and any client-specific constraints."
+          name="rfp_notes"
+          value={rfpNotes}
+          onChange={v => { setRfpNotes(v); setSaveState("idle"); }}
+          rows={5}
+          placeholder={`e.g.
+• Campaign window: 1 Sep – 30 Nov 2026
+• Must activate during Hari Raya Aidiladha season
+• Deliverables: 1 hero TVC (30s), 3 social cutdowns, KOL brief for 5 creators
+• Mandatory inclusion: Caramu product range SKUs 1, 2, 3
+• Legal review required before any campaign goes live`}
+        />
+      </div>
+
+      <SaveBar state={saveState} onSave={handleSave} error={saveError} />
+    </div>
+  );
+}
+
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export function BriefIntakeForm({
   campaignId,
   frame,
   bip,
+  businessOutcomeLabel,
+  businessOutcomeTarget,
+  retentionLabel,
+  retentionTarget,
+  clientName,
 }: {
   campaignId: string;
   frame: FrameBrief | null;
   bip: BigIdeaPlatform | null;
+  businessOutcomeLabel: string;
+  businessOutcomeTarget: number | null;
+  retentionLabel: string;
+  retentionTarget: number | null;
+  clientName: string;
 }) {
-  const [tab, setTab] = useState<"frame" | "bip">("frame");
+  const [tab, setTab] = useState<"kpis" | "assets" | "frame" | "bip">("kpis");
   const [extractedFrame, setExtractedFrame] = useState<FrameExtracted | null>(null);
   const [extractedBip,   setExtractedBip]   = useState<BipExtracted   | null>(null);
 
@@ -639,29 +919,53 @@ export function BriefIntakeForm({
     setExtractedBip(bip);
   }, []);
 
+  const TABS = [
+    { id: "kpis",   label: "Campaign KPIs" },
+    { id: "assets", label: "Brand Assets & CI" },
+    { id: "frame",  label: "FRAME Brief" },
+    { id: "bip",    label: "Big Idea Platform" },
+  ] as const;
+
   return (
     <div className="space-y-6">
       {/* KB upload zone */}
       <KbUploadZone onExtracted={handleExtracted} />
 
       {/* Tab bar */}
-      <div className="flex gap-2 border-b border-neutral-200 pb-0">
-        {(["frame", "bip"] as const).map((t) => (
+      <div className="flex flex-wrap gap-1 border-b border-neutral-200">
+        {TABS.map((t) => (
           <button
-            key={t}
+            key={t.id}
             type="button"
-            onClick={() => setTab(t)}
+            onClick={() => setTab(t.id)}
             className={`px-4 py-2 text-sm font-semibold rounded-t-md border-b-2 transition-colors ${
-              tab === t
+              tab === t.id
                 ? "border-neutral-900 text-neutral-900"
                 : "border-transparent text-neutral-400 hover:text-neutral-700"
             }`}
           >
-            {t === "frame" ? "FRAME Brief" : "Big Idea Platform"}
+            {t.label}
           </button>
         ))}
       </div>
 
+      {tab === "kpis" && (
+        <CampaignKpiSection
+          campaignId={campaignId}
+          businessOutcomeLabel={businessOutcomeLabel}
+          businessOutcomeTarget={businessOutcomeTarget}
+          retentionLabel={retentionLabel}
+          retentionTarget={retentionTarget}
+          frame={frame}
+        />
+      )}
+      {tab === "assets" && (
+        <BrandAssetsSection
+          campaignId={campaignId}
+          clientName={clientName}
+          frame={frame}
+        />
+      )}
       {tab === "frame" && (
         <FrameSection campaignId={campaignId} frame={frame} extracted={extractedFrame} />
       )}
