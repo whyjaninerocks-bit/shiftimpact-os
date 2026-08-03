@@ -277,6 +277,11 @@ export type FrameBrief = {
   // '' → BIP co-pilot DBA flag fires; 'NONE_CONFIRMED' → flag suppressed
   distinctive_assets_deployed: string;
 
+  // ── Expert Architecture — Brand Health Battery (Sprint 5 / migration 0054) ──
+  // Demand (brand-building) investment as % of total campaign budget (0–100).
+  // Battery computed from rolling last-3-campaigns average across client history.
+  demand_investment_pct: number | null;
+
   // ── Lock ──
   lock_status: LockStatus;
   locked_at: string | null;

@@ -899,3 +899,68 @@ export async function getDataPreferences(
   }
   return data as import("./types").DataPreferences | null;
 }
+
+// ─── Sprint 5 — Expert Architecture Additions ─────────────────────────────────
+
+/**
+ * Get all frame_briefs for a client's campaigns with demand_investment_pct set.
+ * Used by BrandHealthBatterySection to compute rolling 60:40 ratio.
+ */
+export async function getClientCampaignBriefs(clientId: string) {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("campaigns")
+    .select(`
+      id,
+      name,
+      created_at,
+      frame_briefs!inner (
+        demand_investment_pct,
+        budget_total
+      )
+    `)
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false });
+
+  if (!data) return [];
+
+  return (data as Array<{
+    id: string;
+    name: string;
+    created_at: string;
+    frame_briefs: Array<{ demand_investment_pct: number | null; budget_total: number | null }>;
+  }>).map((c) => ({
+    campaign_id: c.id,
+    campaign_name: c.name,
+    created_at: c.created_at,
+    demand_investment_pct: c.frame_briefs[0]?.demand_investment_pct ?? null,
+    budget_total: c.frame_briefs[0]?.budget_total ?? null,
+  }));
+}
+
+/**
+ * Get Campaign Learning Record for a campaign.
+ * One record per campaign — null if not yet created.
+ */
+export async function getCampaignLearning(campaignId: string) {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("campaign_learning_records")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .maybeSingle();
+  return data ?? null;
+}
+
+/**
+ * Get Audience Replenishment Rate records for a campaign (all weeks, descending).
+ */
+export async function getAudienceReplenishment(campaignId: string) {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("audience_replenishment")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .order("week_number", { ascending: false });
+  return data ?? [];
+}

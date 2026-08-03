@@ -35,6 +35,9 @@ import {
   getBudgetMovements,
   getCategoryClientCount,
   getPredictionAccuracyRecords,
+  getClientCampaignBriefs,
+  getCampaignLearning,
+  getAudienceReplenishment,
 } from "@/lib/data";
 import { getLatestReviewPlatformScore } from "@/lib/data-review-platform";
 import { Badge, ErrorBanner, gateSignalTone, phaseTone } from "@/app/_components/ui";
@@ -73,6 +76,11 @@ import { DbaSection } from "./_components/DbaSection";
 import { KolTrackerSection } from "./_components/KolTrackerSection";
 import { BudgetMovementSection } from "./_components/BudgetMovementSection";
 import { PredictionAccuracySection } from "./_components/PredictionAccuracySection";
+import { BrandHealthBatterySection } from "./_components/BrandHealthBatterySection";
+import { CreativeFatigueSection } from "./_components/CreativeFatigueSection";
+import { MessageSequenceSection } from "./_components/MessageSequenceSection";
+import { AudienceReplenishmentSection } from "./_components/AudienceReplenishmentSection";
+import { CampaignLearningSection } from "./_components/CampaignLearningSection";
 
 const sectionGroups = [
   {
@@ -127,6 +135,16 @@ const sectionGroups = [
       { href: "#attribution", label: "Attribution ⚿" },
     ],
   },
+  {
+    label: "Expert Arch",
+    links: [
+      { href: "#brand-health-battery",    label: "Brand Battery ⚿" },
+      { href: "#creative-fatigue",        label: "Creative Fatigue ⚿" },
+      { href: "#message-sequence",        label: "Msg Sequence ⚿" },
+      { href: "#audience-replenishment",  label: "Replenishment ⚿" },
+      { href: "#campaign-learning",       label: "Learning Record ⚿" },
+    ],
+  },
 ];
 
 export default async function CampaignDetailPage({
@@ -147,7 +165,7 @@ export default async function CampaignDetailPage({
 
   const clientChannels = await getClientChannels(campaign.client_id);
 
-  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions, bip, signalThreshold, signalReports, campaignChannels, crossChannelReports, allChannelProfiles, behaviourStates, marketContexts, attributionRecords, consumerSnapshot, iqEvaluation, mdhRecords, aiBrandVisibilityScore, socialCurrencyScore, latestCstrReading, brandAssets, reviewScore, dataPreferences, cascadeRecords, dsemRecords, kolTrackers, budgetMovements, categoryClientCount, predictionRecords] = await Promise.all([
+  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions, bip, signalThreshold, signalReports, campaignChannels, crossChannelReports, allChannelProfiles, behaviourStates, marketContexts, attributionRecords, consumerSnapshot, iqEvaluation, mdhRecords, aiBrandVisibilityScore, socialCurrencyScore, latestCstrReading, brandAssets, reviewScore, dataPreferences, cascadeRecords, dsemRecords, kolTrackers, budgetMovements, categoryClientCount, predictionRecords, clientCampaignBriefs, campaignLearning, audienceReplenishment] = await Promise.all([
     getKillSwitches(frame.id),
     getStageBriefs(id),
     getPhaseGates(id),
@@ -180,6 +198,9 @@ export default async function CampaignDetailPage({
     getBudgetMovements(id),
     getCategoryClientCount(frame.industry_category ?? ""),
     getPredictionAccuracyRecords(id),
+    getClientCampaignBriefs(campaign.client_id),
+    getCampaignLearning(id),
+    getAudienceReplenishment(id),
   ]);
 
   const latestSignalWeek = signalReports[0]?.week_number ?? null;
@@ -394,6 +415,36 @@ export default async function CampaignDetailPage({
         attributionRecords={attributionRecords}
         industryCategory={frame.industry_category ?? "Other"}
         categoryClientCount={categoryClientCount}
+      />
+
+      {/* ── EXPERT ARCHITECTURE ─────────────────────────────────────── */}
+      <div className="flex items-center gap-3 pt-4">
+        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400 whitespace-nowrap">Expert Architecture</span>
+        <div className="flex-1 h-px bg-neutral-200" />
+      </div>
+      <BrandHealthBatterySection
+        campaignId={id}
+        clientId={campaign.client_id}
+        currentDemandPct={frame.demand_investment_pct ?? null}
+        clientCampaigns={clientCampaignBriefs}
+      />
+      <CreativeFatigueSection
+        mdhRecords={mdhRecords}
+        hasCompetitiveSignal={false}
+      />
+      <MessageSequenceSection
+        stageBriefs={stageBriefs}
+        frameLocked={frame.lock_status === "Locked"}
+      />
+      <AudienceReplenishmentSection
+        campaignId={id}
+        records={audienceReplenishment}
+        latestSignalWeek={latestSignalWeek ?? 1}
+      />
+      <CampaignLearningSection
+        campaignId={id}
+        campaignName={campaign.name}
+        existingRecord={campaignLearning}
       />
 
       <BackToTop />

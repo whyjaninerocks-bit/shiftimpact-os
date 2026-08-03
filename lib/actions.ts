@@ -1884,3 +1884,78 @@ export async function getOrchestrationRunHistory(campaignId: string, limit = 10)
 
   return data ?? [];
 }
+
+// ───────────────────────────────────────────────────────────────────────
+// Sprint 5 — Expert Architecture Additions
+// ───────────────────────────────────────────────────────────────────────
+
+/**
+ * Save Demand investment % for this campaign's FRAME brief.
+ * Used by Brand Health Battery to track rolling 60:40 ratio.
+ */
+export async function saveDemandInvestmentPct(campaignId: string, formData: FormData) {
+  const supabase = createAdminClient();
+  const pct = numOrNull(formData, "demand_investment_pct");
+
+  await supabase
+    .from("frame_briefs")
+    .update({ demand_investment_pct: pct })
+    .eq("campaign_id", campaignId);
+
+  revalidatePath(`/campaigns/${campaignId}`);
+}
+
+/**
+ * Save / upsert Campaign Learning Record (F18C).
+ * One record per campaign. Subsequent saves update the existing record.
+ */
+export async function saveCampaignLearning(campaignId: string, formData: FormData) {
+  const supabase = createAdminClient();
+
+  const payload = {
+    campaign_id:                 campaignId,
+    what_worked:                 str(formData, "what_worked"),
+    what_to_change:              str(formData, "what_to_change"),
+    signal_insights:             str(formData, "signal_insights"),
+    anchor_recommendation:       str(formData, "anchor_recommendation"),
+    kill_switch_recommendation:  str(formData, "kill_switch_recommendation"),
+    channel_recommendation:      str(formData, "channel_recommendation"),
+    budget_split_recommendation: str(formData, "budget_split_recommendation"),
+    sov_pct:                     numOrNull(formData, "sov_pct"),
+    som_pct:                     numOrNull(formData, "som_pct"),
+    updated_at:                  new Date().toISOString(),
+  };
+
+  await supabase
+    .from("campaign_learning_records")
+    .upsert(payload, { onConflict: "campaign_id" });
+
+  revalidatePath(`/campaigns/${campaignId}`);
+}
+
+/**
+ * Save Audience Replenishment Rate entry for a week.
+ * Upserts on (campaign_id, week_number).
+ */
+export async function saveAudienceReplenishment(campaignId: string, formData: FormData) {
+  const supabase = createAdminClient();
+
+  const week = numOrNull(formData, "week_number");
+  if (week === null) return;
+
+  const payload = {
+    campaign_id:               campaignId,
+    week_number:               week,
+    estimated_nurture_pool:    numOrNull(formData, "estimated_nurture_pool"),
+    weekly_conversion_count:   numOrNull(formData, "weekly_conversion_count"),
+    demand_new_audience:       numOrNull(formData, "demand_new_audience"),
+    notes:                     str(formData, "notes"),
+  };
+
+  await supabase
+    .from("audience_replenishment")
+    .upsert(payload, { onConflict: "campaign_id,week_number" });
+
+  revalidatePath(`/campaigns/${campaignId}`);
+}
+
