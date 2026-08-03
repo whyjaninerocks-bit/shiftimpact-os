@@ -86,6 +86,56 @@ export async function GET() {
   }
   const groups = Array.from(groupMap.values()).sort((a, b) => a.topPriority - b.topPriority);
 
+  // ── Active campaign signal health ────────────────────────────────────────
+  const { data: activeCampaigns } = await supabase
+    .from("campaigns")
+    .select("id, name, client_name, current_phase, gate_signal_status")
+    .not("current_phase", "is", null)
+    .order("client_name");
+
+  const { data: allWeeklyReports } = await supabase
+    .from("signal_weekly_reports")
+    .select("campaign_id, week_number, gate_status, demand_health, nurture_health, conversion_health, pipeline_risk_detected, flags_suppressed")
+    .order("week_number", { ascending: false });
+
+  const { data: failingLogs } = await supabase
+    .from("gate_signal_logs")
+    .select("campaign_id, signal_label")
+    .eq("pass", false);
+
+  const latestReportMap = new Map<string, {
+    week_number: number; gate_status: string | null; demand_health: string | null;
+    nurture_health: string | null; conversion_health: string | null;
+    pipeline_risk_detected: boolean | null; flags_suppressed: boolean;
+  }>();
+  for (const r of allWeeklyReports ?? []) {
+    if (!latestReportMap.has(r.campaign_id)) latestReportMap.set(r.campaign_id, r);
+  }
+  const breachCountMap = new Map<string, number>();
+  for (const log of failingLogs ?? []) {
+    breachCountMap.set(log.campaign_id, (breachCountMap.get(log.campaign_id) ?? 0) + 1);
+  }
+
+  type CampaignPulseEntry = {
+    id: string; name: string; client_name: string | null; current_phase: string | null;
+    latest_week: number | null; gate_status: string | null;
+    demand_health: string | null; nurture_health: string | null; conversion_health: string | null;
+    pipeline_risk: boolean; breach_count: number;
+  };
+  const campaignPulse: CampaignPulseEntry[] = (activeCampaigns ?? []).map(c => {
+    const report = latestReportMap.get(c.id);
+    return {
+      id: c.id, name: c.name, client_name: c.client_name ?? null, current_phase: c.current_phase ?? null,
+      latest_week: report?.week_number ?? null,
+      gate_status: report?.flags_suppressed ? null : (report?.gate_status ?? null),
+      demand_health: report?.flags_suppressed ? null : (report?.demand_health ?? null),
+      nurture_health: report?.flags_suppressed ? null : (report?.nurture_health ?? null),
+      conversion_health: report?.flags_suppressed ? null : (report?.conversion_health ?? null),
+      pipeline_risk: report?.pipeline_risk_detected ?? false,
+      breach_count: breachCountMap.get(c.id) ?? 0,
+    };
+  }).filter(c => c.latest_week !== null || c.breach_count > 0);
+
   // ── New signals count this week ───────────────────────────────────────────
   const { count: signalCount } = await supabase
     .from("business_signals")
@@ -163,10 +213,27 @@ export async function GET() {
   // ── Build plain-text brief ────────────────────────────────────────────────
   const lines: string[] = [];
 
+  const totalBreaches = campaignPulse.reduce((sum, c) => sum + c.breach_count, 0);
+
   lines.push(`SHIFTIMPACT OS — WEEKLY INTELLIGENCE DIGEST`);
   lines.push(`${today}`);
-  lines.push(`${groups.length} companies with open windows · ${topPursue.length} pursue-ready · ${signalCount ?? 0} new signals this week · ${culturalEntries.length} cultural signals`);
+  lines.push(`${groups.length} companies with open windows · ${topPursue.length} pursue-ready · ${signalCount ?? 0} new signals this week · ${culturalEntries.length} cultural signals · ${campaignPulse.length} active campaigns${totalBreaches > 0 ? ` · ⚠ ${totalBreaches} breach alerts` : ""}`);
   lines.push(``);
+
+  // ── Campaign signal health section ───────────────────────────────────────
+  if (campaignPulse.length > 0) {
+    lines.push(`━━ ACTIVE CAMPAIGN SIGNAL HEALTH ━━`);
+    lines.push(``);
+    for (const c of campaignPulse) {
+      const gate = c.gate_status ?? (c.latest_week !== null ? "Baseline" : "No data");
+      const health = c.latest_week !== null
+        ? `D:${c.demand_health ?? "—"} N:${c.nurture_health ?? "—"} C:${c.conversion_health ?? "—"}`
+        : "No weekly data yet";
+      lines.push(`${c.name}${c.client_name ? ` (${c.client_name})` : ""} — Phase: ${c.current_phase ?? "Unknown"}${c.latest_week !== null ? ` · Wk ${c.latest_week}` : ""}`);
+      lines.push(`  Gate: ${gate} · ${health}${c.pipeline_risk ? " · ⚠ Pipeline Risk" : ""}${c.breach_count > 0 ? ` · 🔴 ${c.breach_count} breach alert${c.breach_count !== 1 ? "s" : ""}` : ""}`);
+      lines.push(``);
+    }
+  }
 
   if (groups.length > 0) {
     lines.push(`━━ OPEN OPPORTUNITY WINDOWS ━━`);
@@ -240,7 +307,21 @@ export async function GET() {
       pursue_ready: topPursue.length,
       new_signals: signalCount ?? 0,
       cultural_signals: culturalEntries.length,
+      active_campaigns: campaignPulse.length,
+      breach_alerts: totalBreaches,
     },
+    campaign_pulse: campaignPulse.map(c => ({
+      name: c.name,
+      client: c.client_name,
+      phase: c.current_phase,
+      latest_week: c.latest_week,
+      gate: c.gate_status,
+      demand: c.demand_health,
+      nurture: c.nurture_health,
+      conversion: c.conversion_health,
+      pipeline_risk: c.pipeline_risk,
+      breach_count: c.breach_count,
+    })),
     text: lines.join("\n"),
     windows: groups.map(({ company: co, alerts }) => ({
       company: co.name,

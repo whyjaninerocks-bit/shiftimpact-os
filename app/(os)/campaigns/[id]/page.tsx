@@ -49,7 +49,7 @@ import { SignalLogSection } from "./_components/SignalLogSection";
 import { DiagnosticsSection } from "./_components/DiagnosticsSection";
 import { IdeaExtensionsSection } from "./_components/IdeaExtensionsSection";
 import { BigIdeaPlatformSection } from "./_components/BigIdeaPlatformSection";
-import { SignalIntelligenceSection } from "./_components/SignalIntelligenceSection";
+import { SignalIntelligenceSection, type WeeklyDataContext } from "./_components/SignalIntelligenceSection";
 import { CrossChannelSection } from "./_components/CrossChannelSection";
 import { ConsumerBehaviourSection } from "./_components/ConsumerBehaviourSection";
 import { MarketContextSection } from "./_components/MarketContextSection";
@@ -306,6 +306,21 @@ export default async function CampaignDetailPage({
         campaignId={id}
         threshold={signalThreshold}
         reports={signalReports}
+        dataContext={{
+          failingLogs: signalLogs
+            .filter((l) => l.pass === false)
+            .map((l) => ({
+              signal_label: l.signal_label,
+              actual_value: l.actual_value ?? null,
+              threshold_value: l.threshold_value ?? null,
+              unit: l.unit ?? null,
+            })),
+          nextGateName: phaseGates.find((g) => g.gate_outcome !== "Passed")?.gate_name ?? null,
+          pendingPredictionCount: predictionRecords.filter((r) => r.verdict === "Pending").length,
+          recentBudgetFlags: budgetMovements
+            .slice(0, 5)
+            .map((b) => ({ channel: b.channel, movement_type: b.movement_type })),
+        } satisfies WeeklyDataContext}
       />
       <CrossChannelSection
         campaignId={id}

@@ -196,7 +196,78 @@ export default async function DigestPage() {
     }
   }
 
-  // 6. Cultural signals this week — auto-tagged to client industries
+  // 6. Active campaign signal health — latest weekly report per campaign
+  type CampaignPulseRow = {
+    id: string;
+    name: string;
+    client_name: string | null;
+    current_phase: string | null;
+    gate_signal_status: string | null;
+    latest_week: number | null;
+    gate_status: string | null;
+    demand_health: string | null;
+    nurture_health: string | null;
+    conversion_health: string | null;
+    signal_2b_health: string | null;
+    pipeline_risk: boolean;
+    flags_suppressed: boolean;
+    breach_count: number;
+  };
+
+  // Get active campaigns
+  const { data: activeCampaigns } = await supabase
+    .from("campaigns")
+    .select("id, name, client_name, current_phase, gate_signal_status")
+    .not("current_phase", "is", null)
+    .order("client_name");
+
+  // Get latest signal weekly report per campaign
+  const { data: allWeeklyReports } = await supabase
+    .from("signal_weekly_reports")
+    .select("campaign_id, week_number, gate_status, demand_health, nurture_health, conversion_health, signal_2b_health, pipeline_risk_detected, flags_suppressed")
+    .order("week_number", { ascending: false });
+
+  // Get failing signal logs per campaign
+  const { data: failingLogs } = await supabase
+    .from("gate_signal_logs")
+    .select("campaign_id, signal_label")
+    .eq("pass", false);
+
+  // Build latest-report-per-campaign map
+  const latestReportMap = new Map<string, typeof allWeeklyReports extends (infer T)[] | null ? T : never>();
+  for (const r of allWeeklyReports ?? []) {
+    if (!latestReportMap.has(r.campaign_id)) {
+      latestReportMap.set(r.campaign_id, r);
+    }
+  }
+
+  // Build breach count per campaign
+  const breachCountMap = new Map<string, number>();
+  for (const log of failingLogs ?? []) {
+    breachCountMap.set(log.campaign_id, (breachCountMap.get(log.campaign_id) ?? 0) + 1);
+  }
+
+  const campaignPulse: CampaignPulseRow[] = (activeCampaigns ?? []).map((c) => {
+    const report = latestReportMap.get(c.id);
+    return {
+      id: c.id,
+      name: c.name,
+      client_name: c.client_name ?? null,
+      current_phase: c.current_phase ?? null,
+      gate_signal_status: c.gate_signal_status ?? null,
+      latest_week: report?.week_number ?? null,
+      gate_status: report?.gate_status ?? null,
+      demand_health: report?.demand_health ?? null,
+      nurture_health: report?.nurture_health ?? null,
+      conversion_health: report?.conversion_health ?? null,
+      signal_2b_health: report?.signal_2b_health ?? null,
+      pipeline_risk: report?.pipeline_risk_detected ?? false,
+      flags_suppressed: report?.flags_suppressed ?? true,
+      breach_count: breachCountMap.get(c.id) ?? 0,
+    };
+  }).filter(c => c.latest_week !== null || c.breach_count > 0);
+
+  // 7. Cultural signals this week — auto-tagged to client industries
   const { data: activeClients } = await supabase
     .from("companies")
     .select("id, name, industry")
@@ -263,13 +334,15 @@ export default async function DigestPage() {
   }
 
   const pipeline = {
-    total:     allCompanies?.length ?? 0,
-    pursuing:  allCompanies?.filter(c => c.status === "Pursuing").length ?? 0,
-    qualified: allCompanies?.filter(c => c.status === "Qualified").length ?? 0,
-    hot:       allCompanies?.filter(c => c.prospect_tier === "Tier 1 Hot").length ?? 0,
-    aoai:      allCompanies?.filter(c => c.partner_tag === "AOAI" || c.partner_tag === "Both").length ?? 0,
-    windows:   sortedWindows.length,
-    cultural:  culturalEntries.length,
+    total:      allCompanies?.length ?? 0,
+    pursuing:   allCompanies?.filter(c => c.status === "Pursuing").length ?? 0,
+    qualified:  allCompanies?.filter(c => c.status === "Qualified").length ?? 0,
+    hot:        allCompanies?.filter(c => c.prospect_tier === "Tier 1 Hot").length ?? 0,
+    aoai:       allCompanies?.filter(c => c.partner_tag === "AOAI" || c.partner_tag === "Both").length ?? 0,
+    windows:    sortedWindows.length,
+    cultural:   culturalEntries.length,
+    activeCampaigns: campaignPulse.length,
+    breachAlerts: campaignPulse.reduce((sum, c) => sum + c.breach_count, 0),
   };
 
   return (
@@ -318,6 +391,109 @@ export default async function DigestPage() {
           </div>
         ))}
       </div>
+
+      {/* ── Active Campaign Signal Health ───────────────────────────────── */}
+      {campaignPulse.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-baseline justify-between">
+            <SectionTitle>
+              Active Campaign Pulse ({campaignPulse.length} campaign{campaignPulse.length !== 1 ? "s" : ""}{pipeline.breachAlerts > 0 ? ` · ⚠ ${pipeline.breachAlerts} breach alert${pipeline.breachAlerts !== 1 ? "s" : ""}` : ""})
+            </SectionTitle>
+            <span className="text-xs text-neutral-400">Latest signal week per campaign</span>
+          </div>
+
+          <div className="rounded-xl border border-neutral-200 bg-white overflow-hidden">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-neutral-100 text-neutral-400 text-left bg-neutral-50">
+                  <th className="px-4 py-2 font-medium">Campaign</th>
+                  <th className="px-3 py-2 font-medium">Phase</th>
+                  <th className="px-3 py-2 font-medium text-center">Wk</th>
+                  <th className="px-3 py-2 font-medium text-center">Gate</th>
+                  <th className="px-3 py-2 font-medium text-center">D</th>
+                  <th className="px-3 py-2 font-medium text-center">N</th>
+                  <th className="px-3 py-2 font-medium text-center">C</th>
+                  <th className="px-3 py-2 font-medium text-center">Risk</th>
+                  <th className="px-3 py-2 font-medium text-center">Alerts</th>
+                </tr>
+              </thead>
+              <tbody>
+                {campaignPulse.map((c) => {
+                  const hasBreaches = c.breach_count > 0;
+                  const hasRisk = c.pipeline_risk;
+
+                  function HealthDotInline({ h }: { h: string | null }) {
+                    if (!h) return <span className="text-neutral-200">—</span>;
+                    const color = h === "Green" ? "bg-emerald-500" : h === "Amber" ? "bg-amber-400" : "bg-red-500";
+                    return <span className={`inline-block w-2.5 h-2.5 rounded-full ${color}`} title={h} />;
+                  }
+
+                  return (
+                    <tr
+                      key={c.id}
+                      className={`border-b border-neutral-100 last:border-0 hover:bg-neutral-50 transition-colors ${
+                        hasBreaches ? "bg-red-50/40" : ""
+                      }`}
+                    >
+                      <td className="px-4 py-2.5">
+                        <Link href={`/campaigns/${c.id}`} className="font-medium text-neutral-900 hover:underline">
+                          {c.name}
+                        </Link>
+                        {c.client_name && (
+                          <p className="text-[10px] text-neutral-400">{c.client_name}</p>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 text-neutral-500">{c.current_phase ?? "—"}</td>
+                      <td className="px-3 py-2.5 text-center font-mono text-neutral-600">
+                        {c.latest_week != null ? `W${c.latest_week}` : "—"}
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        {c.flags_suppressed ? (
+                          <span className="text-neutral-300 text-[10px]">—</span>
+                        ) : c.gate_status === "Green" ? (
+                          <span className="text-emerald-600 font-bold text-[10px]">⚡ Open</span>
+                        ) : c.gate_status === "Amber" ? (
+                          <span className="text-amber-500 font-bold text-[10px]">⏸ Watch</span>
+                        ) : c.gate_status === "Red" ? (
+                          <span className="text-red-500 text-[10px]">Closed</span>
+                        ) : (
+                          <span className="text-neutral-300 text-[10px]">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        {c.flags_suppressed ? <span className="text-neutral-200 text-[10px]">—</span> : <span className={`inline-block w-2.5 h-2.5 rounded-full ${c.demand_health === "Green" ? "bg-emerald-500" : c.demand_health === "Amber" ? "bg-amber-400" : c.demand_health === "Red" ? "bg-red-500" : "bg-neutral-200"}`} title={c.demand_health ?? "—"} />}
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        {c.flags_suppressed ? <span className="text-neutral-200 text-[10px]">—</span> : <span className={`inline-block w-2.5 h-2.5 rounded-full ${c.nurture_health === "Green" ? "bg-emerald-500" : c.nurture_health === "Amber" ? "bg-amber-400" : c.nurture_health === "Red" ? "bg-red-500" : "bg-neutral-200"}`} title={c.nurture_health ?? "—"} />}
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        {c.flags_suppressed ? <span className="text-neutral-200 text-[10px]">—</span> : <span className={`inline-block w-2.5 h-2.5 rounded-full ${c.conversion_health === "Green" ? "bg-emerald-500" : c.conversion_health === "Amber" ? "bg-amber-400" : c.conversion_health === "Red" ? "bg-red-500" : "bg-neutral-200"}`} title={c.conversion_health ?? "—"} />}
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        {hasRisk ? (
+                          <span className="text-red-500 font-bold" title="Pipeline Risk">⚠</span>
+                        ) : (
+                          <span className="text-neutral-200">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        {hasBreaches ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-700 border border-red-200">
+                            {c.breach_count}
+                          </span>
+                        ) : (
+                          <span className="text-neutral-200">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-[10px] text-neutral-400">D = Demand · N = Nurture · C = Conversion · Alerts = kill-switch breaches</p>
+        </div>
+      )}
 
       {/* ── Open opportunity windows ─────────────────────────────────────── */}
       {windowsByCompany.length > 0 && (

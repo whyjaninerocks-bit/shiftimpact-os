@@ -391,16 +391,109 @@ function ThresholdSetupPanel({
   );
 }
 
+// ─── Campaign Data Context Strip ─────────────────────────────────────────────
+// Surfaces live signals from across the campaign workspace so strategy leads
+// know what to address before logging their weekly numbers.
+
+export type WeeklyDataContext = {
+  failingLogs: Array<{ signal_label: string; actual_value: number | null; threshold_value: number | null; unit: string | null }>;
+  nextGateName: string | null;
+  pendingPredictionCount: number;
+  recentBudgetFlags: Array<{ channel: string; movement_type: string }>;
+};
+
+function DataContextStrip({ ctx }: { ctx: WeeklyDataContext }) {
+  const hasAny =
+    ctx.failingLogs.length > 0 ||
+    ctx.nextGateName ||
+    ctx.pendingPredictionCount > 0 ||
+    ctx.recentBudgetFlags.length > 0;
+
+  if (!hasAny) return null;
+
+  return (
+    <div className="mb-5 rounded-xl border border-neutral-200 bg-neutral-50 divide-y divide-neutral-100">
+      <p className="px-4 py-2 text-[9px] font-bold uppercase tracking-widest text-neutral-400">
+        Campaign Data Signals — review before logging
+      </p>
+
+      {/* Kill-switch breach alerts */}
+      {ctx.failingLogs.length > 0 && (
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="inline-block w-2 h-2 rounded-full bg-red-500 shrink-0" />
+            <p className="text-xs font-semibold text-red-700">Kill-switch thresholds breached ({ctx.failingLogs.length})</p>
+          </div>
+          <div className="space-y-1">
+            {ctx.failingLogs.slice(0, 3).map((log, i) => (
+              <p key={i} className="text-xs text-red-600 pl-4">
+                {log.signal_label}
+                {log.actual_value != null && log.threshold_value != null
+                  ? ` — actual ${log.actual_value}${log.unit ?? ""} vs threshold ${log.threshold_value}${log.unit ?? ""}`
+                  : ""}
+              </p>
+            ))}
+            {ctx.failingLogs.length > 3 && (
+              <p className="text-xs text-red-400 pl-4">+{ctx.failingLogs.length - 3} more — see Signal Log</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Next phase gate */}
+      {ctx.nextGateName && (
+        <div className="px-4 py-3 flex items-center gap-3">
+          <span className="inline-block w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+          <div>
+            <p className="text-xs font-semibold text-amber-700">Next phase gate pending</p>
+            <p className="text-xs text-amber-600">{ctx.nextGateName}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Pending predictions */}
+      {ctx.pendingPredictionCount > 0 && (
+        <div className="px-4 py-3 flex items-center gap-3">
+          <span className="inline-block w-2 h-2 rounded-full bg-indigo-400 shrink-0" />
+          <p className="text-xs text-indigo-700">
+            <span className="font-semibold">{ctx.pendingPredictionCount} prediction{ctx.pendingPredictionCount !== 1 ? "s" : ""}</span>
+            {" "}in Prediction Log awaiting outcome — record actuals this week
+          </p>
+        </div>
+      )}
+
+      {/* Budget movement flags */}
+      {ctx.recentBudgetFlags.length > 0 && (
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="inline-block w-2 h-2 rounded-full bg-blue-400 shrink-0" />
+            <p className="text-xs font-semibold text-blue-700">Budget movements to note ({ctx.recentBudgetFlags.length})</p>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {ctx.recentBudgetFlags.slice(0, 5).map((b, i) => (
+              <span key={i} className="text-[10px] px-2 py-0.5 rounded-full border border-blue-200 bg-blue-50 text-blue-700 font-medium">
+                {b.channel} — {b.movement_type}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Weekly Signal Entry + Report ────────────────────────────────────────────
 
 function WeeklySignalPanel({
   campaignId,
   threshold,
   reports,
+  dataContext,
 }: {
   campaignId: string;
   threshold: SignalThreshold;
   reports: SignalWeeklyReport[];
+  dataContext?: WeeklyDataContext;
 }) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -470,6 +563,9 @@ function WeeklySignalPanel({
 
   return (
     <div className="space-y-6">
+      {/* ── Data context strip ── */}
+      {dataContext && <DataContextStrip ctx={dataContext} />}
+
       {/* ── Log new week ── */}
       <div>
         <p className="text-xs font-semibold text-neutral-700 uppercase tracking-wide mb-3">
@@ -954,10 +1050,12 @@ export function SignalIntelligenceSection({
   campaignId,
   threshold,
   reports,
+  dataContext,
 }: {
   campaignId: string;
   threshold: SignalThreshold | null;
   reports: SignalWeeklyReport[];
+  dataContext?: WeeklyDataContext;
 }) {
   const locked = threshold?.locked ?? false;
   const hasReports = reports.length > 0;
@@ -1043,6 +1141,7 @@ export function SignalIntelligenceSection({
           campaignId={campaignId}
           threshold={threshold}
           reports={reports}
+          dataContext={dataContext}
         />
       )}
       {tab === "timeline" && threshold && (
