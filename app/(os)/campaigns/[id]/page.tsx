@@ -39,6 +39,7 @@ import {
   getCampaignLearning,
   getAudienceReplenishment,
   getCompetitiveSignalActive,
+  getClientCompetitiveIntel,
 } from "@/lib/data";
 import { getLatestReviewPlatformScore } from "@/lib/data-review-platform";
 import { Badge, ErrorBanner, gateSignalTone, phaseTone } from "@/app/_components/ui";
@@ -58,6 +59,7 @@ import { CrossChannelSection } from "./_components/CrossChannelSection";
 import { ConsumerBehaviourSection } from "./_components/ConsumerBehaviourSection";
 import { MarketContextSection } from "./_components/MarketContextSection";
 import { AttributionSection } from "./_components/AttributionSection";
+import { CompetitiveIntelSection } from "./_components/CompetitiveIntelSection";
 import { IntelligenceQuerySection } from "./_components/IntelligenceQuerySection";
 import { CampaignReportSection } from "./_components/CampaignReportSection";
 import { ConsumerPulseSection } from "./_components/ConsumerPulseSection";
@@ -138,6 +140,7 @@ const sectionGroups = [
       { href: "#review-platform", label: "Review Platform F30 ✦" },
       { href: "#dba-intelligence", label: "Brand Assets F29 ⚿" },
       { href: "#attribution", label: "Attribution ⚿" },
+      { href: "#competitive-intel", label: "Competitive Intel ⚿" },
     ],
   },
   {
@@ -170,7 +173,7 @@ export default async function CampaignDetailPage({
 
   const clientChannels = await getClientChannels(campaign.client_id);
 
-  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions, bip, signalThreshold, signalReports, campaignChannels, crossChannelReports, allChannelProfiles, behaviourStates, marketContexts, attributionRecords, consumerSnapshot, iqEvaluation, mdhRecords, aiBrandVisibilityScore, socialCurrencyScore, latestCstrReading, brandAssets, reviewScore, dataPreferences, cascadeRecords, dsemRecords, kolTrackers, budgetMovements, categoryClientCount, predictionRecords, clientCampaignBriefs, campaignLearning, audienceReplenishment, hasCompetitiveSignal] = await Promise.all([
+  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions, bip, signalThreshold, signalReports, campaignChannels, crossChannelReports, allChannelProfiles, behaviourStates, marketContexts, attributionRecords, consumerSnapshot, iqEvaluation, mdhRecords, aiBrandVisibilityScore, socialCurrencyScore, latestCstrReading, brandAssets, reviewScore, dataPreferences, cascadeRecords, dsemRecords, kolTrackers, budgetMovements, categoryClientCount, predictionRecords, clientCampaignBriefs, campaignLearning, audienceReplenishment, hasCompetitiveSignal, competitiveIntel] = await Promise.all([
     getKillSwitches(frame.id),
     getStageBriefs(id),
     getPhaseGates(id),
@@ -207,6 +210,7 @@ export default async function CampaignDetailPage({
     getCampaignLearning(id),
     getAudienceReplenishment(id),
     getCompetitiveSignalActive(campaign.client_id),
+    getClientCompetitiveIntel(campaign.client_id),
   ]);
 
   const latestSignalWeek = signalReports[0]?.week_number ?? null;
@@ -429,6 +433,10 @@ export default async function CampaignDetailPage({
         attributionRecords={attributionRecords}
         industryCategory={frame.industry_category ?? "Other"}
         categoryClientCount={categoryClientCount}
+      />
+      <CompetitiveIntelSection
+        clientId={campaign.client_id}
+        competitiveIntel={competitiveIntel}
       />
 
       {/* ── EXPERT ARCHITECTURE ─────────────────────────────────────── */}

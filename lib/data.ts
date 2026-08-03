@@ -990,11 +990,54 @@ export async function getCompetitiveSignalActive(clientId: string): Promise<bool
   // 2. Check for Competitive signals in the last 90 days
   const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
   const { count } = await supabase
-    .from("prospect_signals")
+    .from("business_signals")
     .select("id", { count: "exact", head: true })
     .eq("company_id", oieCompanyId)
     .eq("signal_category", "Competitive")
-    .gte("created_at", cutoff);
+    .gte("detected_at", cutoff);
 
   return (count ?? 0) > 0;
+}
+
+// ─── Sprint 10: Competitive Intel for campaign workspace ─────────────────────
+
+export interface CompetitiveIntelData {
+  oieCompanyId: string | null;
+  oieCompanyName: string | null;
+  signals: Array<{
+    signal_type: string;
+    signal_text: string;
+    detected_at: string;
+    signal_category: string;
+  }>;
+}
+
+export async function getClientCompetitiveIntel(clientId: string): Promise<CompetitiveIntelData> {
+  const supabase = createAdminClient();
+
+  const { data: clientRow } = await supabase
+    .from("clients")
+    .select("oie_company_id")
+    .eq("id", clientId)
+    .maybeSingle();
+
+  const oieCompanyId = (clientRow as { oie_company_id?: string | null } | null)?.oie_company_id ?? null;
+  if (!oieCompanyId) return { oieCompanyId: null, oieCompanyName: null, signals: [] };
+
+  const [companyRes, signalsRes] = await Promise.all([
+    supabase.from("companies").select("name").eq("id", oieCompanyId).maybeSingle(),
+    supabase
+      .from("business_signals")
+      .select("signal_type, signal_text, detected_at, signal_category")
+      .eq("company_id", oieCompanyId)
+      .eq("signal_category", "Competitive")
+      .order("detected_at", { ascending: false })
+      .limit(8),
+  ]);
+
+  return {
+    oieCompanyId,
+    oieCompanyName: (companyRes.data as { name?: string } | null)?.name ?? null,
+    signals: (signalsRes.data ?? []) as CompetitiveIntelData["signals"],
+  };
 }

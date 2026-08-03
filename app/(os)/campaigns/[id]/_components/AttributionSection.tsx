@@ -13,7 +13,7 @@
 // Minimum 12 weeks of MMM data before AI analysis is viable.
 // INTERNAL ONLY.
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { addAttributionRecord, deleteAttributionRecord } from "@/lib/actions";
 import type { AttributionRecord } from "@/lib/types";
 import {
@@ -240,6 +240,126 @@ function RecordsTable({ campaignId, records }: RecordsTableProps) {
 
 const GA5_MIN_N = 5;
 
+// ─── Own campaign performance baseline (Sprint 10) ────────────────────────────
+
+interface OwnBaselineData {
+  week_count: number;
+  avg_s1: number | null;
+  avg_s2: number | null;
+  avg_s3: number | null;
+  weeks: Array<{ week: number; s1: number | null; s2: number | null; s3: number | null; demand: string | null; nurture: string | null; conversion: string | null }>;
+}
+
+interface Ga5Response {
+  own_baseline: OwnBaselineData;
+  own_attribution: { week_count: number; total_spend_rm: number | null; total_sales_rm: number | null; roi_ratio: number | null; avg_lift_pct: number | null };
+  category: string | null;
+  category_n: number;
+  unlocked: boolean;
+  ga5_min_n: number;
+}
+
+function healthDot(status: string | null) {
+  if (!status) return <span className="w-2 h-2 rounded-full bg-neutral-200 inline-block" />;
+  if (status === "On Track") return <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />;
+  if (status === "Watch") return <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />;
+  return <span className="w-2 h-2 rounded-full bg-red-400 inline-block" />;
+}
+
+function OwnBaselinePanel({ campaignId }: { campaignId: string }) {
+  const [data, setData] = useState<Ga5Response | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/ga5-benchmarks?campaign_id=${campaignId}`)
+      .then(r => r.json())
+      .then(setData)
+      .catch(() => {/* non-critical */})
+      .finally(() => setLoading(false));
+  }, [campaignId]);
+
+  if (loading) return (
+    <Card className="mb-4">
+      <p className="text-xs text-neutral-400 animate-pulse">Loading performance baseline...</p>
+    </Card>
+  );
+
+  if (!data || data.own_baseline.week_count === 0) return null;
+
+  const { own_baseline: bl, own_attribution: attr } = data;
+
+  return (
+    <Card className="mb-4">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-semibold text-neutral-700">Performance Baseline</p>
+        <Badge tone="neutral">{bl.week_count} week{bl.week_count !== 1 ? "s" : ""} of data</Badge>
+      </div>
+
+      {/* Signal averages */}
+      <div className="grid grid-cols-3 gap-3 mb-3">
+        {[
+          { label: "Avg S1", value: bl.avg_s1 !== null ? `${bl.avg_s1}%` : "—" },
+          { label: "Avg S2", value: bl.avg_s2 !== null ? `${bl.avg_s2}%` : "—" },
+          { label: "Avg S3", value: bl.avg_s3 !== null ? `${bl.avg_s3}/wk` : "—" },
+        ].map(({ label, value }) => (
+          <div key={label} className="rounded-md bg-neutral-50 border border-neutral-100 px-3 py-2 text-center">
+            <p className="text-xs text-neutral-500 mb-0.5">{label}</p>
+            <p className="text-sm font-semibold text-neutral-800">{value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Attribution ROI */}
+      {attr.week_count > 0 && (
+        <div className="flex items-center gap-4 pt-2 border-t border-neutral-100">
+          {attr.roi_ratio !== null && (
+            <div>
+              <p className="text-xs text-neutral-500">ROI ratio</p>
+              <p className="text-sm font-semibold text-neutral-800">{attr.roi_ratio}x</p>
+            </div>
+          )}
+          {attr.avg_lift_pct !== null && (
+            <div>
+              <p className="text-xs text-neutral-500">Avg lift</p>
+              <p className="text-sm font-semibold text-neutral-800">{attr.avg_lift_pct}%</p>
+            </div>
+          )}
+          {attr.total_spend_rm !== null && (
+            <div>
+              <p className="text-xs text-neutral-500">Total spend</p>
+              <p className="text-sm font-semibold text-neutral-800">
+                RM {attr.total_spend_rm.toLocaleString("en-MY")}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Week-by-week health dots */}
+      {bl.weeks.length > 1 && (
+        <div className="mt-3 pt-2 border-t border-neutral-100">
+          <p className="text-xs text-neutral-400 mb-1.5">Weekly signal health (Demand / Nurture / Conversion)</p>
+          <div className="flex flex-wrap gap-1.5">
+            {bl.weeks.map(w => (
+              <div key={w.week} className="flex items-center gap-0.5 rounded bg-neutral-50 border border-neutral-100 px-1.5 py-0.5">
+                <span className="text-xs text-neutral-400 mr-1">W{w.week}</span>
+                {healthDot(w.demand)}
+                {healthDot(w.nurture)}
+                {healthDot(w.conversion)}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <p className="text-xs text-neutral-400 mt-2">
+        Category benchmarks ({data.category ?? "unknown"}) unlock at {GA5_MIN_N}+ clients.
+        Currently {data.category_n} client{data.category_n !== 1 ? "s" : ""}.
+      </p>
+    </Card>
+  );
+}
+
 function Ga5BenchmarkBanner({
   industryCategory,
   clientCount,
@@ -328,8 +448,10 @@ export function AttributionSection({
 
       <p className="text-xs text-neutral-500 mb-4">
         Three-lens attribution framework (MMM / Holdout / Proxy). Enter weekly spend and sales data
-        per channel. AI-assisted MMM analysis requires minimum 12 weeks — Sprint 5+.
+        per channel. AI-assisted MMM analysis requires minimum 12 weeks.
       </p>
+
+      <OwnBaselinePanel campaignId={campaignId} />
 
       <Ga5BenchmarkBanner industryCategory={industryCategory} clientCount={categoryClientCount} />
 

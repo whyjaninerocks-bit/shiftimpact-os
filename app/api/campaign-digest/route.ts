@@ -205,6 +205,39 @@ async function assembleSignalContext(campaign_id: string) {
     signalCount++;
   }
 
+  // S10 — OIE Competitive Intelligence (when client has oie_company_id)
+  const clientId = (campaign as { client_id?: string } | null)?.client_id ?? "";
+  if (clientId) {
+    const { data: clientOie } = await supabase
+      .from("clients")
+      .select("oie_company_id")
+      .eq("id", clientId)
+      .maybeSingle();
+
+    const oieCompanyId = (clientOie as { oie_company_id?: string | null } | null)?.oie_company_id;
+
+    if (oieCompanyId) {
+      const [companyRes, signalsRes] = await Promise.all([
+        supabase.from("companies").select("name").eq("id", oieCompanyId).maybeSingle(),
+        supabase
+          .from("business_signals")
+          .select("signal_type, signal_text, detected_at")
+          .eq("company_id", oieCompanyId)
+          .eq("signal_category", "Competitive")
+          .order("detected_at", { ascending: false })
+          .limit(5),
+      ]);
+
+      const oieCompanyName = (companyRes.data as { name?: string } | null)?.name ?? null;
+      const competitiveSignals = signalsRes.data ?? [];
+
+      if (competitiveSignals.length) {
+        ctx.competitive_intel = { company_name: oieCompanyName, signals: competitiveSignals };
+        signalCount++;
+      }
+    }
+  }
+
   return { ctx, signalCount, maxWeeks };
 }
 
@@ -325,6 +358,16 @@ function buildDigestPrompt(ctx: Record<string, unknown>): string {
     fl.forEach(l => {
       contextLines.push(`  Wk${l.week_number}: ${l.signal_label} — actual ${l.actual_value} vs threshold ${l.threshold_value} ${l.unit ?? ""}`);
     });
+  }
+
+  if (ctx.competitive_intel) {
+    const ci = ctx.competitive_intel as { company_name: string | null; signals: Array<Record<string, unknown>> };
+    contextLines.push(`\nS10 — COMPETITIVE INTELLIGENCE (OIE — ${ci.company_name ?? "Linked Competitor"}):`);
+    ci.signals.forEach(s => {
+      const detected = s.detected_at ? new Date(s.detected_at as string).toLocaleDateString("en-MY", { day: "numeric", month: "short" }) : "?";
+      contextLines.push(`  [${s.signal_type ?? "Signal"}] ${String(s.signal_text ?? "").slice(0, 200)} (${detected})`);
+    });
+    contextLines.push(`  INSTRUCTION: If any competitor signals overlap with this campaign's channels, category, or spend window, name the competitive pressure explicitly in the narrative and recommendations.`);
   }
 
   const dataBlock = contextLines.join("\n");
