@@ -31,6 +31,8 @@ import {
   getDataPreferences,
   getCascadeRecords,
   getDsemRecords,
+  getKolTrackers,
+  getBudgetMovements,
 } from "@/lib/data";
 import { getLatestReviewPlatformScore } from "@/lib/data-review-platform";
 import { Badge, ErrorBanner, gateSignalTone, phaseTone } from "@/app/_components/ui";
@@ -66,6 +68,8 @@ import { ReviewPlatformSection } from "./_components/ReviewPlatformSection";
 import { DataSourceSetupSection } from "./_components/DataSourceSetupSection";
 import { CstrSection } from "./_components/CstrSection";
 import { DbaSection } from "./_components/DbaSection";
+import { KolTrackerSection } from "./_components/KolTrackerSection";
+import { BudgetMovementSection } from "./_components/BudgetMovementSection";
 
 const sectionGroups = [
   {
@@ -91,6 +95,7 @@ const sectionGroups = [
       { href: "#stage-briefs", label: "STAGE Briefs" },
       { href: "#phase-gates", label: "Phase Gates" },
       { href: "#idea-extensions", label: "Channel Briefs" },
+      { href: "#kol-tracker", label: "KOL Tracker" },
     ],
   },
   {
@@ -105,6 +110,7 @@ const sectionGroups = [
       { href: "#market-context", label: "Market Context ⚿" },
       { href: "#social-proof-cascade", label: "Cascade F28 ⚿" },
       { href: "#dark-social-dsem", label: "Dark Social F30 ⚿" },
+      { href: "#budget-movement", label: "Budget Movement" },
     ],
   },
   {
@@ -137,7 +143,7 @@ export default async function CampaignDetailPage({
 
   const clientChannels = await getClientChannels(campaign.client_id);
 
-  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions, bip, signalThreshold, signalReports, campaignChannels, crossChannelReports, allChannelProfiles, behaviourStates, marketContexts, attributionRecords, consumerSnapshot, iqEvaluation, mdhRecords, aiBrandVisibilityScore, socialCurrencyScore, latestCstrReading, brandAssets, reviewScore, dataPreferences, cascadeRecords, dsemRecords] = await Promise.all([
+  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions, bip, signalThreshold, signalReports, campaignChannels, crossChannelReports, allChannelProfiles, behaviourStates, marketContexts, attributionRecords, consumerSnapshot, iqEvaluation, mdhRecords, aiBrandVisibilityScore, socialCurrencyScore, latestCstrReading, brandAssets, reviewScore, dataPreferences, cascadeRecords, dsemRecords, kolTrackers, budgetMovements] = await Promise.all([
     getKillSwitches(frame.id),
     getStageBriefs(id),
     getPhaseGates(id),
@@ -166,6 +172,8 @@ export default async function CampaignDetailPage({
     getDataPreferences(id),
     getCascadeRecords(id),
     getDsemRecords(id),
+    getKolTrackers(id),
+    getBudgetMovements(id),
   ]);
 
   const latestSignalWeek = signalReports[0]?.week_number ?? null;
@@ -273,6 +281,7 @@ export default async function CampaignDetailPage({
         extensions={ideaExtensions}
         clientChannels={clientChannels}
       />
+      <KolTrackerSection campaignId={id} initialKols={kolTrackers} />
 
       {/* ── SIGNAL INTEL ────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 pt-4">
@@ -320,6 +329,11 @@ export default async function CampaignDetailPage({
         campaignId={id}
         records={dsemRecords}
         currentWeek={latestSignalWeek ?? 1}
+      />
+      <BudgetMovementSection
+        campaignId={id}
+        initialRows={budgetMovements}
+        activeChannels={frame.active_channels ?? []}
       />
 
       {/* ── BRAND INTEL ─────────────────────────────────────────────── */}

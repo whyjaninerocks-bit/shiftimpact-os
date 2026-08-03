@@ -784,6 +784,58 @@ export async function getDsemRecords(campaignId: string): Promise<DsemRecord[]> 
 // ─── F34 — Data Source Preferences (Sprint 31) ───────────────────────────────
 // Returns the data source preference configuration for a campaign, or null
 // if the strategy lead has not yet completed setup.
+// ─── Budget Movement (migration 0048) ────────────────────────────────────────
+export type BudgetMovement = {
+  id: string;
+  campaign_id: string;
+  channel: string;
+  week_number: number;
+  planned_spend: number | null;
+  actual_spend: number | null;
+  currency: string;
+  note: string | null;
+  created_at: string;
+};
+
+export async function getBudgetMovements(campaignId: string): Promise<BudgetMovement[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("budget_movements")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .order("week_number", { ascending: true });
+  if (error) return [];
+  return (data ?? []) as BudgetMovement[];
+}
+
+// ─── KOL Tracker (migration 0047) ────────────────────────────────────────────
+export type KolTracker = {
+  id: string;
+  campaign_id: string;
+  name: string;
+  platform: string;
+  tier: string;
+  follower_count: number | null;
+  brief_status: string;
+  performance_note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function getKolTrackers(campaignId: string): Promise<KolTracker[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("kol_trackers")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .order("created_at", { ascending: true });
+  if (error) return [];
+  return (data ?? []) as KolTracker[];
+}
+
+// ─── F34 — Data Source Preferences (Sprint 31) ───────────────────────────────
+// Returns the data source preference configuration for a campaign, or null
+// if the strategy lead has not yet completed setup.
 export async function getDataPreferences(
   campaignId: string
 ): Promise<import("./types").DataPreferences | null> {

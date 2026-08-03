@@ -177,6 +177,25 @@ export default async function DigestPage() {
     .select("status, prospect_tier, partner_tag")
     .eq("is_suppressed", false);
 
+  // 5b. Last outreach per company — for window alert cards
+  const { data: recentOutreach } = await supabase
+    .from("outreach")
+    .select("sent_at, drafted_at, people!inner(company_id)")
+    .order("drafted_at", { ascending: false })
+    .limit(200);
+
+  // Build map: company_id → latest activity date (sent_at ?? drafted_at)
+  const lastOutreachByCompany = new Map<string, string>();
+  for (const row of recentOutreach ?? []) {
+    const companyId = (row.people as { company_id: string } | null)?.company_id;
+    if (!companyId) continue;
+    const date = row.sent_at ?? row.drafted_at;
+    if (!date) continue;
+    if (!lastOutreachByCompany.has(companyId)) {
+      lastOutreachByCompany.set(companyId, date);
+    }
+  }
+
   // 6. Cultural signals this week — auto-tagged to client industries
   const { data: activeClients } = await supabase
     .from("companies")
@@ -362,6 +381,16 @@ export default async function DigestPage() {
                         <span className="text-xs text-neutral-400">
                           {[co.industry, co.market_code].filter(Boolean).join(" · ")}
                         </span>
+                        {lastOutreachByCompany.has(co.id) && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full border border-blue-200 bg-blue-50 text-blue-600 font-medium">
+                            contacted {daysSince(lastOutreachByCompany.get(co.id)!)}
+                          </span>
+                        )}
+                        {!lastOutreachByCompany.has(co.id) && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full border border-neutral-200 bg-neutral-50 text-neutral-400">
+                            not yet contacted
+                          </span>
+                        )}
                       </div>
 
                       {/* ── Window badges: lead (dark) + supporting (muted) ── */}
