@@ -1,11 +1,11 @@
 // app/(os)/cultural-radar/new/page.tsx
 // Log a new cultural signal — Part 1: Read the culture.
-// Deliberately simple: signal + source + evidence.
+// Accepts ?client_id=... from client pages to pre-associate the signal.
 
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Card, SectionTitle,
@@ -21,10 +21,26 @@ const SIGNAL_TYPES = [
 
 const MARKETS = ["MY", "SG", "ID", "TH", "PH", "VN"];
 
+const INDUSTRIES = [
+  "FMCG", "Financial Services", "Technology", "Retail", "QSR",
+  "Healthcare", "Property", "Education", "Insurance", "Automotive",
+  "Hospitality", "Media & Entertainment", "Telco", "E-Commerce", "B2B SaaS",
+];
+
 export default function NewCulturalSignalPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const prefillClientId = searchParams.get("client_id") ?? "";
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedIndustries, setSelectedIndustries] = useState<string[]>([]);
+
+  function toggleIndustry(ind: string) {
+    setSelectedIndustries(prev =>
+      prev.includes(ind) ? prev.filter(i => i !== ind) : [...prev, ind]
+    );
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -32,35 +48,47 @@ export default function NewCulturalSignalPage() {
     setError(null);
     const fd = new FormData(e.currentTarget);
 
+    const body: Record<string, unknown> = {
+      signal_name:          fd.get("signal_name"),
+      signal_type:          fd.get("signal_type"),
+      source_description:   fd.get("source_description"),
+      evidence:             fd.get("evidence"),
+      is_trending:          fd.get("is_trending") === "true",
+      geographic_scope:     fd.get("geographic_scope") || "MY",
+      relevant_industries:  selectedIndustries,
+    };
+    if (prefillClientId) body.client_id = prefillClientId;
+
     const res = await fetch("/api/cultural-signals", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        signal_name:        fd.get("signal_name"),
-        signal_type:        fd.get("signal_type"),
-        source_description: fd.get("source_description"),
-        evidence:           fd.get("evidence"),
-        is_trending:        fd.get("is_trending") === "true",
-        geographic_scope:   fd.get("geographic_scope") || "MY",
-      }),
+      body: JSON.stringify(body),
     });
 
     const json = await res.json();
     if (!res.ok) { setError(json.error ?? "Failed to log signal"); setSaving(false); return; }
-    router.push(`/cultural-radar/${json.signal.id}`);
+    // Return to client page if we came from there
+    if (prefillClientId) {
+      router.push(`/clients/${prefillClientId}`);
+    } else {
+      router.push(`/cultural-radar/${json.signal.id}`);
+    }
   }
 
   return (
     <div className="max-w-xl space-y-6">
-      <Link href="/cultural-radar" className="text-sm text-neutral-400 hover:text-neutral-700 underline">
-        Back to Cultural Radar
+      <Link
+        href={prefillClientId ? `/clients/${prefillClientId}` : "/cultural-radar"}
+        className="text-sm text-neutral-400 hover:text-neutral-700 underline"
+      >
+        {prefillClientId ? "← Back to client" : "← Back to Cultural Radar"}
       </Link>
 
       <div>
         <SectionTitle>Log a cultural signal</SectionTitle>
         <p className="text-sm text-neutral-500 mt-1">
-          Part 1 of 3. Just log what you noticed — the source, and the exact evidence.
-          Analysis comes next.
+          Part 1 of 3. Log what you noticed — source, evidence, and which clients this is relevant for.
+          Analysis and creative handoff come next.
         </p>
       </div>
 
@@ -101,6 +129,35 @@ export default function NewCulturalSignalPage() {
                 </label>
               ))}
             </div>
+          </div>
+
+          {/* Relevant industries */}
+          <div>
+            <label className={labelClass}>Relevant for which client industries?</label>
+            <p className="text-xs text-neutral-400 mb-2">
+              Select all that apply. These signals will appear in matching client pages automatically.
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {INDUSTRIES.map(ind => (
+                <button
+                  key={ind}
+                  type="button"
+                  onClick={() => toggleIndustry(ind)}
+                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                    selectedIndustries.includes(ind)
+                      ? "bg-neutral-900 text-white border-neutral-900"
+                      : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400"
+                  }`}
+                >
+                  {ind}
+                </button>
+              ))}
+            </div>
+            {selectedIndustries.length > 0 && (
+              <p className="text-xs text-neutral-500 mt-1.5">
+                Selected: {selectedIndustries.join(", ")}
+              </p>
+            )}
           </div>
 
           {/* Is it trending? */}
@@ -155,7 +212,7 @@ export default function NewCulturalSignalPage() {
               required
               rows={4}
               className={inputClass}
-              placeholder={'e.g. "Every time someone asks where to eat on TikTok, the most liked reply is \'cincai lah\'. The phrase appears in 60%+ of comments on food decision videos. It has always been the Malaysian answer to that question — not new, just never used."\n\nInclude verbatim quotes, data, or specific observations. The more specific the better.'}
+              placeholder={'e.g. "Every time someone asks where to eat on TikTok, the most liked reply is \'cincai lah\'. The phrase appears in 60%+ of comments on food decision videos."\n\nInclude verbatim quotes, data, or specific observations.'}
             />
           </div>
 
@@ -169,7 +226,10 @@ export default function NewCulturalSignalPage() {
             <button type="submit" disabled={saving} className={`${buttonClass} disabled:opacity-50`}>
               {saving ? "Logging…" : "Log signal"}
             </button>
-            <Link href="/cultural-radar" className={buttonSecondaryClass}>
+            <Link
+              href={prefillClientId ? `/clients/${prefillClientId}` : "/cultural-radar"}
+              className={buttonSecondaryClass}
+            >
               Cancel
             </Link>
           </div>

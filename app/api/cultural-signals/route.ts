@@ -21,24 +21,28 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
   const body = await req.json();
 
-  const { signal_name, signal_type, source_description, evidence, is_trending, geographic_scope } = body;
+  const { signal_name, signal_type, source_description, evidence, is_trending, geographic_scope, relevant_industries, client_id } = body;
 
   if (!signal_name?.trim())       return NextResponse.json({ error: "signal_name required" }, { status: 400 });
   if (!signal_type)               return NextResponse.json({ error: "signal_type required" }, { status: 400 });
   if (!source_description?.trim()) return NextResponse.json({ error: "source_description required" }, { status: 400 });
   if (!evidence?.trim())          return NextResponse.json({ error: "evidence required" }, { status: 400 });
 
+  const row: Record<string, unknown> = {
+    signal_name:        signal_name.trim(),
+    signal_type,
+    source_description: source_description.trim(),
+    evidence:           evidence.trim(),
+    is_trending:        !!is_trending,
+    geographic_scope:   geographic_scope || "MY",
+    status:             "logged",
+    relevant_industries: Array.isArray(relevant_industries) ? relevant_industries : [],
+  };
+  if (client_id) row.client_id = client_id;
+
   const { data, error } = await supabase
     .from("cultural_signals")
-    .insert({
-      signal_name:        signal_name.trim(),
-      signal_type,
-      source_description: source_description.trim(),
-      evidence:           evidence.trim(),
-      is_trending:        !!is_trending,
-      geographic_scope:   geographic_scope || "MY",
-      status:             "logged",
-    })
+    .insert(row)
     .select()
     .single();
 

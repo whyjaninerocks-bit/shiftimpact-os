@@ -4,6 +4,8 @@ import { getCampaignsForClient, getClient, getAllTeamMembers, getClientChannels,
 import { ChannelRegistrySection } from "./_components/ChannelRegistrySection";
 import { SignalSourcesSection } from "./_components/SignalSourcesSection";
 import { BrandMomentumSection } from "./_components/BrandMomentumSection";
+import { CulturalContextSection } from "./_components/CulturalContextSection";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createCampaign, updateClient } from "@/lib/actions";
 import {
   Badge,
@@ -31,6 +33,7 @@ export default async function ClientDetailPage({
   const client = await getClient(id);
   if (!client) notFound();
 
+  const supabase = createAdminClient();
   const [campaigns, teamMembers, clientChannels, signalSources, bmsScores] = await Promise.all([
     getCampaignsForClient(id),
     getAllTeamMembers(),
@@ -38,6 +41,47 @@ export default async function ClientDetailPage({
     getClientSignalSources(id),
     getBrandMomentumScores(id),
   ]);
+
+  // Cultural signals: pull by direct client_id association OR industry match
+  // Falls back gracefully if the columns don't exist yet (pre-migration 0042)
+  let culturalSignals: {
+    id: string; signal_name: string; signal_type: string; is_trending: boolean;
+    evidence: string; why_it_matters: string | null; brand_fit_status: string;
+    status: string; geographic_scope: string; relevant_industries: string[];
+    client_id: string | null; created_at: string;
+  }[] = [];
+  try {
+    // Signals directly linked to this client
+    const { data: byClient } = await supabase
+      .from("cultural_signals")
+      .select("id,signal_name,signal_type,is_trending,evidence,why_it_matters,brand_fit_status,status,geographic_scope,relevant_industries,client_id,created_at")
+      .eq("client_id", id)
+      .neq("status", "archived")
+      .order("created_at", { ascending: false });
+
+    // Signals tagged with this client's industry (exclude ones already in byClient)
+    let byIndustry: typeof byClient = [];
+    if (client.industry) {
+      const { data } = await supabase
+        .from("cultural_signals")
+        .select("id,signal_name,signal_type,is_trending,evidence,why_it_matters,brand_fit_status,status,geographic_scope,relevant_industries,client_id,created_at")
+        .contains("relevant_industries", [client.industry])
+        .neq("status", "archived")
+        .neq("client_id", id)
+        .order("created_at", { ascending: false });
+      byIndustry = data ?? [];
+    }
+
+    const seen = new Set<string>();
+    for (const s of [...(byClient ?? []), ...(byIndustry ?? [])]) {
+      if (!seen.has(s.id)) {
+        seen.add(s.id);
+        culturalSignals.push(s as typeof culturalSignals[number]);
+      }
+    }
+  } catch {
+    // Column doesn't exist yet (pre-migration 0042) — silently skip
+  }
 
   const updateClientWithId = updateClient.bind(null, id);
   const createCampaignWithClient = createCampaign;
@@ -161,6 +205,12 @@ export default async function ClientDetailPage({
       </div>
 
       <BrandMomentumSection clientId={id} scores={bmsScores} />
+
+      <CulturalContextSection
+        clientId={id}
+        clientIndustry={client.industry ?? null}
+        signals={culturalSignals}
+      />
     </div>
   );
 }

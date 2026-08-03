@@ -12,12 +12,13 @@ export const dynamic = "force-dynamic";
 const WINDOW_PRIORITY: Record<string, number> = {
   leadership_change:   1,
   funding_event:       2,
-  rfp_cycle:           3,
-  renewal_season:      4,
-  conference_calendar: 5,
-  campaign_season:     6,
-  product_launch:      7,
-  fiscal_cycle:        8,
+  strategic_move:      3,
+  rfp_cycle:           4,
+  renewal_season:      5,
+  conference_calendar: 6,
+  campaign_season:     7,
+  product_launch:      8,
+  fiscal_cycle:        9,
 };
 
 export async function GET() {
