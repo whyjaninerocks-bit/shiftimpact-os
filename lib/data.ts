@@ -964,3 +964,37 @@ export async function getAudienceReplenishment(campaignId: string) {
     .order("week_number", { ascending: false });
   return data ?? [];
 }
+
+// ─── Sprint 6 — Gap Fix 3: OIE Competitive Signal Feed ────────────────────────
+
+/**
+ * Returns true if the campaign's client has an OIE company linked (via oie_company_id)
+ * AND that company has at least one Competitive signal in the last 90 days.
+ *
+ * This replaces the static hasCompetitiveSignal=false boolean in CreativeFatigueSection.
+ * When true, the R2 (Competitive Suppression) check overlay fires on Fatigue Active status.
+ */
+export async function getCompetitiveSignalActive(clientId: string): Promise<boolean> {
+  const supabase = createAdminClient();
+
+  // 1. Get the oie_company_id for this client
+  const { data: clientRow } = await supabase
+    .from("clients")
+    .select("oie_company_id")
+    .eq("id", clientId)
+    .maybeSingle();
+
+  const oieCompanyId = (clientRow as { oie_company_id?: string | null } | null)?.oie_company_id;
+  if (!oieCompanyId) return false;
+
+  // 2. Check for Competitive signals in the last 90 days
+  const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+  const { count } = await supabase
+    .from("prospect_signals")
+    .select("id", { count: "exact", head: true })
+    .eq("company_id", oieCompanyId)
+    .eq("signal_category", "Competitive")
+    .gte("created_at", cutoff);
+
+  return (count ?? 0) > 0;
+}

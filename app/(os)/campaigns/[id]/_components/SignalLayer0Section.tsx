@@ -9,8 +9,13 @@
 // F25 AQS: Attention Quality Score derived from video view rates.
 // AQS score + band are INTERNAL ONLY — never in client export.
 // Attention Gap Flag + named action shown to strategy lead when flag fires.
+//
+// CSV Import (Sprint 6):
+//   Upload a CSV with columns: week_number, reach_unique, impressions,
+//   avg_frequency, view_rate_3s_pct, view_rate_10s_pct, completion_rate_pct
+//   Preview rows → Import — batch-upserts via /api/mdh-import.
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Card, SectionTitle, Badge } from "@/app/_components/ui";
 
@@ -87,9 +92,85 @@ function deltaBadge(delta: number | null): string {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
+// ─── CSV helpers ──────────────────────────────────────────────────────────────
+
+const CSV_COLS = [
+  "week_number",
+  "reach_unique",
+  "impressions",
+  "avg_frequency",
+  "view_rate_3s_pct",
+  "view_rate_10s_pct",
+  "completion_rate_pct",
+] as const;
+
+type CsvRow = {
+  week_number: number;
+  reach_unique?: number | null;
+  impressions?: number | null;
+  avg_frequency?: number | null;
+  view_rate_3s_pct?: number | null;
+  view_rate_10s_pct?: number | null;
+  completion_rate_pct?: number | null;
+};
+
+function parseCsv(text: string): { rows: CsvRow[]; errors: string[] } {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim());
+  if (!lines.length) return { rows: [], errors: ["Empty file"] };
+
+  const headerLine = lines[0].toLowerCase().replace(/\s/g, "");
+  const headers = headerLine.split(",").map((h) => h.trim());
+
+  const colIdx: Record<string, number> = {};
+  for (const col of CSV_COLS) {
+    const idx = headers.indexOf(col);
+    colIdx[col] = idx; // -1 if missing
+  }
+
+  if (colIdx["week_number"] < 0) {
+    return { rows: [], errors: ["CSV must have a week_number column"] };
+  }
+
+  const rows: CsvRow[] = [];
+  const errors: string[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const cells = lines[i].split(",").map((c) => c.trim());
+    const get = (col: typeof CSV_COLS[number]) => {
+      const idx = colIdx[col];
+      if (idx < 0 || !cells[idx] || cells[idx] === "") return null;
+      const v = parseFloat(cells[idx]);
+      return isNaN(v) ? null : v;
+    };
+
+    const weekNum = get("week_number");
+    if (weekNum === null) {
+      errors.push(`Row ${i + 1}: invalid week_number`);
+      continue;
+    }
+
+    rows.push({
+      week_number:         weekNum,
+      reach_unique:        get("reach_unique"),
+      impressions:         get("impressions"),
+      avg_frequency:       get("avg_frequency"),
+      view_rate_3s_pct:    get("view_rate_3s_pct"),
+      view_rate_10s_pct:   get("view_rate_10s_pct"),
+      completion_rate_pct: get("completion_rate_pct"),
+    });
+  }
+
+  return { rows, errors };
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
 export function SignalLayer0Section({ campaignId, records }: SignalLayer0SectionProps) {
   const router = useRouter();
   const [localRecords, setLocalRecords] = useState<MediaDeliveryRecord[]>(records);
+
+  // Tab
+  const [activeTab, setActiveTab] = useState<"manual" | "csv">("manual");
 
   // MDH inputs
   const [weekNumber,   setWeekNumber]   = useState("");
@@ -106,6 +187,15 @@ export function SignalLayer0Section({ campaignId, records }: SignalLayer0Section
 
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
+
+  // CSV import state
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [csvRows,      setCsvRows]      = useState<CsvRow[]>([]);
+  const [csvParseErrs, setCsvParseErrs] = useState<string[]>([]);
+  const [csvFilename,  setCsvFilename]  = useState("");
+  const [csvImporting, setCsvImporting] = useState(false);
+  const [csvResult,    setCsvResult]    = useState<{ imported: number; errors: number } | null>(null);
+  const [csvError,     setCsvError]     = useState<string | null>(null);
 
   const latest = localRecords[0] ?? null;
 
@@ -147,6 +237,51 @@ export function SignalLayer0Section({ campaignId, records }: SignalLayer0Section
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
       setLoading(false);
+    }
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCsvFilename(file.name);
+    setCsvResult(null);
+    setCsvError(null);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const { rows, errors } = parseCsv(text);
+      setCsvRows(rows);
+      setCsvParseErrs(errors);
+    };
+    reader.readAsText(file);
+  }
+
+  async function handleCsvImport() {
+    if (!csvRows.length) return;
+    setCsvImporting(true);
+    setCsvError(null);
+    setCsvResult(null);
+    try {
+      const res = await fetch("/api/mdh-import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaign_id: campaignId,
+          filename: csvFilename,
+          rows: csvRows,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Import failed");
+      setCsvResult({ imported: data.imported_count, errors: data.error_count });
+      // Clear file
+      setCsvRows([]);
+      if (fileRef.current) fileRef.current.value = "";
+      router.refresh();
+    } catch (e) {
+      setCsvError(e instanceof Error ? e.message : "Import failed");
+    } finally {
+      setCsvImporting(false);
     }
   }
 
@@ -247,7 +382,110 @@ export function SignalLayer0Section({ campaignId, records }: SignalLayer0Section
           </div>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        {/* Tab switcher */}
+        <div className="flex gap-1 mb-4 border-b border-neutral-200">
+          {(["manual", "csv"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-t transition-colors ${
+                activeTab === tab
+                  ? "bg-neutral-900 text-white"
+                  : "text-neutral-500 hover:text-neutral-700"
+              }`}
+            >
+              {tab === "manual" ? "Manual Entry" : "CSV Import"}
+            </button>
+          ))}
+        </div>
+
+        {/* CSV Import Panel */}
+        {activeTab === "csv" && (
+          <div className="mb-4 space-y-3">
+            <div className="rounded bg-neutral-50 border border-neutral-200 px-3 py-2">
+              <p className="text-xs font-semibold text-neutral-600 mb-1">CSV format</p>
+              <p className="font-mono text-[10px] text-neutral-500">
+                week_number,reach_unique,impressions,avg_frequency,view_rate_3s_pct,view_rate_10s_pct,completion_rate_pct
+              </p>
+              <p className="text-[10px] text-neutral-400 mt-1">
+                Only week_number is required. Leave other columns blank to skip. One row per week.
+              </p>
+            </div>
+
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".csv,text/csv"
+              onChange={handleFileChange}
+              className="text-xs text-neutral-600 file:mr-2 file:rounded file:border-0 file:bg-neutral-100 file:px-2 file:py-1 file:text-xs file:font-medium hover:file:bg-neutral-200 cursor-pointer"
+            />
+
+            {csvParseErrs.length > 0 && (
+              <div className="rounded border border-red-200 bg-red-50 px-3 py-2">
+                {csvParseErrs.map((e, i) => (
+                  <p key={i} className="text-xs text-red-600">{e}</p>
+                ))}
+              </div>
+            )}
+
+            {csvRows.length > 0 && (
+              <div>
+                <p className="text-xs text-neutral-500 mb-2">{csvRows.length} rows ready to import</p>
+                <div className="overflow-x-auto max-h-40 rounded border border-neutral-200">
+                  <table className="w-full text-xs border-collapse">
+                    <thead>
+                      <tr className="text-left text-neutral-400 border-b border-neutral-100 bg-neutral-50 sticky top-0">
+                        <th className="py-1 px-2">Wk</th>
+                        <th className="py-1 px-2">Reach</th>
+                        <th className="py-1 px-2">Impr.</th>
+                        <th className="py-1 px-2">Freq</th>
+                        <th className="py-1 px-2">3s%</th>
+                        <th className="py-1 px-2">10s%</th>
+                        <th className="py-1 px-2">Comp%</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {csvRows.map((r) => (
+                        <tr key={r.week_number} className="border-b border-neutral-50">
+                          <td className="py-0.5 px-2 font-medium">{r.week_number}</td>
+                          <td className="py-0.5 px-2">{r.reach_unique ?? "—"}</td>
+                          <td className="py-0.5 px-2">{r.impressions ?? "—"}</td>
+                          <td className="py-0.5 px-2">{r.avg_frequency ?? "—"}</td>
+                          <td className="py-0.5 px-2">{r.view_rate_3s_pct ?? "—"}</td>
+                          <td className="py-0.5 px-2">{r.view_rate_10s_pct ?? "—"}</td>
+                          <td className="py-0.5 px-2">{r.completion_rate_pct ?? "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <button
+                  onClick={handleCsvImport}
+                  disabled={csvImporting}
+                  className="mt-2 rounded bg-neutral-900 px-4 py-1.5 text-xs font-semibold text-white hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {csvImporting ? "Importing…" : `Import ${csvRows.length} rows`}
+                </button>
+              </div>
+            )}
+
+            {csvResult && (
+              <div className="rounded border border-emerald-200 bg-emerald-50 px-3 py-2">
+                <p className="text-xs font-semibold text-emerald-700">
+                  Import complete: {csvResult.imported} rows imported
+                  {csvResult.errors > 0 ? `, ${csvResult.errors} errors` : ""}
+                </p>
+              </div>
+            )}
+
+            {csvError && (
+              <p className="text-xs text-red-600">{csvError}</p>
+            )}
+          </div>
+        )}
+
+        <div className={`grid gap-6 lg:grid-cols-2 ${activeTab === "csv" ? "hidden" : ""}`}>
           {/* Entry form */}
           <div>
             <p className="text-xs font-medium text-neutral-500 mb-2">Enter Weekly Delivery Data</p>

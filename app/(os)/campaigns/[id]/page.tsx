@@ -38,6 +38,7 @@ import {
   getClientCampaignBriefs,
   getCampaignLearning,
   getAudienceReplenishment,
+  getCompetitiveSignalActive,
 } from "@/lib/data";
 import { getLatestReviewPlatformScore } from "@/lib/data-review-platform";
 import { Badge, ErrorBanner, gateSignalTone, phaseTone } from "@/app/_components/ui";
@@ -81,6 +82,7 @@ import { CreativeFatigueSection } from "./_components/CreativeFatigueSection";
 import { MessageSequenceSection } from "./_components/MessageSequenceSection";
 import { AudienceReplenishmentSection } from "./_components/AudienceReplenishmentSection";
 import { CampaignLearningSection } from "./_components/CampaignLearningSection";
+import { SignalHealthSection } from "./_components/SignalHealthSection";
 
 const sectionGroups = [
   {
@@ -114,6 +116,7 @@ const sectionGroups = [
     label: "Signal Intel",
     links: [
       { href: "#signal-layer-0", label: "Layer 0 MDH ⚿" },
+      { href: "#signal-health", label: "Signal Health F16B ⚿" },
       { href: "#signal-intelligence", label: "Signal Intelligence ⚿" },
       { href: "#cross-channel", label: "Cross-Channel ⚿" },
       { href: "#consumer-state-transition", label: "CSTR F27 ⚿" },
@@ -165,7 +168,7 @@ export default async function CampaignDetailPage({
 
   const clientChannels = await getClientChannels(campaign.client_id);
 
-  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions, bip, signalThreshold, signalReports, campaignChannels, crossChannelReports, allChannelProfiles, behaviourStates, marketContexts, attributionRecords, consumerSnapshot, iqEvaluation, mdhRecords, aiBrandVisibilityScore, socialCurrencyScore, latestCstrReading, brandAssets, reviewScore, dataPreferences, cascadeRecords, dsemRecords, kolTrackers, budgetMovements, categoryClientCount, predictionRecords, clientCampaignBriefs, campaignLearning, audienceReplenishment] = await Promise.all([
+  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions, bip, signalThreshold, signalReports, campaignChannels, crossChannelReports, allChannelProfiles, behaviourStates, marketContexts, attributionRecords, consumerSnapshot, iqEvaluation, mdhRecords, aiBrandVisibilityScore, socialCurrencyScore, latestCstrReading, brandAssets, reviewScore, dataPreferences, cascadeRecords, dsemRecords, kolTrackers, budgetMovements, categoryClientCount, predictionRecords, clientCampaignBriefs, campaignLearning, audienceReplenishment, hasCompetitiveSignal] = await Promise.all([
     getKillSwitches(frame.id),
     getStageBriefs(id),
     getPhaseGates(id),
@@ -201,6 +204,7 @@ export default async function CampaignDetailPage({
     getClientCampaignBriefs(campaign.client_id),
     getCampaignLearning(id),
     getAudienceReplenishment(id),
+    getCompetitiveSignalActive(campaign.client_id),
   ]);
 
   const latestSignalWeek = signalReports[0]?.week_number ?? null;
@@ -325,6 +329,12 @@ export default async function CampaignDetailPage({
         <div className="flex-1 h-px bg-neutral-200" />
       </div>
       <SignalLayer0Section campaignId={id} records={mdhRecords} />
+      <SignalHealthSection
+        campaignId={id}
+        mdhRecords={mdhRecords}
+        signalReports={signalReports}
+        signalThreshold={signalThreshold}
+      />
       <SignalIntelligenceSection
         campaignId={id}
         threshold={signalThreshold}
@@ -430,7 +440,7 @@ export default async function CampaignDetailPage({
       />
       <CreativeFatigueSection
         mdhRecords={mdhRecords}
-        hasCompetitiveSignal={false}
+        hasCompetitiveSignal={hasCompetitiveSignal}
       />
       <MessageSequenceSection
         stageBriefs={stageBriefs}
