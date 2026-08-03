@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/prospect-rescan",
       "schedule": "0 1 * * 1"
+    },
+    {
+      "path": "/api/cron/cultural-scan",
+      "schedule": "0 2 * * 1"
     }
   ]
 }
