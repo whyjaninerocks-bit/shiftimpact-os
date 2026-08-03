@@ -47,18 +47,22 @@ interface Props {
 // ─── Analysis engine ──────────────────────────────────────────────────────────
 
 function analyzeCreativeFatigue(records: MdhRecord[]): FatigueAnalysis {
-  if (records.length < 2) {
+  // Only process records that have engagement data — phantom rows (null completion + null aqs) break
+  // the consecutive-decline check because they sort to the end and appear as "not flagged".
+  const valid = records.filter(r => (r.completion_rate_pct ?? r.aqs_score) !== null);
+
+  if (valid.length < 2) {
     return {
       status: "None",
       consecutiveDeclineWeeks: 0,
       flaggedWeeks: [],
-      latestEngagementRate: records[0]?.completion_rate_pct ?? null,
+      latestEngagementRate: valid[0]?.completion_rate_pct ?? null,
       recommendation: "Need at least 2 weeks of AQS data to compute Creative Fatigue Index.",
     };
   }
 
   // Sort by week ascending
-  const sorted = [...records].sort((a, b) => a.week_number - b.week_number);
+  const sorted = [...valid].sort((a, b) => a.week_number - b.week_number);
 
   const weeks: FatigueWeek[] = sorted.map((rec, i) => {
     const prev = i > 0 ? sorted[i - 1] : null;
