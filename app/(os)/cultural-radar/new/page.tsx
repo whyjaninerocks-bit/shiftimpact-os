@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -27,7 +27,7 @@ const INDUSTRIES = [
   "Hospitality", "Media & Entertainment", "Telco", "E-Commerce", "B2B SaaS",
 ];
 
-export default function NewCulturalSignalPage() {
+function NewCulturalSignalForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const prefillClientId = searchParams.get("client_id") ?? "";
@@ -238,5 +238,13 @@ export default function NewCulturalSignalPage() {
       </Card>
 
     </div>
+  );
+}
+
+export default function NewCulturalSignalPage() {
+  return (
+    <Suspense>
+      <NewCulturalSignalForm />
+    </Suspense>
   );
 }
