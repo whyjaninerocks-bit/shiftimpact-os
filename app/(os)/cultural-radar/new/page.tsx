@@ -87,8 +87,8 @@ export default function NewCulturalSignalPage() {
       <div>
         <SectionTitle>Log a cultural signal</SectionTitle>
         <p className="text-sm text-neutral-500 mt-1">
-          Part 1 of 3. Log what you noticed — source, evidence, and which clients this is relevant for.
-          Analysis and creative handoff come next.
+          Part 1 of 3. Log what you noticed — source and evidence.
+          The system auto-tags relevant clients and industries, and surfaces this in the weekly digest.
         </p>
       </div>
 
@@ -131,11 +131,11 @@ export default function NewCulturalSignalPage() {
             </div>
           </div>
 
-          {/* Relevant industries */}
+          {/* Relevant industries — optional override; auto-classified by Claude on save */}
           <div>
-            <label className={labelClass}>Relevant for which client industries?</label>
+            <label className={labelClass}>Industry override <span className="text-neutral-400 font-normal">(optional)</span></label>
             <p className="text-xs text-neutral-400 mb-2">
-              Select all that apply. These signals will appear in matching client pages automatically.
+              Industries are auto-detected from the signal content. Select here only to force-include additional ones.
             </p>
             <div className="flex flex-wrap gap-1.5">
               {INDUSTRIES.map(ind => (
@@ -155,7 +155,7 @@ export default function NewCulturalSignalPage() {
             </div>
             {selectedIndustries.length > 0 && (
               <p className="text-xs text-neutral-500 mt-1.5">
-                Selected: {selectedIndustries.join(", ")}
+                Forced: {selectedIndustries.join(", ")} · auto-classify will still run and may add more
               </p>
             )}
           </div>
@@ -224,7 +224,7 @@ export default function NewCulturalSignalPage() {
           {/* Actions */}
           <div className="flex gap-3 pt-1">
             <button type="submit" disabled={saving} className={`${buttonClass} disabled:opacity-50`}>
-              {saving ? "Logging…" : "Log signal"}
+              {saving ? "Logging + classifying…" : "Log signal"}
             </button>
             <Link
               href={prefillClientId ? `/clients/${prefillClientId}` : "/cultural-radar"}

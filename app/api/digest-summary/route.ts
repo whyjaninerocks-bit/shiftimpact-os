@@ -1,5 +1,6 @@
 // app/api/digest-summary/route.ts
-// Returns a structured plain-text digest of this week's open windows + pursue pipeline.
+// Returns a structured plain-text digest of this week's open windows + pursue pipeline
+// + cultural signals matched to active clients.
 // Called by the weekly Claude scheduled task every Monday morning.
 // No auth required — data is internal-only, no PII beyond company names.
 
@@ -28,7 +29,7 @@ export async function GET() {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
 
-  // Open windows
+  // ── Open windows ──────────────────────────────────────────────────────────
   const { data: openWindows } = await supabase
     .from("window_alerts")
     .select(`
@@ -41,7 +42,7 @@ export async function GET() {
     .order("detected_at", { ascending: false })
     .limit(30);
 
-  // Pursue pipeline
+  // ── Pursue pipeline ───────────────────────────────────────────────────────
   const { data: pursueInsights } = await supabase
     .from("prospect_insights")
     .select(`
@@ -61,7 +62,7 @@ export async function GET() {
     return true;
   }).slice(0, 5);
 
-  // Sort + group windows by company
+  // ── Sort + group windows by company ──────────────────────────────────────
   const sorted = (openWindows ?? []).sort((a, b) => {
     const wa = a.opportunity_windows as { window_type: string };
     const wb = b.opportunity_windows as { window_type: string };
@@ -85,19 +86,86 @@ export async function GET() {
   }
   const groups = Array.from(groupMap.values()).sort((a, b) => a.topPriority - b.topPriority);
 
-  // New signals count this week
+  // ── New signals count this week ───────────────────────────────────────────
   const { count: signalCount } = await supabase
     .from("business_signals")
     .select("*", { count: "exact", head: true })
     .is("duplicate_of_id", null)
     .gte("detected_at", sevenDaysAgo);
 
-  // ── Build plain-text brief ──────────────────────────────────────────────────
+  // ── Cultural signals this week ────────────────────────────────────────────
+  // Fetch active clients first so we can match cultural signals to them
+  const { data: activeClients } = await supabase
+    .from("companies")
+    .select("id, name, industry")
+    .eq("is_suppressed", false)
+    .neq("status", "Archived");
+
+  // Build industry → client map
+  const industryToClients = new Map<string, { id: string; name: string }[]>();
+  for (const c of activeClients ?? []) {
+    if (!c.industry) continue;
+    if (!industryToClients.has(c.industry)) industryToClients.set(c.industry, []);
+    industryToClients.get(c.industry)!.push({ id: c.id, name: c.name });
+  }
+  const allActiveClientList = (activeClients ?? []).map(c => ({ id: c.id, name: c.name }));
+
+  // Fetch recent cultural signals — use try/catch in case columns don't exist yet
+  let culturalSignals: Array<{
+    id: string;
+    signal_name: string;
+    signal_type: string;
+    evidence: string | null;
+    is_generic: boolean;
+    is_trending: boolean;
+    relevant_industries: string[];
+    created_at: string;
+  }> = [];
+
+  try {
+    const { data: cs } = await supabase
+      .from("cultural_signals")
+      .select("id, signal_name, signal_type, evidence, is_generic, is_trending, relevant_industries, created_at")
+      .gte("created_at", sevenDaysAgo)
+      .neq("status", "archived")
+      .order("created_at", { ascending: false })
+      .limit(20);
+    culturalSignals = (cs ?? []) as typeof culturalSignals;
+  } catch {
+    // Columns not yet migrated — skip cultural section gracefully
+  }
+
+  // Match cultural signals to relevant clients for display
+  type CulturalEntry = {
+    signal: typeof culturalSignals[number];
+    matchedClients: { id: string; name: string }[];
+  };
+
+  const culturalEntries: CulturalEntry[] = [];
+  for (const sig of culturalSignals) {
+    let matched: { id: string; name: string }[] = [];
+    if (sig.is_generic) {
+      matched = allActiveClientList;
+    } else {
+      const seen = new Set<string>();
+      for (const ind of (sig.relevant_industries ?? [])) {
+        const clients = industryToClients.get(ind) ?? [];
+        for (const c of clients) {
+          if (!seen.has(c.id)) { seen.add(c.id); matched.push(c); }
+        }
+      }
+    }
+    if (matched.length > 0 || sig.is_generic) {
+      culturalEntries.push({ signal: sig, matchedClients: matched });
+    }
+  }
+
+  // ── Build plain-text brief ────────────────────────────────────────────────
   const lines: string[] = [];
 
   lines.push(`SHIFTIMPACT OS — WEEKLY INTELLIGENCE DIGEST`);
   lines.push(`${today}`);
-  lines.push(`${groups.length} companies with open windows · ${topPursue.length} pursue-ready · ${signalCount ?? 0} new signals this week`);
+  lines.push(`${groups.length} companies with open windows · ${topPursue.length} pursue-ready · ${signalCount ?? 0} new signals this week · ${culturalEntries.length} cultural signals`);
   lines.push(``);
 
   if (groups.length > 0) {
@@ -137,6 +205,31 @@ export async function GET() {
     }
   }
 
+  // ── Cultural signals section ──────────────────────────────────────────────
+  if (culturalEntries.length > 0) {
+    lines.push(`━━ CULTURAL CONTEXT THIS WEEK ━━`);
+    lines.push(``);
+
+    for (const { signal: sig, matchedClients } of culturalEntries) {
+      const scope = sig.is_generic ? "GENERIC — all active clients" : `Industry-specific`;
+      const trending = sig.is_trending ? " · Trending" : "";
+      lines.push(`[${sig.signal_type.toUpperCase()}${trending}] ${sig.signal_name}`);
+      lines.push(`  ${scope}`);
+
+      if (!sig.is_generic && matchedClients.length > 0) {
+        const names = matchedClients.map(c => c.name).slice(0, 5).join(", ");
+        const more = matchedClients.length > 5 ? ` +${matchedClients.length - 5} more` : "";
+        lines.push(`  Relevant to: ${names}${more}`);
+      }
+
+      if (sig.evidence) {
+        const ev = sig.evidence.length > 120 ? sig.evidence.slice(0, 120) + "…" : sig.evidence;
+        lines.push(`  Evidence: ${ev}`);
+      }
+      lines.push(``);
+    }
+  }
+
   lines.push(`━━ END OF DIGEST ━━`);
   lines.push(`View full digest: /prospects/digest`);
 
@@ -146,6 +239,7 @@ export async function GET() {
       open_windows: groups.length,
       pursue_ready: topPursue.length,
       new_signals: signalCount ?? 0,
+      cultural_signals: culturalEntries.length,
     },
     text: lines.join("\n"),
     windows: groups.map(({ company: co, alerts }) => ({
@@ -173,5 +267,13 @@ export async function GET() {
         spend_signal: ri.spend_signal,
       };
     }),
+    cultural_signals: culturalEntries.map(({ signal: sig, matchedClients }) => ({
+      name: sig.signal_name,
+      type: sig.signal_type,
+      is_generic: sig.is_generic,
+      is_trending: sig.is_trending,
+      evidence: sig.evidence,
+      matched_clients: matchedClients.map(c => c.name),
+    })),
   });
 }

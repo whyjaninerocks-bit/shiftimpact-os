@@ -177,6 +177,72 @@ export default async function DigestPage() {
     .select("status, prospect_tier, partner_tag")
     .eq("is_suppressed", false);
 
+  // 6. Cultural signals this week — auto-tagged to client industries
+  const { data: activeClients } = await supabase
+    .from("companies")
+    .select("id, name, industry")
+    .eq("is_suppressed", false)
+    .neq("status", "Archived");
+
+  // industry → client list for matching
+  const industryToClients = new Map<string, { id: string; name: string }[]>();
+  for (const c of activeClients ?? []) {
+    if (!c.industry) continue;
+    if (!industryToClients.has(c.industry)) industryToClients.set(c.industry, []);
+    industryToClients.get(c.industry)!.push({ id: c.id, name: c.name });
+  }
+  const allActiveClientList = (activeClients ?? []).map(c => ({ id: c.id, name: c.name }));
+
+  type CulturalSignalRow = {
+    id: string;
+    signal_name: string;
+    signal_type: string;
+    evidence: string | null;
+    is_generic: boolean;
+    is_trending: boolean;
+    relevant_industries: string[];
+    created_at: string;
+  };
+
+  let culturalSignals: CulturalSignalRow[] = [];
+  try {
+    const { data: cs } = await supabase
+      .from("cultural_signals")
+      .select("id, signal_name, signal_type, evidence, is_generic, is_trending, relevant_industries, created_at")
+      .gte("created_at", sevenDaysAgo)
+      .neq("status", "archived")
+      .order("created_at", { ascending: false })
+      .limit(20);
+    culturalSignals = (cs ?? []) as CulturalSignalRow[];
+  } catch {
+    // Columns not yet migrated — skip gracefully
+  }
+
+  type CulturalEntry = {
+    signal: CulturalSignalRow;
+    matchedClients: { id: string; name: string }[];
+  };
+
+  const culturalEntries: CulturalEntry[] = [];
+  for (const sig of culturalSignals) {
+    let matched: { id: string; name: string }[] = [];
+    if (sig.is_generic) {
+      matched = allActiveClientList;
+    } else {
+      const seen = new Set<string>();
+      for (const ind of (sig.relevant_industries ?? [])) {
+        const clients = industryToClients.get(ind) ?? [];
+        for (const c of clients) {
+          if (!seen.has(c.id)) { seen.add(c.id); matched.push(c); }
+        }
+      }
+    }
+    // Only include if at least one active client is impacted (or it's generic)
+    if (sig.is_generic || matched.length > 0) {
+      culturalEntries.push({ signal: sig, matchedClients: matched });
+    }
+  }
+
   const pipeline = {
     total:     allCompanies?.length ?? 0,
     pursuing:  allCompanies?.filter(c => c.status === "Pursuing").length ?? 0,
@@ -184,6 +250,7 @@ export default async function DigestPage() {
     hot:       allCompanies?.filter(c => c.prospect_tier === "Tier 1 Hot").length ?? 0,
     aoai:      allCompanies?.filter(c => c.partner_tag === "AOAI" || c.partner_tag === "Both").length ?? 0,
     windows:   sortedWindows.length,
+    cultural:  culturalEntries.length,
   };
 
   return (
@@ -202,7 +269,7 @@ export default async function DigestPage() {
       </div>
 
       {/* ── Pipeline snapshot ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+      <div className="grid grid-cols-3 sm:grid-cols-7 gap-2">
         {[
           { label: "Tracked",    value: pipeline.total },
           { label: "Pursuing",   value: pipeline.pursuing },
@@ -210,13 +277,22 @@ export default async function DigestPage() {
           { label: "Tier 1 Hot", value: pipeline.hot },
           { label: "AOAI Fit",   value: pipeline.aoai },
           { label: "Open Windows", value: pipeline.windows, highlight: pipeline.windows > 0 },
+          { label: "Cultural Signals", value: pipeline.cultural, highlight: pipeline.cultural > 0, teal: true },
         ].map(s => (
           <div key={s.label} className={`border rounded-lg px-3 py-2.5 text-center ${
-            (s as { highlight?: boolean }).highlight
+            (s as { teal?: boolean }).teal && (s as { highlight?: boolean }).highlight
+              ? "bg-teal-50 border-teal-200"
+              : (s as { highlight?: boolean }).highlight
               ? "bg-amber-50 border-amber-200"
               : "bg-white border-neutral-200"
           }`}>
-            <p className={`text-xl font-bold ${(s as { highlight?: boolean }).highlight ? "text-amber-700" : "text-neutral-900"}`}>
+            <p className={`text-xl font-bold ${
+              (s as { teal?: boolean }).teal && (s as { highlight?: boolean }).highlight
+                ? "text-teal-700"
+                : (s as { highlight?: boolean }).highlight
+                ? "text-amber-700"
+                : "text-neutral-900"
+            }`}>
               {s.value}
             </p>
             <p className="text-[10px] text-neutral-400 mt-0.5">{s.label}</p>
@@ -380,6 +456,90 @@ export default async function DigestPage() {
 
           <p className="text-xs text-neutral-400 pt-1">
             Windows are auto-detected from weekly scans. Run Batch Scan or wait for Monday cron to refresh.
+          </p>
+        </div>
+      )}
+
+      {/* ── Cultural signals this week ───────────────────────────────────── */}
+      {culturalEntries.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-baseline justify-between">
+            <SectionTitle>
+              Cultural Context This Week ({culturalEntries.length} signal{culturalEntries.length === 1 ? "" : "s"})
+            </SectionTitle>
+            <Link href="/cultural-radar" className="text-xs text-neutral-400 hover:text-neutral-700 underline">
+              Cultural Radar →
+            </Link>
+          </div>
+
+          <div className="space-y-2">
+            {culturalEntries.map(({ signal: sig, matchedClients }) => (
+              <div key={sig.id} className="rounded-xl border border-teal-200 bg-teal-50 p-4">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div className="flex-1 min-w-0 space-y-2">
+
+                    {/* Header row */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wide
+                        bg-teal-100 border-teal-300 text-teal-800">
+                        {sig.signal_type}
+                      </span>
+                      {sig.is_generic && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wide
+                          bg-teal-700 border-teal-700 text-white">
+                          Generic — All Clients
+                        </span>
+                      )}
+                      {sig.is_trending && (
+                        <span className="text-[10px] font-semibold text-teal-600 uppercase tracking-wider">Trending</span>
+                      )}
+                    </div>
+
+                    {/* Signal name */}
+                    <p className="font-semibold text-neutral-900">{sig.signal_name}</p>
+
+                    {/* Relevant industries */}
+                    {!sig.is_generic && (sig.relevant_industries?.length ?? 0) > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {sig.relevant_industries.map(ind => (
+                          <span key={ind} className="text-[10px] font-medium px-2 py-0.5 rounded-md border border-teal-200 bg-white text-teal-700">
+                            {ind}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Matched clients */}
+                    {matchedClients.length > 0 && (
+                      <p className="text-xs text-teal-800">
+                        <span className="font-semibold">Relevant to: </span>
+                        {matchedClients.slice(0, 4).map(c => c.name).join(", ")}
+                        {matchedClients.length > 4 && ` +${matchedClients.length - 4} more`}
+                      </p>
+                    )}
+
+                    {/* Evidence */}
+                    {sig.evidence && (
+                      <p className="text-xs text-neutral-600 line-clamp-2">{sig.evidence}</p>
+                    )}
+                  </div>
+
+                  <Link
+                    href={`/cultural-radar/${sig.id}`}
+                    className="text-xs font-medium px-3 py-1.5 rounded-lg bg-teal-700 text-white hover:bg-teal-800 transition-colors shrink-0"
+                  >
+                    View →
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-xs text-neutral-400 pt-1">
+            Cultural signals are auto-tagged to client industries and generic consumer culture.
+            <Link href="/cultural-radar/new" className="ml-2 text-neutral-500 underline hover:text-neutral-700">
+              Log a signal →
+            </Link>
           </p>
         </div>
       )}
