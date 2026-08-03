@@ -20,7 +20,8 @@ export function ShareBriefWidget({ campaignId }: ShareBriefWidgetProps) {
     }
   }, []);
 
-  const briefUrl = `${origin}/brief/${campaignId}`;
+  const briefUrl   = `${origin}/brief/${campaignId}`;
+  const portalUrl  = `${origin}/portal/${campaignId}`;
 
   const handleCopy = async () => {
     try {
@@ -39,23 +40,43 @@ export function ShareBriefWidget({ campaignId }: ShareBriefWidgetProps) {
   };
 
   return (
-    <div className="flex items-center gap-2 mt-2 px-3 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50 max-w-2xl">
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-neutral-400 mb-0.5 uppercase tracking-wide">
-          Share Brief with Client / Agency
-        </p>
-        <p className="text-xs text-neutral-700 font-mono truncate select-all">{briefUrl}</p>
+    <div className="mt-2 max-w-2xl space-y-1.5">
+      {/* Brief link */}
+      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium text-neutral-400 mb-0.5 uppercase tracking-wide">
+            Brief Link — Client / Agency
+          </p>
+          <p className="text-xs text-neutral-700 font-mono truncate select-all">{briefUrl}</p>
+        </div>
+        <button
+          onClick={handleCopy}
+          className={`shrink-0 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+            copied
+              ? "bg-green-100 text-green-700 border border-green-200"
+              : "bg-neutral-900 text-white hover:bg-neutral-700"
+          }`}
+        >
+          {copied ? "Copied!" : "Copy Link"}
+        </button>
       </div>
-      <button
-        onClick={handleCopy}
-        className={`shrink-0 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-          copied
-            ? "bg-green-100 text-green-700 border border-green-200"
-            : "bg-neutral-900 text-white hover:bg-neutral-700"
-        }`}
-      >
-        {copied ? "Copied!" : "Copy Link"}
-      </button>
+      {/* Portal link */}
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-100 bg-white">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium text-neutral-400 mb-0.5 uppercase tracking-wide">
+            Client Portal — Status + Reports
+          </p>
+          <p className="text-xs text-neutral-600 font-mono truncate select-all">{portalUrl}</p>
+        </div>
+        <a
+          href={portalUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 px-3 py-1.5 rounded-md text-xs font-medium border border-neutral-200 text-neutral-600 hover:border-neutral-400 hover:text-neutral-900 transition-colors"
+        >
+          Open →
+        </a>
+      </div>
     </div>
   );
 }

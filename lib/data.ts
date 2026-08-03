@@ -833,6 +833,54 @@ export async function getKolTrackers(campaignId: string): Promise<KolTracker[]> 
   return (data ?? []) as KolTracker[];
 }
 
+// ─── GA5 — Category Benchmark Gate (minimum-N) ───────────────────────────────
+// Benchmarks unlock once 5+ clients share the same industry_category.
+// Shows a locked placeholder until then.
+export async function getCategoryClientCount(
+  industryCategory: string
+): Promise<number> {
+  if (!industryCategory) return 0;
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("frame_briefs")
+    .select("client_id")
+    .eq("industry_category", industryCategory);
+  if (error) return 0;
+  const unique = new Set((data ?? []).map((r: { client_id: string }) => r.client_id));
+  return unique.size;
+}
+
+// ─── OPP 3 — Prediction Accuracy Log (Blind Mirror Test) ────────────────────
+export type PredictionAccuracy = {
+  id: string;
+  campaign_id: string;
+  category: "Signal" | "Outcome" | "Gate" | "Behaviour";
+  prediction_text: string;
+  predicted_value: number | null;
+  unit: string | null;
+  prediction_week: number | null;
+  actual_value: number | null;
+  outcome_week: number | null;
+  verdict: "Accurate" | "Close" | "Off" | "Pending";
+  accuracy_pct: number | null;
+  outcome_note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function getPredictionAccuracyRecords(
+  campaignId: string
+): Promise<PredictionAccuracy[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("prediction_accuracy_log")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .order("created_at", { ascending: false });
+  if (error) return [];
+  return (data ?? []) as PredictionAccuracy[];
+}
+
 // ─── F34 — Data Source Preferences (Sprint 31) ───────────────────────────────
 // Returns the data source preference configuration for a campaign, or null
 // if the strategy lead has not yet completed setup.

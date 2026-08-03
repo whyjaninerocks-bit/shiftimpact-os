@@ -236,6 +236,43 @@ function RecordsTable({ campaignId, records }: RecordsTableProps) {
   );
 }
 
+// ─── GA5 benchmark placeholder ───────────────────────────────────────────────
+
+const GA5_MIN_N = 5;
+
+function Ga5BenchmarkBanner({
+  industryCategory,
+  clientCount,
+}: {
+  industryCategory: string;
+  clientCount: number;
+}) {
+  const needed = GA5_MIN_N - clientCount;
+  if (clientCount >= GA5_MIN_N) return null; // unlocked — render benchmarks in a future sprint
+  return (
+    <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50/60 px-4 py-3 flex items-start gap-3">
+      <div className="mt-0.5 shrink-0">
+        {/* lock icon */}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <div>
+        <p className="text-xs font-semibold text-amber-800">
+          Category Benchmarks — {industryCategory}
+        </p>
+        <p className="text-xs text-amber-700 mt-0.5">
+          Benchmarks unlock with {GA5_MIN_N}+ clients in this category.{" "}
+          Currently {clientCount} client{clientCount !== 1 ? "s" : ""} — {needed} more needed.
+          Once unlocked, ShiftImpact OS will surface spend efficiency comparisons,
+          signal health norms, and outcome lift benchmarks for your category.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ─── MMM readiness indicator ──────────────────────────────────────────────────
 
 function MmmReadiness({ weekCount }: { weekCount: number }) {
@@ -267,11 +304,15 @@ function MmmReadiness({ weekCount }: { weekCount: number }) {
 interface AttributionSectionProps {
   campaignId: string;
   attributionRecords: AttributionRecord[];
+  industryCategory: string;
+  categoryClientCount: number;
 }
 
 export function AttributionSection({
   campaignId,
   attributionRecords,
+  industryCategory,
+  categoryClientCount,
 }: AttributionSectionProps) {
   // Count distinct weeks that have records
   const weekCount = new Set(attributionRecords.map(r => r.week_number)).size;
@@ -289,6 +330,8 @@ export function AttributionSection({
         Three-lens attribution framework (MMM / Holdout / Proxy). Enter weekly spend and sales data
         per channel. AI-assisted MMM analysis requires minimum 12 weeks — Sprint 5+.
       </p>
+
+      <Ga5BenchmarkBanner industryCategory={industryCategory} clientCount={categoryClientCount} />
 
       <MmmReadiness weekCount={weekCount} />
 

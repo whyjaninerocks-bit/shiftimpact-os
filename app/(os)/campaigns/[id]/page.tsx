@@ -33,6 +33,8 @@ import {
   getDsemRecords,
   getKolTrackers,
   getBudgetMovements,
+  getCategoryClientCount,
+  getPredictionAccuracyRecords,
 } from "@/lib/data";
 import { getLatestReviewPlatformScore } from "@/lib/data-review-platform";
 import { Badge, ErrorBanner, gateSignalTone, phaseTone } from "@/app/_components/ui";
@@ -70,6 +72,7 @@ import { CstrSection } from "./_components/CstrSection";
 import { DbaSection } from "./_components/DbaSection";
 import { KolTrackerSection } from "./_components/KolTrackerSection";
 import { BudgetMovementSection } from "./_components/BudgetMovementSection";
+import { PredictionAccuracySection } from "./_components/PredictionAccuracySection";
 
 const sectionGroups = [
   {
@@ -80,6 +83,7 @@ const sectionGroups = [
       { href: "#intelligence-query", label: "Campaign Intelligence ✦" },
       { href: "#business-outcomes", label: "Business Outcomes" },
       { href: "#signal-log", label: "Signal Log" },
+      { href: "#prediction-log", label: "Prediction Log" },
       { href: "#diagnostics", label: "Diagnostics" },
     ],
   },
@@ -143,7 +147,7 @@ export default async function CampaignDetailPage({
 
   const clientChannels = await getClientChannels(campaign.client_id);
 
-  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions, bip, signalThreshold, signalReports, campaignChannels, crossChannelReports, allChannelProfiles, behaviourStates, marketContexts, attributionRecords, consumerSnapshot, iqEvaluation, mdhRecords, aiBrandVisibilityScore, socialCurrencyScore, latestCstrReading, brandAssets, reviewScore, dataPreferences, cascadeRecords, dsemRecords, kolTrackers, budgetMovements] = await Promise.all([
+  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions, bip, signalThreshold, signalReports, campaignChannels, crossChannelReports, allChannelProfiles, behaviourStates, marketContexts, attributionRecords, consumerSnapshot, iqEvaluation, mdhRecords, aiBrandVisibilityScore, socialCurrencyScore, latestCstrReading, brandAssets, reviewScore, dataPreferences, cascadeRecords, dsemRecords, kolTrackers, budgetMovements, categoryClientCount, predictionRecords] = await Promise.all([
     getKillSwitches(frame.id),
     getStageBriefs(id),
     getPhaseGates(id),
@@ -174,6 +178,8 @@ export default async function CampaignDetailPage({
     getDsemRecords(id),
     getKolTrackers(id),
     getBudgetMovements(id),
+    getCategoryClientCount(frame.industry_category ?? ""),
+    getPredictionAccuracyRecords(id),
   ]);
 
   const latestSignalWeek = signalReports[0]?.week_number ?? null;
@@ -236,7 +242,14 @@ export default async function CampaignDetailPage({
       <CampaignReportSection campaignId={id} campaignName={campaign.name} />
       <IntelligenceQuerySection campaignId={id} campaignName={campaign.name} />
       <BusinessOutcomesSection campaignId={id} campaign={campaign} outcomes={businessOutcomes} />
-      <SignalLogSection campaignId={id} signalLogs={signalLogs} phaseGates={phaseGates} />
+      <SignalLogSection
+        campaignId={id}
+        signalLogs={signalLogs}
+        phaseGates={phaseGates}
+        campaignName={campaign.name}
+        clientName={campaign.client_name ?? ""}
+      />
+      <PredictionAccuracySection campaignId={id} initialRecords={predictionRecords} />
       <DiagnosticsSection
         campaign={campaign}
         frame={frame}
@@ -362,6 +375,8 @@ export default async function CampaignDetailPage({
       <AttributionSection
         campaignId={id}
         attributionRecords={attributionRecords}
+        industryCategory={frame.industry_category ?? "Other"}
+        categoryClientCount={categoryClientCount}
       />
 
       <BackToTop />
