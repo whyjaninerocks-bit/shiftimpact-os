@@ -571,7 +571,7 @@ export function FrameBriefSection({
             <p className="text-xs text-neutral-500 mt-0.5">
               Collective Readiness Signal (client-facing):{" "}
               <span className="font-medium">
-                {frame.ics_threshold === "Conditional" ? "Fix" : frame.ics_threshold}
+                {frame.ics_threshold}
               </span>
             </p>
           </div>

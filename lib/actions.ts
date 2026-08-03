@@ -438,6 +438,7 @@ export async function createStageBrief(campaignId: string, formData: FormData) {
     campaign_id: campaignId,
     stage: str(formData, "stage"),
     channel: str(formData, "channel"),
+    department: str(formData, "department") || null,
     brief_body: str(formData, "brief_body"),
     propagation_mechanism: str(formData, "propagation_mechanism"),
     idea_led_vs_spend_led: str(formData, "idea_led_vs_spend_led") || null,
@@ -458,6 +459,7 @@ export async function updateStageBrief(campaignId: string, stageBriefId: string,
     .from("stage_briefs")
     .update({
       channel: str(formData, "channel"),
+      department: str(formData, "department") || null,
       brief_body: str(formData, "brief_body"),
       propagation_mechanism: str(formData, "propagation_mechanism"),
       idea_led_vs_spend_led: str(formData, "idea_led_vs_spend_led") || null,

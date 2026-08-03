@@ -5,7 +5,7 @@
 // Inherits anchor and mood from the locked FRAME Brief.
 // INTERNAL ONLY — not shown in Client Interface.
 
-import { useState, useTransition, useCallback } from "react";
+import { useState, useTransition, useCallback, useMemo } from "react";
 import { createStageBrief, updateStageBrief } from "@/lib/actions";
 import type { StageBrief, Stage, IdeaOrSpend, PhaseGate } from "@/lib/types";
 import {
@@ -21,6 +21,10 @@ import {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const STAGE_ORDER: Stage[] = ["Demand", "Conversion", "Retention"];
+
+const DEPARTMENTS = ["ERA FM / Radio", "KOL / Influencer", "Retail / In-Store", "Digital / Social", "PR"] as const;
+type Department = (typeof DEPARTMENTS)[number];
+const DEPT_FILTER_ALL = "All";
 
 const STATUS_TONE: Record<string, "neutral" | "blue" | "green" | "amber" | "red"> = {
   Draft:    "neutral",
@@ -66,9 +70,18 @@ function BriefCard({ brief, campaignId, liveAllowed, clarityStatement }: BriefCa
     return (
       <Card>
         <form onSubmit={handleUpdate} className="space-y-3">
-          <div>
-            <label className={labelClass}>Channel</label>
-            <input type="text" name="channel" defaultValue={brief.channel} required className={inputClass} />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>Channel</label>
+              <input type="text" name="channel" defaultValue={brief.channel} required className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Department</label>
+              <select name="department" defaultValue={brief.department ?? ""} className={inputClass}>
+                <option value="">— Unset —</option>
+                {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
           </div>
           <div>
             <label className={labelClass}>Brief Body</label>
@@ -140,7 +153,12 @@ function BriefCard({ brief, campaignId, liveAllowed, clarityStatement }: BriefCa
         </div>
       )}
       <div className="flex items-start justify-between gap-2 mb-2">
-        <p className="text-sm font-semibold text-neutral-800">{brief.channel}</p>
+        <div>
+          <p className="text-sm font-semibold text-neutral-800">{brief.channel}</p>
+          {brief.department && (
+            <p className="text-[10px] text-neutral-400 mt-0.5">{brief.department}</p>
+          )}
+        </div>
         <div className="flex items-center gap-2 shrink-0">
           {brief.idea_led_vs_spend_led && (
             <Badge tone="neutral">{brief.idea_led_vs_spend_led}</Badge>
@@ -211,9 +229,18 @@ function AddForm({ campaignId, defaultStage, frameAnchor, moodRegister, frameLoc
         <input type="hidden" name="frame_anchor" value={frameAnchor} />
         <input type="hidden" name="mood_register" value={moodRegister} />
 
-        <div>
-          <label className={labelClass}>Channel</label>
-          <input type="text" name="channel" required placeholder="e.g. TikTok, Radio, Retail" className={inputClass} />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelClass}>Channel</label>
+            <input type="text" name="channel" required placeholder="e.g. TikTok, Radio, Retail" className={inputClass} />
+          </div>
+          <div>
+            <label className={labelClass}>Department</label>
+            <select name="department" defaultValue="" className={inputClass}>
+              <option value="">— Unset —</option>
+              {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
         </div>
         <div>
           <label className={labelClass}>Brief Body</label>
@@ -357,13 +384,7 @@ export function StageBriefsSection({
   phaseGates,
   activeChannels = [],
 }: StageBriefsSectionProps) {
-  const byStage = STAGE_ORDER.reduce<Record<Stage, StageBrief[]>>(
-    (acc, stage) => {
-      acc[stage] = stageBriefs.filter((b) => b.stage === stage);
-      return acc;
-    },
-    { Demand: [], Conversion: [], Retention: [] }
-  );
+  const [deptFilter, setDeptFilter] = useState<Department | typeof DEPT_FILTER_ALL>(DEPT_FILTER_ALL);
 
   // Build set of open gate types for gate guard
   const openGateTypes = new Set(
@@ -373,6 +394,35 @@ export function StageBriefsSection({
   // Channels from brief that don't yet have a stage brief
   const existingChannels = new Set(stageBriefs.map((b) => b.channel));
   const existingCount = activeChannels.filter((c) => existingChannels.has(c)).length;
+
+  // Apply department filter then group by stage
+  const filteredBriefs = useMemo(
+    () =>
+      deptFilter === DEPT_FILTER_ALL
+        ? stageBriefs
+        : stageBriefs.filter((b) => b.department === deptFilter),
+    [stageBriefs, deptFilter]
+  );
+
+  const byStage = useMemo(
+    () =>
+      STAGE_ORDER.reduce<Record<Stage, StageBrief[]>>(
+        (acc, stage) => {
+          acc[stage] = filteredBriefs.filter((b) => b.stage === stage);
+          return acc;
+        },
+        { Demand: [], Conversion: [], Retention: [] }
+      ),
+    [filteredBriefs]
+  );
+
+  // Departments that actually have briefs (for smart tab visibility)
+  const usedDepts = useMemo(
+    () => new Set(stageBriefs.map((b) => b.department).filter(Boolean)),
+    [stageBriefs]
+  );
+
+  const filterTabs = [DEPT_FILTER_ALL, ...DEPARTMENTS.filter((d) => usedDepts.has(d))];
 
   return (
     <section id="stage-briefs">
@@ -392,6 +442,26 @@ export function StageBriefsSection({
           activeChannels={activeChannels}
           existingCount={existingCount}
         />
+      )}
+
+      {/* Department filter tabs — only show when there are tagged briefs */}
+      {usedDepts.size > 0 && (
+        <div className="flex flex-wrap gap-1 mb-4">
+          {filterTabs.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setDeptFilter(tab as Department | typeof DEPT_FILTER_ALL)}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                deptFilter === tab
+                  ? "bg-neutral-900 text-white"
+                  : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
       )}
 
       <div className="space-y-6">
@@ -417,14 +487,17 @@ export function StageBriefsSection({
                     clarityStatement={clarityStatement}
                   />
                 ))}
-                <AddForm
-                  campaignId={campaignId}
-                  defaultStage={stage}
-                  frameAnchor={frameAnchor}
-                  moodRegister={moodRegister}
-                  frameLocked={frameLocked}
-                  liveAllowed={liveAllowed}
-                />
+                {/* Only show add form when not filtering by department */}
+                {deptFilter === DEPT_FILTER_ALL && (
+                  <AddForm
+                    campaignId={campaignId}
+                    defaultStage={stage}
+                    frameAnchor={frameAnchor}
+                    moodRegister={moodRegister}
+                    frameLocked={frameLocked}
+                    liveAllowed={liveAllowed}
+                  />
+                )}
               </div>
             </div>
           );

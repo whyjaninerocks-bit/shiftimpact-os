@@ -69,9 +69,6 @@ export function icsThresholdTone(threshold: string): keyof typeof toneClasses {
     case "Advance":
       return "green";
     case "Conditional":
-      return "amber";
-    case "Fix":
-      return "amber";
     case "Rework":
       return "amber";
     case "Stop":

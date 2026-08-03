@@ -77,6 +77,17 @@ const NAV = [
       </svg>
     ),
   },
+  {
+    href: "/cultural-radar",
+    label: "Cultural Radar",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2m0 14v2M3 12h2m14 0h2" />
+      </svg>
+    ),
+  },
 ];
 
 function NavLink({ href, label, icon, active, onClick }: {
@@ -132,22 +143,7 @@ export function OsNav() {
             <NavLink key={n.href} {...n} active={isActive(n.href)} />
           ))}
         </nav>
-        <div className="px-4 py-4 border-t border-neutral-100 space-y-2">
-          <Link
-            href="/cultural-radar"
-            className={`flex items-center gap-2 text-xs font-medium transition-colors ${
-              pathname.startsWith("/cultural-radar")
-                ? "text-neutral-900"
-                : "text-neutral-400 hover:text-neutral-600"
-            }`}
-          >
-            <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2m0 14v2M3 12h2m14 0h2" />
-            </svg>
-            Cultural Radar
-          </Link>
+        <div className="px-4 py-4 border-t border-neutral-100">
           <p className="text-[10px] text-neutral-300 font-medium uppercase tracking-widest">Shift Impact™</p>
         </div>
       </aside>

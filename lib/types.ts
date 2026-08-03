@@ -327,6 +327,7 @@ export type StageBrief = {
   campaign_id: string;
   stage: Stage;
   channel: string;
+  department: string | null;
   brief_body: string;
   propagation_mechanism: string;
   idea_led_vs_spend_led: IdeaOrSpend | null;
