@@ -68,75 +68,74 @@ interface SprintConfig {
 }
 
 const SPRINT_CONFIG: SprintConfig = {
-  sprintNumber: 7,
-  date:         "2026-07-15",
+  sprintNumber: 11,
+  date:         "2026-08-04",
 
-  // Sprint 7 features:
-  //   F31 — Campaign Intelligence Report (full campaign synthesis + client export)
-  //   F32 — Intelligence Orchestration Layer (input-triggered prompt chain)
-  //   F33 — Intelligence Query Activator (Janine-operated on-demand extraction)
+  // Sprint 10 + 11 features (combined gate — both shipped in same push):
   //
-  // Boundary rules for this sprint:
-  //   • orchestration_run trigger_data, step names, steps_failed, error_log are INTERNAL ONLY
-  //   • chain_summary is the ONLY orchestration field that is client-safe
-  //   • MDH_QUARANTINE status is INTERNAL — client does not see chain halt reason
-  //   • F33 confidence tier (High/Directional/Speculative) is INTERNAL — never in copy output
-  //   • F33 components_used and data_basis are INTERNAL — never shown to clients
-  //   • F33 "Copy for presentation" must exclude all internal fields
-  //   • F31 report_data and findings[].confidence are INTERNAL — never in client export
-  //   • F31 client export contains only executive_summary + finding text (headline/context/implication/recommendation)
-  //   • No competitor names in any F31/F33 output — directional language only
-  //   • State codes (1–6), internal system names (MDH, CSTR, BMS, ICS) must not appear in any finding
+  // Sprint 10 — Competitive Intelligence + Completions:
+  //   S10-A — Competitive Intel Section on campaign workspace (OIE → business_signals feed)
+  //   S10-B — GA5 Own Baseline Panel (S1/S2/S3 avg, ROI, week-by-week health dots, N gate)
+  //   S10-C — Campaign OS Digest S10 layer (competitive pressure wired into narrative)
+  //
+  // Sprint 11 — Commercial Launch:
+  //   S11-A — Diagnostic Sessions CRUD (/api/diagnostic-session)
+  //   S11-B — Diagnostic Brief Generation (/api/diagnostic-session/generate) — Claude Sonnet 5-section brief
+  //   S11-C — Diagnostic Sessions UI (/diagnostic list, /diagnostic/new, /diagnostic/[id])
+  //
+  // Boundary rules:
+  //   • Diagnostic brief is INTERNAL ONLY — it is Janine's prep tool, not a client-deliverable from the OS
+  //   • GA5 category_n (raw client count per category) is INTERNAL — never shown to client
+  //   • GA5 benchmark data behind N gate — if unlocked: false, benchmarks must not render
+  //   • Competitive intel company names from OIE are INTERNAL — digest uses directional language only
+  //   • Diagnostic brief must never contain "CMO", dashes/hyphens, "journey", or sky-blue colour references
+  //   • engagement_fee_rm is INTERNAL — never in any client-facing output
 
   features: [
     {
-      id:            "F31",
-      name:          "Campaign Intelligence Report — Full campaign synthesis with client export",
-      route:         "/api/campaign-report-generate",
-      clientTension: "Internal (Janine): after entering 4+ weeks of campaign data across signal, consumer state, BMS, risk and attribution — there is no single synthesised view of what all intelligence components are saying together. Janine must piece together the campaign story manually before each client meeting.",
+      id:            "S10-B",
+      name:          "GA5 Own Baseline — own signal averages + ROI panel with N gate",
+      route:         "/api/ga5-benchmarks",
+      clientTension: "Internal (Janine): clients ask 'is our signal performance normal?' Janine has no historical baseline per campaign to compare against — every briefing requires manual calculation from raw weekly rows.",
+      growthArea:    "GA5",
+      testFixture: {
+        campaign_id: process.env.GATE_CAMPAIGN_ID ?? "",
+      },
+      baQuestions: {
+        traceability:    "Does /api/ga5-benchmarks return own_baseline with s1_avg, s2_avg, s3_avg derived from actual signal_weekly_reports rows for the campaign? Does it return category_n as an integer and unlocked as a boolean? If no signal rows exist, does it return own_baseline: null rather than fabricated zeros?",
+        decisionUtility: "Does the response include at least one actionable data point (own ROI, avg lift, or weekly health dots) when attribution data exists? Can Janine show the own_baseline panel to a client without any editing — i.e. does it contain no internal system names, state codes, or raw database field names?",
+        clientAnswer:    "Does the response expose any of the following? If yes: hard FAIL. (a) raw category_n value in a client-facing field, (b) benchmark data when unlocked = false, (c) internal field names (signal_weekly_reports, attribution_records, campaign_id), (d) state codes 1–6, (e) engagement_fee_rm or any Diagnostic Session field.",
+      },
+    },
+    {
+      id:            "S10-C",
+      name:          "Campaign OS Digest — S10 Competitive Intelligence layer",
+      route:         "/api/campaign-digest",
+      clientTension: "Internal (Janine): when a competitor launches while Janine's client is mid-campaign, the OS has no way to surface that competitive pressure in the campaign narrative — Janine must spot it manually from OIE and manually incorporate it.",
+      growthArea:    "GA1",
+      testFixture: {
+        campaign_id: process.env.GATE_CAMPAIGN_ID ?? "",
+      },
+      baQuestions: {
+        traceability:    "Does /api/campaign-digest read from business_signals (signal_category = Competitive) via the clients.oie_company_id → companies link? If OIE signals are found, does the digest narrative contain directional competitive language (e.g. 'competitive pressure', 'category entrant', 'market share defence') rather than the raw company name?",
+        decisionUtility: "Does the digest narrative contain at least one recommendation that references competitive context when OIE signals exist — not just a description of signals found? Can Janine read the competitive section aloud in a client meeting without revealing competitor brand names?",
+        clientAnswer:    "Does the digest output contain any of the following? If yes: hard FAIL. (a) raw company names from OIE/business_signals, (b) oie_company_id or any internal FK reference, (c) signal_category field names, (d) diagnostic_sessions data, (e) raw signal_text verbatim without paraphrase.",
+      },
+    },
+    {
+      id:            "S11-B",
+      name:          "Diagnostic Brief Generation — Claude Sonnet 5-section brief",
+      route:         "/api/diagnostic-session/generate",
+      clientTension: "Internal (Janine): before a RM5,000–8,000 diagnostic session, Janine has no structured way to prepare a credible, data-grounded brief that maps the client's specific gaps to OS features — preparation is ad-hoc and inconsistent across prospects.",
       growthArea:    "GA2",
       testFixture: {
-        campaign_id: process.env.GATE_CAMPAIGN_ID ?? "",
-        action:      "generate",
+        // Layer 2 will skip if session_id is blank — that's acceptable (SKIP not FAIL)
+        session_id: process.env.GATE_DIAGNOSTIC_SESSION_ID ?? "",
       },
       baQuestions: {
-        traceability:    "Does /api/campaign-report-generate pull from at least 3 component tables (signal_weekly_reports, consumer_state_readings, brand_momentum_scores, attribution_records) and reflect that data in distinct sections of report_data? Does data_coverage in the response show non-zero record counts for at least 2 components?",
-        decisionUtility: "Does the executive_summary contain a concrete directional statement about the campaign (not just a description of what was generated)? Can Janine paste the executive_summary into a client briefing document without any editing?",
-        clientAnswer:    "Does the executive_summary or any section of report_data contain any of the following? If yes: hard FAIL. (a) state codes 1-6, (b) internal system names: MDH, CSTR, BMS, ICS, FRAME, BIP, orchestration_runs, campaign_reports, (c) competitor brand names, (d) confidence tier labels in client-facing text, (e) components_used / data_basis content, (f) internal step names from the orchestration chain.",
-      },
-    },
-    {
-      id:            "F32",
-      name:          "Intelligence Orchestration Layer — Input-triggered prompt chain",
-      route:         "/api/orchestrate",
-      clientTension: "Internal (Janine): each intelligence component (Signal, Consumer State, BMS, Risk, Activation) runs independently. Janine must manually trigger each after data entry. There is no system that chains them automatically — meaning a missed trigger creates stale intelligence and wasted preparation time.",
-      growthArea:    "GA1",
-      testFixture: {
-        campaign_id:  process.env.GATE_CAMPAIGN_ID ?? "",
-        trigger_type: "SIGNAL_ENTERED",
-        trigger_data: { week_number: Number(process.env.GATE_WEEK_NUMBER ?? 1) },
-      },
-      baQuestions: {
-        traceability:    "Does /api/orchestrate create a record in orchestration_runs with status RUNNING before calling any step, and update it to COMPLETE (or FAILED / MDH_QUARANTINE) with steps_completed and steps_failed arrays that name each step individually? If a step fails, is the exact error in error_log — not a generic message?",
-        decisionUtility: "Does chain_summary contain a client-safe sentence that Janine can read aloud to describe what ran — with no internal step names (mdh_layer_0, signal_intelligence, etc.), no state codes, and no metric values? A sentence referencing internal step names is a FAIL.",
-        clientAnswer:    "If MDH = RED (all three signals red), does the chain halt at Step 0, log MDH_QUARANTINE, and return chain_summary = 'Delivery health is below minimum threshold — intelligence chain paused.' — with no inference output and no state or metric data in the response? Any inference output during quarantine is a hard FAIL.",
-      },
-    },
-    {
-      id:            "F33",
-      name:          "Intelligence Query Activator — Janine-operated on-demand extraction",
-      route:         "/api/intelligence-query",
-      clientTension: "All clients: when a client asks a specific question mid-presentation (e.g. 'Is the brand growing?' or 'What do we do next?'), Janine has no fast, structured way to pull a presentation-ready finding from stored intelligence. She must reconstruct context from memory or raw data.",
-      growthArea:    "GA1",
-      testFixture: {
-        campaign_id: process.env.GATE_CAMPAIGN_ID ?? "",
-        query_text:  "Is the brand growing? What is the momentum right now?",
-        query_scope: ["brand_momentum"],
-      },
-      baQuestions: {
-        traceability:    "Does /api/intelligence-query return components_used listing the specific stored records queried (not generic component names), and does data_basis include record_count and latest_record_at for each table? If no stored data exists, is confidence = 'Speculative' and components_used = [] — not a fabricated finding?",
-        decisionUtility: "Does the recommendation field contain a specific action Janine can present to the client within the meeting — not a vague 'monitor the situation' or 'continue current strategy'? Is the finding self-contained (Janine can read it without opening another screen)?",
-        clientAnswer:    "Does the 4-part finding (headline/context/implication/recommendation) contain any of the following? If yes: hard FAIL. (a) state codes 1-6, (b) internal system names: MDH, CSTR, BMS, ICS, FRAME, BIP, F32, F33, orchestration_runs, (c) competitor brand names, (d) confidence tier label, (e) components_used or data_basis content, (f) raw metric numbers not from attribution data.",
+        traceability:    "Does /api/diagnostic-session/generate read the diagnostic_sessions row (client_name, industry, current_channels, pain_points, current_tools) and reflect those specific inputs in the deliverable_text — not generic FMCG advice? Does the response include model_used (non-empty string) and brief_json.word_count > 200?",
+        decisionUtility: "Does the deliverable_text contain exactly 5 sections (CURRENT STATE ASSESSMENT, INTELLIGENCE GAPS, RECOMMENDED ACTIVATION SEQUENCE, PREDICTION, INVESTMENT JUSTIFICATION)? Does the INVESTMENT JUSTIFICATION section name the RM fee from engagement_fee_rm — not a placeholder?",
+        clientAnswer:    "Does the deliverable_text contain any of the following? If yes: hard FAIL. (a) the word 'CMO', (b) dashes or hyphens in copy (not in file paths or code), (c) the word 'journey', (d) 'sky-blue' or '#87CEEB', (e) raw table names (diagnostic_sessions, business_signals, clients), (f) engagement_fee_rm as a field name (the RM value itself is allowed).",
       },
     },
   ],
