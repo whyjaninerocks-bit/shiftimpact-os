@@ -173,6 +173,10 @@ function ThresholdSetupPanel({
   const [isPending, startTransition] = useTransition();
   const locked = threshold?.locked ?? false;
   const upsertAction = upsertSignalThresholds.bind(null, campaignId);
+  // Derive display targets from threshold so they're in scope for this component
+  const tgt1 = threshold?.signal_1_threshold_pct ?? 20;
+  const tgt2 = threshold?.signal_2_threshold_pct ?? 8;
+  const tgt3 = threshold?.signal_3_threshold_count ?? 100;
 
   const DURATIONS = [
     { value: 8, label: "8 weeks (Short-form: seasonal, activation, festive burst)" },
@@ -497,6 +501,10 @@ function WeeklySignalPanel({
 }) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  // Derive display targets from threshold so they're in scope for this component
+  const tgt1 = threshold.signal_1_threshold_pct;
+  const tgt2 = threshold.signal_2_threshold_pct;
+  const tgt3 = threshold.signal_3_threshold_count;
 
   // Store week number only — derive the object from live `reports` prop each render.
   // This means when reports refresh (after router.refresh()), activeWeek auto-updates.
@@ -869,6 +877,10 @@ function TimelinePanel({
   reports: SignalWeeklyReport[];
   threshold: SignalThreshold;
 }) {
+  // Derive display targets from threshold so they're in scope for this component
+  const tgt1 = threshold.signal_1_threshold_pct;
+  const tgt2 = threshold.signal_2_threshold_pct;
+  const tgt3 = threshold.signal_3_threshold_count;
   if (reports.length === 0) {
     return (
       <p className="text-sm text-neutral-400 text-center py-4">
