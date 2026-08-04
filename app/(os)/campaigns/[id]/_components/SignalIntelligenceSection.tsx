@@ -14,6 +14,7 @@ import {
   upsertSignalThresholds,
   lockSignalThresholds,
   saveWeeklySignalInputs,
+  logSignalFromReport,
 } from "@/lib/actions";
 import {
   Badge,
@@ -486,6 +487,61 @@ function DataContextStrip({ ctx }: { ctx: WeeklyDataContext }) {
   );
 }
 
+// ─── Log to Gate Button ──────────────────────────────────────────────────────
+// Inline button on each weekly signal row. Pre-populates Gate Signal Log
+// with actual + threshold from the WeeklyReport so the user avoids double-entry.
+
+function LogToGateButton({
+  campaignId,
+  signalType,
+  signalLabel,
+  actualValue,
+  thresholdValue,
+  unit,
+}: {
+  campaignId: string;
+  signalType: string;
+  signalLabel: string;
+  actualValue: number | null;
+  thresholdValue: number | null;
+  unit: string;
+}) {
+  const [status, setStatus] = useState<"idle" | "pending" | "done" | "error">("idle");
+  const [, startLog] = useTransition();
+
+  // No value to log yet — hide button
+  if (actualValue === null) return null;
+
+  function handleLog() {
+    startLog(async () => {
+      setStatus("pending");
+      const fd = new FormData();
+      fd.set("signal_type", signalType);
+      fd.set("signal_label", signalLabel);
+      fd.set("actual_value", String(actualValue));
+      if (thresholdValue !== null) fd.set("threshold_value", String(thresholdValue));
+      fd.set("unit", unit);
+      const result = await logSignalFromReport(campaignId, fd);
+      setStatus(result.success ? "done" : "error");
+    });
+  }
+
+  if (status === "done") {
+    return <span className="text-emerald-600 text-[10px] font-medium">Logged to Gate</span>;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleLog}
+      disabled={status === "pending"}
+      className="text-[10px] text-neutral-400 hover:text-neutral-700 border border-neutral-200 hover:border-neutral-400 rounded px-1.5 py-0.5 transition-colors disabled:opacity-40 mt-1"
+    >
+      {status === "pending" ? "Logging…" : status === "error" ? "Retry" : "Log to Gate"}
+    </button>
+  );
+}
+
 // ─── Weekly Signal Entry + Report ────────────────────────────────────────────
 
 function WeeklySignalPanel({
@@ -779,7 +835,7 @@ function WeeklySignalPanel({
                 </div>
               )}
 
-              {/* Raw signal data */}
+              {/* Raw signal data + Log to Gate */}
               <details className="text-xs text-neutral-500">
                 <summary className="cursor-pointer hover:text-neutral-700 font-medium">
                   Raw signal data — Week {activeWeek.week_number}
@@ -795,6 +851,14 @@ function WeeklySignalPanel({
                     <p className="text-neutral-300">
                       Target: ≥{tgt2}%
                     </p>
+                    <LogToGateButton
+                      campaignId={campaignId}
+                      signalType="Save Rate"
+                      signalLabel="Signal 2 — Save Rate"
+                      actualValue={activeWeek.signal_2_actual_pct}
+                      thresholdValue={tgt2}
+                      unit="%"
+                    />
                   </div>
                   <div>
                     <p className="text-neutral-400">S2B — Share Rate</p>
@@ -806,6 +870,14 @@ function WeeklySignalPanel({
                     <p className="text-neutral-300">
                       Target: ≥{threshold.signal_2b_target_pct ?? 5}%
                     </p>
+                    <LogToGateButton
+                      campaignId={campaignId}
+                      signalType="Other"
+                      signalLabel="Signal 2B — Share Rate"
+                      actualValue={activeWeek.signal_2b_actual_pct}
+                      thresholdValue={threshold.signal_2b_target_pct ?? 5}
+                      unit="%"
+                    />
                   </div>
                   <div>
                     <p className="text-neutral-400">S3 — UGC Count</p>
@@ -817,6 +889,14 @@ function WeeklySignalPanel({
                     <p className="text-neutral-300">
                       Target: ≥{tgt3} posts
                     </p>
+                    <LogToGateButton
+                      campaignId={campaignId}
+                      signalType="Organic UGC"
+                      signalLabel="Signal 3 — UGC Count"
+                      actualValue={activeWeek.signal_3_actual_count}
+                      thresholdValue={tgt3}
+                      unit="posts"
+                    />
                   </div>
                   <div>
                     <p className="text-neutral-400">S1 — Search Lift</p>
@@ -828,6 +908,14 @@ function WeeklySignalPanel({
                     <p className="text-neutral-300">
                       Target: ≥{tgt1}%
                     </p>
+                    <LogToGateButton
+                      campaignId={campaignId}
+                      signalType="Search Intent"
+                      signalLabel="Signal 1 — Search Lift"
+                      actualValue={activeWeek.signal_1_actual_pct}
+                      thresholdValue={tgt1}
+                      unit="%"
+                    />
                   </div>
                 </div>
               </details>

@@ -740,6 +740,29 @@ export async function createSignalLog(campaignId: string, formData: FormData) {
   redirect(`/campaigns/${campaignId}#signal-log`);
 }
 
+// logSignalFromReport — same insert as createSignalLog but returns a result
+// instead of redirecting, so client components can show inline confirmation.
+export async function logSignalFromReport(
+  campaignId: string,
+  formData: FormData
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("gate_signal_log").insert({
+    campaign_id: campaignId,
+    gate_id: null,
+    logged_at: new Date().toISOString().slice(0, 10),
+    signal_type: str(formData, "signal_type"),
+    signal_label: str(formData, "signal_label"),
+    actual_value: numOrNull(formData, "actual_value"),
+    threshold_value: numOrNull(formData, "threshold_value"),
+    unit: str(formData, "unit") || null,
+    notes: str(formData, "notes") || null,
+  });
+  if (error) return { success: false, error: error.message };
+  revalidatePath(`/campaigns/${campaignId}`);
+  return { success: true };
+}
+
 export async function deleteSignalLog(logId: string, campaignId: string) {
   const supabase = createAdminClient();
   const { error } = await supabase.from("gate_signal_log").delete().eq("id", logId);
