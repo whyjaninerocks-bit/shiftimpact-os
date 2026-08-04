@@ -32,6 +32,11 @@
 
 import * as fs   from "fs";
 import * as path from "path";
+import { loadEnvConfig } from "@next/env";
+
+// Load .env.local so EVAL_BASE_URL, GOLDEN_* vars, etc. work without
+// manually prefixing every `npx tsx` invocation.
+loadEnvConfig(path.join(__dirname, ".."));
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
