@@ -60,7 +60,7 @@ export function CampaignInfoSection({ campaign, teamMembers }: CampaignInfoSecti
         </Card>
         <Card>
           <p className="text-xs text-neutral-500 mb-1">Confidence</p>
-          <p className="text-sm font-semibold">{campaign.confidence_score ?? "—"} / 10</p>
+          <p className="text-sm font-semibold">{campaign.confidence_score ?? "—"} / 100</p>
         </Card>
         <Card>
           <p className="text-xs text-neutral-500 mb-1">Last Review</p>

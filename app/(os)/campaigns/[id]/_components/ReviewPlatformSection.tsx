@@ -406,7 +406,7 @@ export function ReviewPlatformSection({
         <div>
           <SectionTitle>Review Platform Intelligence</SectionTitle>
           <p className="text-xs text-neutral-500 mt-0.5">
-            Google Reviews + TripAdvisor (hospitality) — Week {currentWeek}
+            Google Reviews + TripAdvisor — Week {currentWeek}
           </p>
         </div>
         {lastScore && (
@@ -599,7 +599,7 @@ export function ReviewPlatformSection({
             </label>
             <input
               type="text"
-              placeholder="e.g. Room cleanliness, Staff friendliness, Location"
+              placeholder="e.g. Product quality, Value for money, Customer service"
               className={inputClass}
               value={positiveThemes}
               onChange={(e) => setPositiveThemes(e.target.value)}
@@ -611,7 +611,7 @@ export function ReviewPlatformSection({
             </label>
             <input
               type="text"
-              placeholder="e.g. Slow check-in, Wifi reliability, Noise levels"
+              placeholder="e.g. Delivery time, Packaging quality, Price point"
               className={inputClass}
               value={negativeThemes}
               onChange={(e) => setNegativeThemes(e.target.value)}
