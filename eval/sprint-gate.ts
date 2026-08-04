@@ -262,10 +262,10 @@ async function runTechChecks(autoFix: boolean): Promise<TechResult[]> {
 
   // T4 — Security: no threshold values or internal scoring constants in client-facing components
   const CLIENT_COMPONENTS = [
-    "app/clients/[id]/_components/BrandMomentumSection.tsx",
-    "app/campaigns/[id]/_components/SignalIntelligenceSection.tsx",
-    "app/campaigns/[id]/_components/ConsumerBehaviourSection.tsx",
-    "app/campaigns/[id]/_components/CrossChannelSection.tsx",
+    "app/(os)/clients/[id]/_components/BrandMomentumSection.tsx",
+    "app/(os)/campaigns/[id]/_components/SignalIntelligenceSection.tsx",
+    "app/(os)/campaigns/[id]/_components/ConsumerBehaviourSection.tsx",
+    "app/(os)/campaigns/[id]/_components/CrossChannelSection.tsx",
   ];
   const LEAK_PATTERNS = ["_threshold_", "bms_confidence_weight", "state_threshold", "conflict_weight"];
   for (const comp of CLIENT_COMPONENTS) {
@@ -280,7 +280,7 @@ async function runTechChecks(autoFix: boolean): Promise<TechResult[]> {
   }
 
   // T5 — ai_read / dimension_conflict_flag not rendered in client-facing BMS component
-  const bmsContent = readSrc("app/clients/[id]/_components/BrandMomentumSection.tsx");
+  const bmsContent = readSrc("app/(os)/clients/[id]/_components/BrandMomentumSection.tsx");
   if (bmsContent) {
     const exposesAiRead         = bmsContent.includes("{score.ai_read}") || bmsContent.includes("{result.ai_read}");
     const exposesConflictClient = bmsContent.includes("{score.dimension_conflict_flag}");
