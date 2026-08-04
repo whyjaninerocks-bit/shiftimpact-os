@@ -373,6 +373,7 @@ export default async function CampaignDetailPage({
         campaignChannels={campaignChannels}
         channelReports={crossChannelReports}
         allChannelProfiles={allChannelProfiles}
+        frameActiveChannels={frame.active_channels ?? []}
       />
       <CstrSection
         campaignId={id}

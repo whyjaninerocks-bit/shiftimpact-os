@@ -1405,6 +1405,41 @@ export async function getPrimaryMarket() {
 // Internal access only. Never surfaced to clients.
 // ───────────────────────────────────────────────────────────────────────
 
+// Seed campaign channels in bulk from FRAME Brief active_channels list.
+// Matches channel names (case-insensitive) against channel_profiles and inserts
+// one row per match. Skips profiles already assigned to the campaign.
+export async function seedCampaignChannelsFromFrame(
+  campaignId: string,
+  seeds: { channel_profile_id: string; channel_role: string }[]
+): Promise<{ seeded: number; error?: string }> {
+  if (seeds.length === 0) return { seeded: 0 };
+  const supabase = createAdminClient();
+
+  // Check which profiles are already assigned
+  const { data: existing } = await supabase
+    .from("campaign_channels")
+    .select("channel_profile_id")
+    .eq("campaign_id", campaignId);
+  const existingIds = new Set((existing ?? []).map((r) => r.channel_profile_id));
+
+  const toInsert = seeds
+    .filter((s) => !existingIds.has(s.channel_profile_id))
+    .map((s) => ({
+      campaign_id: campaignId,
+      channel_profile_id: s.channel_profile_id,
+      channel_role: s.channel_role,
+      is_primary: false,
+    }));
+
+  if (toInsert.length === 0) return { seeded: 0 };
+
+  const { error } = await supabase.from("campaign_channels").insert(toInsert);
+  if (error) return { seeded: 0, error: error.message };
+
+  revalidatePath(`/campaigns/${campaignId}`);
+  return { seeded: toInsert.length };
+}
+
 // Assign a channel_profile to a campaign
 export async function addCampaignChannel(campaignId: string, formData: FormData) {
   const supabase = createAdminClient();
