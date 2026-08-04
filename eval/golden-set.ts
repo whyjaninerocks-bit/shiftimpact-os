@@ -1092,7 +1092,7 @@ week_number: 5, test_type: MMM, spend_rm: 10000`,
     ],
     check: async () => {
       // Static check: confirm AttributionSection has 'truncate' class on channel_name display
-      const content = readFile("app/campaigns/[id]/_components/AttributionSection.tsx");
+      const content = readFile("app/(os)/campaigns/[id]/_components/AttributionSection.tsx");
       const hasTruncate = content.includes("truncate");
       return {
         pass: hasTruncate,
