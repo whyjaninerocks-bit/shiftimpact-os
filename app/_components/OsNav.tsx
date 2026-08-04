@@ -78,6 +78,15 @@ const NAV = [
     ),
   },
   {
+    href: "/diagnostic",
+    label: "Diagnostic Sessions",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+      </svg>
+    ),
+  },
+  {
     href: "/cultural-radar",
     label: "Cultural Radar",
     icon: (
@@ -143,18 +152,7 @@ export function OsNav() {
             <NavLink key={n.href} {...n} active={isActive(n.href)} />
           ))}
         </nav>
-        <div className="px-4 py-4 border-t border-neutral-100 space-y-2">
-          <Link
-            href="/account"
-            className={`flex items-center gap-2 text-xs font-medium transition-colors ${
-              isActive("/account") ? "text-neutral-900" : "text-neutral-400 hover:text-neutral-700"
-            }`}
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0zM4.5 20.118a7.5 7.5 0 0 1 15 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.5-1.632z" />
-            </svg>
-            Account
-          </Link>
+        <div className="px-4 py-4 border-t border-neutral-100">
           <p className="text-[10px] text-neutral-300 font-medium uppercase tracking-widest">Shift Impact™</p>
         </div>
       </aside>
@@ -213,19 +211,7 @@ export function OsNav() {
                 <NavLink key={n.href} {...n} active={isActive(n.href)} onClick={() => setOpen(false)} />
               ))}
             </nav>
-            <div className="px-4 py-4 border-t border-neutral-100 space-y-2">
-              <Link
-                href="/account"
-                onClick={() => setOpen(false)}
-                className={`flex items-center gap-2 text-xs font-medium transition-colors ${
-                  isActive("/account") ? "text-neutral-900" : "text-neutral-400 hover:text-neutral-700"
-                }`}
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0zM4.5 20.118a7.5 7.5 0 0 1 15 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.5-1.632z" />
-                </svg>
-                Account
-              </Link>
+            <div className="px-4 py-4 border-t border-neutral-100">
               <p className="text-[10px] text-neutral-300 font-medium uppercase tracking-widest">Shift Impact™</p>
             </div>
           </div>
