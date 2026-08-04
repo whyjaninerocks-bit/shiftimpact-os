@@ -1116,11 +1116,11 @@ export async function upsertSignalThresholds(
     campaign_id: campaignId,
     campaign_duration_weeks: Number(str(formData, "campaign_duration_weeks")) || 12,
     signal_1_label: str(formData, "signal_1_label") || "Branded Search Lift",
-    signal_1_threshold_pct: Number(str(formData, "signal_1_threshold_pct")) || 20,
+    signal_1_threshold_pct: Number(str(formData, "s1_green_pct")) || 20,
     signal_1_amber_pct: Number(str(formData, "signal_1_amber_pct")) || 10,
     signal_1_red_pct: Number(str(formData, "signal_1_red_pct")) || 0,
     signal_2_label: str(formData, "signal_2_label") || "Content Save Rate",
-    signal_2_threshold_pct: Number(str(formData, "signal_2_threshold_pct")) || 8,
+    signal_2_threshold_pct: Number(str(formData, "s2_green_pct")) || 8,
     signal_2_amber_pct: Number(str(formData, "signal_2_amber_pct")) || 4,
     signal_2_red_pct: Number(str(formData, "signal_2_red_pct")) || 2,
     signal_2b_label: str(formData, "signal_2b_label") || "TikTok share rate",
@@ -1128,7 +1128,7 @@ export async function upsertSignalThresholds(
     signal_2b_amber_pct: Number(str(formData, "signal_2b_amber_pct")) || 3,
     signal_2b_red_pct: Number(str(formData, "signal_2b_red_pct")) || 1,
     signal_3_label: str(formData, "signal_3_label") || "UGC Volume (Apify)",
-    signal_3_threshold_count: Number(str(formData, "signal_3_threshold_count")) || 100,
+    signal_3_threshold_count: Number(str(formData, "s3_green_count")) || 100,
     signal_3_amber_count: Number(str(formData, "signal_3_amber_count")) || 50,
     signal_3_red_count: Number(str(formData, "signal_3_red_count")) || 20,
     // Signal 3B — Video Completion Rate (Sprint 25)
@@ -1565,8 +1565,7 @@ export async function saveBrandMomentumInputs(
   const supabase = createAdminClient();
   const periodStart = str(formData, "period_start");
   if (!periodStart) {
-    redirect(`/clients/${clientId}?error=${encodeURIComponent("Period start date is required")}#brand-momentum`);
-    return;
+    throw new Error("Period start date is required");
   }
   const { error } = await supabase.from("brand_momentum_scores").insert({
     client_id:           clientId,
@@ -1588,7 +1587,7 @@ export async function saveBrandMomentumInputs(
     competitive_note:    str(formData, "competitive_note"),
   });
   if (error) {
-    redirect(`/clients/${clientId}?error=${encodeURIComponent(error.message)}#brand-momentum`);
+    throw new Error(error.message);
   }
   revalidatePath(`/clients/${clientId}`);
   // No redirect — component calls /api/brand-momentum next (same pattern as saveWeeklySignalInputs)

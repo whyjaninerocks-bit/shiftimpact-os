@@ -347,6 +347,11 @@ export default async function CampaignDetailPage({
         campaignId={id}
         threshold={signalThreshold}
         reports={signalReports}
+        signalTargets={{
+          s1GreenPct: signalThreshold?.signal_1_threshold_pct ?? 20,
+          s2GreenPct: signalThreshold?.signal_2_threshold_pct ?? 8,
+          s3GreenCount: signalThreshold?.signal_3_threshold_count ?? 100,
+        }}
         dataContext={{
           failingLogs: signalLogs
             .filter((l) => l.pass === false)

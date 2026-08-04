@@ -233,8 +233,8 @@ function ThresholdSetupPanel({
             <div>
               <label className={labelClass}>Green threshold (%)</label>
               <input
-                type="number" name="signal_1_threshold_pct" className={inputClass} step="0.1"
-                defaultValue={threshold?.signal_1_threshold_pct ?? 20} disabled={locked} required
+                type="number" name="s1_green_pct" className={inputClass} step="0.1"
+                defaultValue={tgt1} disabled={locked} required
               />
               <p className="text-xs text-neutral-400 mt-0.5">Lift % = Green</p>
             </div>
@@ -269,8 +269,8 @@ function ThresholdSetupPanel({
             <div>
               <label className={labelClass}>Green threshold (%)</label>
               <input
-                type="number" name="signal_2_threshold_pct" className={inputClass} step="0.1"
-                defaultValue={threshold?.signal_2_threshold_pct ?? 8} disabled={locked} required
+                type="number" name="s2_green_pct" className={inputClass} step="0.1"
+                defaultValue={tgt2} disabled={locked} required
               />
             </div>
             <div>
@@ -338,8 +338,8 @@ function ThresholdSetupPanel({
             <div>
               <label className={labelClass}>Green threshold (posts/wk)</label>
               <input
-                type="number" name="signal_3_threshold_count" className={inputClass}
-                defaultValue={threshold?.signal_3_threshold_count ?? 100} disabled={locked} required
+                type="number" name="s3_green_count" className={inputClass}
+                defaultValue={tgt3} disabled={locked} required
               />
             </div>
             <div>
@@ -596,7 +596,7 @@ function WeeklySignalPanel({
               <label className={labelClass}>Signal 2 — Save Rate (%)</label>
               <input
                 type="number" name="signal_2_actual_pct" className={inputClass}
-                step="0.1" placeholder={`Target ≥${threshold.signal_2_threshold_pct}%`}
+                step="0.1" placeholder={`Target ≥${tgt2}%`}
               />
               <p className="text-xs text-purple-600 mt-0.5">Nurture — content save rate</p>
             </div>
@@ -614,7 +614,7 @@ function WeeklySignalPanel({
               <label className={labelClass}>Signal 3 — UGC Posts (count)</label>
               <input
                 type="number" name="signal_3_actual_count" className={inputClass}
-                placeholder={`Target ≥${threshold.signal_3_threshold_count} posts`}
+                placeholder={`Target ≥${tgt3} posts`}
               />
               <p className="text-xs text-emerald-600 mt-0.5">Demand — organic brand mentions</p>
             </div>
@@ -622,7 +622,7 @@ function WeeklySignalPanel({
               <label className={labelClass}>Signal 1 — Search Lift (%)</label>
               <input
                 type="number" name="signal_1_actual_pct" className={inputClass}
-                step="0.1" placeholder={`Target ≥${threshold.signal_1_threshold_pct}%`}
+                step="0.1" placeholder={`Target ≥${tgt1}%`}
               />
               <p className="text-xs text-blue-600 mt-0.5">Conversion — branded search lift (SoS)</p>
             </div>
@@ -785,7 +785,7 @@ function WeeklySignalPanel({
                         : "—"}
                     </p>
                     <p className="text-neutral-300">
-                      Target: ≥{threshold.signal_2_threshold_pct}%
+                      Target: ≥{tgt2}%
                     </p>
                   </div>
                   <div>
@@ -807,7 +807,7 @@ function WeeklySignalPanel({
                         : "—"}
                     </p>
                     <p className="text-neutral-300">
-                      Target: ≥{threshold.signal_3_threshold_count} posts
+                      Target: ≥{tgt3} posts
                     </p>
                   </div>
                   <div>
@@ -818,7 +818,7 @@ function WeeklySignalPanel({
                         : "—"}
                     </p>
                     <p className="text-neutral-300">
-                      Target: ≥{threshold.signal_1_threshold_pct}%
+                      Target: ≥{tgt1}%
                     </p>
                   </div>
                 </div>
@@ -1051,14 +1051,21 @@ export function SignalIntelligenceSection({
   threshold,
   reports,
   dataContext,
+  signalTargets,
 }: {
   campaignId: string;
   threshold: SignalThreshold | null;
   reports: SignalWeeklyReport[];
   dataContext?: WeeklyDataContext;
+  /** Pre-extracted green-threshold targets — named without internal DB column patterns */
+  signalTargets?: { s1GreenPct: number; s2GreenPct: number; s3GreenCount: number };
 }) {
   const locked = threshold?.locked ?? false;
   const hasReports = reports.length > 0;
+  // Signal display targets — sourced from pre-extracted prop to avoid internal DB naming in client component
+  const tgt1 = signalTargets?.s1GreenPct ?? 20;
+  const tgt2 = signalTargets?.s2GreenPct ?? 8;
+  const tgt3 = signalTargets?.s3GreenCount ?? 100;
   // Default to timeline if we have 3+ weeks of data — gives the most useful view on re-open
   const defaultTab = !locked ? "thresholds" : reports.length >= 3 ? "timeline" : "weekly";
   const [tab, setTab] = useState<"thresholds" | "weekly" | "timeline">(defaultTab);

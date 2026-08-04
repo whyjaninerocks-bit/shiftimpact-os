@@ -1,6 +1,6 @@
 // app/api/cross-channel-report/route.ts
 // Feature 13 — Cross-Channel Campaign Intelligence Hub (Sprint 3)
-// INTERNAL ONLY — never called from or exposed to Client Interface (/portal/*).
+// INTERNAL ONLY — Janine-only route, never exposed to the client portal layer.
 //
 // POST /api/cross-channel-report
 // Loads campaign channels + this week's metrics, calls Claude Haiku
