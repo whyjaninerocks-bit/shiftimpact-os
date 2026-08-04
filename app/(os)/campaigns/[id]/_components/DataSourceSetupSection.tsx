@@ -164,7 +164,9 @@ export function DataSourceSetupSection({
     mode_branded_search: "confirmed",
     mode_vcr: "confirmed",
     mode_retention: "confirmed",
-    mode_attribution: "confirmed",
+    // Attribution defaults to Proxied — only upgrade to Confirmed once real
+    // attribution data (pixel, CRM export, or promo code tracking) is wired up.
+    mode_attribution: "proxied",
     mode_media_spend: "confirmed",
   };
 

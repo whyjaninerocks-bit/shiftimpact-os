@@ -128,16 +128,16 @@ export function BusinessOutcomesSection({ campaignId, campaign, outcomes }: Busi
       <div className="grid grid-cols-2 gap-3 mb-4">
         <Card>
           <p className="text-xs text-neutral-400 mb-1">{campaign.business_outcome_label} — Target</p>
-          <p className="text-sm font-semibold">{campaign.business_outcome_target?.toLocaleString() ?? "—"}</p>
+          <p className="text-sm font-semibold" suppressHydrationWarning>{campaign.business_outcome_target?.toLocaleString("en-MY") ?? "—"}</p>
           {campaign.business_outcome_actual != null && (
-            <p className="text-xs text-neutral-500 mt-0.5">Actual: {campaign.business_outcome_actual.toLocaleString()}</p>
+            <p className="text-xs text-neutral-500 mt-0.5" suppressHydrationWarning>Actual: {campaign.business_outcome_actual.toLocaleString("en-MY")}</p>
           )}
         </Card>
         <Card>
           <p className="text-xs text-neutral-400 mb-1">{campaign.retention_metric_label} — Target</p>
-          <p className="text-sm font-semibold">{campaign.retention_metric_target?.toLocaleString() ?? "—"}</p>
+          <p className="text-sm font-semibold" suppressHydrationWarning>{campaign.retention_metric_target?.toLocaleString("en-MY") ?? "—"}</p>
           {campaign.retention_metric_actual != null && (
-            <p className="text-xs text-neutral-500 mt-0.5">Actual: {campaign.retention_metric_actual.toLocaleString()}</p>
+            <p className="text-xs text-neutral-500 mt-0.5" suppressHydrationWarning>Actual: {campaign.retention_metric_actual.toLocaleString("en-MY")}</p>
           )}
         </Card>
       </div>
@@ -159,7 +159,7 @@ export function BusinessOutcomesSection({ campaignId, campaign, outcomes }: Busi
                   <span className="text-xs text-neutral-500">{fmtDate(outcome.week_of)}</span>
                   <span className="text-xs text-neutral-700">{outcome.metric_label}</span>
                   <span className="text-xs text-right text-neutral-700">
-                    {outcome.target_value?.toLocaleString() ?? "—"} / {outcome.actual_value?.toLocaleString() ?? "—"}
+                    {outcome.target_value?.toLocaleString("en-MY") ?? "—"} / {outcome.actual_value?.toLocaleString("en-MY") ?? "—"}
                   </span>
                   <span className={`text-xs text-right font-medium ${v ? TONE_CLASSES[v.tone] : "text-neutral-300"}`}>
                     {v?.label ?? "—"}

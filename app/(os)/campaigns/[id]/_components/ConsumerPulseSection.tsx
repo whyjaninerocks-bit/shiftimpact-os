@@ -213,7 +213,7 @@ function SnapshotDisplay({ snapshot }: { snapshot: ConsumerIntelligenceSnapshot 
         </div>
       ) : (
         <p className="text-xs text-neutral-400">
-          {snapshot.error_detail ?? "No signal data returned for this pull."}
+          No signal data returned for this pull. Refresh Consumer Pulse to retry.
         </p>
       )}
     </div>
@@ -282,7 +282,23 @@ export function ConsumerPulseSection({
 
       {error && (
         <Card>
-          <p className="text-xs text-red-600">{error}</p>
+          <div className="flex items-start gap-3">
+            <span className="text-amber-500 text-base shrink-0">⚠</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-neutral-700">Live data sources could not be reached</p>
+              <p className="text-xs text-neutral-400 mt-0.5">
+                TikTok, Google Trends or The Star Malaysia returned no data this pull.
+                This happens occasionally when external sources are slow or restricted.
+              </p>
+              <button
+                onClick={handleGenerate}
+                disabled={loading}
+                className="mt-2 text-xs text-neutral-600 hover:text-neutral-900 underline underline-offset-2"
+              >
+                Refresh to retry
+              </button>
+            </div>
+          </div>
         </Card>
       )}
 

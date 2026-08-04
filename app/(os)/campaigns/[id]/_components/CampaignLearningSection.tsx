@@ -133,7 +133,7 @@ function LearningDisplay({ record }: { record: LearningRecord }) {
 
       {record.transferred_at && (
         <p className="text-[11px] text-emerald-600 border-t border-neutral-100 pt-2">
-          Transferred to next brief on {new Date(record.transferred_at).toLocaleDateString()}
+          Transferred to next brief on {new Date(record.transferred_at).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" })}
         </p>
       )}
     </div>
@@ -294,7 +294,7 @@ export function CampaignLearningSection({ campaignId, campaignName, existingReco
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-xs text-neutral-500">
-              Last updated {new Date(existingRecord.created_at).toLocaleDateString()}
+              Last updated {new Date(existingRecord.created_at).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" })}
             </p>
             <button onClick={() => setEditing(true)} className={buttonSecondaryClass}>
               Edit

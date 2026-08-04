@@ -298,7 +298,7 @@ export function CampaignReportSection({ campaignId, campaignName }: Props) {
           {/* Meta */}
           <div className="flex items-center justify-between text-xs text-gray-500">
             <span className="font-medium text-gray-700">{report.report_label}</span>
-            <span>
+            <span suppressHydrationWarning>
               Generated {new Date(report.created_at).toLocaleString("en-MY", {
                 day: "numeric", month: "short", year: "numeric",
                 hour: "2-digit", minute: "2-digit"

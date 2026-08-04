@@ -208,6 +208,45 @@ export default async function ClientPortalPage({
           )}
         </PortalSection>
 
+        {/* ── Signal Health ── */}
+        {signalReports.length > 0 && !signalReports[0].flags_suppressed && (
+          <PortalSection title="Signal health">
+            <Card>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs text-neutral-500">Week {signalReports[0].week_number} — measured signals</p>
+                <Badge tone={ragTone(signalReports[0].gate_status ?? "Red")}>
+                  Gate: {signalReports[0].gate_status ?? "—"}
+                </Badge>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="text-center bg-neutral-50 rounded-md p-2">
+                  <p className="text-[10px] text-neutral-400 mb-1">Demand</p>
+                  <Badge tone={ragTone(signalReports[0].demand_health ?? "Red")}>
+                    {signalReports[0].demand_health ?? "—"}
+                  </Badge>
+                </div>
+                <div className="text-center bg-neutral-50 rounded-md p-2">
+                  <p className="text-[10px] text-neutral-400 mb-1">Nurture</p>
+                  <Badge tone={ragTone(signalReports[0].nurture_health ?? "Red")}>
+                    {signalReports[0].nurture_health ?? "—"}
+                  </Badge>
+                </div>
+                <div className="text-center bg-neutral-50 rounded-md p-2">
+                  <p className="text-[10px] text-neutral-400 mb-1">Conversion</p>
+                  <Badge tone={ragTone(signalReports[0].conversion_health ?? "Red")}>
+                    {signalReports[0].conversion_health ?? "—"}
+                  </Badge>
+                </div>
+              </div>
+              {signalReports[0].gate_note && (
+                <p className="text-xs text-neutral-500 mt-3 pt-2 border-t border-neutral-100">
+                  {signalReports[0].gate_note}
+                </p>
+              )}
+            </Card>
+          </PortalSection>
+        )}
+
         {/* ── Campaign Intelligence Report ── */}
         {report && (
           <PortalSection title="Campaign intelligence">
