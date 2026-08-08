@@ -131,31 +131,10 @@ const INDUSTRY_OPTIONS = [
   "Hospitality", "Media & Entertainment", "Telco", "E-Commerce", "B2B SaaS",
 ];
 
-async function extractSignals(
-  articles: Article[],
-  existingNames: string[],
-  anthropic: Anthropic,
-  model: string,
-): Promise<ExtractedSignal[]> {
-
-  if (articles.length === 0) return [];
-
-  const articleText = articles
-    .slice(0, 40)
-    .map((a, i) => `[${i + 1}] ${a.title}\n${a.snippet ? `"${a.snippet}"` : ""}\nSource: ${a.source}`)
-    .join("\n\n");
-
-  const existingList = existingNames.length > 0
-    ? `\nALREADY LOGGED (do NOT repeat these):\n${existingNames.slice(0, 30).join(", ")}`
-    : "";
-
-  const prompt = `You are extracting MID-TO-LONG TERM cultural signals for ShiftImpact OS, a growth intelligence platform for Malaysian and Southeast Asian brands.
+// Static system prompt — cached by Anthropic prompt caching (~85% token cost reduction on repeats)
+const CULTURAL_SCAN_SYSTEM = `You are extracting MID-TO-LONG TERM cultural signals for ShiftImpact OS, a growth intelligence platform for Malaysian and Southeast Asian brands.
 
 Your job is to identify enduring shifts in consumer behaviour, language, community values, and cultural rituals — signals that Malaysian/SEA brand teams can act on over the next 12–24 months.
-
-ARTICLES THIS WEEK:
-${articleText}
-${existingList}
 
 ━━ CRITICAL FILTER — READ BEFORE EXTRACTING ━━
 
@@ -171,7 +150,7 @@ IMMEDIATELY DISCARD — do not log:
 ✗ Seasonal or one-off observations (unless they reflect a recurring cultural pattern)
 ✗ Anything where the evidence is just "it's trending this week"
 ✗ Signals you cannot explain with a concrete, observable behaviour or quoted pattern
-✗ Signals already in the ALREADY LOGGED list above
+✗ Signals already in the ALREADY LOGGED list provided
 
 SIGNAL TYPES:
 - behavioural: what people are doing differently (purchases, searches, routines)
@@ -200,11 +179,38 @@ Maximum 5 signals per run.
   }
 ]`;
 
+async function extractSignals(
+  articles: Article[],
+  existingNames: string[],
+  anthropic: Anthropic,
+  model: string,
+): Promise<ExtractedSignal[]> {
+
+  if (articles.length === 0) return [];
+
+  const articleText = articles
+    .slice(0, 40)
+    .map((a, i) => `[${i + 1}] ${a.title}\n${a.snippet ? `"${a.snippet}"` : ""}\nSource: ${a.source}`)
+    .join("\n\n");
+
+  const existingList = existingNames.length > 0
+    ? `\nALREADY LOGGED (do NOT repeat these):\n${existingNames.slice(0, 30).join(", ")}`
+    : "";
+
+  const dynamicContent = `ARTICLES THIS WEEK:\n${articleText}${existingList}`;
+
   try {
     const msg = await anthropic.messages.create({
       model,
       max_tokens: 1500,
-      messages: [{ role: "user", content: prompt }],
+      system: [
+        {
+          type: "text",
+          text: CULTURAL_SCAN_SYSTEM,
+          cache_control: { type: "ephemeral" } as any,
+        },
+      ],
+      messages: [{ role: "user", content: dynamicContent }],
     });
 
     const raw = (msg.content[0] as { type: string; text: string }).text.trim();

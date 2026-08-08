@@ -40,6 +40,53 @@ function getSupabase() {
   );
 }
 
+// ─── Static system prompt (cached — never changes between calls) ──────────────
+
+const DIGEST_SYSTEM_PROMPT = `You are the ShiftImpact OS Campaign Intelligence Engine. Your job is to synthesise all signal data for this campaign into a strategic narrative that tells the strategy lead what is actually happening, where signals conflict, what is being missed, and what to do next.
+
+STRICT OUTPUT RULES:
+- No dashes or hyphens in copy
+- No "CMO" anywhere
+- Traffic light colours only: Green, Amber, Red (no "sky-blue")
+- Write as a sharp analyst, not a consultant — no padding
+- Be specific: name which signals, which weeks, which numbers
+- Surface contradictions explicitly — do not smooth them over
+- If data is missing, name it as a blindspot
+- If PREDICTION TRACK RECORD is provided, reference it when assessing your own confidence calibration
+
+Respond with valid JSON matching exactly this structure:
+{
+  "overall_health": "Green" | "Amber" | "Red",
+  "narrative": "3-4 paragraph synthesis. Para 1: media delivery and reach efficiency. Para 2: consumer signal performance vs targets. Para 3: strategic risks and contradictions. Para 4: what this means for the next 2 weeks.",
+  "top_action": "Single highest-priority action in 25 words or fewer. Imperative. Specific.",
+  "contradictions": [
+    {
+      "signal_a": "name of first signal",
+      "signal_b": "name of second signal",
+      "description": "what the contradiction is and why it matters",
+      "severity": "High" | "Medium" | "Low"
+    }
+  ],
+  "blindspots": [
+    {
+      "area": "name of gap area",
+      "description": "what is not being tracked and why it matters",
+      "recommended_fix": "what to do to close this gap"
+    }
+  ],
+  "recommendations": [
+    {
+      "action": "specific action to take",
+      "rationale": "why, grounded in the signal data",
+      "confidence": "High" | "Medium" | "Low" | "Speculative",
+      "urgency": "Immediate" | "This week" | "Next sprint",
+      "signal_source": "which signal layer drives this recommendation"
+    }
+  ]
+}
+
+Return ONLY the JSON. No preamble or explanation.`;
+
 // ─── Signal context assembly ───────────────────────────────────────────────────
 
 async function assembleSignalContext(campaign_id: string) {
@@ -238,6 +285,55 @@ async function assembleSignalContext(campaign_id: string) {
     }
   }
 
+  // ── Prediction Track Record — closed predictions for this campaign ──────────
+  // These are past system recommendations where a verdict has been entered.
+  // Feeds the learning loop: the system sees what it predicted and whether it was right.
+  const { data: predictionHistory } = await supabase
+    .from("prediction_accuracy_log")
+    .select("category, prediction_text, predicted_value, unit, prediction_week, verdict, actual_value")
+    .eq("campaign_id", campaign_id)
+    .neq("verdict", "Pending")
+    .order("prediction_week", { ascending: false })
+    .limit(8);
+
+  if (predictionHistory?.length) {
+    ctx.prediction_history = predictionHistory;
+    const correct = predictionHistory.filter((p: Record<string, unknown>) => p.verdict === "Correct").length;
+    ctx.prediction_accuracy_rate = `${correct}/${predictionHistory.length} verified predictions correct`;
+  }
+
+  // ── Past Campaign Memory — previous digests from same client ─────────────────
+  // Gives the system cross-campaign pattern recognition without vector infrastructure.
+  const clientId = (ctx.campaign as Record<string, unknown> | null)?.client_id as string | null;
+  if (clientId) {
+    const { data: siblingCampaigns } = await supabase
+      .from("campaigns")
+      .select("id")
+      .eq("client_id", clientId)
+      .neq("id", campaign_id);
+
+    if (siblingCampaigns?.length) {
+      const siblingIds = siblingCampaigns.map((c: Record<string, unknown>) => c.id as string);
+      const { data: pastDigests } = await supabase
+        .from("campaign_os_digests")
+        .select("overall_health, top_action, narrative, generated_at")
+        .in("campaign_id", siblingIds)
+        .order("generated_at", { ascending: false })
+        .limit(2);
+
+      if (pastDigests?.length) {
+        ctx.past_campaign_memory = pastDigests.map((d: Record<string, unknown>) => ({
+          health:     d.overall_health,
+          top_action: d.top_action,
+          // First 400 chars of narrative — enough for pattern context without bloating the prompt
+          summary:    typeof d.narrative === "string" ? d.narrative.slice(0, 400) : "",
+          date:       d.generated_at,
+        }));
+        signalCount++;
+      }
+    }
+  }
+
   return { ctx, signalCount, maxWeeks };
 }
 
@@ -370,54 +466,32 @@ function buildDigestPrompt(ctx: Record<string, unknown>): string {
     contextLines.push(`  INSTRUCTION: If any competitor signals overlap with this campaign's channels, category, or spend window, name the competitive pressure explicitly in the narrative and recommendations.`);
   }
 
-  const dataBlock = contextLines.join("\n");
+  // ── Prediction Track Record ───────────────────────────────────────────────────
+  if (ctx.prediction_history) {
+    const preds = ctx.prediction_history as Array<Record<string, unknown>>;
+    contextLines.push(`\nPREDICTION TRACK RECORD (${ctx.prediction_accuracy_rate ?? "no resolved predictions yet"}):`);
+    preds.forEach(p => {
+      const week = p.prediction_week ? `Wk${p.prediction_week}` : "?";
+      const actual = p.actual_value ? ` | Actual: ${p.actual_value}${p.unit ? " " + p.unit : ""}` : "";
+      contextLines.push(`  ${week} [${p.category ?? "General"}] ${p.prediction_text} → ${p.verdict}${actual}`);
+    });
+    contextLines.push(`  Use this track record to calibrate your confidence levels. If prior predictions were Incorrect, assign lower confidence to similar recommendation types.`);
+  }
 
-  return `You are the ShiftImpact OS Campaign Intelligence Engine. Your job is to synthesise all signal data for this campaign into a strategic narrative that tells the strategy lead what is actually happening, where signals conflict, what is being missed, and what to do next.
+  // ── Past Campaign Memory ──────────────────────────────────────────────────────
+  if (ctx.past_campaign_memory) {
+    const past = ctx.past_campaign_memory as Array<Record<string, unknown>>;
+    contextLines.push(`\nPAST CAMPAIGN MEMORY (same client, ${past.length} previous campaign${past.length > 1 ? "s" : ""}):`);
+    past.forEach((d, i) => {
+      const date = d.date ? new Date(d.date as string).toLocaleDateString("en-MY", { month: "short", year: "numeric" }) : "?";
+      contextLines.push(`  Campaign ${i + 1} (${date}) — Health: ${d.health} | Top action was: ${d.top_action}`);
+      if (d.summary) contextLines.push(`  Summary: ${d.summary}`);
+    });
+    contextLines.push(`  Use this memory to detect recurring patterns, unresolved issues, or improvements since prior campaigns.`);
+  }
 
-STRICT OUTPUT RULES:
-- No dashes or hyphens in copy
-- No "CMO" anywhere
-- Traffic light colours only: Green, Amber, Red (no "sky-blue")
-- Write as a sharp analyst, not a consultant — no padding
-- Be specific: name which signals, which weeks, which numbers
-- Surface contradictions explicitly — do not smooth them over
-- If data is missing, name it as a blindspot
-
-CAMPAIGN DATA:
-${dataBlock}
-
-Respond with valid JSON matching exactly this structure:
-{
-  "overall_health": "Green" | "Amber" | "Red",
-  "narrative": "3-4 paragraph synthesis. Para 1: media delivery and reach efficiency. Para 2: consumer signal performance vs targets. Para 3: strategic risks and contradictions. Para 4: what this means for the next 2 weeks.",
-  "top_action": "Single highest-priority action in ≤25 words. Imperative. Specific.",
-  "contradictions": [
-    {
-      "signal_a": "name of first signal",
-      "signal_b": "name of second signal",
-      "description": "what the contradiction is and why it matters",
-      "severity": "High" | "Medium" | "Low"
-    }
-  ],
-  "blindspots": [
-    {
-      "area": "name of gap area",
-      "description": "what is not being tracked and why it matters",
-      "recommended_fix": "what to do to close this gap"
-    }
-  ],
-  "recommendations": [
-    {
-      "action": "specific action to take",
-      "rationale": "why, grounded in the signal data",
-      "confidence": "High" | "Medium" | "Low" | "Speculative",
-      "urgency": "Immediate" | "This week" | "Next sprint",
-      "signal_source": "which signal layer drives this recommendation"
-    }
-  ]
-}
-
-Return ONLY the JSON. No preamble or explanation.`;
+  // Return only the dynamic data block — static rules live in DIGEST_SYSTEM_PROMPT
+  return `CAMPAIGN DATA:\n${contextLines.join("\n")}`;
 }
 
 // ─── Route Handler ────────────────────────────────────────────────────────────
@@ -443,13 +517,23 @@ export async function POST(req: NextRequest) {
     const weekNumber = signalReports?.[0]?.week_number as number | undefined;
 
     // Build and call Claude
-    const prompt = buildDigestPrompt(ctx);
+    // Static methodology lives in DIGEST_SYSTEM_PROMPT (cached — same every call)
+    // Dynamic campaign data is the user message (changes per campaign)
+    const dynamicData = buildDigestPrompt(ctx);
     const model = await getModel("model_campaign_digest", "claude-sonnet-4-6");
 
     const msg = await anthropic.messages.create({
       model,
       max_tokens: 2000,
-      messages: [{ role: "user", content: prompt }],
+      system: [
+        {
+          type:          "text",
+          text:          DIGEST_SYSTEM_PROMPT,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          cache_control: { type: "ephemeral" } as any,
+        },
+      ],
+      messages: [{ role: "user", content: dynamicData }],
     });
 
     const raw = (msg.content[0] as { type: string; text: string }).text ?? "";

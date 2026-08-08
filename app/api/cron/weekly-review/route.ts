@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { buildReviewContext, type CampaignReviewContext } from "@/lib/review";
 import { validateOwnedFieldUpdate } from "@/lib/reviewFields";
 import type { OsRule } from "@/lib/types";
+import { getModel } from "@/lib/ai-model";
 
 export const maxDuration = 300;
 
@@ -101,13 +102,14 @@ export async function GET(request: Request) {
   const supabase = createAdminClient();
   const today = new Date().toISOString().slice(0, 10);
 
+  const model = await getModel("model_weekly_review", "claude-haiku-4-5-20251001");
   const results = [];
 
   for (const campaignContext of context.campaigns) {
     const { campaign } = campaignContext;
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model,
       max_tokens: 1024,
       tools: [REVIEW_TOOL],
       tool_choice: { type: "tool", name: "submit_campaign_review" },
