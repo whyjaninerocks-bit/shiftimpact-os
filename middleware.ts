@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
 // Paths accessible without authentication
-const PUBLIC_PREFIXES = ["/login", "/auth/callback", "/portal", "/s/", "/api/"];
+const PUBLIC_PREFIXES = ["/login", "/auth/callback", "/portal", "/s/", "/api/", "/diagnostic"];
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
