@@ -304,12 +304,12 @@ async function assembleSignalContext(campaign_id: string) {
 
   // ── Past Campaign Memory — previous digests from same client ─────────────────
   // Gives the system cross-campaign pattern recognition without vector infrastructure.
-  const clientId = (ctx.campaign as Record<string, unknown> | null)?.client_id as string | null;
-  if (clientId) {
+  const pastClientId = (ctx.campaign as Record<string, unknown> | null)?.client_id as string | null;
+  if (pastClientId) {
     const { data: siblingCampaigns } = await supabase
       .from("campaigns")
       .select("id")
-      .eq("client_id", clientId)
+      .eq("client_id", pastClientId)
       .neq("id", campaign_id);
 
     if (siblingCampaigns?.length) {
