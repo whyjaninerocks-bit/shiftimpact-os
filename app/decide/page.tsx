@@ -365,8 +365,8 @@ export default function DecidePage() {
           </div>
         )}
 
-        {/* ── SYNTHESIS / BENCHMARK / DONE ── */}
-        {(phase === "synthesis" || phase === "benchmark") && synthesis && (
+        {/* ── SYNTHESIS ── */}
+        {phase === "synthesis" && synthesis && (
           <div style={fade}>
             <p style={C.quote}>&ldquo;{displayDecision}&rdquo;</p>
 
@@ -399,92 +399,87 @@ export default function DecidePage() {
               </p>
             </div>
 
-            {phase === "synthesis" && (
-              <>
-                <div style={C.divider} />
-                <p style={{ fontSize: 14, color: "#6b7280", margin: "0 0 1rem", lineHeight: 1.65 }}>
-                  A Growth Intelligence diagnostic session answers that question precisely and surfaces the two or three signals you have not reached yet.
-                </p>
-                <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 0.75rem" }}>
-                  Where should we send your diagnostic summary?
-                </p>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={e => { setEmail(e.target.value); setEmailError(""); }}
-                    placeholder="you@company.com"
-                    style={C.emailInput}
-                    onFocus={e => (e.target.style.borderColor = "#4b5563")}
-                    onBlur={e => (e.target.style.borderColor = "#2d3148")}
-                    onKeyDown={e => e.key === "Enter" && submitEmail()}
-                  />
-                  <button onClick={submitEmail} disabled={submitting || !email.trim()} style={C.btn(!submitting && !!email.trim())}>
-                    {submitting ? "Sending…" : "Send it →"}
-                  </button>
-                </div>
-                {emailError && <p style={{ fontSize: 13, color: "#ef4444", margin: "0.5rem 0 0" }}>{emailError}</p>}
-                <div style={{ marginTop: "1.5rem" }}>
-                  <button onClick={restart} style={C.ghost}>← Try a different decision</button>
-                </div>
-              </>
-            )}
+            <div style={C.divider} />
+            <p style={{ fontSize: 14, color: "#6b7280", margin: "0 0 1rem", lineHeight: 1.65 }}>
+              A Growth Intelligence diagnostic session answers that question precisely and surfaces the two or three signals you have not reached yet.
+            </p>
+            <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 0.75rem" }}>
+              Where should we send your diagnostic summary?
+            </p>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <input
+                type="email"
+                value={email}
+                onChange={e => { setEmail(e.target.value); setEmailError(""); }}
+                placeholder="you@company.com"
+                style={C.emailInput}
+                onFocus={e => (e.target.style.borderColor = "#4b5563")}
+                onBlur={e => (e.target.style.borderColor = "#2d3148")}
+                onKeyDown={e => e.key === "Enter" && submitEmail()}
+              />
+              <button onClick={submitEmail} disabled={submitting || !email.trim()} style={C.btn(!submitting && !!email.trim())}>
+                {submitting ? "Sending…" : "Send it →"}
+              </button>
+            </div>
+            {emailError && <p style={{ fontSize: 13, color: "#ef4444", margin: "0.5rem 0 0" }}>{emailError}</p>}
+            <div style={{ marginTop: "1.5rem" }}>
+              <button onClick={restart} style={C.ghost}>← Try a different decision</button>
+            </div>
+          </div>
+        )}
 
-            {phase === "benchmark" && (
-              <>
-                <div style={C.divider} />
-                <p style={{ fontSize: 14, color: "#e5e7eb", margin: "0 0 0.5rem", lineHeight: 1.65 }}>
-                  One last thing before we send your report.
-                </p>
-                <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 1.5rem", lineHeight: 1.65 }}>
-                  Tell us your industry and brand category. We include benchmark data specific to your sector so the numbers in the report are relevant to your situation, not averages.
-                </p>
-                <div style={{ marginBottom: "1rem" }}>
-                  <p style={C.sLabel}>Industry</p>
-                  <select
-                    value={industry}
-                    onChange={e => setIndustry(e.target.value)}
-                    style={{ ...C.emailInput, width: "100%", cursor: "pointer" }}
-                  >
-                    <option value="">Select your industry</option>
-                    <option value="FMCG">FMCG</option>
-                    <option value="QSR / F&B">QSR / F&B</option>
-                    <option value="Retail">Retail</option>
-                    <option value="E-commerce">E-commerce</option>
-                    <option value="Beauty / Personal Care">Beauty / Personal Care</option>
-                    <option value="Health / Wellness">Health / Wellness</option>
-                    <option value="Financial Services">Financial Services</option>
-                    <option value="Technology / SaaS">Technology / SaaS</option>
-                    <option value="Automotive">Automotive</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                <div style={{ marginBottom: "1.5rem" }}>
-                  <p style={C.sLabel}>Brand category</p>
-                  <input
-                    type="text"
-                    value={brandCategory}
-                    onChange={e => setBrandCategory(e.target.value)}
-                    placeholder="e.g. instant coffee, ready-to-drink tea, skincare"
-                    style={{ ...C.emailInput, width: "100%" }}
-                    onFocus={e => (e.target.style.borderColor = "#4b5563")}
-                    onBlur={e => (e.target.style.borderColor = "#2d3148")}
-                    onKeyDown={e => e.key === "Enter" && !benchmarkSubmitting && industry && brandCategory && submitBenchmark()}
-                  />
-                </div>
-                <button
-                  onClick={submitBenchmark}
-                  disabled={benchmarkSubmitting || !industry || !brandCategory.trim()}
-                  style={C.btn(!benchmarkSubmitting && !!industry && !!brandCategory.trim())}
-                >
-                  {benchmarkSubmitting ? "Sending your report…" : "Send my report →"}
-                </button>
-                <div style={{ marginTop: "1.5rem" }}>
-                  <button onClick={restart} style={C.ghost}>← Try a different decision</button>
-                </div>
-              </>
-            )}
-
+        {/* ── BENCHMARK — clean form only, no report ── */}
+        {phase === "benchmark" && (
+          <div style={fade}>
+            <p style={{ fontSize: 20, fontWeight: 400, color: "#f3f4f6", margin: "0 0 0.5rem", lineHeight: 1.4 }}>
+              One last thing.
+            </p>
+            <p style={{ fontSize: 14, color: "#6b7280", margin: "0 0 2rem", lineHeight: 1.65 }}>
+              Tell us your industry and brand category. We use this to include benchmark data relevant to your sector in the report.
+            </p>
+            <div style={{ marginBottom: "1rem" }}>
+              <p style={C.sLabel}>Industry</p>
+              <select
+                value={industry}
+                onChange={e => setIndustry(e.target.value)}
+                style={{ ...C.emailInput, width: "100%", cursor: "pointer" }}
+              >
+                <option value="">Select your industry</option>
+                <option value="FMCG">FMCG</option>
+                <option value="QSR / F&B">QSR / F&B</option>
+                <option value="Retail">Retail</option>
+                <option value="E-commerce">E-commerce</option>
+                <option value="Beauty / Personal Care">Beauty / Personal Care</option>
+                <option value="Health / Wellness">Health / Wellness</option>
+                <option value="Financial Services">Financial Services</option>
+                <option value="Technology / SaaS">Technology / SaaS</option>
+                <option value="Automotive">Automotive</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div style={{ marginBottom: "1.5rem" }}>
+              <p style={C.sLabel}>Brand category</p>
+              <input
+                type="text"
+                value={brandCategory}
+                onChange={e => setBrandCategory(e.target.value)}
+                placeholder="e.g. instant coffee, ready-to-drink tea, skincare"
+                style={{ ...C.emailInput, width: "100%" }}
+                onFocus={e => (e.target.style.borderColor = "#4b5563")}
+                onBlur={e => (e.target.style.borderColor = "#2d3148")}
+                onKeyDown={e => e.key === "Enter" && !benchmarkSubmitting && industry && brandCategory && submitBenchmark()}
+              />
+            </div>
+            <button
+              onClick={submitBenchmark}
+              disabled={benchmarkSubmitting || !industry || !brandCategory.trim()}
+              style={C.btn(!benchmarkSubmitting && !!industry && !!brandCategory.trim())}
+            >
+              {benchmarkSubmitting ? "Sending your report…" : "Send my report →"}
+            </button>
+            <div style={{ marginTop: "1.5rem" }}>
+              <button onClick={restart} style={C.ghost}>← Try a different decision</button>
+            </div>
           </div>
         )}
 
