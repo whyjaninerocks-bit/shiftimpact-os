@@ -5,10 +5,10 @@
 
 import { useState, useRef, useEffect } from "react";
 
-type Phase = "entry" | "fetching" | "reading" | "probing" | "synthesis" | "done";
+type Phase = "entry" | "fetching" | "reading" | "probing" | "synthesis" | "benchmark" | "done";
 
-interface ProbeResult { readingLines: string[]; question: string; }
-interface SynthesisResult { pattern: string; position: string; blindspot: string; action: string; bridge: string; }
+interface ProbeResult { readingLines: string[]; question: string; readyForSynthesis?: boolean; }
+interface SynthesisResult { stageRead: string; signalGap: string; riskPosture: string; gateCondition: string; action: string; bridge: string; }
 
 async function callProbe(
   decision: string,
@@ -27,7 +27,13 @@ async function callProbe(
 
 export default function DecidePage() {
   const [phase, setPhase] = useState<Phase>("entry");
-  const [probeStep, setProbeStep] = useState(0); // 0-based (0=probe1, 1=probe2)
+  const [probeStep, setProbeStep] = useState(0); // 0-based
+  const [isLastProbe, setIsLastProbe] = useState(false);
+
+  // Benchmark collection (post-email)
+  const [industry, setIndustry] = useState("");
+  const [brandCategory, setBrandCategory] = useState("");
+  const [benchmarkSubmitting, setBenchmarkSubmitting] = useState(false);
   const [decision, setDecision] = useState("");
   const [displayDecision, setDisplayDecision] = useState("");
 
@@ -102,6 +108,7 @@ export default function DecidePage() {
     try {
       const result = await callProbe(decision.trim(), [], 1, "probe") as ProbeResult;
       setCurrentQuestion(result.question);
+      setIsLastProbe(false); // probe 1 is never last
       setPhase("reading");
       animateReading(result.readingLines, () => {
         setConversation([{ role: "probe", content: result.question }]);
@@ -127,35 +134,35 @@ export default function DecidePage() {
       { role: "answer", content: answer },
     ];
     setConversation(updatedConv);
-
-    const isLast = probeStep === 1;
     setPhase("fetching");
 
     try {
-      if (isLast) {
-        // Get synthesis
-        const result = await callProbe(decision.trim(), updatedConv, 2, "synthesis") as SynthesisResult;
+      if (isLastProbe) {
+        // Prompt chain step 2: classify → synthesize (handled inside API route)
+        const result = await callProbe(decision.trim(), updatedConv, probeStep + 1, "synthesis") as SynthesisResult;
         setSynthesis(result);
-        // Show final reading lines (generic closing lines while synthesis arrives)
         setPhase("reading");
         animateReading(
           [
             "Reading the pattern across everything you described.",
             "Reading what was said and what was left unsaid.",
-            "Reading where the decision actually lives.",
+            "Reading where the decision actually sits.",
           ],
           () => { setContentVisible(true); setPhase("synthesis"); }
         );
       } else {
         // Get next probe
-        const nextProbeNum = probeStep + 2; // probeStep is 0-based, API expects 1-based
+        const nextProbeNum = probeStep + 2; // 0-based + 2 = 1-based next probe number
         const result = await callProbe(decision.trim(), updatedConv, nextProbeNum, "probe") as ProbeResult;
         const nextConv = [...updatedConv, { role: "probe", content: result.question }];
         setConversation(nextConv);
         setCurrentQuestion(result.question);
+        // AI decides if this next probe is the last (min 2 probes, max 3)
+        const nextIsLast = result.readyForSynthesis === true || nextProbeNum >= 3;
         setPhase("reading");
         animateReading(result.readingLines, () => {
           setProbeStep(prev => prev + 1);
+          setIsLastProbe(nextIsLast);
           setContentVisible(true);
           setPhase("probing");
         });
@@ -181,7 +188,7 @@ export default function DecidePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ session_id: sessionId.current, email: trimmed }),
       });
-      setPhase("done");
+      setPhase("benchmark"); // Ask for context before sending report
     } catch {
       setEmailError("Something went wrong. Please try again.");
     } finally {
@@ -189,13 +196,45 @@ export default function DecidePage() {
     }
   }
 
+  async function submitBenchmark() {
+    if (!industry || !brandCategory) return;
+    setBenchmarkSubmitting(true);
+    const posture = synthesis?.riskPosture?.trim().toLowerCase().split(/[\s.]/)[0] ?? "investigate";
+    const categoryKey = ["press","hold","pivot","stop","investigate"].includes(posture) ? posture : "investigate";
+    try {
+      await fetch("/api/widget-lead", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          session_id: sessionId.current,
+          send_report: true,
+          category: categoryKey,
+          industry,
+          brand_category: brandCategory,
+          stage_read: synthesis?.stageRead,
+          signal_gap: synthesis?.signalGap,
+          risk_posture: synthesis?.riskPosture,
+          gate_condition: synthesis?.gateCondition,
+          action: synthesis?.action,
+          bridge: synthesis?.bridge,
+        }),
+      });
+      setPhase("done");
+    } catch {
+      setPhase("done"); // Non-fatal — still complete
+    } finally {
+      setBenchmarkSubmitting(false);
+    }
+  }
+
   function restart() {
     clearTimers();
-    setPhase("entry"); setProbeStep(0);
+    setPhase("entry"); setProbeStep(0); setIsLastProbe(false);
     setDecision(""); setDisplayDecision(""); setCurrentAnswer("");
     setConversation([]); setCurrentQuestion("");
     setReadingLines([]); setSynthesis(null);
     setEmail(""); setEmailError(""); setApiError(false);
+    setIndustry(""); setBrandCategory("");
     setContentVisible(true);
     sessionId.current = crypto.randomUUID();
   }
@@ -280,7 +319,7 @@ export default function DecidePage() {
         {phase === "probing" && (
           <div style={fade}>
             <p style={C.quote}>&ldquo;{displayDecision}&rdquo;</p>
-            <p style={C.step}>0{probeStep + 1} / 02</p>
+            <p style={C.step}>0{probeStep + 1}</p>
             <p style={C.pLabel}>One question</p>
             <p style={C.pQ}>{currentQuestion}</p>
             {apiError && (
@@ -300,30 +339,38 @@ export default function DecidePage() {
               onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && currentAnswer.trim()) { e.preventDefault(); submitAnswer(); } }}
             />
             <button onClick={submitAnswer} disabled={!currentAnswer.trim()} style={C.btn(!!currentAnswer.trim())}>
-              {probeStep < 1 ? "Continue →" : "Show me what you see →"}
+              {isLastProbe ? "Show me what you see →" : "Continue →"}
             </button>
           </div>
         )}
 
-        {/* ── SYNTHESIS ── */}
-        {(phase === "synthesis" || phase === "done") && synthesis && (
+        {/* ── SYNTHESIS / BENCHMARK / DONE ── */}
+        {(phase === "synthesis" || phase === "benchmark" || phase === "done") && synthesis && (
           <div style={fade}>
             <p style={C.quote}>&ldquo;{displayDecision}&rdquo;</p>
 
-            <p style={C.sLabel}>What the conversation reveals</p>
-            <p style={C.body}>{synthesis.pattern}</p>
+            <p style={C.sLabel}>Stage</p>
+            <p style={C.body}>{synthesis.stageRead}</p>
 
-            <p style={C.sLabel}>Where the evidence points</p>
-            <p style={C.body}>{synthesis.position}</p>
+            <p style={C.sLabel}>Signal gap</p>
+            <p style={C.body}>{synthesis.signalGap}</p>
 
-            <p style={C.sLabel}>The blind spot</p>
-            <p style={C.body}>{synthesis.blindspot}</p>
+            <div style={C.box}>
+              <p style={{ ...C.sLabel, marginBottom: "0.4rem" }}>Risk posture</p>
+              <p style={{ margin: "0 0 1rem", fontSize: 15, color: "#e5e7eb", lineHeight: 1.75, fontWeight: 500 }}>
+                {synthesis.riskPosture}
+              </p>
+              <p style={{ ...C.sLabel, marginBottom: "0.4rem" }}>Gate condition</p>
+              <p style={{ margin: 0, fontSize: 14, color: "#9ca3af", lineHeight: 1.75 }}>
+                {synthesis.gateCondition}
+              </p>
+            </div>
 
             <p style={C.sLabel}>Your next move</p>
             <p style={C.body}>{synthesis.action}</p>
 
-            <div style={C.box}>
-              <p style={{ ...C.sLabel, marginBottom: "0.5rem" }}>The question you should actually be asking</p>
+            <div style={{ ...C.box, borderColor: "#1f2937" }}>
+              <p style={{ ...C.sLabel, marginBottom: "0.5rem" }}>The question</p>
               <p style={{ margin: 0, fontSize: 15, color: "#e5e7eb", lineHeight: 1.75, fontStyle: "italic" }}>
                 {synthesis.bridge}
               </p>
@@ -333,7 +380,7 @@ export default function DecidePage() {
               <>
                 <div style={C.divider} />
                 <p style={{ fontSize: 14, color: "#6b7280", margin: "0 0 1rem", lineHeight: 1.65 }}>
-                  A Growth Intelligence diagnostic session answers that question precisely — and surfaces two or three others you haven&apos;t reached yet.
+                  A Growth Intelligence diagnostic session answers that question precisely and surfaces the two or three signals you have not reached yet.
                 </p>
                 <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 0.75rem" }}>
                   Where should we send your diagnostic summary?
@@ -354,6 +401,61 @@ export default function DecidePage() {
                   </button>
                 </div>
                 {emailError && <p style={{ fontSize: 13, color: "#ef4444", margin: "0.5rem 0 0" }}>{emailError}</p>}
+                <div style={{ marginTop: "1.5rem" }}>
+                  <button onClick={restart} style={C.ghost}>← Try a different decision</button>
+                </div>
+              </>
+            )}
+
+            {phase === "benchmark" && (
+              <>
+                <div style={C.divider} />
+                <p style={{ fontSize: 14, color: "#e5e7eb", margin: "0 0 0.5rem", lineHeight: 1.65 }}>
+                  One last thing before we send your report.
+                </p>
+                <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 1.5rem", lineHeight: 1.65 }}>
+                  Tell us your industry and brand category. We include benchmark data specific to your sector so the numbers in the report are relevant to your situation, not averages.
+                </p>
+                <div style={{ marginBottom: "1rem" }}>
+                  <p style={C.sLabel}>Industry</p>
+                  <select
+                    value={industry}
+                    onChange={e => setIndustry(e.target.value)}
+                    style={{ ...C.emailInput, width: "100%", cursor: "pointer" }}
+                  >
+                    <option value="">Select your industry</option>
+                    <option value="FMCG">FMCG</option>
+                    <option value="QSR / F&B">QSR / F&B</option>
+                    <option value="Retail">Retail</option>
+                    <option value="E-commerce">E-commerce</option>
+                    <option value="Beauty / Personal Care">Beauty / Personal Care</option>
+                    <option value="Health / Wellness">Health / Wellness</option>
+                    <option value="Financial Services">Financial Services</option>
+                    <option value="Technology / SaaS">Technology / SaaS</option>
+                    <option value="Automotive">Automotive</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div style={{ marginBottom: "1.5rem" }}>
+                  <p style={C.sLabel}>Brand category</p>
+                  <input
+                    type="text"
+                    value={brandCategory}
+                    onChange={e => setBrandCategory(e.target.value)}
+                    placeholder="e.g. instant coffee, ready-to-drink tea, skincare"
+                    style={{ ...C.emailInput, width: "100%" }}
+                    onFocus={e => (e.target.style.borderColor = "#4b5563")}
+                    onBlur={e => (e.target.style.borderColor = "#2d3148")}
+                    onKeyDown={e => e.key === "Enter" && !benchmarkSubmitting && industry && brandCategory && submitBenchmark()}
+                  />
+                </div>
+                <button
+                  onClick={submitBenchmark}
+                  disabled={benchmarkSubmitting || !industry || !brandCategory.trim()}
+                  style={C.btn(!benchmarkSubmitting && !!industry && !!brandCategory.trim())}
+                >
+                  {benchmarkSubmitting ? "Sending your report…" : "Send my report →"}
+                </button>
                 <div style={{ marginTop: "1.5rem" }}>
                   <button onClick={restart} style={C.ghost}>← Try a different decision</button>
                 </div>

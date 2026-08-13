@@ -48,7 +48,7 @@ const CONTENT: Record<string, CategoryContent> = {
       { title: "Return on incremental spend in weeks 4 to 8", figure: "1.8x to 2.4x", context: "What brands in this category typically see when they scale a campaign that is already performing.", position: "Only achievable if signal is moving", posClass: "signal-amber" },
     ],
     timeAlert: "The window to scale this campaign effectively is not unlimited. If you press and the signal is not there, you will have spent the remaining budget and still face the same decision. Confirm the signal today, then move.",
-    ctaHeadline: "Before you press — a 90-minute session confirms whether the signal is there to amplify or whether you are about to buy reach that does not convert.",
+    ctaHeadline: "Before you press — a 90 minute session confirms whether the signal is there to amplify or whether you are about to buy reach that does not convert.",
   },
 
   hold: {
@@ -74,7 +74,7 @@ const CONTENT: Record<string, CategoryContent> = {
       { title: "Cost of holding without exit conditions", figure: "Weeks 6 to 8", context: "The window where a hold without a plan becomes a de facto continuation decision — budget is spent, time is gone.", position: "You are in this window now", posClass: "signal-red" },
     ],
     timeAlert: "A hold without defined exit conditions is a continuation decision in disguise. The budget keeps running. The time keeps passing. At the end of a hold, you still have to make the same decision — just with less time and less budget to act on it.",
-    ctaHeadline: "A 90-minute diagnostic session defines your exit conditions and tells you which signal, if it moved, would give you the answer you are waiting for.",
+    ctaHeadline: "A 90 minute diagnostic session defines your exit conditions and tells you which signal, if it moved, would give you the answer you are waiting for.",
   },
 
   pivot: {
@@ -97,10 +97,10 @@ const CONTENT: Record<string, CategoryContent> = {
     ],
     benchmarks: [
       { title: "Audience match rate threshold for channel viability", figure: "40 to 55%", context: "The typical minimum overlap between reached audience and target audience before a channel is considered effective for conversion-stage campaigns in SEA markets.", position: "Pull your match rate before deciding", posClass: "signal-amber" },
-      { title: "Cost of a mid-campaign channel pivot", figure: "2 to 3 weeks", context: "The typical time and budget cost of rebuilding targeting, creative, and bidding strategy in a new channel from zero.", position: "High cost if it is the wrong diagnosis", posClass: "signal-red" },
+      { title: "Cost of a mid campaign channel pivot", figure: "2 to 3 weeks", context: "The typical time and budget cost of rebuilding targeting, creative, and bidding strategy in a new channel from zero.", position: "High cost if it is the wrong diagnosis", posClass: "signal-red" },
     ],
-    timeAlert: "A pivot mid-campaign restarts your learning curve in a new channel. If the original diagnosis was wrong, you will spend the remaining budget establishing baseline performance in the new channel rather than improving the original.",
-    ctaHeadline: "A 90-minute session tells you which layer the problem sits in before you change the channel — and saves you the cost of a pivot that does not fix the actual issue.",
+    timeAlert: "A pivot mid campaign restarts your learning curve in a new channel. If the original diagnosis was wrong, you will spend the remaining budget establishing baseline performance in the new channel rather than improving the original.",
+    ctaHeadline: "A 90 minute session tells you which layer the problem sits in before you change the channel — and saves you the cost of a pivot that does not fix the actual issue.",
   },
 
   stop: {
@@ -111,7 +111,7 @@ const CONTENT: Record<string, CategoryContent> = {
     recommendation: "Confirm the diagnosis before you cut",
     urgency: "High — if you are right, waiting costs you; if you are wrong, stopping costs more",
     realProblem: "The evidence threshold for stopping is higher than you think",
-    approach: "Stopping is the boldest call you can make mid-campaign, and sometimes it is exactly right. The cost of stopping when you should have continued is not just the remaining budget — it is the time to rebuild momentum, the opportunity cost of a window you did not take, and the signal ambiguity you carry into the next campaign. The discipline of a clean stop is being certain you are reading failure, not noise.",
+    approach: "Stopping is the boldest call you can make mid campaign, and sometimes it is exactly right. The cost of stopping when you should have continued is not just the remaining budget — it is the time to rebuild momentum, the opportunity cost of a window you did not take, and the signal ambiguity you carry into the next campaign. The discipline of a clean stop is being certain you are reading failure, not noise.",
     dataRead: "A campaign looks like failure for two different reasons. The first is that the campaign is genuinely not working — the signal is flat, the audience is not moving, and more time will not change that. The second is that the measurement model is incomplete — you are looking at a metric that cannot capture what the campaign is actually doing. Before you stop, confirm which of those is true.",
     missing: "Most stop decisions are made on one metric — usually the most visible one — rather than on the convergence of multiple signals. A flat engagement rate alongside growing save rate, rising search volume for your category, or positive organic content is a different signal than a flat engagement rate across all dimensions. You may be reading one number as the story when the full picture is more complex.",
     thisWeek: "Before you stop, pull every signal you have — not just the primary metric. Look for any signal that is moving in the right direction, even slowly. If every signal is flat or falling, stop. If one or two signals are moving while the primary metric is flat, you may have a measurement problem rather than a campaign problem. That distinction is worth one analysis before you make an irreversible call.",
@@ -126,7 +126,7 @@ const CONTENT: Record<string, CategoryContent> = {
       { title: "Rebuild time after a premature stop", figure: "6 to 10 weeks", context: "The typical time to rebuild campaigns stopped before a signal naturally resolved — including budget, audience re-engagement, and category momentum loss.", position: "High cost if diagnosis is wrong", posClass: "signal-red" },
     ],
     timeAlert: "If you stop now and the diagnosis was wrong, you do not just lose the remaining campaign budget. You lose the momentum the campaign was building — and rebuilding that momentum in the same window costs significantly more than continuing.",
-    ctaHeadline: "A 90-minute session confirms whether what you are reading is genuine campaign failure or a measurement gap — before you make an irreversible call.",
+    ctaHeadline: "A 90 minute session confirms whether what you are reading is genuine campaign failure or a measurement gap — before you make an irreversible call.",
   },
 
   investigate: {
@@ -152,7 +152,7 @@ const CONTENT: Record<string, CategoryContent> = {
       { title: "Cost of unstructured investigation", figure: "3 to 4 extra weeks", context: "The typical time cost when teams investigate without clear success criteria — including the time to agree on what the data means after it is collected.", position: "You may already be here", posClass: "signal-amber" },
     ],
     timeAlert: "Every week spent investigating without defined decision criteria is a week of campaign time that will not come back. The goal is not certainty — it is a clear enough read to act in the remaining window.",
-    ctaHeadline: "A 90-minute session builds your decision framework before you investigate further — so the next piece of data you pull actually gives you an answer.",
+    ctaHeadline: "A 90 minute session builds your decision framework before you investigate further — so the next piece of data you pull actually gives you an answer.",
   },
 };
 
@@ -171,7 +171,28 @@ function tagStyle(cls: string): string {
   return "background:#fef3c7;color:#b45309;"; // amber
 }
 
-export function generateDecideReportHtml(decisionText: string, category: string): string {
+interface SynthesisContext {
+  industry: string;
+  brandCategory: string;
+  stageRead: string;
+  signalGap: string;
+  riskPosture: string;
+  gateCondition: string;
+  action: string;
+  bridge: string;
+}
+
+// Derive posture badge colour from first word
+function postureColour(posture: string): { bg: string; text: string; border: string } {
+  const p = posture.trim().toLowerCase();
+  if (p.startsWith("press"))    return { bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" };
+  if (p.startsWith("hold"))     return { bg: "#fef3c7", text: "#b45309", border: "#fde68a" };
+  if (p.startsWith("pivot"))    return { bg: "#ede9fe", text: "#5b21b6", border: "#c4b5fd" };
+  if (p.startsWith("stop"))     return { bg: "#fee2e2", text: "#b91c1c", border: "#fca5a5" };
+  return { bg: "#e0f2fe", text: "#0369a1", border: "#7dd3fc" }; // investigate
+}
+
+export function generateDecideReportHtml(decisionText: string, category: string, synthesis?: SynthesisContext): string {
   const c = CONTENT[category] ?? CONTENT.investigate;
   const now = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
 
@@ -195,6 +216,56 @@ export function generateDecideReportHtml(decisionText: string, category: string)
     </div>`).join("");
 
   const truncated = decisionText.length > 400 ? decisionText.slice(0, 397) + "…" : decisionText;
+
+  // Build OS synthesis section (only if synthesis context provided)
+  const pc = synthesis ? postureColour(synthesis.riskPosture) : null;
+  const industryLabel = synthesis?.industry ? ` · ${synthesis.industry}` : "";
+  const categoryLabel = synthesis?.brandCategory ? ` · ${synthesis.brandCategory}` : "";
+
+  const osSynthesisSection = synthesis && synthesis.stageRead ? `
+  <!-- OS SYNTHESIS — two column -->
+  <div style="padding:32px 40px;background:#f8f9fc;border-bottom:1px solid #e5e7eb;">
+    <div style="font-size:10px;color:#2563eb;letter-spacing:0.14em;font-weight:700;margin-bottom:20px;">WHAT THE OS FOUND${industryLabel}${categoryLabel}</div>
+
+    <!-- Two column grid (uses table for email compatibility) -->
+    <table cellpadding="0" cellspacing="0" width="100%" style="table-layout:fixed;">
+      <tr valign="top">
+
+        <!-- LEFT COLUMN — main analysis -->
+        <td style="width:58%;padding-right:16px;">
+          <div style="margin-bottom:20px;">
+            <div style="font-size:9px;letter-spacing:0.14em;color:#9ca3af;font-weight:700;margin-bottom:6px;">STAGE</div>
+            <div style="font-size:14px;color:#111827;line-height:1.7;">${synthesis.stageRead}</div>
+          </div>
+          <div style="margin-bottom:20px;">
+            <div style="font-size:9px;letter-spacing:0.14em;color:#9ca3af;font-weight:700;margin-bottom:6px;">SIGNAL GAP</div>
+            <div style="font-size:14px;color:#111827;line-height:1.7;">${synthesis.signalGap}</div>
+          </div>
+          <div>
+            <div style="font-size:9px;letter-spacing:0.14em;color:#9ca3af;font-weight:700;margin-bottom:6px;">YOUR NEXT MOVE</div>
+            <div style="font-size:14px;color:#111827;line-height:1.7;">${synthesis.action}</div>
+          </div>
+        </td>
+
+        <!-- RIGHT COLUMN — posture + gate -->
+        <td style="width:42%;padding-left:16px;border-left:1px solid #e5e7eb;">
+          <div style="background:${pc!.bg};border:1px solid ${pc!.border};border-radius:8px;padding:14px 16px;margin-bottom:14px;">
+            <div style="font-size:9px;letter-spacing:0.14em;color:${pc!.text};font-weight:700;margin-bottom:6px;">RISK POSTURE</div>
+            <div style="font-size:14px;font-weight:600;color:${pc!.text};line-height:1.45;">${synthesis.riskPosture}</div>
+          </div>
+          <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;padding:14px 16px;margin-bottom:14px;">
+            <div style="font-size:9px;letter-spacing:0.14em;color:#6b7280;font-weight:700;margin-bottom:6px;">GATE CONDITION</div>
+            <div style="font-size:12px;color:#374151;line-height:1.65;">${synthesis.gateCondition}</div>
+          </div>
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px 16px;">
+            <div style="font-size:9px;letter-spacing:0.14em;color:#1d4ed8;font-weight:700;margin-bottom:6px;">THE QUESTION</div>
+            <div style="font-size:12px;color:#1e3a8a;line-height:1.65;font-style:italic;">${synthesis.bridge}</div>
+          </div>
+        </td>
+
+      </tr>
+    </table>
+  </div>` : "";
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -256,6 +327,8 @@ export function generateDecideReportHtml(decisionText: string, category: string)
     <div style="font-size:10px;color:#4b5563;letter-spacing:0.12em;margin-bottom:10px;">WHAT YOU TOLD US</div>
     <div style="font-size:14px;color:#6b7280;line-height:1.8;font-style:italic;padding-left:16px;border-left:3px solid #2563eb;">&ldquo;${truncated}&rdquo;</div>
   </div>
+
+  ${osSynthesisSection}
 
   <!-- BODY -->
   <div style="padding:40px;">

@@ -54,82 +54,103 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
-  const { session_id, email } = body;
+  const {
+    session_id,
+    email,
+    send_report,
+    category,
+    industry,
+    brand_category,
+    stage_read,
+    signal_gap,
+    risk_posture,
+    gate_condition,
+    action,
+    bridge,
+  } = body;
 
-  if (!session_id || !email) {
-    return NextResponse.json({ error: "session_id and email required" }, { status: 400, headers: CORS });
-  }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    return NextResponse.json({ error: "Invalid email" }, { status: 400, headers: CORS });
+  if (!session_id) {
+    return NextResponse.json({ error: "session_id required" }, { status: 400, headers: CORS });
   }
 
   const supabase = createAdminClient();
 
-  // Fetch the existing row so we have decision_text + category for the report
-  const { data: row, error: fetchError } = await supabase
-    .from("widget_leads")
-    .select("decision_text, assumption_category")
-    .eq("session_id", session_id)
-    .single();
-
-  if (fetchError) {
-    return NextResponse.json({ error: fetchError.message }, { status: 500, headers: CORS });
-  }
-
-  // Save email to DB
-  const { error: updateError } = await supabase
-    .from("widget_leads")
-    .update({ email: email.toLowerCase().trim() })
-    .eq("session_id", session_id);
-
-  if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500, headers: CORS });
-  }
-
-  // Send email if Resend is configured
-  const resendKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.RESEND_FROM_EMAIL;
-
-  if (resendKey && fromEmail && row?.decision_text) {
-    try {
-      const html = generateDecideReportHtml(
-        row.decision_text,
-        row.assumption_category ?? "investigate"
-      );
-
-      const resendRes = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${resendKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: fromEmail,
-          to: [email.toLowerCase().trim()],
-          subject: "Your decision analysis — ShiftImpact Growth Intelligence",
-          html,
-        }),
-      });
-
-      if (resendRes.ok) {
-        // Mark as emailed
-        await supabase
-          .from("widget_leads")
-          .update({ emailed_at: new Date().toISOString() })
-          .eq("session_id", session_id);
-      } else {
-        // Log but do not fail the request — DB save succeeded
-        console.error("Resend error:", await resendRes.text());
-      }
-    } catch (err) {
-      // Email failure is non-fatal
-      console.error("Email send failed:", err);
+  // ── Phase 1: save email (no send_report flag) ─────────────────────────────
+  if (email && !send_report) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json({ error: "Invalid email" }, { status: 400, headers: CORS });
     }
+    const { error: updateError } = await supabase
+      .from("widget_leads")
+      .update({ email: email.toLowerCase().trim() })
+      .eq("session_id", session_id);
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500, headers: CORS });
+    }
+    return NextResponse.json({ ok: true }, { headers: CORS });
   }
 
-  return NextResponse.json({ ok: true }, { headers: CORS });
+  // ── Phase 2: send report (send_report: true, has synthesis fields) ─────────
+  if (send_report) {
+    // Fetch saved email + decision_text from DB
+    const { data: row, error: fetchError } = await supabase
+      .from("widget_leads")
+      .select("decision_text, email")
+      .eq("session_id", session_id)
+      .single();
+
+    if (fetchError) {
+      return NextResponse.json({ error: fetchError.message }, { status: 500, headers: CORS });
+    }
+
+    const resendKey = process.env.RESEND_API_KEY;
+    const fromEmail = process.env.RESEND_FROM_EMAIL;
+
+    if (resendKey && fromEmail && row?.email && row?.decision_text) {
+      try {
+        const html = generateDecideReportHtml(row.decision_text, category ?? "investigate", {
+          industry: industry ?? "",
+          brandCategory: brand_category ?? "",
+          stageRead: stage_read ?? "",
+          signalGap: signal_gap ?? "",
+          riskPosture: risk_posture ?? "",
+          gateCondition: gate_condition ?? "",
+          action: action ?? "",
+          bridge: bridge ?? "",
+        });
+
+        const resendRes = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${resendKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: fromEmail,
+            to: [row.email],
+            subject: "Your decision analysis from ShiftImpact Growth Intelligence",
+            html,
+          }),
+        });
+
+        if (resendRes.ok) {
+          await supabase
+            .from("widget_leads")
+            .update({ emailed_at: new Date().toISOString() })
+            .eq("session_id", session_id);
+        } else {
+          console.error("Resend error:", await resendRes.text());
+        }
+      } catch (err) {
+        console.error("Email send failed:", err);
+      }
+    }
+
+    return NextResponse.json({ ok: true }, { headers: CORS });
+  }
+
+  return NextResponse.json({ error: "Invalid PATCH payload" }, { status: 400, headers: CORS });
 }
 
 export async function GET(req: NextRequest) {
