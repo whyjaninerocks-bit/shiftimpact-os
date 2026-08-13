@@ -8,7 +8,7 @@ import { useState, useRef, useEffect } from "react";
 type Phase = "entry" | "fetching" | "reading" | "probing" | "synthesis" | "benchmark" | "done";
 
 interface ProbeResult { readingLines: string[]; question: string; readyForSynthesis?: boolean; }
-interface SynthesisResult { stageRead: string; signalGap: string; riskPosture: string; gateCondition: string; action: string; bridge: string; }
+interface SynthesisResult { stageRead: string; signalGap: string; riskPosture: string; gateCondition: string; action: string; bridge: string; _stage?: string; _signal?: string; _gap?: string; }
 
 async function callProbe(
   decision: string,
@@ -217,6 +217,11 @@ export default function DecidePage() {
           gate_condition: synthesis?.gateCondition,
           action: synthesis?.action,
           bridge: synthesis?.bridge,
+          // Classifier metadata — for decision pattern analytics
+          campaign_stage: synthesis?._stage,
+          signal_gap_type: synthesis?._signal,
+          decision_gap_type: synthesis?._gap,
+          probe_count: probeStep + 1,
         }),
       });
       setPhase("done");

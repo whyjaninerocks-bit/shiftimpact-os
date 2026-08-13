@@ -93,6 +93,32 @@ export async function PATCH(req: NextRequest) {
 
   // ── Phase 2: send report (send_report: true, has synthesis fields) ─────────
   if (send_report) {
+    const {
+      campaign_stage,
+      signal_gap_type,
+      decision_gap_type,
+      probe_count,
+    } = body;
+
+    // Persist synthesis + classification to DB for decision pattern analytics
+    await supabase
+      .from("widget_leads")
+      .update({
+        industry:          industry ?? null,
+        brand_category:    brand_category ?? null,
+        assumption_category: category ?? null,
+        campaign_stage:    campaign_stage ?? null,
+        signal_gap_type:   signal_gap_type ?? null,
+        decision_gap_type: decision_gap_type ?? null,
+        stage_read:        stage_read ?? null,
+        signal_gap_text:   signal_gap ?? null,
+        gate_condition:    gate_condition ?? null,
+        next_action:       action ?? null,
+        bridge_question:   bridge ?? null,
+        probe_count:       probe_count ?? null,
+      })
+      .eq("session_id", session_id);
+
     // Fetch saved email + decision_text from DB
     const { data: row, error: fetchError } = await supabase
       .from("widget_leads")
