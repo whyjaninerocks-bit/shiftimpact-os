@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendBriefNotification } from "@/lib/email";
 
 function str(formData: FormData, key: string): string {
   return (formData.get(key) as string | null) ?? "";
@@ -34,8 +33,6 @@ export async function createClient(formData: FormData) {
       industry_profile: str(formData, "industry_profile"),
       business_outcome_label: str(formData, "business_outcome_label") || "Business Outcome",
       retention_metric_label: str(formData, "retention_metric_label") || "Retention Metric",
-      contact_name: str(formData, "contact_name") || null,
-      contact_email: str(formData, "contact_email") || null,
     })
     .select("id")
     .single();
@@ -57,8 +54,6 @@ export async function updateClient(clientId: string, formData: FormData) {
       industry_profile: str(formData, "industry_profile"),
       business_outcome_label: str(formData, "business_outcome_label") || "Business Outcome",
       retention_metric_label: str(formData, "retention_metric_label") || "Retention Metric",
-      contact_name: str(formData, "contact_name") || null,
-      contact_email: str(formData, "contact_email") || null,
     })
     .eq("id", clientId);
 
@@ -69,13 +64,6 @@ export async function updateClient(clientId: string, formData: FormData) {
   revalidatePath(`/clients/${clientId}`);
   revalidatePath("/clients");
   redirect(`/clients/${clientId}`);
-}
-
-export async function deleteClient(clientId: string) {
-  const supabase = createAdminClient();
-  await supabase.from("clients").delete().eq("id", clientId);
-  revalidatePath("/clients");
-  redirect("/clients");
 }
 
 // ───────────────────────────────────────────────────────────────────────
@@ -234,58 +222,6 @@ export async function setFrameLockStatus(campaignId: string, frameBriefId: strin
   // F32: fire brief orchestration chain when brief is locked (non-blocking)
   if (lock) {
     void fireOrchestration(campaignId, "BRIEF_SUBMITTED", { source: "frame_lock", frame_brief_id: frameBriefId });
-
-    // Sprint 31: fire email notifications to team member + client contact (non-blocking)
-    void (async () => {
-      try {
-        const [campaignRes, frameRes] = await Promise.all([
-          supabase
-            .from("campaigns")
-            .select("name, client_id, team_member_id, clients(name, contact_name, contact_email), team_members(name, email)")
-            .eq("id", campaignId)
-            .single(),
-          supabase
-            .from("frame_briefs")
-            .select("anchor")
-            .eq("id", frameBriefId)
-            .single(),
-        ]);
-
-        const campaign = campaignRes.data;
-        const frame = frameRes.data;
-        if (!campaign || !frame) return;
-
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://shiftimpact-os.vercel.app";
-        const briefUrl = `${baseUrl}/brief/${campaignId}`;
-
-        // Build recipient list — only include entries with an email address
-        const recipients: { name: string; email: string; role: "agency" | "client" }[] = [];
-
-        const tm = campaign.team_members as { name: string; email: string | null } | null;
-        if (tm?.email) recipients.push({ name: tm.name, email: tm.email, role: "agency" });
-
-        const cl = campaign.clients as { name: string; contact_name: string | null; contact_email: string | null } | null;
-        if (cl?.contact_email) {
-          recipients.push({
-            name: cl.contact_name ?? cl.name,
-            email: cl.contact_email,
-            role: "client",
-          });
-        }
-
-        if (recipients.length === 0) return; // no emails configured yet
-
-        await sendBriefNotification({
-          campaignName: campaign.name,
-          clientName: cl?.name ?? "Client",
-          frameAnchor: frame.anchor,
-          briefUrl,
-          recipients,
-        });
-      } catch (e) {
-        console.error("[setFrameLockStatus] email notification failed:", e);
-      }
-    })();
   }
 
   revalidatePath(`/campaigns/${campaignId}`);
@@ -479,7 +415,6 @@ export async function createTeamMember(formData: FormData) {
   const { error } = await supabase.from("team_members").insert({
     name: str(formData, "name"),
     role: str(formData, "role"),
-    email: str(formData, "email") || null,
     urgent_count: numOrNull(formData, "urgent_count") ?? 0,
   });
 
@@ -498,7 +433,6 @@ export async function updateTeamMember(memberId: string, formData: FormData) {
     .update({
       name: str(formData, "name"),
       role: str(formData, "role"),
-      email: str(formData, "email") || null,
       urgent_count: numOrNull(formData, "urgent_count") ?? 0,
     })
     .eq("id", memberId);
@@ -642,41 +576,13 @@ export async function createIdeaExtension(campaignId: string, formData: FormData
 export async function updateIdeaExtension(extensionId: string, campaignId: string, formData: FormData) {
   const supabase = createAdminClient();
   const channelRole = str(formData, "channel_role") || null;
-
-  // Detect brief format — v2 uses structured JSON fields; v1 uses raw brief_body textarea
-  const isV2 = str(formData, "__brief_version") === "2";
-  let brief_body: string;
-  let propagation_mechanism: string;
-
-  if (isV2) {
-    // Build v2 JSON from all structured form fields
-    const v2 = {
-      __v: 2,
-      idea_spine: str(formData, "idea_spine") || "",
-      concept_rationale: str(formData, "concept_rationale") || "",
-      win_conditions: str(formData, "win_conditions") || "",
-      propagation_mechanism: str(formData, "propagation_mechanism") || "",
-      strategic_recommendation: str(formData, "strategic_recommendation") || "",
-      anchor_integrity_check: str(formData, "anchor_integrity_check") || "",
-      do_not: str(formData, "do_not") || "",
-      client_notes: str(formData, "client_notes") || "",
-    };
-    brief_body = JSON.stringify(v2);
-    propagation_mechanism = v2.propagation_mechanism;
-  } else {
-    // v1 — single textarea
-    brief_body = str(formData, "brief_body") || "";
-    propagation_mechanism = str(formData, "propagation_mechanism") || "";
-  }
-
   const { error } = await supabase.from("idea_extensions").update({
     expression_name: str(formData, "expression_name") || "",
     channel_role: channelRole,
-    brief_body,
-    propagation_mechanism,
+    brief_body: str(formData, "brief_body"),
+    propagation_mechanism: str(formData, "propagation_mechanism"),
     status: str(formData, "status") || "Draft",
   }).eq("id", extensionId);
-
   if (error) redirect(`/campaigns/${campaignId}?error=${encodeURIComponent(error.message)}`);
   revalidatePath(`/campaigns/${campaignId}`);
   redirect(`/campaigns/${campaignId}#idea-extensions`);

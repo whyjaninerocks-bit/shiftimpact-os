@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -57,17 +57,13 @@ const CHANNELS = [
 ];
 
 const FETCH_PLATFORMS = [
-  { value: "twitter",           label: "Twitter / X Posts",    hint: "Brand handle or campaign hashtag",          field: "handle",      placeholder: "@nikefootball or #NikeChamber" },
-  { value: "podcast",          label: "Podcast Search",       hint: "Apple Podcasts — branded podcast series and episode descriptions (free, no Apify)", field: "none",        placeholder: "" },
-  { value: "trade_press_deep", label: "Trade Press Search",  hint: "APAC + global trade media — Marketing Interactive, Campaign Brief Asia, Mumbrella, The Drum, AdWeek", field: "none",        placeholder: "" },
-  { value: "article_url",      label: "Article URL",          hint: "Paste specific article URL — headless browser extracts full content", field: "website_url", placeholder: "https://marketinginteractive.com/article/..." },
-  { value: "facebook_ads",     label: "Facebook Ad Library",  hint: "Brand page URL or name",    field: "page_url",    placeholder: "https://www.facebook.com/YeosMY or brand name" },
-  { value: "instagram",        label: "Instagram Posts",      hint: "Brand handle",               field: "handle",      placeholder: "@yeos.my" },
-  { value: "tiktok",           label: "TikTok Posts",         hint: "Brand handle",               field: "handle",      placeholder: "@yeos_official" },
-  { value: "youtube",          label: "YouTube Channel",      hint: "Channel handle or URL",      field: "handle",      placeholder: "@YeosMalaysia" },
-  { value: "website",          label: "Brand Website",        hint: "Campaign landing page — headless browser when Apify configured", field: "website_url", placeholder: "https://www.yeos.com.my/campaign" },
-  { value: "kol_hashtag",      label: "KOL / Hashtag",        hint: "Campaign hashtag",           field: "hashtag",     placeholder: "#ManisnyaBerbuka" },
-  { value: "press",            label: "Google News",          hint: "Mainstream news index — limited trade press coverage", field: "none", placeholder: "" },
+  { value: "facebook_ads", label: "Facebook Ad Library", hint: "Brand page URL or name", field: "page_url", placeholder: "https://www.facebook.com/YeosMY or brand name" },
+  { value: "instagram",    label: "Instagram Posts",    hint: "Brand handle",            field: "handle",   placeholder: "@yeos.my" },
+  { value: "tiktok",       label: "TikTok Posts",       hint: "Brand handle",            field: "handle",   placeholder: "@yeos_official" },
+  { value: "youtube",      label: "YouTube Channel",    hint: "Channel handle or URL",   field: "handle",   placeholder: "@YeosMalaysia" },
+  { value: "website",      label: "Brand Website",      hint: "Campaign landing page",   field: "website_url", placeholder: "https://www.yeos.com.my/campaign" },
+  { value: "kol_hashtag",  label: "KOL / Hashtag",     hint: "Campaign hashtag",        field: "hashtag",  placeholder: "#ManisnyaBerbuka" },
+  { value: "press",        label: "Press Coverage",     hint: "Searches news for brand", field: "none",     placeholder: "" },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -105,49 +101,12 @@ export default function QuickAuditPage() {
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const [country, setCountry] = useState("Malaysia");
-  // Carries forward the Signal's AI intelligence so Snapshot can extend rather than re-derive
-  const [signalIntelligence, setSignalIntelligence] = useState<Record<string, unknown> | null>(null);
-
   const brandRef = useRef<HTMLInputElement>(null);
   const campaignRef = useRef<HTMLInputElement>(null);
   const industryRef = useRef<HTMLSelectElement>(null);
   const phaseRef = useRef<HTMLSelectElement>(null);
   const objectiveRef = useRef<HTMLInputElement>(null);
   const budgetRef = useRef<HTMLSelectElement>(null);
-
-  // Pre-fill form on load from either:
-  //   ?signal_id=xxx  → fetch stored context from a Clarity Signal (brand + campaign + full context)
-  //   ?brand=&campaign=&industry= → simple URL params (manual deep link)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const signalId = params.get("signal_id");
-
-    if (signalId) {
-      fetch(`/api/signal-context/${signalId}`)
-        .then(r => r.json())
-        .then(data => {
-          if (data.brand_name && brandRef.current) brandRef.current.value = data.brand_name;
-          if (data.campaign_name && campaignRef.current) campaignRef.current.value = data.campaign_name;
-          if (data.industry && industryRef.current) industryRef.current.value = data.industry;
-          if (data.country) setCountry(data.country);
-          if (data.context_text) setContextText(data.context_text);
-          if (data.signal_intelligence) setSignalIntelligence(data.signal_intelligence);
-        })
-        .catch(() => {
-          // Signal not found or fetch failed — form stays empty for manual input
-        });
-      return;
-    }
-
-    // Fallback: plain URL params (brand/campaign/industry only, no context)
-    const b = params.get("brand");
-    const c = params.get("campaign");
-    const ind = params.get("industry");
-    if (b && brandRef.current) brandRef.current.value = b;
-    if (c && campaignRef.current) campaignRef.current.value = c;
-    if (ind && industryRef.current) industryRef.current.value = ind;
-  }, []);
 
   const cfg = FETCH_PLATFORMS.find(p => p.value === platform)!;
 
@@ -204,8 +163,6 @@ export default function QuickAuditPage() {
           brand_name: brandRef.current?.value,
           campaign_name: campaignRef.current?.value,
           industry: industryRef.current?.value,
-          country,
-          signal_intelligence: signalIntelligence ?? undefined,
           campaign_phase: phaseRef.current?.value,
           business_objective: objectiveRef.current?.value,
           channels: selectedChannels,
@@ -261,23 +218,11 @@ export default function QuickAuditPage() {
             </div>
           </div>
 
-          <div className="grid sm:grid-cols-3 gap-3">
+          <div className="grid sm:grid-cols-2 gap-3">
             <div>
               <label className={labelCls}>Industry *</label>
               <select ref={industryRef} className={inputCls} defaultValue="FMCG">
                 {INDUSTRIES.map(i => <option key={i.value} value={i.value}>{i.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>Market *</label>
-              <select className={inputCls} value={country} onChange={e => setCountry(e.target.value)}>
-                <option value="Malaysia">Malaysia</option>
-                <option value="Singapore">Singapore</option>
-                <option value="Indonesia">Indonesia</option>
-                <option value="Philippines">Philippines</option>
-                <option value="Thailand">Thailand</option>
-                <option value="Vietnam">Vietnam</option>
-                <option value="Other">Other</option>
               </select>
             </div>
             <div>

@@ -137,19 +137,6 @@ export default async function ClientDetailPage({
               <label className={labelClass} htmlFor="retention_metric_label">Retention Metric Label</label>
               <input className={inputClass} id="retention_metric_label" name="retention_metric_label" defaultValue={client.retention_metric_label} />
             </div>
-            <div className="pt-2 border-t border-neutral-100">
-              <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">Brief notification recipient</p>
-              <div className="space-y-2">
-                <div>
-                  <label className={labelClass} htmlFor="contact_name">Contact name</label>
-                  <input className={inputClass} id="contact_name" name="contact_name" defaultValue={client.contact_name ?? ""} placeholder="e.g. Aisha Omar" />
-                </div>
-                <div>
-                  <label className={labelClass} htmlFor="contact_email">Contact email</label>
-                  <input className={inputClass} type="email" id="contact_email" name="contact_email" defaultValue={client.contact_email ?? ""} placeholder="client@brand.com" />
-                </div>
-              </div>
-            </div>
             <button type="submit" className={buttonSecondaryClass}>Save</button>
           </form>
         </Card>
