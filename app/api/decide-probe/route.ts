@@ -130,7 +130,8 @@ Probe 2: Force resolution. Based on what they said in response to Probe 1, choos
 
 SYNTHESIS RULES:
 This is a verdict. Not a summary.
-pattern: Describe HOW they think about this type of decision. Not what they said. Their decision-making posture. It should feel like being seen.
+Write the entire synthesis in second person. Address the user directly as "you". Never refer to them as "this person" or "they".
+pattern: Describe HOW you think about this type of decision. Not what you said. Your decision-making posture. Write directly to the user: "You move toward..." or "You trust...". It should feel like being seen.
 position: Your actual verdict stated as a direct sentence with the critical condition embedded. Not a label. A sentence.
 blindspot: The specific thing they did NOT name across the entire conversation that materially affects the decision. It must be derivable from what they said. It must recontextualise something that came before.
 action: One action, completable in 72 hours, named precisely. Example: "Pull your specific metric for the last N weeks and map it against the specific variable. That tells you whether the specific hypothesis is true."
@@ -173,7 +174,7 @@ function buildUserMessage(
     lines.push("\nGENERATE THE SYNTHESIS. This is your verdict after reading the full conversation.");
     lines.push("Return ONLY valid JSON in this exact shape:");
     lines.push(`{"pattern":"string","position":"string","blindspot":"string","action":"string","bridge":"string"}`);
-    lines.push("pattern: how they think about this type of decision (posture, not summary). 2 to 3 sentences. Should feel like being seen. No hyphens.");
+    lines.push("pattern: how YOU think about this type of decision (posture, not summary). Write directly to the user in second person: 'You move toward...', 'You trust...', 'You already know...'. 2 to 3 sentences. Should feel like being seen. No hyphens. Never write 'this person' or 'they'.");
     lines.push("position: your actual verdict as a direct sentence with the critical condition embedded. No hyphens.");
     lines.push("blindspot: the specific thing they never named that materially affects the decision. Must recontextualise something. No hyphens.");
     lines.push("action: one named action, completable in 72 hours, producing real information about the specific uncertainty. No hyphens.");
