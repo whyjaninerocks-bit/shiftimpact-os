@@ -120,10 +120,11 @@ stageRead: Name the campaign stage this decision sits at. Name the specific gate
 signalGap: Name the specific signal being missed or misread using its full name (Share of Search, Save Rate, UGC, or Physical Signals). Explain why it is the one that resolves this decision. 2 sentences. Second person. No hyphens. Never abbreviate.
 
 riskPosture: Name exactly one of these 5 Risk Posture states: Press | Hold | Pivot | Stop | Investigate.
-Then add the specific condition on the same line. Name a specific metric, a specific threshold, and a specific hold period. No vague qualifiers. No hyphens.
-Example: "Hold. The gate opens when Save Rate clears 8 percent on hero content for 3 consecutive days."
+Then in 1 sentence explain WHY this posture applies to this specific decision: the signal you read, the confidence level, and what makes it too early or right to act. Do NOT include the gate threshold here — that goes in gateCondition. No hyphens.
+Example: "Investigate. You cannot attribute the lift to Grab Ads without isolating footfall in stores that did not run activation."
 
-gateCondition: Write the gate signal that resolves this decision. Begin with "Gate opens when". Specific metric. Specific threshold. Specific hold period. Calibrated to what the user described. No hyphens.
+gateCondition: Write the single measurable condition that must be true before the user acts. Begin with "Gate opens when". Name a specific metric, a specific threshold, and a specific hold period. This is the threshold only — not the rationale. Calibrated to what the user described. No hyphens.
+Example: "Gate opens when Save Rate clears 8 percent on hero content for 3 consecutive days."
 
 action: One action, completable in 72 hours, that checks the specific signal identified in signalGap. Name the platform. Name the metric. Name what the result means for this decision specifically. No hyphens.
 
@@ -131,10 +132,11 @@ bridge: The question they have been avoiding. Slightly uncomfortable. If answere
 
 FINAL CHECKS before every synthesis response:
 1. Does every field reference something specific from this conversation? If any field could apply to a completely different decision, rewrite it.
-2. Does riskPosture name exactly one of the 5 states followed by a specific condition with a metric and hold period?
-3. Does gateCondition begin with "Gate opens when" and include a specific threshold and hold period?
-4. Is the synthesis written entirely in second person?
-5. Are there any hyphens anywhere? Remove them.`;
+2. Does riskPosture contain the posture name + WHY (rationale) but NOT the gate threshold?
+3. Does gateCondition begin with "Gate opens when" and contain ONLY the threshold and hold period — no rationale?
+4. Are riskPosture and gateCondition meaningfully different from each other?
+5. Is the synthesis written entirely in second person?
+6. Are there any hyphens anywhere? Remove them.`;
 
 // ── Classify the decision context (fast, haiku) ───────────────────────────────
 async function classifyDecision(
@@ -218,8 +220,8 @@ function buildUserMessage(
     lines.push(`{"stageRead":"string","signalGap":"string","riskPosture":"string","gateCondition":"string","action":"string","bridge":"string"}`);
     lines.push("stageRead: which campaign stage + which gate is blocked. 1 to 2 sentences. Second person. No hyphens.");
     lines.push("signalGap: which signal (Share of Search, Save Rate, UGC, or Physical Signals) is missing and why it resolves this. Full name only — never abbreviate. 2 sentences. Second person. No hyphens.");
-    lines.push("riskPosture: exactly one of Press|Hold|Pivot|Stop|Investigate. Then the specific condition: metric + threshold + hold period. No hyphens.");
-    lines.push("gateCondition: 'Gate opens when [specific metric] [specific threshold] for [specific period].' Calibrated to this decision. No hyphens.");
+    lines.push("riskPosture: exactly one of Press|Hold|Pivot|Stop|Investigate. Then 1 sentence explaining WHY (the signal read, the confidence level, what makes it too early or right to act). Do NOT include the gate threshold here. No hyphens.");
+    lines.push("gateCondition: 'Gate opens when [specific metric] [specific threshold] for [specific period].' The threshold only — no rationale. Calibrated to this decision. No hyphens.");
     lines.push("action: one 72-hour action. Name the platform, the metric, and what the result means for THIS decision. No hyphens.");
     lines.push("bridge: the question they have been avoiding. Slightly uncomfortable. Makes the decision clear if answered honestly. Second person. No hyphens.");
   }
@@ -278,8 +280,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
           stageRead: "This decision sits at the Conversion gate. The budget question cannot be answered before the signal is read.",
           signalGap: "The Save Rate signal is the one being missed. It tells you whether the campaign is moving consumer behaviour or just buying reach.",
-          riskPosture: "Hold. The gate opens when Save Rate clears 8 percent on hero content for 3 consecutive days.",
-          gateCondition: "Gate opens when Save Rate is at or above 8 percent on hero content, holding for 3 consecutive days.",
+          riskPosture: "Hold. You have not yet confirmed whether the campaign is driving behaviour change or just buying reach. Acting before the signal clears means scaling noise.",
+          gateCondition: "Gate opens when Save Rate is at or above 8 percent on hero content for 3 consecutive days.",
           action: "Pull your TikTok Save Rate for the last 14 days. Map it against the week the paid push ran. If the rate moved in that week, the spend contributed to behaviour change. If it did not, the spend is buying reach.",
           bridge: "You already know what you would do if the data confirmed your gut. What would it take to act as if it already had?",
         });

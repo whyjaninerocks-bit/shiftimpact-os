@@ -366,7 +366,7 @@ export default function DecidePage() {
         )}
 
         {/* ── SYNTHESIS / BENCHMARK / DONE ── */}
-        {(phase === "synthesis" || phase === "benchmark" || phase === "done") && synthesis && (
+        {(phase === "synthesis" || phase === "benchmark") && synthesis && (
           <div style={fade}>
             <p style={C.quote}>&ldquo;{displayDecision}&rdquo;</p>
 
@@ -377,11 +377,13 @@ export default function DecidePage() {
             <p style={C.body}>{synthesis.signalGap}</p>
 
             <div style={C.box}>
-              <p style={{ ...C.sLabel, marginBottom: "0.4rem" }}>Risk posture</p>
+              <p style={{ ...C.sLabel, marginBottom: "0.15rem" }}>Risk posture</p>
+              <p style={{ fontSize: 11, color: "#4b5563", margin: "0 0 0.5rem", letterSpacing: "0.04em" }}>What we recommend right now</p>
               <p style={{ margin: "0 0 1rem", fontSize: 15, color: "#e5e7eb", lineHeight: 1.75, fontWeight: 500 }}>
                 {synthesis.riskPosture}
               </p>
-              <p style={{ ...C.sLabel, marginBottom: "0.4rem" }}>Gate condition</p>
+              <p style={{ ...C.sLabel, marginBottom: "0.15rem" }}>Gate condition</p>
+              <p style={{ fontSize: 11, color: "#4b5563", margin: "0 0 0.5rem", letterSpacing: "0.04em" }}>What has to be true before you act</p>
               <p style={{ margin: 0, fontSize: 14, color: "#9ca3af", lineHeight: 1.75 }}>
                 {synthesis.gateCondition}
               </p>
@@ -483,21 +485,49 @@ export default function DecidePage() {
               </>
             )}
 
-            {phase === "done" && (
-              <>
-                <div style={C.divider} />
-                <p style={{ fontSize: 15, color: "#e5e7eb", margin: "0 0 0.4rem", lineHeight: 1.7 }}>
-                  Your diagnostic summary is on its way.
-                </p>
-                <p style={{ fontSize: 14, color: "#6b7280", margin: "0 0 1.5rem", lineHeight: 1.65 }}>
-                  Sit with the question. The answer you give it is the brief for the session.
-                </p>
-                <button onClick={restart} style={C.ghost}>← Try a different decision</button>
-              </>
-            )}
           </div>
         )}
       </div>
+
+        {/* ── DONE: standalone confirmation screen ── */}
+        {phase === "done" && (
+          <div style={{ ...fade, textAlign: "center", padding: "3rem 1rem" }}>
+            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#052e16", border: "1.5px solid #16a34a", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.5rem" }}>
+              <span style={{ fontSize: 22, color: "#4ade80" }}>✓</span>
+            </div>
+            <p style={{ fontSize: 22, color: "#e5e7eb", fontWeight: 300, margin: "0 0 0.5rem", lineHeight: 1.3 }}>
+              Your report is on its way.
+            </p>
+            {email && (
+              <p style={{ fontSize: 14, color: "#6b7280", margin: "0 0 2rem", lineHeight: 1.65 }}>
+                Check your inbox at <span style={{ color: "#9ca3af" }}>{email}</span>
+              </p>
+            )}
+            <div style={{ background: "#0d1117", border: "1px solid #1f2937", borderRadius: 10, padding: "1.25rem 1.5rem", textAlign: "left", marginBottom: "2rem" }}>
+              <p style={{ fontSize: 11, color: "#4b5563", letterSpacing: "0.1em", margin: "0 0 0.75rem", fontWeight: 600 }}>WHAT HAPPENS NEXT</p>
+              <p style={{ fontSize: 14, color: "#9ca3af", margin: "0 0 0.6rem", lineHeight: 1.6 }}>
+                Your decision analysis is in your inbox — it includes your specific gate condition and the signal you are missing.
+              </p>
+              <p style={{ fontSize: 14, color: "#9ca3af", margin: "0 0 0.6rem", lineHeight: 1.6 }}>
+                Read it, sit with the question at the end. That question is the brief for the session.
+              </p>
+              <p style={{ fontSize: 14, color: "#9ca3af", margin: 0, lineHeight: 1.6 }}>
+                If you want a clearer read on your specific situation, book a 90 minute session below.
+              </p>
+            </div>
+            <a
+              href="https://wa.me/60122147085?text=Hi%20Janine%2C%20I%20just%20completed%20the%20decision%20diagnostic%20on%20ShiftImpact%20OS.%20I%27d%20like%20to%20book%20a%2090%20minute%20session."
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: "inline-block", background: "#2563eb", color: "white", fontSize: 14, padding: "12px 24px", borderRadius: 8, textDecoration: "none", fontWeight: 600, marginBottom: "1rem" }}
+            >
+              Book your 90 minute session →
+            </a>
+            <div>
+              <button onClick={restart} style={C.ghost}>← Try a different decision</button>
+            </div>
+          </div>
+        )}
 
       <style>{`
         @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
