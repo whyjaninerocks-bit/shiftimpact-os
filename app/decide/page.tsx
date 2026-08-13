@@ -487,11 +487,10 @@ export default function DecidePage() {
 
           </div>
         )}
-      </div>
 
         {/* ── DONE: standalone confirmation screen ── */}
         {phase === "done" && (
-          <div style={{ ...fade, textAlign: "center", padding: "3rem 1rem" }}>
+          <div style={{ ...fade, textAlign: "center", padding: "3rem 0" }}>
             <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#052e16", border: "1.5px solid #16a34a", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.5rem" }}>
               <span style={{ fontSize: 22, color: "#4ade80" }}>✓</span>
             </div>
@@ -506,7 +505,7 @@ export default function DecidePage() {
             <div style={{ background: "#0d1117", border: "1px solid #1f2937", borderRadius: 10, padding: "1.25rem 1.5rem", textAlign: "left", marginBottom: "2rem" }}>
               <p style={{ fontSize: 11, color: "#4b5563", letterSpacing: "0.1em", margin: "0 0 0.75rem", fontWeight: 600 }}>WHAT HAPPENS NEXT</p>
               <p style={{ fontSize: 14, color: "#9ca3af", margin: "0 0 0.6rem", lineHeight: 1.6 }}>
-                Your decision analysis is in your inbox — it includes your specific gate condition and the signal you are missing.
+                Your decision analysis is in your inbox. It includes your specific gate condition and the signal you are missing.
               </p>
               <p style={{ fontSize: 14, color: "#9ca3af", margin: "0 0 0.6rem", lineHeight: 1.6 }}>
                 Read it, sit with the question at the end. That question is the brief for the session.
@@ -528,6 +527,8 @@ export default function DecidePage() {
             </div>
           </div>
         )}
+
+      </div>
 
       <style>{`
         @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
