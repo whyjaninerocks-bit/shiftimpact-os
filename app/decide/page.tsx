@@ -183,12 +183,28 @@ export default function DecidePage() {
     setEmailError("");
     setSubmitting(true);
     try {
+      // Derive category from posture so the right report template is used
+      const posture = synthesis?.riskPosture?.trim().toLowerCase().split(/[\s.]/)[0] ?? "investigate";
+      const categoryKey = ["press","hold","pivot","stop","investigate"].includes(posture) ? posture : "investigate";
+
+      // Send email immediately with synthesis context — do not wait for benchmark step
       await fetch("/api/widget-lead", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: sessionId.current, email: trimmed }),
+        body: JSON.stringify({
+          session_id: sessionId.current,
+          email: trimmed,
+          send_with_email: true,
+          category: categoryKey,
+          stage_read: synthesis?.stageRead,
+          signal_gap: synthesis?.signalGap,
+          risk_posture: synthesis?.riskPosture,
+          gate_condition: synthesis?.gateCondition,
+          action: synthesis?.action,
+          bridge: synthesis?.bridge,
+        }),
       });
-      setPhase("benchmark"); // Ask for context before sending report
+      setPhase("benchmark"); // Collect benchmark context for analytics
     } catch {
       setEmailError("Something went wrong. Please try again.");
     } finally {

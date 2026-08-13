@@ -16,6 +16,16 @@ import { generateDecideReportHtml } from "@/lib/email/decide-report";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Strip word-to-word hyphens from AI-generated synthesis fields.
+ * Converts e.g. "store-level" → "store level", "ad-driven" → "ad driven".
+ * Preserves brand names like "7-Eleven" (digit before hyphen is not matched).
+ */
+function sanitize(s: string | undefined | null): string {
+  if (!s) return "";
+  return s.replace(/([a-zA-Z])-([a-zA-Z])/g, "$1 $2");
+}
+
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
@@ -138,6 +148,7 @@ export async function PATCH(req: NextRequest) {
     session_id,
     email,
     send_report,
+    send_with_email,
     category,
     industry,
     brand_category,
@@ -176,6 +187,60 @@ export async function PATCH(req: NextRequest) {
       console.error("[decide] prospect-match error:", err)
     );
 
+    // ── Send report immediately if synthesis fields provided ──────────────
+    // This fires as soon as the email is captured so the report is never gated
+    // behind the benchmark step. Phase 2 still saves benchmark analytics.
+    if (send_with_email && category && stage_read) {
+      const { data: leadRow } = await supabase
+        .from("widget_leads")
+        .select("decision_text")
+        .eq("session_id", session_id)
+        .single();
+
+      const resendKey = process.env.RESEND_API_KEY;
+      const fromEmail = process.env.RESEND_FROM_EMAIL;
+
+      if (resendKey && fromEmail && leadRow?.decision_text) {
+        try {
+          const html = generateDecideReportHtml(leadRow.decision_text, category ?? "investigate", {
+            industry: sanitize(industry),
+            brandCategory: sanitize(brand_category),
+            stageRead: sanitize(stage_read),
+            signalGap: sanitize(signal_gap),
+            riskPosture: sanitize(risk_posture),
+            gateCondition: sanitize(gate_condition),
+            action: sanitize(action),
+            bridge: sanitize(bridge),
+          });
+
+          const resendRes = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${resendKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              from: fromEmail,
+              to: [cleanEmail],
+              subject: "Your decision analysis from ShiftImpact Growth Intelligence",
+              html,
+            }),
+          });
+
+          if (resendRes.ok) {
+            await supabase
+              .from("widget_leads")
+              .update({ emailed_at: new Date().toISOString() })
+              .eq("session_id", session_id);
+          } else {
+            console.error("[decide] Resend error (Phase 1):", await resendRes.text());
+          }
+        } catch (err) {
+          console.error("[decide] Email send failed (Phase 1):", err);
+        }
+      }
+    }
+
     return NextResponse.json({ ok: true }, { headers: CORS });
   }
 
@@ -207,10 +272,10 @@ export async function PATCH(req: NextRequest) {
       })
       .eq("session_id", session_id);
 
-    // Fetch saved email + decision_text from DB
+    // Fetch saved email + decision_text + emailed_at from DB
     const { data: row, error: fetchError } = await supabase
       .from("widget_leads")
-      .select("decision_text, email")
+      .select("decision_text, email, emailed_at")
       .eq("session_id", session_id)
       .single();
 
@@ -221,17 +286,18 @@ export async function PATCH(req: NextRequest) {
     const resendKey = process.env.RESEND_API_KEY;
     const fromEmail = process.env.RESEND_FROM_EMAIL;
 
-    if (resendKey && fromEmail && row?.email && row?.decision_text) {
+    // Skip email send if already sent in Phase 1 (send_with_email path)
+    if (!row?.emailed_at && resendKey && fromEmail && row?.email && row?.decision_text) {
       try {
         const html = generateDecideReportHtml(row.decision_text, category ?? "investigate", {
-          industry: industry ?? "",
-          brandCategory: brand_category ?? "",
-          stageRead: stage_read ?? "",
-          signalGap: signal_gap ?? "",
-          riskPosture: risk_posture ?? "",
-          gateCondition: gate_condition ?? "",
-          action: action ?? "",
-          bridge: bridge ?? "",
+          industry: sanitize(industry),
+          brandCategory: sanitize(brand_category),
+          stageRead: sanitize(stage_read),
+          signalGap: sanitize(signal_gap),
+          riskPosture: sanitize(risk_posture),
+          gateCondition: sanitize(gate_condition),
+          action: sanitize(action),
+          bridge: sanitize(bridge),
         });
 
         const resendRes = await fetch("https://api.resend.com/emails", {

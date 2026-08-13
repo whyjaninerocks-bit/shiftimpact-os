@@ -280,14 +280,9 @@ export function generateDecideReportHtml(decisionText: string, category: string,
   <!-- HERO -->
   <div style="background:#0d0f1a;padding:32px 40px 40px;position:relative;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px;flex-wrap:wrap;gap:16px;">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <div style="width:34px;height:34px;background:#2563eb;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <div style="width:14px;height:14px;background:white;border-radius:3px;opacity:0.95;"></div>
-        </div>
-        <div>
-          <div style="font-size:12px;color:#ffffff;letter-spacing:0.12em;font-weight:700;">SHIFTIMPACT OS</div>
-          <div style="font-size:10px;color:#2563eb;letter-spacing:0.10em;margin-top:2px;">GROWTH INTELLIGENCE</div>
-        </div>
+      <div>
+        <div style="font-size:12px;color:#ffffff;letter-spacing:0.12em;font-weight:700;">SHIFTIMPACT OS</div>
+        <div style="font-size:10px;color:#2563eb;letter-spacing:0.10em;margin-top:2px;">GROWTH INTELLIGENCE</div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.10);border-radius:6px;padding:6px 14px;font-size:11px;color:#9ca3af;letter-spacing:0.06em;">DATE <span style="color:#ffffff;margin-left:4px;font-weight:500;">${now}</span></div>
@@ -398,7 +393,7 @@ export function generateDecideReportHtml(decisionText: string, category: string,
     </div>
     <div style="font-size:20px;color:#ffffff;font-weight:300;line-height:1.45;margin-bottom:14px;">${c.ctaHeadline}</div>
     <div style="font-size:14px;color:#6b7280;line-height:1.7;margin-bottom:28px;">A ShiftImpact OS session takes the data you already have and tells you exactly which problem you are dealing with, and what to change first. 90 minutes. We come to you with a read and a recommendation, not a deck and a retainer pitch.</div>
-    <a href="https://shiftimpact-os.vercel.app/decide" style="display:inline-block;background:#2563eb;color:white;font-size:14px;padding:13px 26px;border-radius:8px;text-decoration:none;font-weight:600;">Book your 90 minute session →</a>
+    <a href="https://wa.me/60122147085?text=Hi%20Janine%2C%20I%20just%20received%20my%20decision%20analysis%20from%20ShiftImpact%20OS.%20I%27d%20like%20to%20book%20a%2090%20minute%20session." style="display:inline-block;background:#2563eb;color:white;font-size:14px;padding:13px 26px;border-radius:8px;text-decoration:none;font-weight:600;">Book your 90 minute session →</a>
     <div style="margin-top:12px;font-size:11px;color:#374151;">90 minutes &nbsp;·&nbsp; No commitment &nbsp;·&nbsp; Clear answer guaranteed</div>
   </div>
 
