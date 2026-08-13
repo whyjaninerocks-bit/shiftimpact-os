@@ -102,11 +102,13 @@ You are delivering what the Decision Intelligence Engine found after reading the
 
 Write the entire synthesis in second person. Address the user directly as "you". Never "this person" or "they".
 
-ShiftImpact OS signal framework:
-S1 = Share of Search: branded search volume movement, Google Trends velocity
-S2 = Save Rate: TikTok save rate, share rate, passive intent accumulation
-S3 = UGC: organic creator mentions, user-generated content volume vs baseline
-S4 = OOH and Physical: footfall, retail shelf signals, in-store movement
+ShiftImpact OS signal framework (internal reference only — never use abbreviations in synthesis output):
+Share of Search: branded search volume movement, Google Trends velocity
+Save Rate: TikTok save rate, share rate, passive intent accumulation
+UGC: organic creator mentions, user-generated content volume vs baseline
+Physical Signals: footfall, retail shelf signals, in-store movement
+
+CRITICAL OUTPUT RULE: Never write "S1", "S2", "S3", or "S4" anywhere in synthesis output. Always use the full signal name: Share of Search, Save Rate, UGC, or Physical Signals.
 
 ShiftImpact OS gate thresholds (calibrate to what the user described):
 Demand to Conversion gate: Save Rate at or above 8 percent on hero content for 3 consecutive days. Share of Search up 40 percent on brand keyword.
@@ -115,7 +117,7 @@ Retention to Scale gate: NPS at or above 45. Repeat purchase interval decreasing
 
 stageRead: Name the campaign stage this decision sits at. Name the specific gate that is blocked. 1 to 2 sentences. Direct. Second person. No hyphens.
 
-signalGap: Name the specific ShiftImpact signal being missed or misread. Name the signal category (S1, S2, S3, or S4). Explain why it is the one that resolves this decision. 2 sentences. Second person. No hyphens.
+signalGap: Name the specific signal being missed or misread using its full name (Share of Search, Save Rate, UGC, or Physical Signals). Explain why it is the one that resolves this decision. 2 sentences. Second person. No hyphens. Never abbreviate.
 
 riskPosture: Name exactly one of these 5 Risk Posture states: Press | Hold | Pivot | Stop | Investigate.
 Then add the specific condition on the same line. Name a specific metric, a specific threshold, and a specific hold period. No vague qualifiers. No hyphens.
@@ -215,7 +217,7 @@ function buildUserMessage(
     lines.push("Return ONLY valid JSON in this exact shape:");
     lines.push(`{"stageRead":"string","signalGap":"string","riskPosture":"string","gateCondition":"string","action":"string","bridge":"string"}`);
     lines.push("stageRead: which campaign stage + which gate is blocked. 1 to 2 sentences. Second person. No hyphens.");
-    lines.push("signalGap: which ShiftImpact signal (S1/S2/S3/S4) is missing and why it resolves this. 2 sentences. Second person. No hyphens.");
+    lines.push("signalGap: which signal (Share of Search, Save Rate, UGC, or Physical Signals) is missing and why it resolves this. Full name only — never abbreviate. 2 sentences. Second person. No hyphens.");
     lines.push("riskPosture: exactly one of Press|Hold|Pivot|Stop|Investigate. Then the specific condition: metric + threshold + hold period. No hyphens.");
     lines.push("gateCondition: 'Gate opens when [specific metric] [specific threshold] for [specific period].' Calibrated to this decision. No hyphens.");
     lines.push("action: one 72-hour action. Name the platform, the metric, and what the result means for THIS decision. No hyphens.");
@@ -275,7 +277,7 @@ export async function POST(req: NextRequest) {
       } else {
         return NextResponse.json({
           stageRead: "This decision sits at the Conversion gate. The budget question cannot be answered before the signal is read.",
-          signalGap: "The S2 Save Rate signal is the one being missed. It tells you whether the campaign is moving consumer behaviour or just buying reach.",
+          signalGap: "The Save Rate signal is the one being missed. It tells you whether the campaign is moving consumer behaviour or just buying reach.",
           riskPosture: "Hold. The gate opens when Save Rate clears 8 percent on hero content for 3 consecutive days.",
           gateCondition: "Gate opens when Save Rate is at or above 8 percent on hero content, holding for 3 consecutive days.",
           action: "Pull your TikTok Save Rate for the last 14 days. Map it against the week the paid push ran. If the rate moved in that week, the spend contributed to behaviour change. If it did not, the spend is buying reach.",
