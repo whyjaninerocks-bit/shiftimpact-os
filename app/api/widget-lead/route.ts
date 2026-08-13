@@ -52,6 +52,86 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(data, { status: 201, headers: CORS });
 }
 
+// ── Prospect match helper ─────────────────────────────────────────────────────
+// Extracts the domain from an email, checks if any tracked company's website
+// matches, and if so creates a window_alert of type decide_session.
+// Always resolves — errors are swallowed so the caller can fire-and-forget.
+
+async function matchProspectDomain(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  sessionId: string,
+  email: string
+): Promise<void> {
+  // Skip personal / generic domains
+  const SKIP_DOMAINS = new Set([
+    "gmail.com", "yahoo.com", "hotmail.com", "outlook.com",
+    "icloud.com", "me.com", "live.com", "msn.com",
+    "protonmail.com", "aol.com", "ymail.com",
+  ]);
+
+  const parts = email.split("@");
+  if (parts.length !== 2) return;
+  const domain = parts[1].toLowerCase();
+  if (SKIP_DOMAINS.has(domain)) return;
+
+  // Strip common sub-domains for matching (e.g. mail.suntory.com → suntory.com)
+  const baseDomain = domain.replace(/^(mail|info|contact|hello|us|uk|sg|my)\./i, "");
+
+  // Find companies where website contains this domain
+  const { data: companies } = await supabase
+    .from("companies")
+    .select("id, name, business_model")
+    .or(`website.ilike.%${baseDomain}%`)
+    .eq("is_suppressed", false)
+    .limit(3);
+
+  if (!companies || companies.length === 0) return;
+
+  // Get the widget_lead row to include decision context in trigger_reason
+  const { data: lead } = await supabase
+    .from("widget_leads")
+    .select("decision_text, assumption_category")
+    .eq("session_id", sessionId)
+    .single();
+
+  const decisionSnippet = lead?.decision_text
+    ? lead.decision_text.slice(0, 120) + (lead.decision_text.length > 120 ? "…" : "")
+    : "No decision text captured";
+
+  const posture = lead?.assumption_category ?? "Unknown";
+
+  // Find the decide_session window (prefer B2B if match is B2B model)
+  for (const company of companies) {
+    const model = company.business_model === "B2B" ? "B2B" : "B2C";
+
+    const { data: window } = await supabase
+      .from("opportunity_windows")
+      .select("id")
+      .eq("window_type", "decide_session")
+      .eq("engagement_model", model)
+      .single();
+
+    if (!window) continue;
+
+    const triggerReason = `${company.name} email matched on /decide. Posture: ${posture}. Decision: "${decisionSnippet}"`;
+
+    // Upsert — UNIQUE(company_id, window_id) means repeated sessions update the alert
+    await supabase
+      .from("window_alerts")
+      .upsert(
+        {
+          company_id:     company.id,
+          window_id:      window.id,
+          trigger_reason: triggerReason,
+          detected_at:    new Date().toISOString(),
+          is_open:        true,
+        },
+        { onConflict: "company_id,window_id", ignoreDuplicates: false }
+      );
+  }
+}
+
 export async function PATCH(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const {
@@ -78,16 +158,24 @@ export async function PATCH(req: NextRequest) {
   // ── Phase 1: save email (no send_report flag) ─────────────────────────────
   if (email && !send_report) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    const cleanEmail = email.toLowerCase().trim();
+    if (!emailRegex.test(cleanEmail)) {
       return NextResponse.json({ error: "Invalid email" }, { status: 400, headers: CORS });
     }
     const { error: updateError } = await supabase
       .from("widget_leads")
-      .update({ email: email.toLowerCase().trim() })
+      .update({ email: cleanEmail })
       .eq("session_id", session_id);
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500, headers: CORS });
     }
+
+    // ── Prospect match: check if email domain belongs to a tracked company ──
+    // Fire-and-forget — never blocks the response.
+    matchProspectDomain(supabase, session_id, cleanEmail).catch((err) =>
+      console.error("[decide] prospect-match error:", err)
+    );
+
     return NextResponse.json({ ok: true }, { headers: CORS });
   }
 

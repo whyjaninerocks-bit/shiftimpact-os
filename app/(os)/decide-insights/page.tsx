@@ -19,6 +19,24 @@ interface Breakdown { label: string; count: number; pct: number; }
 
 interface TopSignal { industry: string; topSignal: string; count: number; }
 
+interface BridgeEntry { question: string; count: number; }
+
+interface GateFrictionEntry {
+  stage: string;
+  total: number;
+  gaps: { gap: string; count: number; }[];
+}
+
+interface ProspectMatch {
+  id: string;
+  detected_at: string;
+  trigger_reason: string;
+  company_id: string;
+  company_name: string;
+  industry: string | null;
+  status: string | null;
+}
+
 interface RecentSession {
   id: string;
   created_at: string;
@@ -46,6 +64,9 @@ interface InsightsData {
   decisionGapBreakdown: Breakdown[];
   industryBreakdown: Breakdown[];
   topSignalByIndustry: TopSignal[];
+  bridgeLibrary: BridgeEntry[];
+  gateFriction: GateFrictionEntry[];
+  prospectMatches: ProspectMatch[];
   recent: RecentSession[];
 }
 
@@ -121,7 +142,7 @@ export default function DecideInsightsPage() {
   if (loading) return <div style={{ ...s, padding: 48, color: "#4b5563" }}>Loading decision intelligence...</div>;
   if (error || !data) return <div style={{ ...s, padding: 48, color: "#ef4444" }}>{error || "No data"}</div>;
 
-  const { summary, postureBreakdown, stageBreakdown, signalGapBreakdown, decisionGapBreakdown, industryBreakdown, topSignalByIndustry, recent, weekly } = data;
+  const { summary, postureBreakdown, stageBreakdown, signalGapBreakdown, decisionGapBreakdown, industryBreakdown, topSignalByIndustry, bridgeLibrary, gateFriction, prospectMatches, recent, weekly } = data;
 
   // Consulting signal: most common posture + most misread signal
   const topPosture = postureBreakdown[0];
@@ -135,6 +156,24 @@ export default function DecideInsightsPage() {
     topStage && `Most decisions sit at the ${topStage.label} gate — that is where ShiftImpact OS earns its keep.`,
     topGap && `The dominant decision gap is ${topGap.label} — your consulting pitch should open on this gap, not on the solution.`,
   ].filter(Boolean);
+
+  // Sharper ICP sub-segment (Feature 1)
+  // Derive the specific ICP archetype from the top posture + stage + signal combination.
+  const topIndustry = industryBreakdown[0];
+  const icpSubSegment = (() => {
+    if (!topPosture || !topStage || !topSignal) return null;
+    const industryLabel = topIndustry ? ` in ${topIndustry.label}` : "";
+    const signalName = SIGNAL_LABEL[topSignal.label] ?? topSignal.label;
+    return `Your ICP is not "a marketer${industryLabel}." It is a marketer${industryLabel} at the ${topStage.label} gate who cannot read ${signalName} signals and defaults to ${topPosture.label.toUpperCase()} when confidence drops.`;
+  })();
+
+  // Gate signal thresholds for friction context
+  const GATE_THRESHOLDS: Record<string, string> = {
+    Demand:     "S2 Save Rate ≥ 8%, S1 Search +40% vs benchmark",
+    Conversion: "CVR ≥ 4%, abandonment rate < 25%",
+    Retention:  "NPS ≥ 45, UGC volume 3× baseline",
+    Scale:      "Multi-signal convergence across S1, S2, S3",
+  };
 
   return (
     <div style={{ ...s, minHeight: "100vh", background: "#0f1117", padding: "40px 48px" }}>
@@ -237,6 +276,99 @@ export default function DecideInsightsPage() {
                   <p style={{ margin: "0 0 4px", fontSize: 12, color: "#6b7280" }}>{r.industry}</p>
                   <p style={{ margin: "0 0 2px", fontSize: 14, color: "#f59e0b", fontWeight: 500 }}>{SIGNAL_LABEL[r.topSignal] ?? r.topSignal}</p>
                   <p style={{ margin: 0, fontSize: 11, color: "#374151" }}>{r.count} session{r.count !== 1 ? "s" : ""}</p>
+                </div>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {/* Feature 1: Sharper ICP sub-segment */}
+        {icpSubSegment && (
+          <Section title="YOUR ACTUAL ICP — SHARPENED">
+            <div style={{ background: "#0d1117", border: "0.5px solid #3b82f6", borderRadius: 10, padding: "20px 24px" }}>
+              <p style={{ margin: "0 0 10px", fontSize: 11, color: "#3b82f6", letterSpacing: "0.1em" }}>ICP SUB-SEGMENT · DERIVED FROM SESSION PATTERNS</p>
+              <p style={{ margin: "0 0 14px", fontSize: 15, color: "#f9fafb", lineHeight: 1.75, fontStyle: "italic" }}>&ldquo;{icpSubSegment}&rdquo;</p>
+              <p style={{ margin: 0, fontSize: 12, color: "#4b5563", lineHeight: 1.6 }}>
+                This is the positioning precision your outreach should use. Not the broad category — the specific configuration of stage, signal, and posture that your sessions reveal. This is who is finding you right now.
+              </p>
+            </div>
+          </Section>
+        )}
+
+        {/* Feature 2: Gate friction map */}
+        {gateFriction.length > 0 && (
+          <Section title="GATE FRICTION MAP — WHERE DECISIONS BREAK DOWN">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              {gateFriction.map((entry) => (
+                <div key={entry.stage} style={{ background: "#13151e", border: "0.5px solid #2d3148", borderRadius: 8, padding: "14px 16px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <span style={{ fontSize: 13, color: "#e5e7eb", fontWeight: 500 }}>{entry.stage} gate</span>
+                    <span style={{ fontSize: 11, color: "#374151" }}>{entry.total} session{entry.total !== 1 ? "s" : ""}</span>
+                  </div>
+                  {GATE_THRESHOLDS[entry.stage] && (
+                    <p style={{ margin: "0 0 10px", fontSize: 10, color: "#374151", lineHeight: 1.5 }}>
+                      Threshold: {GATE_THRESHOLDS[entry.stage]}
+                    </p>
+                  )}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {entry.gaps.slice(0, 3).map((g) => (
+                      <div key={g.gap} style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ fontSize: 12, color: "#10b981" }}>{g.gap} gap</span>
+                        <span style={{ fontSize: 11, color: "#6b7280" }}>{g.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p style={{ margin: "14px 0 0", fontSize: 12, color: "#374151", lineHeight: 1.6 }}>
+              Where friction clusters around Evidence or Logic gaps at the same stage your signal threshold lives — that is your sharpest consulting entry point. The prospect cannot read the signal that controls the gate they are stuck behind.
+            </p>
+          </Section>
+        )}
+
+        {/* Feature 2: Bridge question library */}
+        {bridgeLibrary.length > 0 && (
+          <Section title="BRIDGE QUESTION LIBRARY — QUESTIONS THAT MOVE DECISIONS">
+            <p style={{ margin: "0 0 14px", fontSize: 12, color: "#4b5563", lineHeight: 1.6 }}>
+              These are the exact questions the OS generated to bridge each session from diagnosis to action. Recurring patterns reveal the consulting angles your ICP finds most useful.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {bridgeLibrary.map((b, i) => (
+                <div key={i} style={{ background: "#13151e", border: "0.5px solid #2d3148", borderRadius: 8, padding: "12px 16px", display: "flex", gap: 12, alignItems: "flex-start" }}>
+                  <span style={{ fontSize: 11, color: "#374151", minWidth: 20, paddingTop: 2 }}>×{b.count}</span>
+                  <p style={{ margin: 0, fontSize: 13, color: "#e5e7eb", lineHeight: 1.65, flex: 1 }}>{b.question}</p>
+                </div>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {/* Feature 3: Prospect matches from /decide sessions */}
+        {prospectMatches.length > 0 && (
+          <Section title="PROSPECT MATCHES — KNOWN COMPANIES IN YOUR /DECIDE SESSIONS">
+            <p style={{ margin: "0 0 14px", fontSize: 12, color: "#4b5563", lineHeight: 1.6 }}>
+              Email domains matched to tracked companies. These prospects engaged with the diagnostic — the highest-intent signal before a conversation.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {prospectMatches.map((m) => (
+                <div key={m.id} style={{ background: "#0d1117", border: "1px solid #10b981", borderRadius: 8, padding: "14px 16px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                    <div>
+                      <a
+                        href={`/prospects/${m.company_id}`}
+                        style={{ fontSize: 14, color: "#10b981", fontWeight: 600, textDecoration: "none" }}
+                      >
+                        {m.company_name}
+                      </a>
+                      {m.industry && <span style={{ fontSize: 12, color: "#6b7280", marginLeft: 8 }}>{m.industry}</span>}
+                    </div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      {m.status && <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: "#1e2235", color: "#9ca3af" }}>{m.status}</span>}
+                      <span style={{ fontSize: 11, color: "#374151" }}>{new Date(m.detected_at).toLocaleDateString("en-GB")}</span>
+                    </div>
+                  </div>
+                  <p style={{ margin: 0, fontSize: 12, color: "#6b7280", lineHeight: 1.6 }}>{m.trigger_reason}</p>
                 </div>
               ))}
             </div>

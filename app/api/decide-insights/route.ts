@@ -107,6 +107,69 @@ export async function GET(req: NextRequest) {
     return { industry, topSignal: top?.[0] ?? "Unknown", count: top?.[1] ?? 0 };
   }).sort((a, b) => b.count - a.count);
 
+  // ── Bridge question library ─────────────────────────────────────────────────
+  // Aggregate all bridge questions, count patterns, surface top ones.
+  const bridgeMap: Record<string, number> = {};
+  for (const r of synthesisRows) {
+    if (!r.bridge_question) continue;
+    // Normalise slightly — trim + lowercase for grouping, but return original case
+    const key = r.bridge_question.trim();
+    bridgeMap[key] = (bridgeMap[key] ?? 0) + 1;
+  }
+  const bridgeLibrary = Object.entries(bridgeMap)
+    .map(([question, count]) => ({ question, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+
+  // ── Gate friction map ───────────────────────────────────────────────────────
+  // Cross-tab: campaign_stage × decision_gap_type
+  // Shows where in the funnel friction is highest, and what kind of gap it is.
+  const gateMap: Record<string, Record<string, number>> = {};
+  const STAGE_ORDER = ["Demand", "Conversion", "Retention", "Scale"];
+  for (const r of synthesisRows) {
+    const stage = (r.campaign_stage as string) ?? "Unknown";
+    const gap   = (r.decision_gap_type as string) ?? "Unknown";
+    if (!gateMap[stage]) gateMap[stage] = {};
+    gateMap[stage][gap] = (gateMap[stage][gap] ?? 0) + 1;
+  }
+  // Flatten to sorted gate friction entries
+  const gateFriction = STAGE_ORDER
+    .filter((s) => gateMap[s])
+    .map((stage) => {
+      const gaps = Object.entries(gateMap[stage])
+        .map(([gap, count]) => ({ gap, count }))
+        .sort((a, b) => b.count - a.count);
+      const total = gaps.reduce((sum, g) => sum + g.count, 0);
+      return { stage, total, gaps };
+    });
+
+  // ── Prospect matches — decide_session window alerts ─────────────────────────
+  const { data: prospectMatches } = await supabase
+    .from("window_alerts")
+    .select(`
+      id, trigger_reason, detected_at, is_open,
+      companies:company_id ( id, name, industry, status ),
+      opportunity_windows:window_id ( window_type )
+    `)
+    .eq("is_open", true)
+    .order("detected_at", { ascending: false })
+    .limit(20);
+
+  // Filter to decide_session alerts only
+  const decideAlerts = (prospectMatches ?? []).filter(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (a: any) => a.opportunity_windows?.window_type === "decide_session"
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ).map((a: any) => ({
+    id:             a.id,
+    detected_at:    a.detected_at,
+    trigger_reason: a.trigger_reason,
+    company_id:     a.companies?.id,
+    company_name:   a.companies?.name,
+    industry:       a.companies?.industry,
+    status:         a.companies?.status,
+  }));
+
   // Recent sessions (for qualitative review)
   const recent = rows.slice(0, 20).map((r) => ({
     id: r.id,
@@ -146,6 +209,9 @@ export async function GET(req: NextRequest) {
     industryBreakdown,
     crossTab,
     topSignalByIndustry,
+    bridgeLibrary,
+    gateFriction,
+    prospectMatches: decideAlerts,
     recent,
   });
 }
