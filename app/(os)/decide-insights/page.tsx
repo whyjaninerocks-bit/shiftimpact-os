@@ -157,6 +157,33 @@ export default function DecideInsightsPage() {
     topGap && `The dominant decision gap is ${topGap.label} — your consulting pitch should open on this gap, not on the solution.`,
   ].filter(Boolean);
 
+  // ── Selling pitch synthesis ────────────────────────────────────────────────
+  // Derived from the dominant pattern across sessions.
+  // Usable in a meeting, cold email, or LinkedIn post.
+  const sellingPitch = (() => {
+    if (!summary.withSynthesis || summary.withSynthesis < 2) return null;
+    const signalName = topSignal ? (SIGNAL_LABEL[topSignal.label] ?? topSignal.label) : "growth signals";
+    const industryCtx = topIndustry ? ` in the ${topIndustry.label} category` : "";
+    const stageLabel = topStage?.label ?? "growth";
+    const gapLabel = topGap?.label ?? "Evidence";
+    const postureLabel = topPosture?.label?.toUpperCase() ?? "HOLD";
+    const postureCount = topPosture?.pct ?? 0;
+
+    const pattern = `Across ${summary.withSynthesis} decision sessions${industryCtx}, ${postureCount}% resolve to ${postureLabel}. Not because the brand is failing — because the decision-maker cannot read the signal that controls the ${stageLabel} gate.`;
+
+    const bottleneck = `The specific bottleneck is ${gapLabel.toLowerCase()} interpretation. ${signalName} is the most misread signal (${topSignal?.pct ?? 0}% of sessions). The data exists. The framework to read it under pressure does not.`;
+
+    const angle = `ShiftImpact OS names the posture, locates the gate, and identifies the exact signal gap. ${postureLabel} stops being a feeling and becomes a diagnostic output — with a specific next move and a bridge question that unlocks the decision.`;
+
+    return { pattern, bottleneck, angle };
+  })();
+
+  // ── Case study emerging ────────────────────────────────────────────────────
+  // The most complete recent session: has posture, stage, signal gap, bridge question, decision text.
+  const caseStudySession = recent.find(
+    (r) => r.posture && r.campaign_stage && r.signal_gap_type && r.bridge_question && r.decision_text
+  ) ?? null;
+
   // Sharper ICP sub-segment (Feature 1)
   // Derive the specific ICP archetype from the top posture + stage + signal combination.
   const topIndustry = industryBreakdown[0];
@@ -192,6 +219,30 @@ export default function DecideInsightsPage() {
             {consultingRead.map((line, i) => (
               <p key={i} style={{ margin: "0 0 8px", fontSize: 14, color: "#e5e7eb", lineHeight: 1.7 }}>— {line}</p>
             ))}
+          </div>
+        )}
+
+        {/* Selling pitch synthesis */}
+        {sellingPitch && (
+          <div style={{ marginBottom: 32 }}>
+            <p style={{ margin: "0 0 12px", fontSize: 11, color: "#10b981", letterSpacing: "0.12em", borderBottom: "0.5px solid #1f2937", paddingBottom: 8 }}>YOUR SELLING PITCH — DERIVED FROM LIVE SESSION PATTERNS</p>
+            <div style={{ background: "#0a0f0a", border: "1px solid #10b981", borderRadius: 10, padding: "22px 26px" }}>
+              <div style={{ marginBottom: 18 }}>
+                <p style={{ margin: "0 0 6px", fontSize: 10, color: "#10b981", letterSpacing: "0.12em" }}>THE PATTERN</p>
+                <p style={{ margin: 0, fontSize: 14, color: "#f9fafb", lineHeight: 1.75 }}>{sellingPitch.pattern}</p>
+              </div>
+              <div style={{ marginBottom: 18, paddingTop: 16, borderTop: "0.5px solid #1a2e1a" }}>
+                <p style={{ margin: "0 0 6px", fontSize: 10, color: "#10b981", letterSpacing: "0.12em" }}>THE BOTTLENECK</p>
+                <p style={{ margin: 0, fontSize: 14, color: "#f9fafb", lineHeight: 1.75 }}>{sellingPitch.bottleneck}</p>
+              </div>
+              <div style={{ paddingTop: 16, borderTop: "0.5px solid #1a2e1a" }}>
+                <p style={{ margin: "0 0 6px", fontSize: 10, color: "#10b981", letterSpacing: "0.12em" }}>WHAT SHIFTIMPACT OS DOES</p>
+                <p style={{ margin: 0, fontSize: 14, color: "#f9fafb", lineHeight: 1.75 }}>{sellingPitch.angle}</p>
+              </div>
+            </div>
+            <p style={{ margin: "10px 0 0", fontSize: 11, color: "#374151" }}>
+              This pitch refreshes live as sessions accumulate. Benchmarks are ShiftImpact methodology baselines — calibration from client campaign outcome data is on the sprint plan.
+            </p>
           </div>
         )}
 
@@ -371,6 +422,52 @@ export default function DecideInsightsPage() {
                   <p style={{ margin: 0, fontSize: 12, color: "#6b7280", lineHeight: 1.6 }}>{m.trigger_reason}</p>
                 </div>
               ))}
+            </div>
+          </Section>
+        )}
+
+        {/* Case study emerging */}
+        {caseStudySession && (
+          <Section title="CASE STUDY EMERGING — THE STORY IN YOUR DATA">
+            <p style={{ margin: "0 0 14px", fontSize: 12, color: "#4b5563", lineHeight: 1.65 }}>
+              The most complete session in your data. This is what a ShiftImpact OS diagnostic looks like as a consulting case study — the decision they brought, what the OS read, and what it means for your pitch.
+            </p>
+            <div style={{ background: "#13151e", border: "0.5px solid #2d3148", borderRadius: 10, overflow: "hidden" }}>
+              {/* Header bar */}
+              <div style={{ background: "#1a1d2a", padding: "14px 20px", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                {caseStudySession.posture && (
+                  <span style={{ fontSize: 10, padding: "3px 10px", borderRadius: 4, fontWeight: 700, letterSpacing: "0.08em", background: (POSTURE_COLOUR[caseStudySession.posture] ?? "#9ca3af") + "33", color: POSTURE_COLOUR[caseStudySession.posture] ?? "#9ca3af" }}>
+                    {caseStudySession.posture.toUpperCase()}
+                  </span>
+                )}
+                {caseStudySession.campaign_stage && <span style={{ fontSize: 10, padding: "3px 10px", borderRadius: 4, background: "#2d3148", color: "#9ca3af" }}>{caseStudySession.campaign_stage} gate</span>}
+                {caseStudySession.signal_gap_type && <span style={{ fontSize: 10, padding: "3px 10px", borderRadius: 4, background: "#2d3148", color: "#f59e0b" }}>{SIGNAL_LABEL[caseStudySession.signal_gap_type] ?? caseStudySession.signal_gap_type}</span>}
+                {caseStudySession.decision_gap_type && <span style={{ fontSize: 10, padding: "3px 10px", borderRadius: 4, background: "#2d3148", color: "#6b7280" }}>{caseStudySession.decision_gap_type} gap</span>}
+                {caseStudySession.industry && <span style={{ fontSize: 10, padding: "3px 10px", borderRadius: 4, background: "#2d3148", color: "#6b7280" }}>{caseStudySession.industry}</span>}
+              </div>
+              {/* Body */}
+              <div style={{ padding: "20px 22px" }}>
+                <div style={{ marginBottom: 18 }}>
+                  <p style={{ margin: "0 0 6px", fontSize: 10, color: "#4b5563", letterSpacing: "0.1em" }}>THE DECISION THEY BROUGHT</p>
+                  <p style={{ margin: 0, fontSize: 13, color: "#e5e7eb", lineHeight: 1.7, fontStyle: "italic" }}>&ldquo;{caseStudySession.decision_text}&rdquo;</p>
+                </div>
+                {caseStudySession.bridge_question && (
+                  <div style={{ marginBottom: 18, paddingTop: 14, borderTop: "0.5px solid #1f2937" }}>
+                    <p style={{ margin: "0 0 6px", fontSize: 10, color: "#4b5563", letterSpacing: "0.1em" }}>THE BRIDGE QUESTION THE OS ASKED</p>
+                    <p style={{ margin: 0, fontSize: 13, color: "#d1d5db", lineHeight: 1.7 }}>{caseStudySession.bridge_question}</p>
+                  </div>
+                )}
+                <div style={{ paddingTop: 14, borderTop: "0.5px solid #1f2937" }}>
+                  <p style={{ margin: "0 0 8px", fontSize: 10, color: "#4b5563", letterSpacing: "0.1em" }}>WHAT THIS MEANS FOR YOUR PITCH</p>
+                  <p style={{ margin: 0, fontSize: 13, color: "#9ca3af", lineHeight: 1.7 }}>
+                    A {caseStudySession.industry ?? "brand"} marketer brought a {caseStudySession.campaign_stage ?? "growth"} gate decision. The OS identified a{" "}
+                    <span style={{ color: "#f59e0b" }}>{SIGNAL_LABEL[caseStudySession.signal_gap_type ?? ""] ?? caseStudySession.signal_gap_type ?? "signal"}</span>{" "}
+                    reading gap — an {caseStudySession.decision_gap_type?.toLowerCase() ?? "evidence"} problem, not a strategy problem. The posture resolved to{" "}
+                    <span style={{ color: POSTURE_COLOUR[caseStudySession.posture ?? ""] ?? "#9ca3af", fontWeight: 600 }}>{(caseStudySession.posture ?? "").toUpperCase()}</span>.
+                    {" "}That is the ShiftImpact OS value in one session: precision language where there was stall.
+                  </p>
+                </div>
+              </div>
             </div>
           </Section>
         )}
