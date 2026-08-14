@@ -2,7 +2,7 @@
 // Feature 12 — Signal Intelligence Reporting Module (Sprint 2)
 // Sprint 24 — Signal 2B (Share Rate) + Gate Signal Convergence Module
 // Sprint 25 — Signal 3B (VCR) + Signal 4 (Retention) + market_code context
-// INTERNAL ONLY — never called from or exposed to Client Interface (/portal/*).
+// INTERNAL ONLY — Janine-only route, never exposed to the client portal layer.
 //
 // POST /api/signal-report
 // Reads signal inputs from signal_weekly_reports, applies threshold rules,

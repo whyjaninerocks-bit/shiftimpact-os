@@ -39,6 +39,17 @@ const FRAME_ALLOWED_FIELDS = new Set([
   "industry_category",
   "campaign_pathway",
   "elevation_mode_enabled",
+  // Campaign KPIs + budget (migration 0045)
+  "budget_total",
+  "budget_notes",
+  "secondary_kpis",
+  // Brand assets / CI / RFP (migration 0045)
+  "brand_guidelines_url",
+  "brand_guidelines_notes",
+  "rfp_notes",
+  // Active channels + submission (migration 0046)
+  "active_channels",
+  "brief_submitted_at",
 ]);
 
 // ─── Allowed BIP fields from client intake ─────────────────────────────────
@@ -104,6 +115,19 @@ export async function POST(req: NextRequest) {
         .update(safe)
         .eq("id", record_id)
         .eq("campaign_id", campaign_id);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    } else if (section === "campaign_kpi") {
+      // Allow client to set business_outcome_target + retention_metric_target on their campaign
+      const CAMP_ALLOWED = new Set(["business_outcome_target", "retention_metric_target"]);
+      const safe = filterFields(fields, CAMP_ALLOWED);
+      if (Object.keys(safe).length === 0) {
+        return NextResponse.json({ error: "No valid campaign KPI fields to update" }, { status: 400 });
+      }
+      const { error } = await supabase
+        .from("campaigns")
+        .update(safe)
+        .eq("id", campaign_id);
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     } else {

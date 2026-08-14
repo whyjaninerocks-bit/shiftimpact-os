@@ -131,7 +131,12 @@ export type BrandMomentumScore = {
 
 // ─── Industry / Category ─────────────────────────────────────────────────────
 // Client-level profile (legacy — broad classification on the client record)
-export type IndustryProfile = "QSR" | "B2B" | "Retail" | "Other";
+export type IndustryProfile =
+  | "QSR" | "B2B" | "Retail" | "FMCG"
+  | "Financial Services" | "Telco" | "Healthcare"
+  | "Insurance" | "Automotive" | "Hospitality"
+  | "Media & Entertainment" | "E-Commerce" | "Education"
+  | "Other";
 
 // FRAME Brief-level category (Sprint 1 addition — drives Gate Signal Library,
 // holding periods, ICS weighting, Benchmark Library filter, Pitch Intel priming)
@@ -252,10 +257,30 @@ export type FrameBrief = {
   ics_any_dimension_blocker: boolean;
   ics_threshold: IcsThreshold;
 
+  // ── Campaign KPIs + Budget (migration 0045) ───────────────────────────────
+  budget_total: number | null;
+  budget_notes: string;
+  secondary_kpis: string;
+
+  // ── Brand Assets / CI / RFP (migration 0045) ──────────────────────────────
+  brand_guidelines_url: string;
+  brand_guidelines_notes: string;
+  rfp_notes: string;
+
+  // ── Active Channels + Brief Submission (migration 0046) ───────────────────
+  // Channels selected by client on the brief link (e.g. ["Digital / Social", "KOL / Influencer"])
+  active_channels: string[];
+  brief_submitted_at: string | null;
+
   // ── F29 — Distinctive Brand Assets deployed in this brief (Sprint 22) ──────
   // Comma-separated brand_asset UUIDs | 'NONE_CONFIRMED' | '' (not set)
   // '' → BIP co-pilot DBA flag fires; 'NONE_CONFIRMED' → flag suppressed
   distinctive_assets_deployed: string;
+
+  // ── Expert Architecture — Brand Health Battery (Sprint 5 / migration 0054) ──
+  // Demand (brand-building) investment as % of total campaign budget (0–100).
+  // Battery computed from rolling last-3-campaigns average across client history.
+  demand_investment_pct: number | null;
 
   // ── Lock ──
   lock_status: LockStatus;
@@ -307,6 +332,7 @@ export type StageBrief = {
   campaign_id: string;
   stage: Stage;
   channel: string;
+  department: string | null;
   brief_body: string;
   propagation_mechanism: string;
   idea_led_vs_spend_led: IdeaOrSpend | null;
@@ -1101,6 +1127,9 @@ export type MediaDeliveryRecord = {
 
 export type AiEligibilityBand = "AI-Ready" | "Developing" | "Emerging" | "At Risk";
 
+export type TrustGapPriority = "Owned" | "Community" | "CEP" | "Platform" | "Competitor";
+export type AiVisibilityRisk = "Low" | "Moderate" | "High" | "Critical";
+
 export type AiBrandVisibilityScore = {
   id: string;
   campaign_id: string;
@@ -1116,9 +1145,17 @@ export type AiBrandVisibilityScore = {
   // Eligibility — INTERNAL
   eligibility_score: number | null;
   eligibility_band: AiEligibilityBand | null;
-  // Trust gaps — INTERNAL
+  // Trust gaps Phase 1 — INTERNAL
   trust_gap_owned: string;
   trust_gap_cep: string;
+  // Phase 2 — Trust Gap Diagnosis (INTERNAL)
+  trust_gap_community: string | null;   // UGC depth vs CEP requirements
+  trust_gap_platform: string | null;    // AI platform-specific blind spots
+  trust_gap_competitor: string | null;  // INTERNAL ONLY — never shared with client
+  trust_gap_priority: TrustGapPriority | null;  // which gap to close first
+  trust_gap_priority_note: string | null;        // plain language rationale
+  // Phase 2 — AI Visibility Risk (modifier for Risk Posture)
+  ai_visibility_risk: AiVisibilityRisk | null;
   // Priority action — INTERNAL
   priority_action: string;
   // Client-shareable narrative

@@ -53,6 +53,38 @@ export async function getClients(): Promise<ClientWithRollups[]> {
   return data as ClientWithRollups[];
 }
 
+export type ClaritySignalRow = {
+  id: string;
+  brand_name: string;
+  campaign_name: string;
+  industry: string;
+  created_at: string;
+};
+
+export async function getRecentClaritySignals(limit = 8): Promise<ClaritySignalRow[]> {
+  const supabase = createAdminClient();
+  // Pull more than `limit` so we can deduplicate by brand_name and still show `limit` unique brands
+  const { data, error } = await supabase
+    .from("quick_audits")
+    .select("id, brand_name, campaign_name, industry, created_at")
+    .eq("result->>_clarity_signal", "true")
+    .order("created_at", { ascending: false })
+    .limit(limit * 5); // over-fetch to survive deduplication
+  if (error) return [];
+  // Keep only the most recent entry per brand_name
+  const seen = new Set<string>();
+  const deduped: ClaritySignalRow[] = [];
+  for (const row of (data as ClaritySignalRow[])) {
+    const key = row.brand_name.toLowerCase().trim();
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduped.push(row);
+    }
+    if (deduped.length >= limit) break;
+  }
+  return deduped;
+}
+
 export async function getClient(id: string): Promise<ClientWithRollups | null> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -235,14 +267,14 @@ export async function getClientChannels(clientId: string): Promise<ClientChannel
 
 export async function getClientSignalSources(clientId: string): Promise<ClientSignalSource[]> {
   const supabase = createAdminClient();
+  // Return ALL sources (active + inactive) so the toggle UI is meaningful
   const { data, error } = await supabase
     .from("client_signal_sources")
     .select("*")
     .eq("client_id", clientId)
-    .eq("active", true)
     .order("source_name");
   if (error) throw error;
-  return data as ClientSignalSource[];
+  return (data ?? []) as ClientSignalSource[];
 }
 
 export async function getIdeaExtensions(campaignId: string): Promise<IdeaExtension[]> {
@@ -656,6 +688,199 @@ export async function getLatestCampaignReport(
   };
 }
 
+// ─── F28 — Social Proof Cascade Detection (Sprint 5) ─────────────────────────
+// All cascade readings for a campaign, newest first.
+// amplification_window: INTERNAL ONLY — no client export.
+// CASCADE ACTIVE / CASCADE PEAK → in-app alert for Janine only.
+export type CascadeRecord = {
+  id: string;
+  campaign_id?: string;
+  week_number: number;
+  ugc_volume_this_week: number | null;
+  ugc_volume_last_week: number | null;
+  comment_count: number | null;
+  post_count: number | null;
+  velocity_acceleration: number | null;
+  comment_to_post_ratio: number | null;
+  cascade_status: "NO CASCADE" | "EARLY SIGNAL" | "CASCADE ACTIVE" | "CASCADE PEAK";
+  amplification_window: string;
+  strategy_notes: string;
+  // F28 Phase 2 — Dark Cascade Inference (INTERNAL ONLY)
+  dark_cascade_direct_traffic_spike: boolean;
+  dark_cascade_search_spike: boolean;
+  dark_cascade_geo_clustering: boolean;
+  dark_cascade_flag: boolean;
+  dark_cascade_inference_note: string;
+  // F28 Phase 2 — Cross-Platform Propagation (INTERNAL ONLY)
+  cross_platform_detected: boolean;
+  cross_platform_platforms: string | null;
+  cross_platform_theme: string | null;
+  created_at: string;
+};
+
+export async function getCascadeRecords(campaignId: string): Promise<CascadeRecord[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("social_proof_cascade")
+    .select("id, week_number, ugc_volume_this_week, ugc_volume_last_week, comment_count, post_count, velocity_acceleration, comment_to_post_ratio, cascade_status, amplification_window, strategy_notes, created_at")
+    .eq("campaign_id", campaignId)
+    .order("week_number", { ascending: false })
+    .limit(12);
+  if (error) return [];
+  return (data ?? []) as CascadeRecord[];
+}
+
+// ─── F30 — Dark Social Estimation Model (DSEM) ───────────────────────────────
+
+export type DsemRecord = {
+  id: string;
+  campaign_id: string;
+  week_number: number;
+  // Signal A
+  dta_direct_sessions: number | null;
+  dta_baseline_sessions: number | null;
+  dta_pct_above_baseline: number | null;
+  dta_paid_active: boolean;
+  dta_triggered: boolean;
+  // Signal B
+  bswm_search_volume: number | null;
+  bswm_baseline_volume: number | null;
+  bswm_pct_above_baseline: number | null;
+  bswm_paid_search_active: boolean;
+  bswm_triggered: boolean;
+  // Signal C
+  gucl_tier1_post_count: number | null;
+  gucl_location_available: boolean;
+  gucl_activation_event: boolean;
+  gucl_triggered: boolean;
+  // Multiplier (INTERNAL)
+  signals_fired: number;
+  multiplier_min: number | null;
+  multiplier_max: number | null;
+  multiplier_label: string | null;
+  // Adjusted S3 (INTERNAL)
+  signal3_raw_score: number | null;
+  signal3_adjusted_score: number | null;
+  // Client output
+  dark_social_narrative: string;
+  category_calibration: string | null;
+  strategy_notes: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function getDsemRecords(campaignId: string): Promise<DsemRecord[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("dark_social_readings")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .order("week_number", { ascending: false })
+    .limit(12);
+  if (error) return [];
+  return (data ?? []) as DsemRecord[];
+}
+
+// ─── F34 — Data Source Preferences (Sprint 31) ───────────────────────────────
+// Returns the data source preference configuration for a campaign, or null
+// if the strategy lead has not yet completed setup.
+// ─── Budget Movement (migration 0048) ────────────────────────────────────────
+export type BudgetMovement = {
+  id: string;
+  campaign_id: string;
+  channel: string;
+  week_number: number;
+  planned_spend: number | null;
+  actual_spend: number | null;
+  currency: string;
+  note: string | null;
+  created_at: string;
+};
+
+export async function getBudgetMovements(campaignId: string): Promise<BudgetMovement[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("budget_movements")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .order("week_number", { ascending: true });
+  if (error) return [];
+  return (data ?? []) as BudgetMovement[];
+}
+
+// ─── KOL Tracker (migration 0047) ────────────────────────────────────────────
+export type KolTracker = {
+  id: string;
+  campaign_id: string;
+  name: string;
+  platform: string;
+  tier: string;
+  follower_count: number | null;
+  brief_status: string;
+  performance_note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function getKolTrackers(campaignId: string): Promise<KolTracker[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("kol_trackers")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .order("created_at", { ascending: true });
+  if (error) return [];
+  return (data ?? []) as KolTracker[];
+}
+
+// ─── GA5 — Category Benchmark Gate (minimum-N) ───────────────────────────────
+// Benchmarks unlock once 5+ clients share the same industry_category.
+// Shows a locked placeholder until then.
+export async function getCategoryClientCount(
+  industryCategory: string
+): Promise<number> {
+  if (!industryCategory) return 0;
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("frame_briefs")
+    .select("client_id")
+    .eq("industry_category", industryCategory);
+  if (error) return 0;
+  const unique = new Set((data ?? []).map((r: { client_id: string }) => r.client_id));
+  return unique.size;
+}
+
+// ─── OPP 3 — Prediction Accuracy Log (Blind Mirror Test) ────────────────────
+export type PredictionAccuracy = {
+  id: string;
+  campaign_id: string;
+  category: "Signal" | "Outcome" | "Gate" | "Behaviour";
+  prediction_text: string;
+  predicted_value: number | null;
+  unit: string | null;
+  prediction_week: number | null;
+  actual_value: number | null;
+  outcome_week: number | null;
+  verdict: "Accurate" | "Close" | "Off" | "Pending";
+  accuracy_pct: number | null;
+  outcome_note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function getPredictionAccuracyRecords(
+  campaignId: string
+): Promise<PredictionAccuracy[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("prediction_accuracy_log")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .order("created_at", { ascending: false });
+  if (error) return [];
+  return (data ?? []) as PredictionAccuracy[];
+}
+
 // ─── F34 — Data Source Preferences (Sprint 31) ───────────────────────────────
 // Returns the data source preference configuration for a campaign, or null
 // if the strategy lead has not yet completed setup.
@@ -673,4 +898,146 @@ export async function getDataPreferences(
     return null;
   }
   return data as import("./types").DataPreferences | null;
+}
+
+// ─── Sprint 5 — Expert Architecture Additions ─────────────────────────────────
+
+/**
+ * Get all frame_briefs for a client's campaigns with demand_investment_pct set.
+ * Used by BrandHealthBatterySection to compute rolling 60:40 ratio.
+ */
+export async function getClientCampaignBriefs(clientId: string) {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("campaigns")
+    .select(`
+      id,
+      name,
+      created_at,
+      frame_briefs!inner (
+        demand_investment_pct,
+        budget_total
+      )
+    `)
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false });
+
+  if (!data) return [];
+
+  return (data as Array<{
+    id: string;
+    name: string;
+    created_at: string;
+    frame_briefs: Array<{ demand_investment_pct: number | null; budget_total: number | null }>;
+  }>).map((c) => ({
+    campaign_id: c.id,
+    campaign_name: c.name,
+    created_at: c.created_at,
+    demand_investment_pct: c.frame_briefs[0]?.demand_investment_pct ?? null,
+    budget_total: c.frame_briefs[0]?.budget_total ?? null,
+  }));
+}
+
+/**
+ * Get Campaign Learning Record for a campaign.
+ * One record per campaign — null if not yet created.
+ */
+export async function getCampaignLearning(campaignId: string) {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("campaign_learning_records")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .maybeSingle();
+  return data ?? null;
+}
+
+/**
+ * Get Audience Replenishment Rate records for a campaign (all weeks, descending).
+ */
+export async function getAudienceReplenishment(campaignId: string) {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("audience_replenishment")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .order("week_number", { ascending: false });
+  return data ?? [];
+}
+
+// ─── Sprint 6 — Gap Fix 3: OIE Competitive Signal Feed ────────────────────────
+
+/**
+ * Returns true if the campaign's client has an OIE company linked (via oie_company_id)
+ * AND that company has at least one Competitive signal in the last 90 days.
+ *
+ * This replaces the static hasCompetitiveSignal=false boolean in CreativeFatigueSection.
+ * When true, the R2 (Competitive Suppression) check overlay fires on Fatigue Active status.
+ */
+export async function getCompetitiveSignalActive(clientId: string): Promise<boolean> {
+  const supabase = createAdminClient();
+
+  // 1. Get the oie_company_id for this client
+  const { data: clientRow } = await supabase
+    .from("clients")
+    .select("oie_company_id")
+    .eq("id", clientId)
+    .maybeSingle();
+
+  const oieCompanyId = (clientRow as { oie_company_id?: string | null } | null)?.oie_company_id;
+  if (!oieCompanyId) return false;
+
+  // 2. Check for Competitive signals in the last 90 days
+  const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+  const { count } = await supabase
+    .from("business_signals")
+    .select("id", { count: "exact", head: true })
+    .eq("company_id", oieCompanyId)
+    .eq("signal_category", "Competitive")
+    .gte("detected_at", cutoff);
+
+  return (count ?? 0) > 0;
+}
+
+// ─── Sprint 10: Competitive Intel for campaign workspace ─────────────────────
+
+export interface CompetitiveIntelData {
+  oieCompanyId: string | null;
+  oieCompanyName: string | null;
+  signals: Array<{
+    signal_type: string;
+    signal_text: string;
+    detected_at: string;
+    signal_category: string;
+  }>;
+}
+
+export async function getClientCompetitiveIntel(clientId: string): Promise<CompetitiveIntelData> {
+  const supabase = createAdminClient();
+
+  const { data: clientRow } = await supabase
+    .from("clients")
+    .select("oie_company_id")
+    .eq("id", clientId)
+    .maybeSingle();
+
+  const oieCompanyId = (clientRow as { oie_company_id?: string | null } | null)?.oie_company_id ?? null;
+  if (!oieCompanyId) return { oieCompanyId: null, oieCompanyName: null, signals: [] };
+
+  const [companyRes, signalsRes] = await Promise.all([
+    supabase.from("companies").select("name").eq("id", oieCompanyId).maybeSingle(),
+    supabase
+      .from("business_signals")
+      .select("signal_type, signal_text, detected_at, signal_category")
+      .eq("company_id", oieCompanyId)
+      .eq("signal_category", "Competitive")
+      .order("detected_at", { ascending: false })
+      .limit(8),
+  ]);
+
+  return {
+    oieCompanyId,
+    oieCompanyName: (companyRes.data as { name?: string } | null)?.name ?? null,
+    signals: (signalsRes.data ?? []) as CompetitiveIntelData["signals"],
+  };
 }

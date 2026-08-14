@@ -27,7 +27,8 @@ VALUES (
   'decide_session', 'B2C',
   'Decision Session Match',
   'A tracked prospect engaged with the ShiftImpact /decide diagnostic. High intent signal — they are actively working through a real decision and sought an external intelligence read.',
-  'Email domain matched a tracked company during a /decide diagnostic session'
+  'Email domain matched a tracked company during a /decide diagnostic session',
+  TRUE
 )
 ON CONFLICT DO NOTHING;
 
@@ -36,6 +37,7 @@ VALUES (
   'decide_session', 'B2B',
   'Decision Session Match',
   'A tracked B2B prospect engaged with the ShiftImpact /decide diagnostic. High intent signal — they are actively evaluating their growth decisions and sought an external read.',
-  'Email domain matched a tracked company during a /decide diagnostic session'
+  'Email domain matched a tracked company during a /decide diagnostic session',
+  TRUE
 )
 ON CONFLICT DO NOTHING;

@@ -1,10 +1,22 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCampaign, getDashboards } from "@/lib/data";
+import {
+  getCampaign,
+  getDashboards,
+  getFrameBrief,
+  getIdeaExtensions,
+  getLatestCampaignReport,
+  getSignalWeeklyReports,
+  getPhaseGates,
+} from "@/lib/data";
 import { Badge, Card, ragTone } from "@/app/_components/ui";
 import type { CampaignPhase, IndustryProfile } from "@/lib/types";
 
-const PHASE_LABELS: Record<IndustryProfile, Record<CampaignPhase, string>> = {
+export const dynamic = "force-dynamic";
+
+// ─── Phase labels ─────────────────────────────────────────────────────────────
+
+const PHASE_LABELS: Partial<Record<IndustryProfile, Record<CampaignPhase, string>>> = {
   QSR: {
     Demand: "Getting Noticed",
     Conversion: "Earning the Order",
@@ -31,85 +43,279 @@ const PHASE_LABELS: Record<IndustryProfile, Record<CampaignPhase, string>> = {
   },
 };
 
-export default async function ClientPortalPage({ params }: { params: Promise<{ id: string }> }) {
+function getPhaseLabel(profile: IndustryProfile, phase: CampaignPhase): string {
+  return PHASE_LABELS[profile]?.[phase] ?? phase;
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function PortalSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-3">
+      <h2 className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default async function ClientPortalPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
-  const campaign = await getCampaign(id);
+
+  const [campaign, frame, dashboards, extensions, report, signalReports, phaseGates] =
+    await Promise.all([
+      getCampaign(id),
+      getFrameBrief(id).catch(() => null),
+      getDashboards(id),
+      getIdeaExtensions(id),
+      getLatestCampaignReport(id),
+      getSignalWeeklyReports(id),
+      getPhaseGates(id),
+    ]);
+
   if (!campaign) notFound();
 
-  const dashboards = await getDashboards(id);
-  const latest = dashboards[0];
-
-  const phaseLabel = PHASE_LABELS[campaign.industry_profile][campaign.current_phase];
+  const latest = dashboards[0] ?? null;
+  const latestSignalWeek = signalReports[0]?.week_number ?? null;
+  const activeChannels: string[] = frame?.active_channels ?? [];
+  const readyBriefs = extensions.filter((e) => e.status === "Ready" || e.status === "Approved");
+  const label = getPhaseLabel(campaign.industry_profile, campaign.current_phase);
+  const completedGates = phaseGates.filter((g) => g.gate_decision === "Open");
+  const nextGate = phaseGates.find((g) => g.gate_decision !== "Open");
+  const clarityStatement = frame?.clarity_statement ?? null;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div>
-        <p className="text-sm text-neutral-400">{campaign.client_name}</p>
-        <h1 className="text-3xl font-bold tracking-tight">{campaign.name}</h1>
-      </div>
+    <div className="min-h-screen bg-neutral-50">
+      {/* Header */}
+      <header className="border-b border-neutral-200 bg-white px-6 py-4 flex items-center justify-between">
+        <span className="font-bold tracking-tight">
+          ShiftImpact <span className="text-neutral-400 font-normal text-sm">OS</span>
+        </span>
+        <span className="text-xs text-neutral-400">{campaign.client_name}</span>
+      </header>
 
-      <Card className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-neutral-400">Where things stand</p>
-            <p className="text-xl font-semibold">{phaseLabel}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-neutral-400">Confidence</p>
-            <p className="text-2xl font-bold">{Math.round(campaign.confidence_score)}</p>
-          </div>
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-10 space-y-8">
+
+        {/* Title */}
+        <div>
+          <p className="text-xs text-neutral-400 mb-0.5">{campaign.client_name}</p>
+          <h1 className="text-2xl font-bold tracking-tight">{campaign.name}</h1>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-neutral-50 rounded-md p-3">
-            <p className="text-xs text-neutral-400">{campaign.business_outcome_label}</p>
-            <p className="text-lg font-semibold">
-              {campaign.business_outcome_actual ?? "—"}
-              <span className="text-sm font-normal text-neutral-400"> / {campaign.business_outcome_target ?? "—"} target</span>
-            </p>
-          </div>
-          <div className="bg-neutral-50 rounded-md p-3">
-            <p className="text-xs text-neutral-400">{campaign.retention_metric_label}</p>
-            <p className="text-lg font-semibold">
-              {campaign.retention_metric_actual ?? "—"}
-              <span className="text-sm font-normal text-neutral-400"> / {campaign.retention_metric_target ?? "—"} target</span>
-            </p>
-          </div>
-        </div>
-      </Card>
-
-      {latest ? (
-        <Card className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold">This Week — {latest.week_of}</h2>
-            <div className="flex gap-1">
-              <Badge tone={ragTone(latest.funnel_health_demand)}>●</Badge>
-              <Badge tone={ragTone(latest.funnel_health_conversion)}>●</Badge>
-              <Badge tone={ragTone(latest.funnel_health_retention)}>●</Badge>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-xs text-neutral-400 mb-1">Decision Needed</p>
-            <p className="text-sm">{latest.decision_snapshot || "Nothing needed from you this week."}</p>
-          </div>
-
-          {latest.idea_integrity_observation && (
-            <div>
-              <p className="text-xs text-neutral-400 mb-1">Strategy Note</p>
-              <p className="text-sm">{latest.idea_integrity_observation}</p>
+        {/* ── Status ── */}
+        <PortalSection title="Where things stand">
+          {clarityStatement && (
+            <div className="px-4 py-3 rounded-xl bg-neutral-900 text-white">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1">What we&apos;re here to do</p>
+              <p className="text-sm leading-relaxed">{clarityStatement}</p>
             </div>
           )}
-        </Card>
-      ) : (
-        <Card>
-          <p className="text-sm text-neutral-500">No weekly update yet — check back soon.</p>
-        </Card>
-      )}
+          <Card>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-xs text-neutral-400">Current phase</p>
+                <p className="text-lg font-semibold">{label}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-neutral-400">Signal confidence</p>
+                <p className="text-2xl font-bold">{Math.round(campaign.confidence_score)}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-neutral-50 rounded-md p-3">
+                <p className="text-xs text-neutral-400">{campaign.business_outcome_label}</p>
+                <p className="text-base font-semibold">
+                  {campaign.business_outcome_actual ?? "—"}
+                  <span className="text-sm font-normal text-neutral-400">
+                    {" "}/{" "}{campaign.business_outcome_target ?? "—"} target
+                  </span>
+                </p>
+              </div>
+              <div className="bg-neutral-50 rounded-md p-3">
+                <p className="text-xs text-neutral-400">{campaign.retention_metric_label}</p>
+                <p className="text-base font-semibold">
+                  {campaign.retention_metric_actual ?? "—"}
+                  <span className="text-sm font-normal text-neutral-400">
+                    {" "}/{" "}{campaign.retention_metric_target ?? "—"} target
+                  </span>
+                </p>
+              </div>
+            </div>
+          </Card>
+        </PortalSection>
 
-      <Link href={`/campaigns/${campaign.id}`} className="block text-center text-xs text-neutral-400 hover:text-neutral-700">
-        Internal team view →
-      </Link>
+        {/* ── Active channels ── */}
+        {activeChannels.length > 0 && (
+          <PortalSection title="Active channels">
+            <Card>
+              <div className="flex flex-wrap gap-2">
+                {activeChannels.map((ch) => (
+                  <span
+                    key={ch}
+                    className="px-2.5 py-1 rounded-full bg-neutral-100 text-neutral-700 text-xs font-medium"
+                  >
+                    {ch}
+                  </span>
+                ))}
+              </div>
+            </Card>
+          </PortalSection>
+        )}
+
+        {/* ── Weekly dashboard ── */}
+        <PortalSection title="Latest weekly update">
+          {latest ? (
+            <Card className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Week {latest.week_number} — {latest.week_of}</p>
+                <div className="flex gap-1">
+                  <Badge tone={ragTone(latest.funnel_health_demand)}>Demand</Badge>
+                  <Badge tone={ragTone(latest.funnel_health_conversion)}>Conv.</Badge>
+                  <Badge tone={ragTone(latest.funnel_health_retention)}>Ret.</Badge>
+                </div>
+              </div>
+              {latest.decision_snapshot && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1">
+                    Decision needed
+                  </p>
+                  <p className="text-sm text-neutral-700">{latest.decision_snapshot}</p>
+                </div>
+              )}
+              {latest.idea_integrity_observation && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1">
+                    Strategy note
+                  </p>
+                  <p className="text-sm text-neutral-700">{latest.idea_integrity_observation}</p>
+                </div>
+              )}
+              {latestSignalWeek && (
+                <p className="text-xs text-neutral-400 pt-2 border-t border-neutral-100">
+                  Signal data through week {latestSignalWeek}
+                </p>
+              )}
+            </Card>
+          ) : (
+            <Card>
+              <p className="text-sm text-neutral-500">No weekly update yet. Check back soon.</p>
+            </Card>
+          )}
+        </PortalSection>
+
+        {/* ── Signal Health ── */}
+        {signalReports.length > 0 && !signalReports[0].flags_suppressed && (
+          <PortalSection title="Signal health">
+            <Card>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs text-neutral-500">Week {signalReports[0].week_number} — measured signals</p>
+                <Badge tone={ragTone(signalReports[0].gate_status ?? "Red")}>
+                  Gate: {signalReports[0].gate_status ?? "—"}
+                </Badge>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="text-center bg-neutral-50 rounded-md p-2">
+                  <p className="text-[10px] text-neutral-400 mb-1">Demand</p>
+                  <Badge tone={ragTone(signalReports[0].demand_health ?? "Red")}>
+                    {signalReports[0].demand_health ?? "—"}
+                  </Badge>
+                </div>
+                <div className="text-center bg-neutral-50 rounded-md p-2">
+                  <p className="text-[10px] text-neutral-400 mb-1">Nurture</p>
+                  <Badge tone={ragTone(signalReports[0].nurture_health ?? "Red")}>
+                    {signalReports[0].nurture_health ?? "—"}
+                  </Badge>
+                </div>
+                <div className="text-center bg-neutral-50 rounded-md p-2">
+                  <p className="text-[10px] text-neutral-400 mb-1">Conversion</p>
+                  <Badge tone={ragTone(signalReports[0].conversion_health ?? "Red")}>
+                    {signalReports[0].conversion_health ?? "—"}
+                  </Badge>
+                </div>
+              </div>
+              {signalReports[0].gate_note && (
+                <p className="text-xs text-neutral-500 mt-3 pt-2 border-t border-neutral-100">
+                  {signalReports[0].gate_note}
+                </p>
+              )}
+            </Card>
+          </PortalSection>
+        )}
+
+        {/* ── Campaign Intelligence Report ── */}
+        {report && (
+          <PortalSection title="Campaign intelligence">
+            <Card className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold">{report.report_label}</p>
+                <Badge tone="green">Week {report.report_week}</Badge>
+              </div>
+              {report.executive_summary && (
+                <p className="text-sm text-neutral-700 leading-relaxed">{report.executive_summary}</p>
+              )}
+              {report.findings.slice(0, 3).map((f, i) => (
+                <div key={i} className="border-t border-neutral-100 pt-2.5">
+                  <p className="text-xs font-semibold text-neutral-700 mb-0.5">{f.headline}</p>
+                  <p className="text-xs text-neutral-500">{f.implication}</p>
+                </div>
+              ))}
+            </Card>
+          </PortalSection>
+        )}
+
+        {/* ── Discipline briefs ready ── */}
+        {readyBriefs.length > 0 && (
+          <PortalSection title="Channel briefs">
+            <Card className="divide-y divide-neutral-100">
+              {readyBriefs.map((ext) => (
+                <div key={ext.id} className="py-2.5 flex items-center justify-between">
+                  <span className="text-sm text-neutral-700">{ext.channel_name}</span>
+                  <Badge tone="green">{ext.status}</Badge>
+                </div>
+              ))}
+            </Card>
+            <Link
+              href={`/brief/${id}`}
+              className="block text-center text-xs font-medium text-emerald-700 hover:text-emerald-900 mt-2"
+            >
+              View and download briefs →
+            </Link>
+          </PortalSection>
+        )}
+
+        {/* ── Phase gates ── */}
+        {phaseGates.length > 0 && (
+          <PortalSection title="Campaign milestones">
+            <Card className="space-y-2">
+              {completedGates.map((g) => (
+                <div key={g.id} className="flex items-center gap-2">
+                  <span className="text-emerald-500">✓</span>
+                  <span className="text-sm text-neutral-600">{g.gate_type}</span>
+                </div>
+              ))}
+              {nextGate && (
+                <div className="flex items-center gap-2 pt-2 border-t border-neutral-100">
+                  <span className="text-neutral-300">○</span>
+                  <span className="text-sm text-neutral-400">Next: {nextGate.gate_type}</span>
+                </div>
+              )}
+            </Card>
+          </PortalSection>
+        )}
+
+        {/* Footer */}
+        <div className="pt-4 border-t border-neutral-200 flex items-center justify-between text-xs text-neutral-400">
+          <span>ShiftImpact OS</span>
+          <Link href={`/brief/${id}`} className="hover:text-neutral-700">
+            Submit brief inputs →
+          </Link>
+        </div>
+      </main>
     </div>
   );
 }

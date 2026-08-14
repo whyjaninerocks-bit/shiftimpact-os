@@ -4,6 +4,8 @@ import { getCampaignsForClient, getClient, getAllTeamMembers, getClientChannels,
 import { ChannelRegistrySection } from "./_components/ChannelRegistrySection";
 import { SignalSourcesSection } from "./_components/SignalSourcesSection";
 import { BrandMomentumSection } from "./_components/BrandMomentumSection";
+import { CulturalContextSection } from "./_components/CulturalContextSection";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createCampaign, updateClient } from "@/lib/actions";
 import {
   Badge,
@@ -31,6 +33,7 @@ export default async function ClientDetailPage({
   const client = await getClient(id);
   if (!client) notFound();
 
+  const supabase = createAdminClient();
   const [campaigns, teamMembers, clientChannels, signalSources, bmsScores] = await Promise.all([
     getCampaignsForClient(id),
     getAllTeamMembers(),
@@ -38,6 +41,60 @@ export default async function ClientDetailPage({
     getClientSignalSources(id),
     getBrandMomentumScores(id),
   ]);
+
+  // Cultural signals: pull by direct client_id association, industry match, OR generic (applies to all brands)
+  // Falls back gracefully if the columns don't exist yet (pre-migration 0042)
+  let culturalSignals: {
+    id: string; signal_name: string; signal_type: string; is_trending: boolean;
+    evidence: string; why_it_matters: string | null; brand_fit_status: string;
+    status: string; geographic_scope: string; relevant_industries: string[];
+    is_generic: boolean; client_id: string | null; created_at: string;
+  }[] = [];
+  try {
+    const SELECT_COLS = "id,signal_name,signal_type,is_trending,evidence,why_it_matters,brand_fit_status,status,geographic_scope,relevant_industries,is_generic,client_id,created_at";
+
+    // 1. Signals directly linked to this client
+    const { data: byClient } = await supabase
+      .from("cultural_signals")
+      .select(SELECT_COLS)
+      .eq("client_id", id)
+      .neq("status", "archived")
+      .order("created_at", { ascending: false });
+
+    // 2. Signals tagged with this client's industry — use industry_profile (not .industry)
+    const clientIndustry = client.industry_profile;
+    let byIndustry: typeof byClient = [];
+    if (clientIndustry) {
+      const { data } = await supabase
+        .from("cultural_signals")
+        .select(SELECT_COLS)
+        .contains("relevant_industries", [clientIndustry])
+        .neq("status", "archived")
+        .is("client_id", null)       // only unattached-to-specific-client ones
+        .order("created_at", { ascending: false });
+      byIndustry = data ?? [];
+    }
+
+    // 3. Generic signals — applies to every MY/SEA brand regardless of industry
+    const { data: generic } = await supabase
+      .from("cultural_signals")
+      .select(SELECT_COLS)
+      .eq("is_generic", true)
+      .neq("status", "archived")
+      .is("client_id", null)
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    const seen = new Set<string>();
+    for (const s of [...(byClient ?? []), ...(byIndustry ?? []), ...(generic ?? [])]) {
+      if (!seen.has(s.id)) {
+        seen.add(s.id);
+        culturalSignals.push(s as typeof culturalSignals[number]);
+      }
+    }
+  } catch {
+    // Column doesn't exist yet (pre-migration 0042) — silently skip
+  }
 
   const updateClientWithId = updateClient.bind(null, id);
   const createCampaignWithClient = createCampaign;
@@ -72,14 +129,22 @@ export default async function ClientDetailPage({
                   <Badge tone={phaseTone(c.current_phase)}>{c.current_phase}</Badge>
                 </div>
               </Link>
-              <div className="mt-2 pt-2 border-t border-neutral-100">
+              <div className="mt-2 pt-2 border-t border-neutral-100 flex items-center gap-4 flex-wrap">
                 <a
                   href={`/brief/${c.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
                 >
-                  Share Brief with Client →
+                  Share Brief Link →
+                </a>
+                <a
+                  href={`/portal/${c.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-emerald-600 hover:text-emerald-800 hover:underline"
+                >
+                  Share Client Portal →
                 </a>
               </div>
             </Card>
@@ -123,9 +188,20 @@ export default async function ClientDetailPage({
             <div>
               <label className={labelClass} htmlFor="industry_profile">Industry Profile</label>
               <select className={inputClass} id="industry_profile" name="industry_profile" defaultValue={client.industry_profile} required>
+                <option value="FMCG">FMCG</option>
                 <option value="QSR">QSR</option>
-                <option value="B2B">B2B</option>
                 <option value="Retail">Retail</option>
+                <option value="Financial Services">Financial Services</option>
+                <option value="Telco">Telco</option>
+                <option value="Healthcare">Healthcare</option>
+                <option value="Insurance">Insurance</option>
+                <option value="Automotive">Automotive</option>
+                <option value="Hospitality">Hospitality</option>
+                <option value="Media & Entertainment">Media & Entertainment</option>
+                <option value="E-Commerce">E-Commerce</option>
+                <option value="Education">Education</option>
+                <option value="B2B">B2B</option>
+                <option value="B2B SaaS">B2B SaaS</option>
                 <option value="Other">Other</option>
               </select>
             </div>
@@ -136,6 +212,19 @@ export default async function ClientDetailPage({
             <div>
               <label className={labelClass} htmlFor="retention_metric_label">Retention Metric Label</label>
               <input className={inputClass} id="retention_metric_label" name="retention_metric_label" defaultValue={client.retention_metric_label} />
+            </div>
+            <div className="pt-2 border-t border-neutral-100">
+              <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">Brief notification recipient</p>
+              <div className="space-y-2">
+                <div>
+                  <label className={labelClass} htmlFor="contact_name">Contact name</label>
+                  <input className={inputClass} id="contact_name" name="contact_name" defaultValue={client.contact_name ?? ""} placeholder="e.g. Aisha Omar" />
+                </div>
+                <div>
+                  <label className={labelClass} htmlFor="contact_email">Contact email</label>
+                  <input className={inputClass} type="email" id="contact_email" name="contact_email" defaultValue={client.contact_email ?? ""} placeholder="client@brand.com" />
+                </div>
+              </div>
             </div>
             <button type="submit" className={buttonSecondaryClass}>Save</button>
           </form>
@@ -148,6 +237,12 @@ export default async function ClientDetailPage({
       </div>
 
       <BrandMomentumSection clientId={id} scores={bmsScores} />
+
+      <CulturalContextSection
+        clientId={id}
+        clientIndustry={client.industry_profile ?? null}
+        signals={culturalSignals}
+      />
     </div>
   );
 }

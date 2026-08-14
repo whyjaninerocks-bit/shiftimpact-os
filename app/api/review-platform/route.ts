@@ -179,12 +179,13 @@ export async function POST(req: NextRequest) {
     // 1. Load campaign context
     const { data: campaign } = await supabase
       .from("campaigns")
-      .select("name, clients(name)")
+      .select("name, industry_profile, clients(name)")
       .eq("id", campaign_id)
       .single();
 
     const clientName =
       (campaign?.clients as { name: string } | null)?.name ?? "Brand";
+    const industryProfile = campaign?.industry_profile ?? "General";
 
     // 2. Score each dimension
     const googleScore    = scoreRating(google_rating);
@@ -227,7 +228,7 @@ Your role: explain what the reviews are telling us about the customer experience
     const userPrompt = `BRAND: ${clientName}
 CAMPAIGN: ${campaign?.name ?? "Campaign"}
 WEEK: ${week_number}
-CATEGORY: ${hasTripAdvisor ? "Hospitality / F&B" : "General"}
+CATEGORY: ${industryProfile}
 
 ── REVIEW PLATFORM INPUTS ──
 Google Rating: ${google_rating ?? "Not provided"}/5.0

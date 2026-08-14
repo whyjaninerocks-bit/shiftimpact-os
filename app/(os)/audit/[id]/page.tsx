@@ -357,10 +357,10 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
 
       {/* ── DARK HEADER ── */}
       <div className="bg-slate-900 text-white">
-        <div className="max-w-3xl mx-auto px-6 pt-8 pb-7">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-7">
 
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2.5">
+          <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
+            <div className="flex items-center gap-2.5 flex-wrap">
               <span className="font-bold text-sm tracking-tight">
                 ShiftImpact <span className="text-slate-400 font-normal">OS</span>
               </span>
@@ -371,21 +371,21 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-500">{generatedDate}</span>
-              <span className="text-xs font-medium px-2.5 py-1 rounded-full border"
+              <span className="text-xs font-medium px-2.5 py-1 rounded-full border hidden sm:inline-block"
                 style={{ background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.6)" }}>
                 Public signals only
               </span>
             </div>
           </div>
 
-          <div className="flex items-start justify-between gap-4 mb-5">
+          <div className="flex items-start justify-between gap-4 mb-5 flex-wrap sm:flex-nowrap">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-white leading-tight mb-1">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-tight mb-1">
                 {a.brand_name}
               </h1>
               <p className="text-slate-400 text-sm">{a.campaign_name} · {a.industry}</p>
             </div>
-            <div className="flex flex-col items-end gap-1.5 shrink-0 mt-0.5">
+            <div className="flex flex-row sm:flex-col items-start sm:items-end gap-2 sm:gap-1.5 shrink-0 sm:mt-0.5">
               <span className="text-xs text-slate-400 font-medium">{r.campaign_phase} Phase · Wk {r.estimated_campaign_week}</span>
               <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${gate.bg} ${gate.text}`}>
                 {gate.label}
@@ -394,7 +394,7 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
           </div>
 
           {/* 3 glass metric cards */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
             <div className="flex items-center gap-3 px-4 py-3.5 rounded-xl"
               style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}>
@@ -467,10 +467,10 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
       </div>
 
       {/* ── BODY ── */}
-      <div className="max-w-3xl mx-auto px-6 py-7 space-y-5">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-7 space-y-5">
 
         {/* Executive Intelligence Summary */}
-        <div className="rounded-xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white px-4 sm:px-6 py-5 shadow-sm">
           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-3">Executive Intelligence</p>
           <blockquote className="border-l-[3px] border-slate-900 pl-4 text-base font-semibold text-slate-900 leading-snug mb-4">
             {r.effectiveness_headline}
@@ -480,10 +480,10 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
 
         {/* Campaign Effectiveness */}
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <div className="px-6 pt-5 pb-4 border-b border-slate-100">
+          <div className="px-4 sm:px-6 pt-5 pb-4 border-b border-slate-100">
             <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Campaign Effectiveness</p>
           </div>
-          <div className="px-6 py-5">
+          <div className="px-4 sm:px-6 py-5">
             <StrategicPOV
               header={`${r.effectiveness_rating} · ${r.risk_level} Priority`}
               body={r.effectiveness_headline}
@@ -719,7 +719,7 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
               </div>
             ))}
           </div>
-          <div className="px-6 pb-5 grid grid-cols-2 gap-3">
+          <div className="px-4 sm:px-6 pb-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3">
               <p className="text-[9px] font-bold text-red-500 uppercase tracking-wide mb-1">Key Watch</p>
               <p className="text-xs text-slate-700 leading-relaxed">{r.primary_risk}</p>
@@ -813,6 +813,31 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
             </span>
           </div>
         </div>
+
+      {/* ── DATA SOURCING FINE PRINT ─────────────────────────────── */}
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">
+          Data Sourcing and Limitations
+        </p>
+        <div className="space-y-2 text-[11px] text-slate-400 leading-relaxed">
+          <p>
+            <span className="font-semibold text-slate-500">What this report is based on:</span>{" "}
+            Publicly accessible signals only. Sources include brand websites, public social media posts, Facebook Ad Library, press coverage indexed on Google News, trade media articles (Marketing Interactive, Campaign Brief Asia, Mumbrella Asia and similar), and KOL content. All signals were available without authentication at the time of analysis.
+          </p>
+          <p>
+            <span className="font-semibold text-slate-500">What this report cannot access:</span>{" "}
+            Paywalled editorial content (Campaign Asia premium, select Straits Times articles, Nielsen and Kantar reports, Mintel). Private or login-gated social content (Facebook organic posts, private Instagram and TikTok accounts, LinkedIn, WhatsApp and Telegram groups). Live campaign performance data including CTR, ROAS, impressions, reach and frequency. Broadcast and OOH placement data (TV airings, radio ad frequency, billboard locations). Internal brand and agency data including sales figures, CRM records, first-party audiences, media plans, attribution models, and programmatic buying data. Precise app download counts and in-app behaviour data.
+          </p>
+          <p>
+            <span className="font-semibold text-slate-500">Data freshness:</span>{" "}
+            Signals reflect publicly available information at the time of generation. Social content, press coverage and ad activity change daily. This snapshot should be treated as a point-in-time read, not a live dashboard.
+          </p>
+          <p>
+            <span className="font-semibold text-slate-500">Interpretation:</span>{" "}
+            Observations, scores and gate conditions are based on pattern recognition from public proxy signals. They do not constitute a confirmed diagnosis. Internal campaign data is required to validate or refute any conclusion in this report. Shift Impact OS partnership unlocks confirmed signal layers updated weekly throughout your campaign flight.
+          </p>
+        </div>
+      </div>
 
       </div>
     </div>

@@ -8,14 +8,67 @@ function passTone(pass: boolean | null): "green" | "red" | "neutral" {
   return "neutral";
 }
 
+// ─── Kill-switch breach mailto ────────────────────────────────────────────────
+
+function BreachAlertButton({
+  log,
+  campaignName,
+  clientName,
+}: {
+  log: GateSignalLog;
+  campaignName: string;
+  clientName: string;
+}) {
+  if (log.pass !== false) return null;
+
+  function handleAlert() {
+    const unit = log.unit ?? "";
+    const actual = log.actual_value != null ? `${log.actual_value}${unit}` : "N/A";
+    const threshold = log.threshold_value != null ? `${log.threshold_value}${unit}` : "N/A";
+    const subject = encodeURIComponent(
+      `Kill Switch Alert — ${campaignName} (${clientName}): ${log.signal_label}`
+    );
+    const body = encodeURIComponent(
+      `Kill Switch Threshold Breached\n\n` +
+      `Campaign: ${campaignName} (${clientName})\n` +
+      `Signal: ${log.signal_label} [${log.signal_type}]\n` +
+      `Actual: ${actual}  |  Threshold: ${threshold}\n` +
+      `Logged: ${log.logged_at}\n` +
+      (log.notes ? `\nContext: ${log.notes}\n` : "") +
+      `\nAction required: Review kill switch status and determine whether to pause or adjust campaign execution.`
+    );
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleAlert}
+      className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-colors whitespace-nowrap"
+      title="Send kill-switch breach alert"
+    >
+      {/* warning icon */}
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      Alert
+    </button>
+  );
+}
+
 export function SignalLogSection({
   campaignId,
   signalLogs,
   phaseGates,
+  campaignName = "Campaign",
+  clientName = "",
 }: {
   campaignId: string;
   signalLogs: GateSignalLog[];
   phaseGates: PhaseGate[];
+  campaignName?: string;
+  clientName?: string;
 }) {
   const createAction = createSignalLog.bind(null, campaignId);
 
@@ -68,11 +121,14 @@ export function SignalLogSection({
                   </td>
                   <td className="py-1.5 pr-3 text-xs text-neutral-500">{log.notes || "—"}</td>
                   <td className="py-1.5">
-                    <form action={deleteAction}>
-                      <button type="submit" className="text-xs text-neutral-400 hover:text-red-500">
-                        ×
-                      </button>
-                    </form>
+                    <div className="flex items-center gap-1.5">
+                      <BreachAlertButton log={log} campaignName={campaignName} clientName={clientName} />
+                      <form action={deleteAction}>
+                        <button type="submit" className="text-xs text-neutral-400 hover:text-red-500">
+                          ×
+                        </button>
+                      </form>
+                    </div>
                   </td>
                 </tr>
               );

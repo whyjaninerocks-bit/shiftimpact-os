@@ -2,14 +2,19 @@
 // Client-facing campaign brief intake.
 // Route: /brief/[id]
 //
-// Clients fill in FRAME Brief + Big Idea Platform fields.
-// Saves directly to the same Supabase tables via /api/brief-save.
+// Clients fill in:
+//   - Active channels (Tab 1)
+//   - Campaign KPIs + budget (Tab 2)
+//   - Brand Assets / CI / RFP (Tab 3)
+//   - FRAME Brief strategic fields (Tab 4)
+//   - Big Idea Platform (Tab 5)
+// Tab 6 (Discipline Briefs) shows ShiftImpact-generated channel briefs (read-only).
 //
 // BOUNDARY: Input fields only. No ICS scores, no state codes, no internal analytics.
 // No auth required for beta — campaign_id + record IDs are the access key.
 
 import { notFound } from "next/navigation";
-import { getCampaign, getFrameBrief, getBigIdeaPlatform } from "@/lib/data";
+import { getCampaign, getFrameBrief, getBigIdeaPlatform, getStageBriefs } from "@/lib/data";
 import { BriefIntakeForm } from "./_components/BriefIntakeForm";
 
 export const dynamic = "force-dynamic";
@@ -21,10 +26,11 @@ export default async function BriefIntakePage({
 }) {
   const { id } = await params;
 
-  const [campaign, frame, bip] = await Promise.all([
+  const [campaign, frame, bip, stageBriefs] = await Promise.all([
     getCampaign(id),
     getFrameBrief(id),
     getBigIdeaPlatform(id),
+    getStageBriefs(id),
   ]);
 
   if (!campaign) notFound();
@@ -48,6 +54,9 @@ export default async function BriefIntakePage({
             Campaign Brief
           </p>
           <h1 className="text-2xl font-bold text-neutral-900">{campaign.name}</h1>
+          {campaign.client_name && (
+            <p className="text-sm text-neutral-500 mt-0.5">{campaign.client_name}</p>
+          )}
           <p className="text-sm text-neutral-500 mt-2">
             Fill in the sections below. Your inputs are saved directly to the
             campaign workspace and visible to your ShiftImpact strategy lead
@@ -57,8 +66,15 @@ export default async function BriefIntakePage({
 
         <BriefIntakeForm
           campaignId={id}
+          campaignName={campaign.name}
           frame={frame}
           bip={bip}
+          businessOutcomeLabel={campaign.business_outcome_label ?? "Business Outcome"}
+          businessOutcomeTarget={campaign.business_outcome_target ?? null}
+          retentionLabel={campaign.retention_metric_label ?? "Retention Metric"}
+          retentionTarget={campaign.retention_metric_target ?? null}
+          clientName={campaign.client_name ?? ""}
+          stageBriefs={stageBriefs}
         />
       </main>
     </div>

@@ -18,6 +18,7 @@
 import { useState } from "react";
 import { Card, SectionTitle, Badge } from "@/app/_components/ui";
 import type { BrandAsset, BrandAssetType, BrandAssetStrength } from "@/lib/types";
+import { DbaCorrelationPanel } from "./DbaCorrelationPanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -325,6 +326,7 @@ function EditAssetRow({ asset, onSaved, onCancel }: EditAssetRowProps) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function DbaSection({
+  campaignId,
   clientId,
   frameBriefId,
   initialAssets,
@@ -593,6 +595,11 @@ export function DbaSection({
               </div>
             )}
           </div>
+        </Card>
+
+        {/* F29 — DBA Performance Correlation */}
+        <Card>
+          <DbaCorrelationPanel campaignId={campaignId} />
         </Card>
       </div>
     </section>

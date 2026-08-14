@@ -14,6 +14,7 @@ import {
   removeCampaignChannel,
   upsertChannelWeeklyMetric,
   upsertCrossChannelReport,
+  seedCampaignChannelsFromFrame,
 } from "@/lib/actions";
 import {
   Badge,
@@ -67,17 +68,40 @@ function ChannelSetupPanel({
   campaignId,
   campaignChannels,
   allChannelProfiles,
+  frameActiveChannels,
 }: {
   campaignId: string;
   campaignChannels: CampaignChannelWithProfile[];
   allChannelProfiles: ChannelProfile[];
+  frameActiveChannels: string[];
 }) {
   const [isPending, startTransition] = useTransition();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [seeding, setSeeding] = useState(false);
+  const [seedDone, setSeedDone] = useState(false);
 
-  // Filter out already-assigned channels
+  // Channels from FRAME Brief that have a matching profile and aren't assigned yet
   const assignedProfileIds = new Set(campaignChannels.map(c => c.channel_profile_id));
+  const frameSeedCandidates = frameActiveChannels
+    .map(name => allChannelProfiles.find(
+      p => p.channel_name.toLowerCase() === name.toLowerCase()
+    ))
+    .filter((p): p is ChannelProfile => p != null && !assignedProfileIds.has(p.id));
+
+  async function handleSeedFromFrame() {
+    if (frameSeedCandidates.length === 0) return;
+    setSeeding(true);
+    const seeds = frameSeedCandidates.map(p => ({
+      channel_profile_id: p.id,
+      channel_role: (p.primary_funnel_stage === "All" ? "Demand" : p.primary_funnel_stage) as string,
+    }));
+    await seedCampaignChannelsFromFrame(campaignId, seeds);
+    setSeeding(false);
+    setSeedDone(true);
+  }
+
+  // availableProfiles uses the same assignedProfileIds set computed above
   const availableProfiles = allChannelProfiles.filter(p => !assignedProfileIds.has(p.id));
 
   const addAction = addCampaignChannel.bind(null, campaignId);
@@ -102,6 +126,29 @@ function ChannelSetupPanel({
 
   return (
     <div className="space-y-5">
+      {/* FRAME Brief seed banner — shown when FRAME has matching unassigned channels */}
+      {frameSeedCandidates.length > 0 && !seedDone && (
+        <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-100 rounded-md">
+          <span className="text-blue-400 shrink-0 mt-0.5">⚿</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-blue-800 mb-0.5">
+              {frameSeedCandidates.length} channel{frameSeedCandidates.length > 1 ? "s" : ""} from your FRAME Brief not yet added
+            </p>
+            <p className="text-[11px] text-blue-700 mb-2">
+              {frameSeedCandidates.map(p => p.channel_name).join(", ")}
+            </p>
+            <button
+              type="button"
+              onClick={handleSeedFromFrame}
+              disabled={seeding}
+              className="text-xs font-medium text-blue-700 hover:text-blue-900 underline underline-offset-2 disabled:opacity-50"
+            >
+              {seeding ? "Adding…" : "Add all from FRAME Brief"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Channel list grouped by role */}
       {FUNNEL_ROLES.map(role => {
         const channels = grouped[role];
@@ -688,11 +735,13 @@ export function CrossChannelSection({
   campaignChannels,
   channelReports,
   allChannelProfiles,
+  frameActiveChannels = [],
 }: {
   campaignId: string;
   campaignChannels: CampaignChannelWithProfile[];
   channelReports: CrossChannelReport[];
   allChannelProfiles: ChannelProfile[];
+  frameActiveChannels?: string[];
 }) {
   const [tab, setTab] = useState<"setup" | "weekly">("setup");
   const channelCount = campaignChannels.length;
@@ -756,6 +805,7 @@ export function CrossChannelSection({
           campaignId={campaignId}
           campaignChannels={campaignChannels}
           allChannelProfiles={allChannelProfiles}
+          frameActiveChannels={frameActiveChannels}
         />
       )}
       {tab === "weekly" && channelCount > 0 && (

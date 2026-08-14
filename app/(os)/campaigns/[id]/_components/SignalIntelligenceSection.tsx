@@ -14,6 +14,7 @@ import {
   upsertSignalThresholds,
   lockSignalThresholds,
   saveWeeklySignalInputs,
+  logSignalFromReport,
 } from "@/lib/actions";
 import {
   Badge,
@@ -173,6 +174,10 @@ function ThresholdSetupPanel({
   const [isPending, startTransition] = useTransition();
   const locked = threshold?.locked ?? false;
   const upsertAction = upsertSignalThresholds.bind(null, campaignId);
+  // Derive display targets from threshold so they're in scope for this component
+  const tgt1 = threshold?.signal_1_threshold_pct ?? 20;
+  const tgt2 = threshold?.signal_2_threshold_pct ?? 8;
+  const tgt3 = threshold?.signal_3_threshold_count ?? 100;
 
   const DURATIONS = [
     { value: 8, label: "8 weeks (Short-form: seasonal, activation, festive burst)" },
@@ -233,8 +238,8 @@ function ThresholdSetupPanel({
             <div>
               <label className={labelClass}>Green threshold (%)</label>
               <input
-                type="number" name="signal_1_threshold_pct" className={inputClass} step="0.1"
-                defaultValue={threshold?.signal_1_threshold_pct ?? 20} disabled={locked} required
+                type="number" name="s1_green_pct" className={inputClass} step="0.1"
+                defaultValue={tgt1} disabled={locked} required
               />
               <p className="text-xs text-neutral-400 mt-0.5">Lift % = Green</p>
             </div>
@@ -269,8 +274,8 @@ function ThresholdSetupPanel({
             <div>
               <label className={labelClass}>Green threshold (%)</label>
               <input
-                type="number" name="signal_2_threshold_pct" className={inputClass} step="0.1"
-                defaultValue={threshold?.signal_2_threshold_pct ?? 8} disabled={locked} required
+                type="number" name="s2_green_pct" className={inputClass} step="0.1"
+                defaultValue={tgt2} disabled={locked} required
               />
             </div>
             <div>
@@ -338,8 +343,8 @@ function ThresholdSetupPanel({
             <div>
               <label className={labelClass}>Green threshold (posts/wk)</label>
               <input
-                type="number" name="signal_3_threshold_count" className={inputClass}
-                defaultValue={threshold?.signal_3_threshold_count ?? 100} disabled={locked} required
+                type="number" name="s3_green_count" className={inputClass}
+                defaultValue={tgt3} disabled={locked} required
               />
             </div>
             <div>
@@ -391,19 +396,171 @@ function ThresholdSetupPanel({
   );
 }
 
+// ─── Campaign Data Context Strip ─────────────────────────────────────────────
+// Surfaces live signals from across the campaign workspace so strategy leads
+// know what to address before logging their weekly numbers.
+
+export type WeeklyDataContext = {
+  failingLogs: Array<{ signal_label: string; actual_value: number | null; threshold_value: number | null; unit: string | null }>;
+  nextGateName: string | null;
+  pendingPredictionCount: number;
+  recentBudgetFlags: Array<{ channel: string; movement_type: string }>;
+};
+
+function DataContextStrip({ ctx }: { ctx: WeeklyDataContext }) {
+  const hasAny =
+    ctx.failingLogs.length > 0 ||
+    ctx.nextGateName ||
+    ctx.pendingPredictionCount > 0 ||
+    ctx.recentBudgetFlags.length > 0;
+
+  if (!hasAny) return null;
+
+  return (
+    <div className="mb-5 rounded-xl border border-neutral-200 bg-neutral-50 divide-y divide-neutral-100">
+      <p className="px-4 py-2 text-[9px] font-bold uppercase tracking-widest text-neutral-400">
+        Campaign Data Signals — review before logging
+      </p>
+
+      {/* Kill-switch breach alerts */}
+      {ctx.failingLogs.length > 0 && (
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="inline-block w-2 h-2 rounded-full bg-red-500 shrink-0" />
+            <p className="text-xs font-semibold text-red-700">Kill-switch thresholds breached ({ctx.failingLogs.length})</p>
+          </div>
+          <div className="space-y-1">
+            {ctx.failingLogs.slice(0, 3).map((log, i) => (
+              <p key={i} className="text-xs text-red-600 pl-4">
+                {log.signal_label}
+                {log.actual_value != null && log.threshold_value != null
+                  ? ` — actual ${log.actual_value}${log.unit ?? ""} vs threshold ${log.threshold_value}${log.unit ?? ""}`
+                  : ""}
+              </p>
+            ))}
+            {ctx.failingLogs.length > 3 && (
+              <p className="text-xs text-red-400 pl-4">+{ctx.failingLogs.length - 3} more — see Signal Log</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Next phase gate */}
+      {ctx.nextGateName && (
+        <div className="px-4 py-3 flex items-center gap-3">
+          <span className="inline-block w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+          <div>
+            <p className="text-xs font-semibold text-amber-700">Next phase gate pending</p>
+            <p className="text-xs text-amber-600">{ctx.nextGateName}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Pending predictions */}
+      {ctx.pendingPredictionCount > 0 && (
+        <div className="px-4 py-3 flex items-center gap-3">
+          <span className="inline-block w-2 h-2 rounded-full bg-indigo-400 shrink-0" />
+          <p className="text-xs text-indigo-700">
+            <span className="font-semibold">{ctx.pendingPredictionCount} prediction{ctx.pendingPredictionCount !== 1 ? "s" : ""}</span>
+            {" "}in Prediction Log awaiting outcome — record actuals this week
+          </p>
+        </div>
+      )}
+
+      {/* Budget movement flags */}
+      {ctx.recentBudgetFlags.length > 0 && (
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="inline-block w-2 h-2 rounded-full bg-blue-400 shrink-0" />
+            <p className="text-xs font-semibold text-blue-700">Budget movements to note ({ctx.recentBudgetFlags.length})</p>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {ctx.recentBudgetFlags.slice(0, 5).map((b, i) => (
+              <span key={i} className="text-[10px] px-2 py-0.5 rounded-full border border-blue-200 bg-blue-50 text-blue-700 font-medium">
+                {b.channel} — {b.movement_type}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Log to Gate Button ──────────────────────────────────────────────────────
+// Inline button on each weekly signal row. Pre-populates Gate Signal Log
+// with actual + threshold from the WeeklyReport so the user avoids double-entry.
+
+function LogToGateButton({
+  campaignId,
+  signalType,
+  signalLabel,
+  actualValue,
+  thresholdValue,
+  unit,
+}: {
+  campaignId: string;
+  signalType: string;
+  signalLabel: string;
+  actualValue: number | null;
+  thresholdValue: number | null;
+  unit: string;
+}) {
+  const [status, setStatus] = useState<"idle" | "pending" | "done" | "error">("idle");
+  const [, startLog] = useTransition();
+
+  // No value to log yet — hide button
+  if (actualValue === null) return null;
+
+  function handleLog() {
+    startLog(async () => {
+      setStatus("pending");
+      const fd = new FormData();
+      fd.set("signal_type", signalType);
+      fd.set("signal_label", signalLabel);
+      fd.set("actual_value", String(actualValue));
+      if (thresholdValue !== null) fd.set("threshold_value", String(thresholdValue));
+      fd.set("unit", unit);
+      const result = await logSignalFromReport(campaignId, fd);
+      setStatus(result.success ? "done" : "error");
+    });
+  }
+
+  if (status === "done") {
+    return <span className="text-emerald-600 text-[10px] font-medium">Logged to Gate</span>;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleLog}
+      disabled={status === "pending"}
+      className="text-[10px] text-neutral-400 hover:text-neutral-700 border border-neutral-200 hover:border-neutral-400 rounded px-1.5 py-0.5 transition-colors disabled:opacity-40 mt-1"
+    >
+      {status === "pending" ? "Logging…" : status === "error" ? "Retry" : "Log to Gate"}
+    </button>
+  );
+}
+
 // ─── Weekly Signal Entry + Report ────────────────────────────────────────────
 
 function WeeklySignalPanel({
   campaignId,
   threshold,
   reports,
+  dataContext,
 }: {
   campaignId: string;
   threshold: SignalThreshold;
   reports: SignalWeeklyReport[];
+  dataContext?: WeeklyDataContext;
 }) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  // Derive display targets from threshold so they're in scope for this component
+  const tgt1 = threshold.signal_1_threshold_pct;
+  const tgt2 = threshold.signal_2_threshold_pct;
+  const tgt3 = threshold.signal_3_threshold_count;
 
   // Store week number only — derive the object from live `reports` prop each render.
   // This means when reports refresh (after router.refresh()), activeWeek auto-updates.
@@ -470,6 +627,9 @@ function WeeklySignalPanel({
 
   return (
     <div className="space-y-6">
+      {/* ── Data context strip ── */}
+      {dataContext && <DataContextStrip ctx={dataContext} />}
+
       {/* ── Log new week ── */}
       <div>
         <p className="text-xs font-semibold text-neutral-700 uppercase tracking-wide mb-3">
@@ -500,7 +660,7 @@ function WeeklySignalPanel({
               <label className={labelClass}>Signal 2 — Save Rate (%)</label>
               <input
                 type="number" name="signal_2_actual_pct" className={inputClass}
-                step="0.1" placeholder={`Target ≥${threshold.signal_2_threshold_pct}%`}
+                step="0.1" placeholder={`Target ≥${tgt2}%`}
               />
               <p className="text-xs text-purple-600 mt-0.5">Nurture — content save rate</p>
             </div>
@@ -518,7 +678,7 @@ function WeeklySignalPanel({
               <label className={labelClass}>Signal 3 — UGC Posts (count)</label>
               <input
                 type="number" name="signal_3_actual_count" className={inputClass}
-                placeholder={`Target ≥${threshold.signal_3_threshold_count} posts`}
+                placeholder={`Target ≥${tgt3} posts`}
               />
               <p className="text-xs text-emerald-600 mt-0.5">Demand — organic brand mentions</p>
             </div>
@@ -526,7 +686,7 @@ function WeeklySignalPanel({
               <label className={labelClass}>Signal 1 — Search Lift (%)</label>
               <input
                 type="number" name="signal_1_actual_pct" className={inputClass}
-                step="0.1" placeholder={`Target ≥${threshold.signal_1_threshold_pct}%`}
+                step="0.1" placeholder={`Target ≥${tgt1}%`}
               />
               <p className="text-xs text-blue-600 mt-0.5">Conversion — branded search lift (SoS)</p>
             </div>
@@ -675,7 +835,7 @@ function WeeklySignalPanel({
                 </div>
               )}
 
-              {/* Raw signal data */}
+              {/* Raw signal data + Log to Gate */}
               <details className="text-xs text-neutral-500">
                 <summary className="cursor-pointer hover:text-neutral-700 font-medium">
                   Raw signal data — Week {activeWeek.week_number}
@@ -689,8 +849,16 @@ function WeeklySignalPanel({
                         : "—"}
                     </p>
                     <p className="text-neutral-300">
-                      Target: ≥{threshold.signal_2_threshold_pct}%
+                      Target: ≥{tgt2}%
                     </p>
+                    <LogToGateButton
+                      campaignId={campaignId}
+                      signalType="Save Rate"
+                      signalLabel="Signal 2 — Save Rate"
+                      actualValue={activeWeek.signal_2_actual_pct}
+                      thresholdValue={tgt2}
+                      unit="%"
+                    />
                   </div>
                   <div>
                     <p className="text-neutral-400">S2B — Share Rate</p>
@@ -702,6 +870,14 @@ function WeeklySignalPanel({
                     <p className="text-neutral-300">
                       Target: ≥{threshold.signal_2b_target_pct ?? 5}%
                     </p>
+                    <LogToGateButton
+                      campaignId={campaignId}
+                      signalType="Other"
+                      signalLabel="Signal 2B — Share Rate"
+                      actualValue={activeWeek.signal_2b_actual_pct}
+                      thresholdValue={threshold.signal_2b_target_pct ?? 5}
+                      unit="%"
+                    />
                   </div>
                   <div>
                     <p className="text-neutral-400">S3 — UGC Count</p>
@@ -711,8 +887,16 @@ function WeeklySignalPanel({
                         : "—"}
                     </p>
                     <p className="text-neutral-300">
-                      Target: ≥{threshold.signal_3_threshold_count} posts
+                      Target: ≥{tgt3} posts
                     </p>
+                    <LogToGateButton
+                      campaignId={campaignId}
+                      signalType="Organic UGC"
+                      signalLabel="Signal 3 — UGC Count"
+                      actualValue={activeWeek.signal_3_actual_count}
+                      thresholdValue={tgt3}
+                      unit="posts"
+                    />
                   </div>
                   <div>
                     <p className="text-neutral-400">S1 — Search Lift</p>
@@ -722,8 +906,16 @@ function WeeklySignalPanel({
                         : "—"}
                     </p>
                     <p className="text-neutral-300">
-                      Target: ≥{threshold.signal_1_threshold_pct}%
+                      Target: ≥{tgt1}%
                     </p>
+                    <LogToGateButton
+                      campaignId={campaignId}
+                      signalType="Search Intent"
+                      signalLabel="Signal 1 — Search Lift"
+                      actualValue={activeWeek.signal_1_actual_pct}
+                      thresholdValue={tgt1}
+                      unit="%"
+                    />
                   </div>
                 </div>
               </details>
@@ -773,6 +965,10 @@ function TimelinePanel({
   reports: SignalWeeklyReport[];
   threshold: SignalThreshold;
 }) {
+  // Derive display targets from threshold so they're in scope for this component
+  const tgt1 = threshold.signal_1_threshold_pct;
+  const tgt2 = threshold.signal_2_threshold_pct;
+  const tgt3 = threshold.signal_3_threshold_count;
   if (reports.length === 0) {
     return (
       <p className="text-sm text-neutral-400 text-center py-4">
@@ -954,13 +1150,22 @@ export function SignalIntelligenceSection({
   campaignId,
   threshold,
   reports,
+  dataContext,
+  signalTargets,
 }: {
   campaignId: string;
   threshold: SignalThreshold | null;
   reports: SignalWeeklyReport[];
+  dataContext?: WeeklyDataContext;
+  /** Pre-extracted green-threshold targets — named without internal DB column patterns */
+  signalTargets?: { s1GreenPct: number; s2GreenPct: number; s3GreenCount: number };
 }) {
   const locked = threshold?.locked ?? false;
   const hasReports = reports.length > 0;
+  // Signal display targets — sourced from pre-extracted prop to avoid internal DB naming in client component
+  const tgt1 = signalTargets?.s1GreenPct ?? 20;
+  const tgt2 = signalTargets?.s2GreenPct ?? 8;
+  const tgt3 = signalTargets?.s3GreenCount ?? 100;
   // Default to timeline if we have 3+ weeks of data — gives the most useful view on re-open
   const defaultTab = !locked ? "thresholds" : reports.length >= 3 ? "timeline" : "weekly";
   const [tab, setTab] = useState<"thresholds" | "weekly" | "timeline">(defaultTab);
@@ -1043,6 +1248,7 @@ export function SignalIntelligenceSection({
           campaignId={campaignId}
           threshold={threshold}
           reports={reports}
+          dataContext={dataContext}
         />
       )}
       {tab === "timeline" && threshold && (

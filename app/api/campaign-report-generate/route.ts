@@ -58,6 +58,14 @@ interface GenerateRequest {
   };
 }
 
+interface AqsSnapshot {
+  aqs_band: string | null;
+  attention_gap_flag: boolean;
+  attention_gap_action: string;
+  aqs_benchmark_delta: number | null;
+  week_number: number;
+}
+
 interface ComponentSnapshot {
   signal_reports: unknown[];
   consumer_state_readings: unknown[];
@@ -68,6 +76,7 @@ interface ComponentSnapshot {
   report_week: number;
   campaign_name: string;
   client_name: string;
+  aqs: AqsSnapshot | null;
 }
 
 // ─── Data collection ──────────────────────────────────────────────────────────
@@ -153,6 +162,31 @@ async function collectCampaignData(
     .limit(1)
     .single();
 
+  // Latest AQS reading (F25 — INTERNAL)
+  let aqs: AqsSnapshot | null = null;
+  try {
+    const { data: aqsRow } = await supabase
+      .from("signal_media_delivery")
+      .select("week_number, aqs_band, attention_gap_flag, attention_gap_action, aqs_benchmark_delta")
+      .eq("campaign_id", campaign_id)
+      .not("aqs_score", "is", null)
+      .order("week_number", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (aqsRow) {
+      aqs = {
+        aqs_band:            (aqsRow.aqs_band as string | null) ?? null,
+        attention_gap_flag:  (aqsRow.attention_gap_flag as boolean) ?? false,
+        attention_gap_action:(aqsRow.attention_gap_action as string) ?? "",
+        aqs_benchmark_delta: (aqsRow.aqs_benchmark_delta as number | null) ?? null,
+        week_number:         aqsRow.week_number as number,
+      };
+    }
+  } catch {
+    // AQS columns may not exist on older instances; non-blocking
+  }
+
   // Determine latest report week
   const latestWeek = (signal_reports ?? [])[0]?.week_number ?? 0;
 
@@ -166,6 +200,7 @@ async function collectCampaignData(
     report_week: latestWeek,
     campaign_name: campaignName,
     client_name: clientName,
+    aqs,
   };
 }
 
@@ -174,7 +209,19 @@ async function collectCampaignData(
 async function synthesiseReport(
   data: ComponentSnapshot,
   anthropic: Anthropic
-): Promise<{ report_data: Record<string, unknown>; executive_summary: string }> {
+): Promise<{ risk_posture: string | null; report_data: Record<string, unknown>; executive_summary: string }> {
+
+  // Build AQS context note for synthesis (INTERNAL — directional language only in output)
+  let aqsContext: Record<string, unknown> | null = null;
+  if (data.aqs) {
+    aqsContext = {
+      attention_status:       data.aqs.aqs_band,         // e.g. "Attention Weak"
+      attention_gap_flag:     data.aqs.attention_gap_flag,
+      attention_gap_action:   data.aqs.attention_gap_action,
+      vs_category_benchmark:  data.aqs.aqs_benchmark_delta,
+      as_of_week:             data.aqs.week_number,
+    };
+  }
 
   const dataStr = JSON.stringify({
     campaign_name: data.campaign_name,
@@ -184,6 +231,8 @@ async function synthesiseReport(
     brand_momentum_scores: data.brand_momentum_scores.slice(0, 2),
     attribution_records: data.attribution_records.slice(0, 4),
     orchestration_chain_summary: data.orchestration_chain_summary,
+    // INTERNAL — for signal_summary only; do NOT surface band label or score in client copy
+    attention_quality: aqsContext,
   }, null, 2);
 
   const REPORT_TOOL = {
@@ -195,12 +244,40 @@ async function synthesiseReport(
         signal_summary:         { type: "string", description: "2–3 sentences on delivery health trend." },
         consumer_state_summary: { type: "string", description: "2–3 sentences on audience behaviour and velocity. No state codes." },
         bms_summary:            { type: "string", description: "2 sentences on brand momentum direction." },
-        risk_summary:           { type: "string", description: "2 sentences on current risk posture." },
+        risk_posture: {
+          type: "string",
+          enum: ["Gaining", "Plateauing", "Under Threat", "Fragile", "Eroding Slowly"],
+          description: [
+            "The headline Risk Posture for this brand at this moment.",
+            "Gaining: BMS Positive + Accelerating or Stable. Brand winning ground, signals compounding.",
+            "Plateauing: BMS Neutral + Stable. Holding but not growing — risk of Eroding if demand signals weaken.",
+            "Under Threat: BMS Negative + competitive pressure evident in SOV or consumer behaviour. External threat driving decline.",
+            "Fragile: BMS Negative + Decelerating + low confidence. Multiple signals deteriorating simultaneously. Structural weakness.",
+            "Eroding Slowly: BMS Negative + Stable velocity. Gradual consistent decline — less acute than Fragile but cumulative risk is high.",
+            "Choose the posture that best fits the combined signal picture. When in doubt, Fragile > Under Threat > Eroding Slowly.",
+          ].join(" "),
+        },
+        risk_posture_rationale: {
+          type: "string",
+          description: "2–3 sentences (INTERNAL). Explain which specific signals drove the posture classification. Name the dominant evidence pattern. No state codes.",
+        },
+        risk_adjusted_playbook: {
+          type: "string",
+          description: [
+            "3–5 sentences (INTERNAL). Prescribed strategy modification based on this specific Risk Posture × Consumer State combination.",
+            "Be directive: 'The priority shift is X. Reduce/increase Y. The next 4 weeks should focus on Z.'",
+            "Do NOT give generic advice. Reference the actual posture and dominant consumer state in plain language.",
+          ].join(" "),
+        },
         activation_summary:     { type: "string", description: "2 sentences on priority actions." },
         attribution_summary:    { type: "string", description: "2 sentences on what attribution data shows." },
         executive_summary:      { type: "string", description: "2 paragraphs — CLIENT SAFE. What is happening, what it means, what happens next. No state codes, no internal names, no metric numbers unless from attribution." },
       },
-      required: ["signal_summary", "consumer_state_summary", "bms_summary", "risk_summary", "activation_summary", "attribution_summary", "executive_summary"],
+      required: [
+        "signal_summary", "consumer_state_summary", "bms_summary",
+        "risk_posture", "risk_posture_rationale", "risk_adjusted_playbook",
+        "activation_summary", "attribution_summary", "executive_summary",
+      ],
     },
   } as const;
 
@@ -211,7 +288,13 @@ BOUNDARY RULES — STRICT:
 2. No competitor names — directional language only.
 3. No internal system names (MDH, CSTR, BMS, ICS, FRAME, BIP, orchestration_runs, etc.)
 4. The executive_summary is CLIENT SAFE — write it as if presenting to the brand team.
-5. The section summaries are INTERNAL — can use more technical framing.`;
+5. The section summaries are INTERNAL — can use more technical framing.
+6. ATTENTION QUALITY (if present in data): incorporate into signal_summary using directional language only.
+   NEVER expose the band label ("Attention Weak", "Attention Gap", etc.) or any numeric score.
+   Use phrasing like: "Creative is reaching the target audience but losing active attention mid-video."
+   or "Video attention is holding above category norms — sustained viewing is supporting brand message delivery."
+   If attention_gap_flag is true, reference the gap_action directionally in risk_adjusted_playbook.
+   Do NOT mention "AQS", "attention score", or any internal system name.`;
 
   const reportModel = await getModel("model_campaign_report", "claude-sonnet-4-6");
   const msg = await anthropic.messages.create({
@@ -226,6 +309,7 @@ BOUNDARY RULES — STRICT:
   const toolBlock = msg.content.find((b) => b.type === "tool_use");
   if (!toolBlock || toolBlock.type !== "tool_use") {
     return {
+      risk_posture: null,
       report_data: {
         error: "Synthesis failed — AI did not return structured output",
       },
@@ -236,20 +320,25 @@ BOUNDARY RULES — STRICT:
     signal_summary?: string;
     consumer_state_summary?: string;
     bms_summary?: string;
-    risk_summary?: string;
+    risk_posture?: string;
+    risk_posture_rationale?: string;
+    risk_adjusted_playbook?: string;
     activation_summary?: string;
     attribution_summary?: string;
     executive_summary?: string;
   };
 
   return {
+    risk_posture: r.risk_posture ?? null,
     report_data: {
       signal_summary:         r.signal_summary         ?? "",
       consumer_state_summary: r.consumer_state_summary ?? "",
       bms_summary:            r.bms_summary            ?? "",
-      risk_summary:           r.risk_summary           ?? "",
+      risk_posture:           r.risk_posture           ?? "",
+      risk_posture_rationale: r.risk_posture_rationale ?? "",
+      risk_adjusted_playbook: r.risk_adjusted_playbook ?? "",
       activation_summary:     r.activation_summary     ?? "",
-      attribution_summary:    r.attribution_summary     ?? "",
+      attribution_summary:    r.attribution_summary    ?? "",
       generated_components: {
         signal_weeks:          data.signal_reports.length,
         consumer_state_weeks:  data.consumer_state_readings.length,
@@ -353,7 +442,7 @@ export async function POST(req: NextRequest) {
     const data = await collectCampaignData(campaign_id, supabase);
 
     // Synthesise report
-    const { report_data, executive_summary } = await synthesiseReport(data, anthropic);
+    const { risk_posture, report_data, executive_summary } = await synthesiseReport(data, anthropic);
 
     // Upsert report record (create new for each generation — full history)
     const reportLabel = data.report_week > 0
@@ -368,9 +457,10 @@ export async function POST(req: NextRequest) {
         report_label: reportLabel,
         report_data,
         executive_summary,
+        risk_posture,
         status: "ready",
       })
-      .select("id, report_label, executive_summary, status, created_at")
+      .select("id, report_label, executive_summary, risk_posture, status, created_at")
       .single();
 
     if (error) throw new Error(error.message);
@@ -379,6 +469,7 @@ export async function POST(req: NextRequest) {
       report_id: report.id,
       report_label: report.report_label,
       executive_summary: report.executive_summary,
+      risk_posture: report.risk_posture,
       status: report.status,
       report_data,           // INTERNAL — consumer in strategy lead UI only
       data_coverage: {
@@ -406,7 +497,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from("campaign_reports")
-    .select("id, report_label, executive_summary, report_data, findings, status, report_week, created_at, updated_at, exported_at")
+    .select("id, report_label, executive_summary, report_data, findings, risk_posture, status, report_week, created_at, updated_at, exported_at")
     .eq("campaign_id", campaign_id)
     .order("created_at", { ascending: false })
     .limit(1)

@@ -150,6 +150,35 @@ function Gate1Guard({ frame }: { frame: FrameBrief }) {
   );
 }
 
+// ─── Notify Client Button ─────────────────────────────────────────────────────
+// Shown once BIP is locked so the strategist can alert client/agency that
+// discipline briefs are ready on the brief link.
+
+function NotifyClientBipButton({ campaignId }: { campaignId: string }) {
+  function handleNotify() {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const briefUrl = `${origin}/brief/${campaignId}`;
+    const subject = encodeURIComponent("Your Campaign Briefs Are Ready");
+    const body = encodeURIComponent(
+      `Hi,\n\nYour Big Idea Platform has been completed and your channel discipline briefs are ready.\n\nVisit your campaign brief page to view and download the briefs for each active channel:\n${briefUrl}\n\nBest,\nShiftImpact`
+    );
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleNotify}
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-emerald-300 bg-emerald-50 text-emerald-800 text-xs font-semibold hover:bg-emerald-100 transition-colors"
+    >
+      <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      </svg>
+      Notify client — briefs ready
+    </button>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function BigIdeaPlatformSection({
@@ -350,8 +379,8 @@ export function BigIdeaPlatformSection({
             )}
           </form>
 
-          {/* Lock / Unlock */}
-          <div className="mt-4 pt-4 border-t border-neutral-100 flex items-center justify-between">
+          {/* Lock / Unlock + Notify */}
+          <div className="mt-4 pt-4 border-t border-neutral-100 flex items-center justify-between gap-3 flex-wrap">
             <div>
               <p className="text-xs font-medium text-neutral-700">
                 {locked
@@ -371,15 +400,18 @@ export function BigIdeaPlatformSection({
                 </p>
               )}
             </div>
-            <form action={lockAction}>
-              <button
-                type="submit"
-                disabled={!locked && !bipComplete}
-                className={locked ? buttonSecondaryClass : buttonClass}
-              >
-                {locked ? "Unlock BIP" : "Lock BIP → Run Gate 2"}
-              </button>
-            </form>
+            <div className="flex items-center gap-2 flex-wrap">
+              {locked && <NotifyClientBipButton campaignId={campaignId} />}
+              <form action={lockAction}>
+                <button
+                  type="submit"
+                  disabled={!locked && !bipComplete}
+                  className={locked ? buttonSecondaryClass : buttonClass}
+                >
+                  {locked ? "Unlock BIP" : "Lock BIP → Run Gate 2"}
+                </button>
+              </form>
+            </div>
           </div>
         </>
       )}

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendBriefNotification } from "@/lib/email";
 
 function str(formData: FormData, key: string): string {
   return (formData.get(key) as string | null) ?? "";
@@ -24,6 +25,32 @@ function dateOrNull(formData: FormData, key: string): string | null {
 // Clients
 // ───────────────────────────────────────────────────────────────────────
 
+// Default channels seeded for every new client
+const DEFAULT_CHANNELS = [
+  { channel_name: "Digital / Social", channel_category: "DIGITAL", translation_hint: "Platform-native brand mechanics." },
+  { channel_name: "KOL / Influencer",  channel_category: "KOL",     translation_hint: "Creator-native storytelling." },
+  { channel_name: "PR / Earned Media", channel_category: "PR",      translation_hint: "Journalist angle, not brand angle." },
+  { channel_name: "Radio",             channel_category: "RADIO",   translation_hint: "Audio-only hook. Human tension in 15 seconds." },
+  { channel_name: "Retail / In-Store", channel_category: "RETAIL",  translation_hint: "Last-mile conversion trigger." },
+];
+
+// Default signal sources seeded for every new client
+const DEFAULT_SIGNAL_SOURCES = [
+  { source_name: "TikTok Save Rate",                   source_type: "social",        unit: "%",     description: "Hero content saves as % of views — primary Demand signal" },
+  { source_name: "TikTok Share Rate",                  source_type: "social",        unit: "%",     description: "Shares as % of views — secondary virality signal" },
+  { source_name: "Google Search Intent",               source_type: "behavioral",    unit: "%",     description: "Search volume lift vs baseline for category/brand terms" },
+  { source_name: "Google Search Console (Branded)",    source_type: "behavioral",    unit: "%",     description: "Branded search volume movement from Google Search Console" },
+  { source_name: "Meta ROAS",                          source_type: "quantitative",  unit: "x",     description: "Return on ad spend from Meta campaigns" },
+  { source_name: "TikTok Shop CTR",                    source_type: "quantitative",  unit: "%",     description: "Click-through rate on TikTok Shop product links" },
+  { source_name: "TikTok Shop CVR",                    source_type: "quantitative",  unit: "%",     description: "Conversion rate on TikTok Shop (clicks to purchase)" },
+  { source_name: "Cart Abandonment Rate",              source_type: "quantitative",  unit: "%",     description: "Shopping cart abandonment rate — lower is better" },
+  { source_name: "Repeat Purchase Rate (60-day)",      source_type: "quantitative",  unit: "%",     description: "Customers who repurchased within 60 days" },
+  { source_name: "Organic UGC Volume",                 source_type: "social",        unit: "#",     description: "Volume of organic user-generated content mentioning brand" },
+  { source_name: "NPS Score",                          source_type: "qualitative",   unit: "score", description: "Net Promoter Score from post-purchase survey" },
+  { source_name: "In-Store Footfall Lift",             source_type: "behavioral",    unit: "%",     description: "Store footfall lift vs baseline period" },
+  { source_name: "Loyalty App Opens",                  source_type: "behavioral",    unit: "%",     description: "Loyalty app open rate during campaign period" },
+];
+
 export async function createClient(formData: FormData) {
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -33,6 +60,8 @@ export async function createClient(formData: FormData) {
       industry_profile: str(formData, "industry_profile"),
       business_outcome_label: str(formData, "business_outcome_label") || "Business Outcome",
       retention_metric_label: str(formData, "retention_metric_label") || "Retention Metric",
+      contact_name: str(formData, "contact_name") || null,
+      contact_email: str(formData, "contact_email") || null,
     })
     .select("id")
     .single();
@@ -41,8 +70,20 @@ export async function createClient(formData: FormData) {
     redirect(`/clients?error=${encodeURIComponent(error.message)}`);
   }
 
+  const clientId = data.id;
+
+  // Auto-seed standard channels
+  await supabase.from("client_channels").insert(
+    DEFAULT_CHANNELS.map(ch => ({ client_id: clientId, ...ch }))
+  );
+
+  // Auto-seed signal sources
+  await supabase.from("client_signal_sources").insert(
+    DEFAULT_SIGNAL_SOURCES.map(src => ({ client_id: clientId, ...src }))
+  );
+
   revalidatePath("/clients");
-  redirect(`/clients/${data.id}`);
+  redirect(`/clients/${clientId}`);
 }
 
 export async function updateClient(clientId: string, formData: FormData) {
@@ -54,6 +95,8 @@ export async function updateClient(clientId: string, formData: FormData) {
       industry_profile: str(formData, "industry_profile"),
       business_outcome_label: str(formData, "business_outcome_label") || "Business Outcome",
       retention_metric_label: str(formData, "retention_metric_label") || "Retention Metric",
+      contact_name: str(formData, "contact_name") || null,
+      contact_email: str(formData, "contact_email") || null,
     })
     .eq("id", clientId);
 
@@ -64,6 +107,13 @@ export async function updateClient(clientId: string, formData: FormData) {
   revalidatePath(`/clients/${clientId}`);
   revalidatePath("/clients");
   redirect(`/clients/${clientId}`);
+}
+
+export async function deleteClient(clientId: string) {
+  const supabase = createAdminClient();
+  await supabase.from("clients").delete().eq("id", clientId);
+  revalidatePath("/clients");
+  redirect("/clients");
 }
 
 // ───────────────────────────────────────────────────────────────────────
@@ -222,6 +272,65 @@ export async function setFrameLockStatus(campaignId: string, frameBriefId: strin
   // F32: fire brief orchestration chain when brief is locked (non-blocking)
   if (lock) {
     void fireOrchestration(campaignId, "BRIEF_SUBMITTED", { source: "frame_lock", frame_brief_id: frameBriefId });
+
+    // Sprint 9: auto-snapshot predictions on FRAME lock (non-blocking)
+    void fetch(`${process.env.NEXT_PUBLIC_APP_URL ?? "https://shiftimpact-os.vercel.app"}/api/prediction-snapshot`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ campaign_id: campaignId, frame_brief_id: frameBriefId }),
+    }).catch(() => { /* non-critical */ });
+
+    // Sprint 31: fire email notifications to team member + client contact (non-blocking)
+    void (async () => {
+      try {
+        const [campaignRes, frameRes] = await Promise.all([
+          supabase
+            .from("campaigns")
+            .select("name, client_id, team_member_id, clients(name, contact_name, contact_email), team_members(name, email)")
+            .eq("id", campaignId)
+            .single(),
+          supabase
+            .from("frame_briefs")
+            .select("anchor")
+            .eq("id", frameBriefId)
+            .single(),
+        ]);
+
+        const campaign = campaignRes.data;
+        const frame = frameRes.data;
+        if (!campaign || !frame) return;
+
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://shiftimpact-os.vercel.app";
+        const briefUrl = `${baseUrl}/brief/${campaignId}`;
+
+        // Build recipient list — only include entries with an email address
+        const recipients: { name: string; email: string; role: "agency" | "client" }[] = [];
+
+        const tm = campaign.team_members as { name: string; email: string | null } | null;
+        if (tm?.email) recipients.push({ name: tm.name, email: tm.email, role: "agency" });
+
+        const cl = campaign.clients as { name: string; contact_name: string | null; contact_email: string | null } | null;
+        if (cl?.contact_email) {
+          recipients.push({
+            name: cl.contact_name ?? cl.name,
+            email: cl.contact_email,
+            role: "client",
+          });
+        }
+
+        if (recipients.length === 0) return; // no emails configured yet
+
+        await sendBriefNotification({
+          campaignName: campaign.name,
+          clientName: cl?.name ?? "Client",
+          frameAnchor: frame.anchor,
+          briefUrl,
+          recipients,
+        });
+      } catch (e) {
+        console.error("[setFrameLockStatus] email notification failed:", e);
+      }
+    })();
   }
 
   revalidatePath(`/campaigns/${campaignId}`);
@@ -251,18 +360,52 @@ export async function createKillSwitch(campaignId: string, frameBriefId: string,
 
 export async function updateKillSwitch(campaignId: string, killSwitchId: string, formData: FormData) {
   const supabase = createAdminClient();
+  const newStatus   = str(formData, "trigger_status");
+  const condition   = str(formData, "condition");
+  const priority    = str(formData, "priority");
+
   const { error } = await supabase
     .from("kill_switches")
-    .update({
-      condition: str(formData, "condition"),
-      trigger_status: str(formData, "trigger_status"),
-      priority: str(formData, "priority"),
-    })
+    .update({ condition, trigger_status: newStatus, priority })
     .eq("id", killSwitchId);
 
   if (error) {
     redirect(`/campaigns/${campaignId}?error=${encodeURIComponent(error.message)}#kill-switches`);
   }
+
+  // ── Auto Decision Snapshot when a kill switch is Triggered ────────────────
+  if (newStatus === "Triggered") {
+    const weekOf = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const snapshotLine = `[KILL SWITCH TRIGGERED — ${priority} priority] ${condition}`;
+
+    // Check for an existing dashboard entry this week
+    const { data: existing } = await supabase
+      .from("campaign_dashboards")
+      .select("id, decision_snapshot")
+      .eq("campaign_id", campaignId)
+      .eq("week_of", weekOf)
+      .maybeSingle();
+
+    if (existing) {
+      // Prepend to existing decision_snapshot
+      const updated = `${snapshotLine}\n\n${existing.decision_snapshot ?? ""}`.trim();
+      await supabase.from("campaign_dashboards").update({ decision_snapshot: updated }).eq("id", existing.id);
+    } else {
+      // Create a minimal dashboard entry seeded with the kill switch note
+      await supabase.from("campaign_dashboards").insert({
+        campaign_id:              campaignId,
+        week_of:                  weekOf,
+        decision_snapshot:        snapshotLine,
+        funnel_health_demand:     "Red",
+        funnel_health_conversion: "Amber",
+        funnel_health_retention:  "Amber",
+        ssic:                     "Kill switch triggered — review immediately.",
+        triggers:                 condition,
+        idea_integrity_observation: "",
+      });
+    }
+  }
+  // ──────────────────────────────────────────────────────────────────────────
 
   revalidatePath(`/campaigns/${campaignId}`);
   redirect(`/campaigns/${campaignId}#kill-switches`);
@@ -286,10 +429,23 @@ export async function deleteKillSwitch(campaignId: string, killSwitchId: string)
 
 export async function createStageBrief(campaignId: string, formData: FormData) {
   const supabase = createAdminClient();
+
+  // Server-side FRAME lock guard — FRAME must be locked before any Stage Brief can be created
+  const { data: frameBrief } = await supabase
+    .from("frame_briefs")
+    .select("lock_status")
+    .eq("campaign_id", campaignId)
+    .single();
+
+  if (!frameBrief || frameBrief.lock_status !== "Locked") {
+    redirect(`/campaigns/${campaignId}?error=${encodeURIComponent("Lock the FRAME Brief before creating Stage Briefs.")}#stage-briefs`);
+  }
+
   const { error } = await supabase.from("stage_briefs").insert({
     campaign_id: campaignId,
     stage: str(formData, "stage"),
     channel: str(formData, "channel"),
+    department: str(formData, "department") || null,
     brief_body: str(formData, "brief_body"),
     propagation_mechanism: str(formData, "propagation_mechanism"),
     idea_led_vs_spend_led: str(formData, "idea_led_vs_spend_led") || null,
@@ -310,6 +466,7 @@ export async function updateStageBrief(campaignId: string, stageBriefId: string,
     .from("stage_briefs")
     .update({
       channel: str(formData, "channel"),
+      department: str(formData, "department") || null,
       brief_body: str(formData, "brief_body"),
       propagation_mechanism: str(formData, "propagation_mechanism"),
       idea_led_vs_spend_led: str(formData, "idea_led_vs_spend_led") || null,
@@ -415,6 +572,7 @@ export async function createTeamMember(formData: FormData) {
   const { error } = await supabase.from("team_members").insert({
     name: str(formData, "name"),
     role: str(formData, "role"),
+    email: str(formData, "email") || null,
     urgent_count: numOrNull(formData, "urgent_count") ?? 0,
   });
 
@@ -433,6 +591,7 @@ export async function updateTeamMember(memberId: string, formData: FormData) {
     .update({
       name: str(formData, "name"),
       role: str(formData, "role"),
+      email: str(formData, "email") || null,
       urgent_count: numOrNull(formData, "urgent_count") ?? 0,
     })
     .eq("id", memberId);
@@ -452,13 +611,107 @@ export async function updateTeamMember(memberId: string, formData: FormData) {
 export async function toggleOsRule(ruleId: string, active: boolean) {
   const supabase = createAdminClient();
   const { error } = await supabase.from("os_rules").update({ active }).eq("id", ruleId);
-
-  if (error) {
-    redirect(`/os-rules?error=${encodeURIComponent(error.message)}`);
-  }
-
+  if (error) redirect(`/os-rules?error=${encodeURIComponent(error.message)}`);
   revalidatePath("/os-rules");
   redirect("/os-rules");
+}
+
+export async function createOsRule(formData: FormData) {
+  const supabase = createAdminClient();
+  const configRaw = (formData.get("config") as string) || "{}";
+  let config: Record<string, unknown> = {};
+  try { config = JSON.parse(configRaw); } catch { config = {}; }
+
+  const { error } = await supabase.from("os_rules").insert({
+    rule_name:   formData.get("rule_name") as string,
+    rule_type:   formData.get("rule_type") as string,
+    description: formData.get("description") as string,
+    config,
+    active: true,
+  });
+  if (error) redirect(`/os-rules?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/os-rules");
+  redirect("/os-rules");
+}
+
+export async function updateOsRule(ruleId: string, formData: FormData) {
+  const supabase = createAdminClient();
+  const configRaw = (formData.get("config") as string) || "{}";
+  let config: Record<string, unknown> = {};
+  try { config = JSON.parse(configRaw); } catch { config = {}; }
+
+  const { error } = await supabase.from("os_rules").update({
+    rule_name:   formData.get("rule_name") as string,
+    rule_type:   formData.get("rule_type") as string,
+    description: formData.get("description") as string,
+    config,
+  }).eq("id", ruleId);
+  if (error) redirect(`/os-rules?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/os-rules");
+  redirect("/os-rules");
+}
+
+export async function deleteOsRule(ruleId: string) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("os_rules").delete().eq("id", ruleId);
+  if (error) redirect(`/os-rules?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/os-rules");
+  redirect("/os-rules");
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Partner Workspaces
+// ───────────────────────────────────────────────────────────────────────
+
+export async function createPartner(formData: FormData) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("partner_workspaces").insert({
+    partner_name:  str(formData, "partner_name"),
+    partner_slug:  str(formData, "partner_slug"),
+    description:   str(formData, "description") || null,
+    direction:     str(formData, "direction") || "referral_out_only",
+    contact_name:  str(formData, "contact_name") || null,
+    contact_email: str(formData, "contact_email") || null,
+    notes:         str(formData, "notes") || null,
+    is_active:     true,
+  });
+  if (error) redirect(`/partners?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/partners");
+  redirect("/partners");
+}
+
+export async function updatePartner(partnerId: string, formData: FormData) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("partner_workspaces").update({
+    partner_name:  str(formData, "partner_name"),
+    partner_slug:  str(formData, "partner_slug"),
+    description:   str(formData, "description") || null,
+    direction:     str(formData, "direction"),
+    contact_name:  str(formData, "contact_name") || null,
+    contact_email: str(formData, "contact_email") || null,
+    notes:         str(formData, "notes") || null,
+  }).eq("id", partnerId);
+  if (error) redirect(`/partners?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/partners");
+  redirect("/partners");
+}
+
+export async function togglePartner(partnerId: string, active: boolean) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("partner_workspaces")
+    .update({ is_active: active })
+    .eq("id", partnerId);
+  if (error) redirect(`/partners?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/partners");
+  redirect("/partners");
+}
+
+export async function deletePartner(partnerId: string) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("partner_workspaces").delete().eq("id", partnerId);
+  if (error) redirect(`/partners?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/partners");
+  redirect("/partners");
 }
 
 // ───────────────────────────────────────────────────────────────────────
@@ -485,6 +738,29 @@ export async function createSignalLog(campaignId: string, formData: FormData) {
 
   revalidatePath(`/campaigns/${campaignId}`);
   redirect(`/campaigns/${campaignId}#signal-log`);
+}
+
+// logSignalFromReport — same insert as createSignalLog but returns a result
+// instead of redirecting, so client components can show inline confirmation.
+export async function logSignalFromReport(
+  campaignId: string,
+  formData: FormData
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("gate_signal_log").insert({
+    campaign_id: campaignId,
+    gate_id: null,
+    logged_at: new Date().toISOString().slice(0, 10),
+    signal_type: str(formData, "signal_type"),
+    signal_label: str(formData, "signal_label"),
+    actual_value: numOrNull(formData, "actual_value"),
+    threshold_value: numOrNull(formData, "threshold_value"),
+    unit: str(formData, "unit") || null,
+    notes: str(formData, "notes") || null,
+  });
+  if (error) return { success: false, error: error.message };
+  revalidatePath(`/campaigns/${campaignId}`);
+  return { success: true };
 }
 
 export async function deleteSignalLog(logId: string, campaignId: string) {
@@ -576,13 +852,41 @@ export async function createIdeaExtension(campaignId: string, formData: FormData
 export async function updateIdeaExtension(extensionId: string, campaignId: string, formData: FormData) {
   const supabase = createAdminClient();
   const channelRole = str(formData, "channel_role") || null;
+
+  // Detect brief format — v2 uses structured JSON fields; v1 uses raw brief_body textarea
+  const isV2 = str(formData, "__brief_version") === "2";
+  let brief_body: string;
+  let propagation_mechanism: string;
+
+  if (isV2) {
+    // Build v2 JSON from all structured form fields
+    const v2 = {
+      __v: 2,
+      idea_spine: str(formData, "idea_spine") || "",
+      concept_rationale: str(formData, "concept_rationale") || "",
+      win_conditions: str(formData, "win_conditions") || "",
+      propagation_mechanism: str(formData, "propagation_mechanism") || "",
+      strategic_recommendation: str(formData, "strategic_recommendation") || "",
+      anchor_integrity_check: str(formData, "anchor_integrity_check") || "",
+      do_not: str(formData, "do_not") || "",
+      client_notes: str(formData, "client_notes") || "",
+    };
+    brief_body = JSON.stringify(v2);
+    propagation_mechanism = v2.propagation_mechanism;
+  } else {
+    // v1 — single textarea
+    brief_body = str(formData, "brief_body") || "";
+    propagation_mechanism = str(formData, "propagation_mechanism") || "";
+  }
+
   const { error } = await supabase.from("idea_extensions").update({
     expression_name: str(formData, "expression_name") || "",
     channel_role: channelRole,
-    brief_body: str(formData, "brief_body"),
-    propagation_mechanism: str(formData, "propagation_mechanism"),
+    brief_body,
+    propagation_mechanism,
     status: str(formData, "status") || "Draft",
   }).eq("id", extensionId);
+
   if (error) redirect(`/campaigns/${campaignId}?error=${encodeURIComponent(error.message)}`);
   revalidatePath(`/campaigns/${campaignId}`);
   redirect(`/campaigns/${campaignId}#idea-extensions`);
@@ -835,11 +1139,11 @@ export async function upsertSignalThresholds(
     campaign_id: campaignId,
     campaign_duration_weeks: Number(str(formData, "campaign_duration_weeks")) || 12,
     signal_1_label: str(formData, "signal_1_label") || "Branded Search Lift",
-    signal_1_threshold_pct: Number(str(formData, "signal_1_threshold_pct")) || 20,
+    signal_1_threshold_pct: Number(str(formData, "s1_green_pct")) || 20,
     signal_1_amber_pct: Number(str(formData, "signal_1_amber_pct")) || 10,
     signal_1_red_pct: Number(str(formData, "signal_1_red_pct")) || 0,
     signal_2_label: str(formData, "signal_2_label") || "Content Save Rate",
-    signal_2_threshold_pct: Number(str(formData, "signal_2_threshold_pct")) || 8,
+    signal_2_threshold_pct: Number(str(formData, "s2_green_pct")) || 8,
     signal_2_amber_pct: Number(str(formData, "signal_2_amber_pct")) || 4,
     signal_2_red_pct: Number(str(formData, "signal_2_red_pct")) || 2,
     signal_2b_label: str(formData, "signal_2b_label") || "TikTok share rate",
@@ -847,7 +1151,7 @@ export async function upsertSignalThresholds(
     signal_2b_amber_pct: Number(str(formData, "signal_2b_amber_pct")) || 3,
     signal_2b_red_pct: Number(str(formData, "signal_2b_red_pct")) || 1,
     signal_3_label: str(formData, "signal_3_label") || "UGC Volume (Apify)",
-    signal_3_threshold_count: Number(str(formData, "signal_3_threshold_count")) || 100,
+    signal_3_threshold_count: Number(str(formData, "s3_green_count")) || 100,
     signal_3_amber_count: Number(str(formData, "signal_3_amber_count")) || 50,
     signal_3_red_count: Number(str(formData, "signal_3_red_count")) || 20,
     // Signal 3B — Video Completion Rate (Sprint 25)
@@ -1101,6 +1405,41 @@ export async function getPrimaryMarket() {
 // Internal access only. Never surfaced to clients.
 // ───────────────────────────────────────────────────────────────────────
 
+// Seed campaign channels in bulk from FRAME Brief active_channels list.
+// Matches channel names (case-insensitive) against channel_profiles and inserts
+// one row per match. Skips profiles already assigned to the campaign.
+export async function seedCampaignChannelsFromFrame(
+  campaignId: string,
+  seeds: { channel_profile_id: string; channel_role: string }[]
+): Promise<{ seeded: number; error?: string }> {
+  if (seeds.length === 0) return { seeded: 0 };
+  const supabase = createAdminClient();
+
+  // Check which profiles are already assigned
+  const { data: existing } = await supabase
+    .from("campaign_channels")
+    .select("channel_profile_id")
+    .eq("campaign_id", campaignId);
+  const existingIds = new Set((existing ?? []).map((r) => r.channel_profile_id));
+
+  const toInsert = seeds
+    .filter((s) => !existingIds.has(s.channel_profile_id))
+    .map((s) => ({
+      campaign_id: campaignId,
+      channel_profile_id: s.channel_profile_id,
+      channel_role: s.channel_role,
+      is_primary: false,
+    }));
+
+  if (toInsert.length === 0) return { seeded: 0 };
+
+  const { error } = await supabase.from("campaign_channels").insert(toInsert);
+  if (error) return { seeded: 0, error: error.message };
+
+  revalidatePath(`/campaigns/${campaignId}`);
+  return { seeded: toInsert.length };
+}
+
 // Assign a channel_profile to a campaign
 export async function addCampaignChannel(campaignId: string, formData: FormData) {
   const supabase = createAdminClient();
@@ -1284,8 +1623,7 @@ export async function saveBrandMomentumInputs(
   const supabase = createAdminClient();
   const periodStart = str(formData, "period_start");
   if (!periodStart) {
-    redirect(`/clients/${clientId}?error=${encodeURIComponent("Period start date is required")}#brand-momentum`);
-    return;
+    throw new Error("Period start date is required");
   }
   const { error } = await supabase.from("brand_momentum_scores").insert({
     client_id:           clientId,
@@ -1307,7 +1645,7 @@ export async function saveBrandMomentumInputs(
     competitive_note:    str(formData, "competitive_note"),
   });
   if (error) {
-    redirect(`/clients/${clientId}?error=${encodeURIComponent(error.message)}#brand-momentum`);
+    throw new Error(error.message);
   }
   revalidatePath(`/clients/${clientId}`);
   // No redirect — component calls /api/brand-momentum next (same pattern as saveWeeklySignalInputs)
@@ -1610,3 +1948,78 @@ export async function getOrchestrationRunHistory(campaignId: string, limit = 10)
 
   return data ?? [];
 }
+
+// ───────────────────────────────────────────────────────────────────────
+// Sprint 5 — Expert Architecture Additions
+// ───────────────────────────────────────────────────────────────────────
+
+/**
+ * Save Demand investment % for this campaign's FRAME brief.
+ * Used by Brand Health Battery to track rolling 60:40 ratio.
+ */
+export async function saveDemandInvestmentPct(campaignId: string, formData: FormData) {
+  const supabase = createAdminClient();
+  const pct = numOrNull(formData, "demand_investment_pct");
+
+  await supabase
+    .from("frame_briefs")
+    .update({ demand_investment_pct: pct })
+    .eq("campaign_id", campaignId);
+
+  revalidatePath(`/campaigns/${campaignId}`);
+}
+
+/**
+ * Save / upsert Campaign Learning Record (F18C).
+ * One record per campaign. Subsequent saves update the existing record.
+ */
+export async function saveCampaignLearning(campaignId: string, formData: FormData) {
+  const supabase = createAdminClient();
+
+  const payload = {
+    campaign_id:                 campaignId,
+    what_worked:                 str(formData, "what_worked"),
+    what_to_change:              str(formData, "what_to_change"),
+    signal_insights:             str(formData, "signal_insights"),
+    anchor_recommendation:       str(formData, "anchor_recommendation"),
+    kill_switch_recommendation:  str(formData, "kill_switch_recommendation"),
+    channel_recommendation:      str(formData, "channel_recommendation"),
+    budget_split_recommendation: str(formData, "budget_split_recommendation"),
+    sov_pct:                     numOrNull(formData, "sov_pct"),
+    som_pct:                     numOrNull(formData, "som_pct"),
+    updated_at:                  new Date().toISOString(),
+  };
+
+  await supabase
+    .from("campaign_learning_records")
+    .upsert(payload, { onConflict: "campaign_id" });
+
+  revalidatePath(`/campaigns/${campaignId}`);
+}
+
+/**
+ * Save Audience Replenishment Rate entry for a week.
+ * Upserts on (campaign_id, week_number).
+ */
+export async function saveAudienceReplenishment(campaignId: string, formData: FormData) {
+  const supabase = createAdminClient();
+
+  const week = numOrNull(formData, "week_number");
+  if (week === null) return;
+
+  const payload = {
+    campaign_id:               campaignId,
+    week_number:               week,
+    estimated_nurture_pool:    numOrNull(formData, "estimated_nurture_pool"),
+    weekly_conversion_count:   numOrNull(formData, "weekly_conversion_count"),
+    demand_new_audience:       numOrNull(formData, "demand_new_audience"),
+    notes:                     str(formData, "notes"),
+  };
+
+  await supabase
+    .from("audience_replenishment")
+    .upsert(payload, { onConflict: "campaign_id,week_number" });
+
+  revalidatePath(`/campaigns/${campaignId}`);
+}
+
