@@ -150,6 +150,8 @@ export default function DecideInsightsPage() {
   const topStage = stageBreakdown[0];
   const topGap = decisionGapBreakdown[0];
 
+  const topIndustry = industryBreakdown[0];
+
   const consultingRead = [
     topPosture && `${topPosture.pct}% of decisions are ${topPosture.label.toUpperCase()} — your ICP is not stuck on action, they are stuck on confidence.`,
     topSignal && `The most misread signal is ${SIGNAL_LABEL[topSignal.label] ?? topSignal.label} (${topSignal.pct}% of sessions) — this is your sharpest diagnostic hook.`,
@@ -186,7 +188,6 @@ export default function DecideInsightsPage() {
 
   // Sharper ICP sub-segment (Feature 1)
   // Derive the specific ICP archetype from the top posture + stage + signal combination.
-  const topIndustry = industryBreakdown[0];
   const icpSubSegment = (() => {
     if (!topPosture || !topStage || !topSignal) return null;
     const industryLabel = topIndustry ? ` in ${topIndustry.label}` : "";

@@ -128,8 +128,9 @@ export default async function DigestPage() {
     .order("detected_at", { ascending: false })
     .limit(20);
 
-  // Sort by window urgency: leadership + funding first (highest conversion probability)
+  // Sort by window urgency — decide_session = rank 0 (inbound intent, highest signal)
   const WINDOW_PRIORITY: Record<string, number> = {
+    decide_session:      0,
     leadership_change:   1,
     funding_event:       2,
     strategic_move:      3,
@@ -170,6 +171,10 @@ export default async function DigestPage() {
   const windowsByCompany = Array.from(windowsByCompanyMap.values()).sort(
     (a, b) => a.topPriority - b.topPriority
   );
+
+  // Split decide_session (inbound intent) from regular outbound opportunity windows
+  const decideMatches   = windowsByCompany.filter(g => g.topPriority === 0);
+  const regularWindows  = windowsByCompany.filter(g => g.topPriority !== 0);
 
   // 5. Pipeline summary
   const { data: allCompanies } = await supabase
@@ -339,7 +344,8 @@ export default async function DigestPage() {
     qualified:  allCompanies?.filter(c => c.status === "Qualified").length ?? 0,
     hot:        allCompanies?.filter(c => c.prospect_tier === "Tier 1 Hot").length ?? 0,
     aoai:       allCompanies?.filter(c => c.partner_tag === "AOAI" || c.partner_tag === "Both").length ?? 0,
-    windows:    sortedWindows.length,
+    windows:    regularWindows.length,
+    decideHits: decideMatches.length,
     cultural:   culturalEntries.length,
     activeCampaigns: campaignPulse.length,
     breachAlerts: campaignPulse.reduce((sum, c) => sum + c.breach_count, 0),
@@ -361,25 +367,30 @@ export default async function DigestPage() {
       </div>
 
       {/* ── Pipeline snapshot ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 sm:grid-cols-7 gap-2">
+      <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
         {[
-          { label: "Tracked",    value: pipeline.total },
-          { label: "Pursuing",   value: pipeline.pursuing },
-          { label: "Qualified",  value: pipeline.qualified },
-          { label: "Tier 1 Hot", value: pipeline.hot },
-          { label: "AOAI Fit",   value: pipeline.aoai },
-          { label: "Open Windows", value: pipeline.windows, highlight: pipeline.windows > 0 },
-          { label: "Cultural Signals", value: pipeline.cultural, highlight: pipeline.cultural > 0, teal: true },
+          { label: "Tracked",         value: pipeline.total },
+          { label: "Pursuing",        value: pipeline.pursuing },
+          { label: "Qualified",       value: pipeline.qualified },
+          { label: "Tier 1 Hot",      value: pipeline.hot },
+          { label: "AOAI Fit",        value: pipeline.aoai },
+          { label: "Inbound Intent",  value: pipeline.decideHits,  highlight: pipeline.decideHits > 0,  indigo: true },
+          { label: "Open Windows",    value: pipeline.windows,     highlight: pipeline.windows > 0 },
+          { label: "Cultural",        value: pipeline.cultural,    highlight: pipeline.cultural > 0,     teal: true },
         ].map(s => (
           <div key={s.label} className={`border rounded-lg px-3 py-2.5 text-center ${
-            (s as { teal?: boolean }).teal && (s as { highlight?: boolean }).highlight
+            (s as { indigo?: boolean }).indigo && (s as { highlight?: boolean }).highlight
+              ? "bg-indigo-50 border-indigo-200"
+              : (s as { teal?: boolean }).teal && (s as { highlight?: boolean }).highlight
               ? "bg-teal-50 border-teal-200"
               : (s as { highlight?: boolean }).highlight
               ? "bg-amber-50 border-amber-200"
               : "bg-white border-neutral-200"
           }`}>
             <p className={`text-xl font-bold ${
-              (s as { teal?: boolean }).teal && (s as { highlight?: boolean }).highlight
+              (s as { indigo?: boolean }).indigo && (s as { highlight?: boolean }).highlight
+                ? "text-indigo-700"
+                : (s as { teal?: boolean }).teal && (s as { highlight?: boolean }).highlight
                 ? "text-teal-700"
                 : (s as { highlight?: boolean }).highlight
                 ? "text-amber-700"
@@ -495,18 +506,120 @@ export default async function DigestPage() {
         </div>
       )}
 
-      {/* ── Open opportunity windows ─────────────────────────────────────── */}
-      {windowsByCompany.length > 0 && (
+      {/* ── Inbound Intent — /decide session matches ─────────────────────── */}
+      {decideMatches.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-baseline justify-between">
             <SectionTitle>
-              Open Opportunity Windows ({sortedWindows.length} across {windowsByCompany.length} {windowsByCompany.length === 1 ? "client" : "clients"})
+              Inbound Intent ({decideMatches.length} {decideMatches.length === 1 ? "match" : "matches"} via /decide)
+            </SectionTitle>
+            <span className="text-xs text-neutral-400">They came to us first</span>
+          </div>
+
+          <div className="space-y-2">
+            {decideMatches.map(({ company: co, alerts }) => {
+              // Parse posture + decision snippet from trigger_reason
+              // Format: "<CompanyName> email matched on /decide. Posture: <posture>. Decision: "<snippet>""
+              const triggerText = alerts[0]?.trigger_reason ?? "";
+              const postureMatch = triggerText.match(/Posture:\s*([^.]+)/);
+              const decisionMatch = triggerText.match(/Decision:\s*"([^"]+)"/);
+              const posture  = postureMatch?.[1]?.trim() ?? null;
+              const decision = decisionMatch?.[1]?.trim() ?? null;
+
+              const POSTURE_STYLE: Record<string, string> = {
+                press:       "bg-emerald-100 border-emerald-300 text-emerald-800",
+                hold:        "bg-amber-100 border-amber-300 text-amber-800",
+                pivot:       "bg-violet-100 border-violet-300 text-violet-800",
+                stop:        "bg-red-100 border-red-300 text-red-800",
+                investigate: "bg-blue-100 border-blue-300 text-blue-800",
+              };
+              const postureStyle = posture ? (POSTURE_STYLE[posture.toLowerCase()] ?? "bg-neutral-100 border-neutral-200 text-neutral-600") : null;
+
+              return (
+                <div key={co.id} className="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="flex-1 min-w-0 space-y-2">
+
+                      {/* Header */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-indigo-700 border-indigo-700 text-white uppercase tracking-wide">
+                          Inbound via /decide
+                        </span>
+                        <Link href={`/prospects/${co.id}`} className="font-semibold text-neutral-900 hover:underline">
+                          {co.name}
+                        </Link>
+                        <span className="text-xs text-neutral-400">
+                          {[co.industry, co.market_code].filter(Boolean).join(" · ")}
+                        </span>
+                        {lastOutreachByCompany.has(co.id) && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full border border-blue-200 bg-blue-50 text-blue-600 font-medium">
+                            contacted {daysSince(lastOutreachByCompany.get(co.id)!)}
+                          </span>
+                        )}
+                        {!lastOutreachByCompany.has(co.id) && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full border border-neutral-200 bg-neutral-50 text-neutral-400">
+                            not yet contacted
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Posture + Decision context */}
+                      {(posture || decision) && (
+                        <div className="rounded-lg bg-white border border-indigo-200 px-3 py-2 space-y-1">
+                          {posture && postureStyle && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Posture</span>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize ${postureStyle}`}>
+                                {posture}
+                              </span>
+                            </div>
+                          )}
+                          {decision && (
+                            <div>
+                              <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider block mb-0.5">Their decision</span>
+                              <p className="text-xs text-neutral-700 italic">&ldquo;{decision}&rdquo;</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <p className="text-[11px] text-indigo-400">
+                        Email domain matched on /decide · {daysSince(alerts[0]?.detected_at ?? null)}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <Link
+                        href={`/prospects/${co.id}`}
+                        className="text-xs font-medium px-3 py-1.5 rounded-lg bg-indigo-700 text-white hover:bg-indigo-800 transition-colors"
+                      >
+                        Assess →
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <p className="text-xs text-neutral-400 pt-1">
+            These prospects ran your /decide diagnostic — their email domain matched a tracked company. High intent.
+          </p>
+        </div>
+      )}
+
+      {/* ── Open opportunity windows ─────────────────────────────────────── */}
+      {regularWindows.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-baseline justify-between">
+            <SectionTitle>
+              Open Opportunity Windows ({regularWindows.reduce((s, g) => s + g.alerts.length, 0)} across {regularWindows.length} {regularWindows.length === 1 ? "client" : "clients"})
             </SectionTitle>
             <span className="text-xs text-neutral-400">Act before the window closes</span>
           </div>
 
           <div className="space-y-2">
-            {windowsByCompany.map(({ company: co, alerts, topPriority }) => {
+            {regularWindows.map(({ company: co, alerts, topPriority }) => {
               const hasHighPriority = topPriority <= 2;
               const hasB2B = alerts.some(a => {
                 const w = a.opportunity_windows as { engagement_model: string };
