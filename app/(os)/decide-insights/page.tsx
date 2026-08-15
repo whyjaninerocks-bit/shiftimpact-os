@@ -141,6 +141,7 @@ export default function DecideInsightsPage() {
 
   if (loading) return <div style={{ ...s, padding: 48, color: "#4b5563" }}>Loading decision intelligence...</div>;
   if (error || !data) return <div style={{ ...s, padding: 48, color: "#ef4444" }}>{error || "No data"}</div>;
+  if (!data.summary) return <div style={{ ...s, padding: 48, color: "#ef4444" }}>{"API error: " + ((data as Record<string, unknown>).error ?? "unexpected response shape")}</div>;
 
   const { summary, postureBreakdown, stageBreakdown, signalGapBreakdown, decisionGapBreakdown, industryBreakdown, topSignalByIndustry, bridgeLibrary, gateFriction, prospectMatches, recent, weekly } = data;
 
