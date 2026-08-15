@@ -99,7 +99,7 @@ export async function GET() {
     .order("week_number", { ascending: false });
 
   const { data: failingLogs } = await supabase
-    .from("gate_signal_logs")
+    .from("gate_signal_log")
     .select("campaign_id, signal_label")
     .eq("pass", false);
 

@@ -462,6 +462,34 @@ export async function createStageBrief(campaignId: string, formData: FormData) {
 
 export async function updateStageBrief(campaignId: string, stageBriefId: string, formData: FormData) {
   const supabase = createAdminClient();
+  const newStatus = str(formData, "status");
+
+  // Server-side gate guard: "Live" requires the matching phase gate to be Open
+  if (newStatus === "Live") {
+    const { data: brief } = await supabase
+      .from("stage_briefs")
+      .select("stage")
+      .eq("id", stageBriefId)
+      .single();
+
+    if (brief?.stage) {
+      const { data: gate } = await supabase
+        .from("phase_gates")
+        .select("gate_decision")
+        .eq("campaign_id", campaignId)
+        .eq("gate_type", brief.stage)
+        .single();
+
+      if (!gate || gate.gate_decision !== "Open") {
+        redirect(
+          `/campaigns/${campaignId}?error=${encodeURIComponent(
+            `The ${brief.stage} gate must be Open before setting this brief to Live.`
+          )}#stage-briefs`
+        );
+      }
+    }
+  }
+
   const { error } = await supabase
     .from("stage_briefs")
     .update({
@@ -470,7 +498,7 @@ export async function updateStageBrief(campaignId: string, stageBriefId: string,
       brief_body: str(formData, "brief_body"),
       propagation_mechanism: str(formData, "propagation_mechanism"),
       idea_led_vs_spend_led: str(formData, "idea_led_vs_spend_led") || null,
-      status: str(formData, "status"),
+      status: newStatus,
     })
     .eq("id", stageBriefId);
 

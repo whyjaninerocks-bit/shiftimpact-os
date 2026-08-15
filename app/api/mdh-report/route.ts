@@ -241,6 +241,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // Ensure a signal_weekly_reports stub exists for this week so /api/signal-report
+    // can find the row and update it. Uses INSERT ... ON CONFLICT DO NOTHING — never
+    // overwrites signal values the user has already entered.
+    await supabase
+      .from("signal_weekly_reports")
+      .upsert(
+        { campaign_id, week_number },
+        { onConflict: "campaign_id,week_number", ignoreDuplicates: true }
+      );
+
     return NextResponse.json({
       id:                   data?.id,
       campaign_id,
