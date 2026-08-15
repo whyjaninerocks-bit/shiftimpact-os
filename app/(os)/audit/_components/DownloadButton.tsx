@@ -2,23 +2,23 @@
 
 // PDF generation: dom-to-image-more → jsPDF
 //
-// Three-tier page break logic (runs in order; first match wins):
+// Four-step page break decision (first match wins):
 //
-//  Tier 1 — Straddle detection
-//    Any break-marked element whose TOP is on this page but BOTTOM extends past it
-//    is being cut mid-row. Cut BEFORE it.
+//  1. Straddle (rows only)
+//     A break-marked element < 150mm tall starts on this page but its bottom
+//     extends past the page end — it will be cut. Cut before it (latest top = min waste).
 //
-//  Tier 2 — Orphan prevention
-//    Any break-marked element whose TOP falls in the orphan zone (last 55%) is too
-//    close to the page end to have useful content after it. Cut BEFORE the EARLIEST
-//    such element (= most conservative = avoids hanging section headers).
+//  2. Orphan (last 15% of page)
+//     A break-marked element starts in the final 15% of the page — too little room
+//     for useful content after it. Cut before it (latest top = min waste).
 //
-//  Tier 3 — Paragraph snap
-//    Snap to the latest <p>/<li>/<blockquote> bottom edge within the last 35mm.
-//    Catches plain text that isn't covered by break markers.
+//  3. Parent header check
+//     After steps 1–2, if the proposed cut is within 35mm of a parent section
+//     card's start, only the section header would be visible above the cut.
+//     Bump the cut back to the parent section's top (whole section moves to next page).
 //
-// The minimum of Tier-1 and Tier-2 candidates always wins, ensuring we never cut
-// inside a parent card just because a child row triggered an earlier check.
+//  4. Paragraph snap (fallback)
+//     Snap to the latest <p>/<li>/<blockquote> bottom within the last 35mm.
 
 import { useState } from "react";
 
@@ -38,7 +38,7 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
 
       const contentRect = content.getBoundingClientRect();
 
-      // ── Measure break-marked elements (TOP + BOTTOM) ─────────────────
+      // Measure every break-marked element: top + bottom
       const breakBoundsCssPx = Array.from(
         content.querySelectorAll("[data-pdf-break='before']")
       ).map(el => {
@@ -46,7 +46,7 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
         return { top: r.top - contentRect.top, bottom: r.bottom - contentRect.top };
       });
 
-      // ── Measure paragraph / list-item bottom edges (Tier-3 snap) ─────
+      // Paragraph / list-item bottom edges for snap fallback
       const textBottomsCssPx = Array.from(
         content.querySelectorAll("p, li, blockquote, dt, dd")
       )
@@ -54,7 +54,7 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
         .filter(y => y > 4)
         .sort((a, b) => a - b);
 
-      // ── Capture ──────────────────────────────────────────────────────
+      // Capture
       const SCALE = 1.5;
       const dataUrl = await (domtoimage as { toPng: (node: HTMLElement, opts: object) => Promise<string> })
         .toPng(content, { scale: SCALE });
@@ -64,7 +64,7 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
       const MARGIN_X  = 0;
       const MARGIN_Y  = 12;
       const CONTENT_W = A4_W - MARGIN_X * 2;
-      const CONTENT_H = A4_H - MARGIN_Y * 2; // 273mm usable
+      const CONTENT_H = A4_H - MARGIN_Y * 2; // 273mm
 
       const img = new Image();
       await new Promise<void>((resolve) => { img.onload = () => resolve(); img.src = dataUrl; });
@@ -72,22 +72,23 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
       const cssPxToMm = SCALE * (CONTENT_W / img.width);
       const imgH      = (img.height / img.width) * CONTENT_W;
 
-      // Convert all measurements to mm
-      const breakBounds    = breakBoundsCssPx.map(b => ({
+      const breakBounds   = breakBoundsCssPx.map(b => ({
         top:    b.top    * cssPxToMm,
         bottom: b.bottom * cssPxToMm,
       }));
-      const textBottomsMm  = textBottomsCssPx.map(y => y * cssPxToMm);
+      const textBottomsMm = textBottomsCssPx.map(y => y * cssPxToMm);
 
-      // ── Page-building loop ───────────────────────────────────────────
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
       let yMm  = 0;
       let first = true;
 
-      const ORPHAN_ZONE   = 0.45; // elements starting in last 55% of page are orphan candidates
-      const SNAP_ZONE     = 35;   // mm window for paragraph snap
-      const MIN_PAGE_FILL = 0.25; // never cut before 25% of page is filled
+      // Tuning constants
+      const MAX_ROW_HEIGHT  = 150;  // mm — elements taller than this are section cards, not rows
+      const ORPHAN_PCT      = 0.85; // elements starting after 85% of page = orphan zone (last 15%)
+      const SNAP_ZONE       = 35;   // mm — paragraph snap window
+      const MIN_PAGE_FILL   = 0.25; // never cut before 25% of page
+      const MIN_SECTION_VIS = 35;   // mm — if < this between section start and cut → hanging header
 
       while (yMm < imgH - 0.5) {
         if (!first) pdf.addPage();
@@ -95,31 +96,45 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
 
         let pageEndMm     = yMm + CONTENT_H;
         const minFill     = yMm + CONTENT_H * MIN_PAGE_FILL;
-        const orphanStart = yMm + CONTENT_H * ORPHAN_ZONE;
+        const orphanStart = yMm + CONTENT_H * ORPHAN_PCT;
 
         if (pageEndMm < imgH) {
-          // ── Tier 1: straddle detection ──────────────────────────────
-          // Elements whose top is on this page but bottom goes past it.
-          // Take the LATEST top (min wasted space).
+          // ── Step 1: straddle (row-sized elements only) ──────────────
           const straddlers = breakBounds
-            .filter(b => b.top >= minFill && b.top < pageEndMm && b.bottom > pageEndMm)
-            .sort((a, b) => b.top - a.top);
+            .filter(b =>
+              b.top >= minFill &&
+              b.top < pageEndMm &&
+              b.bottom > pageEndMm &&
+              (b.bottom - b.top) < MAX_ROW_HEIGHT  // skip full-page section cards
+            )
+            .sort((a, b) => b.top - a.top); // latest top = min wasted space
           const straddleCut = straddlers[0]?.top;
 
-          // ── Tier 2: orphan detection ────────────────────────────────
-          // Elements that start in the orphan zone.
-          // Take the EARLIEST top — moves the whole section (incl. its header) to next page.
+          // ── Step 2: orphan (last 15% of page) ──────────────────────
           const orphans = breakBounds
             .filter(b => b.top > orphanStart && b.top < pageEndMm)
-            .sort((a, b) => a.top - b.top);
+            .sort((a, b) => b.top - a.top); // latest = min waste
           const orphanCut = orphans[0]?.top;
 
-          if (straddleCut !== undefined || orphanCut !== undefined) {
-            // Use the MINIMUM (most conservative) — prevents hanging headers
-            const candidates = [straddleCut, orphanCut].filter((v): v is number => v !== undefined);
-            pageEndMm = Math.min(...candidates);
+          // Take the earlier of any detected cut (more conservative = cleaner)
+          const candidates = [straddleCut, orphanCut].filter((v): v is number => v !== undefined);
+          let proposedCut  = candidates.length > 0 ? Math.min(...candidates) : undefined;
+
+          // ── Step 3: parent header check ─────────────────────────────
+          if (proposedCut !== undefined) {
+            // Find the nearest parent section card that contains the proposed cut
+            const parent = breakBounds
+              .filter(b => b.top < proposedCut! && b.top >= minFill && b.bottom > proposedCut!)
+              .sort((a, b) => b.top - a.top)[0]; // highest top = most immediate parent
+
+            if (parent && (proposedCut - parent.top) < MIN_SECTION_VIS) {
+              // Only the section header would show — move whole section to next page
+              proposedCut = parent.top;
+            }
+
+            pageEndMm = proposedCut;
           } else {
-            // ── Tier 3: paragraph snap ──────────────────────────────
+            // ── Step 4: paragraph snap ──────────────────────────────
             const snapStart = pageEndMm - SNAP_ZONE;
             const snapCut   = textBottomsMm
               .filter(y => y >= Math.max(snapStart, minFill) && y < pageEndMm)
@@ -127,7 +142,7 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
             if (snapCut !== undefined) pageEndMm = snapCut;
           }
 
-          // Safety: never create a page shorter than MIN_PAGE_FILL
+          // Safety guard — never create an undersized page
           if (pageEndMm < minFill) pageEndMm = yMm + CONTENT_H;
         }
 
