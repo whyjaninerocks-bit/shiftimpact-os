@@ -43,8 +43,19 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) {
+    // If there's an auth code on the URL, route it to the callback handler
+    // instead of losing it by redirecting to /login
+    const code = request.nextUrl.searchParams.get("code");
+    if (code) {
+      const callbackUrl = request.nextUrl.clone();
+      callbackUrl.pathname = "/auth/callback";
+      callbackUrl.searchParams.set("next", pathname);
+      return NextResponse.redirect(callbackUrl);
+    }
+
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
+    loginUrl.searchParams.delete("code");
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
   }
