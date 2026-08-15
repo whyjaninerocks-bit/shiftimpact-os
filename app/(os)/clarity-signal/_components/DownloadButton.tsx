@@ -28,12 +28,15 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
 
       const contentRect = content.getBoundingClientRect();
 
-      // ── Tier 1: section-level break markers ─────────────────────────
-      const breakPosCssPx = Array.from(
+      // ── Measure break-marked elements (TOP + BOTTOM) ─────────────────
+      const breakBoundsCssPx = Array.from(
         content.querySelectorAll("[data-pdf-break='before']")
-      ).map(el => (el as HTMLElement).getBoundingClientRect().top - contentRect.top);
+      ).map(el => {
+        const r = (el as HTMLElement).getBoundingClientRect();
+        return { top: r.top - contentRect.top, bottom: r.bottom - contentRect.top };
+      });
 
-      // ── Tier 2: paragraph / list-item bottom edges ───────────────────
+      // ── Measure paragraph / list-item bottom edges (Tier-3 snap) ─────
       const textBottomsCssPx = Array.from(
         content.querySelectorAll("p, li, blockquote, dt, dd")
       )
@@ -46,27 +49,29 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
       const dataUrl = await (domtoimage as { toPng: (node: HTMLElement, opts: object) => Promise<string> })
         .toPng(content, { scale: SCALE });
 
-      const A4_W     = 210;
-      const A4_H     = 297;
-      const MARGIN_X = 0;
-      const MARGIN_Y = 12;
+      const A4_W      = 210;
+      const A4_H      = 297;
+      const MARGIN_X  = 0;
+      const MARGIN_Y  = 12;
       const CONTENT_W = A4_W - MARGIN_X * 2;
       const CONTENT_H = A4_H - MARGIN_Y * 2;
 
       const img = new Image();
       await new Promise<void>((resolve) => { img.onload = () => resolve(); img.src = dataUrl; });
 
-      const cssPxToMm     = SCALE * (CONTENT_W / img.width);
-      const imgH          = (img.height / img.width) * CONTENT_W;
-      const breakPosMm    = breakPosCssPx.map(px => px * cssPxToMm);
-      const textBottomsMm = textBottomsCssPx.map(px => px * cssPxToMm);
+      const cssPxToMm  = SCALE * (CONTENT_W / img.width);
+      const imgH       = (img.height / img.width) * CONTENT_W;
+      const breakBounds    = breakBoundsCssPx.map(b => ({
+        top: b.top * cssPxToMm, bottom: b.bottom * cssPxToMm,
+      }));
+      const textBottomsMm  = textBottomsCssPx.map(y => y * cssPxToMm);
 
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
       let yMm  = 0;
       let first = true;
 
-      const ORPHAN_ZONE   = 0.65;
+      const ORPHAN_ZONE   = 0.45;
       const SNAP_ZONE     = 35;
       const MIN_PAGE_FILL = 0.25;
 
@@ -74,27 +79,36 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
         if (!first) pdf.addPage();
         first = false;
 
-        let pageEndMm = yMm + CONTENT_H;
+        let pageEndMm     = yMm + CONTENT_H;
+        const minFill     = yMm + CONTENT_H * MIN_PAGE_FILL;
+        const orphanStart = yMm + CONTENT_H * ORPHAN_ZONE;
 
         if (pageEndMm < imgH) {
-          const orphanStart    = yMm + CONTENT_H * ORPHAN_ZONE;
-          const markersInZone  = breakPosMm.filter(bp => bp > orphanStart && bp < pageEndMm);
-          const sectionCut     = markersInZone.at(-1);
+          // Tier 1: straddle — latest top (min waste)
+          const straddlers  = breakBounds
+            .filter(b => b.top >= minFill && b.top < pageEndMm && b.bottom > pageEndMm)
+            .sort((a, b) => b.top - a.top);
+          const straddleCut = straddlers[0]?.top;
 
-          if (sectionCut !== undefined) {
-            pageEndMm = sectionCut;
+          // Tier 2: orphan — earliest top (move whole section to next page)
+          const orphans    = breakBounds
+            .filter(b => b.top > orphanStart && b.top < pageEndMm)
+            .sort((a, b) => a.top - b.top);
+          const orphanCut  = orphans[0]?.top;
+
+          if (straddleCut !== undefined || orphanCut !== undefined) {
+            const candidates = [straddleCut, orphanCut].filter((v): v is number => v !== undefined);
+            pageEndMm = Math.min(...candidates);
           } else {
+            // Tier 3: paragraph snap
             const snapStart = pageEndMm - SNAP_ZONE;
-            const minFill   = yMm + CONTENT_H * MIN_PAGE_FILL;
-
-            const snapCut = textBottomsMm
+            const snapCut   = textBottomsMm
               .filter(y => y >= Math.max(snapStart, minFill) && y < pageEndMm)
               .at(-1);
-
-            if (snapCut !== undefined) {
-              pageEndMm = snapCut;
-            }
+            if (snapCut !== undefined) pageEndMm = snapCut;
           }
+
+          if (pageEndMm < minFill) pageEndMm = yMm + CONTENT_H;
         }
 
         pageEndMm = Math.min(pageEndMm, imgH);
