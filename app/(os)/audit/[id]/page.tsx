@@ -14,6 +14,7 @@
 
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { DownloadButton } from "../_components/DownloadButton";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -355,6 +356,17 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
   return (
     <div className="-mx-4 sm:-mx-6 -mt-8 bg-slate-50 min-h-screen">
 
+      {/* ── DOWNLOAD BAR — not captured in PDF ── */}
+      <div className="bg-slate-950 border-b border-slate-800">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3">
+          <span className="text-[11px] text-slate-500">Campaign Intelligence Preview</span>
+          <DownloadButton brandName={a.brand_name} contentId="audit-report-content" />
+        </div>
+      </div>
+
+      {/* ── PRINTABLE CONTENT ── */}
+      <div id="audit-report-content">
+
       {/* ── DARK HEADER ── */}
       <div className="bg-slate-900 text-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-7">
@@ -479,7 +491,7 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
         </div>
 
         {/* Campaign Effectiveness */}
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div data-pdf-break="before" className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-4 sm:px-6 pt-5 pb-4 border-b border-slate-100">
             <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Campaign Effectiveness</p>
           </div>
@@ -501,7 +513,7 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
         </div>
 
         {/* Campaign Engine */}
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div data-pdf-break="before" className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-6 pt-5 pb-4 border-b border-slate-100">
             <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Campaign Engine: Media and Idea</p>
           </div>
@@ -532,7 +544,7 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
         </div>
 
         {/* Consumer State */}
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div data-pdf-break="before" className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-6 pt-5 pb-4 border-b border-slate-100">
             <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Consumer Behaviour State</p>
           </div>
@@ -551,7 +563,7 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
         </div>
 
         {/* Signal Intelligence */}
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div data-pdf-break="before" className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-6 pt-5 pb-4 border-b border-slate-100 flex items-start justify-between">
             <div>
               <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Signal Intelligence</p>
@@ -616,7 +628,7 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
         </div>
 
         {/* Audience Intelligence */}
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div data-pdf-break="before" className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-6 pt-5 pb-4 border-b border-slate-100">
             <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Audience Intelligence</p>
           </div>
@@ -646,7 +658,7 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
         </div>
 
         {/* AI Brand Visibility */}
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div data-pdf-break="before" className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-6 pt-5 pb-4 border-b border-slate-100 flex items-center justify-between">
             <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">AI Brand Visibility</p>
             <span className="text-xs font-bold text-slate-700">{r.ai_visibility_score}/10 · {r.ai_visibility_label}</span>
@@ -673,7 +685,7 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
         </div>
 
         {/* Gate Intelligence */}
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div data-pdf-break="before" className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-6 pt-5 pb-4 border-b border-slate-100">
             <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Gate Intelligence: Budget Phase Decision</p>
           </div>
@@ -732,7 +744,7 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
         </div>
 
         {/* Strategic Recommendations */}
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div data-pdf-break="before" className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-6 pt-5 pb-4 border-b border-slate-100">
             <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Strategic Recommendations</p>
             <p className="text-xs text-slate-400 mt-1">Highest-leverage actions ranked by expected business impact</p>
@@ -758,7 +770,7 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
         </div>
 
         {/* Intelligence Gaps */}
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div data-pdf-break="before" className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="bg-slate-900 px-6 py-5">
             <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Intelligence Gaps</p>
             <p className="text-sm font-semibold text-white mb-2">
@@ -839,7 +851,8 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
         </div>
       </div>
 
-      </div>
+      </div>{/* end max-w-3xl body */}
+      </div>{/* end audit-report-content */}
     </div>
   );
 }
