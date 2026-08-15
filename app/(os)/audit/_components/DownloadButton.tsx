@@ -70,9 +70,9 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
       let yMm  = 0;
       let first = true;
 
-      const ORPHAN_ZONE   = 0.75;  // section header in last 25% → cut before it
-      const SNAP_ZONE     = 18;    // mm: pull cut back to paragraph bottom if cut falls here
-      const MIN_PAGE_FILL = 0.30;  // never cut before 30% of page is filled
+      const ORPHAN_ZONE   = 0.65;  // break marker in last 35% → cut before it
+      const SNAP_ZONE     = 35;    // mm: pull cut back to nearest item bottom in this window
+      const MIN_PAGE_FILL = 0.25;  // never cut before 25% of page is filled
 
       while (yMm < imgH - 0.5) {
         if (!first) pdf.addPage();
@@ -81,22 +81,22 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
         let pageEndMm = yMm + CONTENT_H;
 
         if (pageEndMm < imgH) {
-          // ── Tier 1: section orphan prevention ──────────────────
-          const orphanStart = yMm + CONTENT_H * ORPHAN_ZONE;
-          const sectionCut  = breakPosMm.find(bp => bp > orphanStart && bp < pageEndMm);
+          // ── Tier 1: break-marker orphan prevention ─────────────
+          // Take the LAST marker in the orphan zone (closest to page end = least wasted space)
+          const orphanStart  = yMm + CONTENT_H * ORPHAN_ZONE;
+          const markersInZone = breakPosMm.filter(bp => bp > orphanStart && bp < pageEndMm);
+          const sectionCut   = markersInZone.at(-1); // latest = least whitespace
 
           if (sectionCut !== undefined) {
             pageEndMm = sectionCut;
           } else {
-            // ── Tier 2: snap to paragraph boundary ─────────────
-            // Look for any text-block bottom in the snap zone just before the cut.
-            // We take the LATEST one (closest to the ideal cut) so we lose minimum space.
+            // ── Tier 2: snap to paragraph/item boundary ─────────
             const snapStart = pageEndMm - SNAP_ZONE;
             const minFill   = yMm + CONTENT_H * MIN_PAGE_FILL;
 
             const snapCut = textBottomsMm
               .filter(y => y >= Math.max(snapStart, minFill) && y < pageEndMm)
-              .at(-1); // last = highest = closest to page end
+              .at(-1); // latest = closest to ideal cut
 
             if (snapCut !== undefined) {
               pageEndMm = snapCut;

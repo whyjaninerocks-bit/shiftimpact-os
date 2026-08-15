@@ -66,9 +66,9 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
       let yMm  = 0;
       let first = true;
 
-      const ORPHAN_ZONE   = 0.75;
-      const SNAP_ZONE     = 18;
-      const MIN_PAGE_FILL = 0.30;
+      const ORPHAN_ZONE   = 0.65;
+      const SNAP_ZONE     = 35;
+      const MIN_PAGE_FILL = 0.25;
 
       while (yMm < imgH - 0.5) {
         if (!first) pdf.addPage();
@@ -77,8 +77,9 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
         let pageEndMm = yMm + CONTENT_H;
 
         if (pageEndMm < imgH) {
-          const orphanStart = yMm + CONTENT_H * ORPHAN_ZONE;
-          const sectionCut  = breakPosMm.find(bp => bp > orphanStart && bp < pageEndMm);
+          const orphanStart    = yMm + CONTENT_H * ORPHAN_ZONE;
+          const markersInZone  = breakPosMm.filter(bp => bp > orphanStart && bp < pageEndMm);
+          const sectionCut     = markersInZone.at(-1);
 
           if (sectionCut !== undefined) {
             pageEndMm = sectionCut;

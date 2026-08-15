@@ -255,7 +255,7 @@ function StrategicCard({ title, finding, action, impact, priority }: {
   title: string; finding: string; action: string; impact: string; priority: number;
 }) {
   return (
-    <div className="px-6 py-5 flex gap-3.5">
+    <div data-pdf-break="before" className="px-6 py-5 flex gap-3.5">
       <span className="shrink-0 w-6 h-6 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center justify-center mt-0.5">
         {priority}
       </span>
@@ -582,7 +582,7 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
               if (!sig) return null;
               const sc = signalStatusColor(sig.status);
               return (
-                <div key={s.key} className="px-6 py-5">
+                <div key={s.key} data-pdf-break="before" className="px-6 py-5">
                   <div className="flex items-center justify-between gap-4 mb-3">
                     <div className="flex items-center gap-3.5 min-w-0">
                       <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${sc.dotBg}`}>
@@ -718,7 +718,7 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
           </div>
           <div className="px-6 pb-5 space-y-2">
             {r.gate_conditions.map((gc, i) => (
-              <div key={i} className={`flex items-start gap-3 rounded-lg px-4 py-3 ${
+              <div key={i} data-pdf-break="before" className={`flex items-start gap-3 rounded-lg px-4 py-3 ${
                 gc.met ? "bg-emerald-50 border border-emerald-100" : "bg-slate-50 border border-slate-100"
               }`}>
                 <span className={`text-sm font-bold shrink-0 mt-0.5 ${gc.met ? "text-emerald-600" : "text-slate-400"}`}>
@@ -782,7 +782,7 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
           </div>
           <div className="divide-y divide-slate-100">
             {r.intelligence_gaps.map((gap, i) => (
-              <div key={i} className="px-6 py-4 flex items-start gap-3">
+              <div key={i} data-pdf-break="before" className="px-6 py-4 flex items-start gap-3">
                 <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
                   <span className="text-[9px] font-bold text-slate-400">?</span>
                 </div>
