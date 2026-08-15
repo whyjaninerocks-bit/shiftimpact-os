@@ -1,12 +1,14 @@
 "use client";
 
-// Uses dom-to-image-more (SVG foreignObject renderer) → jsPDF.
-// dom-to-image-more uses the browser's native renderer so oklch/P3 colours work correctly.
+// Uses dom-to-image-more → jsPDF with two-tier page break logic:
 //
-// Smart page breaks: before capturing, the component measures the y-positions of all
-// elements marked data-pdf-break="before". When slicing the captured image into A4 pages,
-// if any such element would land in the last 28% of a page (the "orphan zone"), the page is
-// cut early at that element's position so the section starts fresh on the next page.
+// Tier 1 (section breaks): elements with data-pdf-break="before" trigger an early
+//   cut when a section header would land in the orphan zone (last 25% of the page).
+//
+// Tier 2 (paragraph snapping): ALL p / li / blockquote bottom edges are measured
+//   before capture. When the naive page cut would fall within a SNAP_ZONE (last 18mm),
+//   we pull the cut backward to the nearest paragraph bottom — ensuring cuts always
+//   fall between lines, never through them.
 
 import { useState } from "react";
 
@@ -24,44 +26,53 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
       const content = document.getElementById(contentId);
       if (!content) throw new Error("Content element not found");
 
-      // ── Measure preferred break points BEFORE capture ───────────────
       const contentRect = content.getBoundingClientRect();
-      const breakEls = content.querySelectorAll("[data-pdf-break='before']");
-      const breakPosCssPx = Array.from(breakEls).map(el => {
-        return (el as HTMLElement).getBoundingClientRect().top - contentRect.top;
-      });
 
-      // ── Capture at 1.5× — sharp enough, keeps file size reasonable ──
+      // ── Tier 1: section-level break markers ─────────────────────────
+      const breakPosCssPx = Array.from(
+        content.querySelectorAll("[data-pdf-break='before']")
+      ).map(el => (el as HTMLElement).getBoundingClientRect().top - contentRect.top);
+
+      // ── Tier 2: paragraph / list-item bottom edges ───────────────────
+      // These are the "safe cut points" — gaps between text blocks.
+      const textBottomsCssPx = Array.from(
+        content.querySelectorAll("p, li, blockquote, dt, dd")
+      )
+        .map(el => (el as HTMLElement).getBoundingClientRect().bottom - contentRect.top)
+        .filter(y => y > 4)           // ignore near-zero height elements
+        .sort((a, b) => a - b);
+
+      // ── Capture ──────────────────────────────────────────────────────
       const SCALE = 1.5;
       const dataUrl = await (domtoimage as { toPng: (node: HTMLElement, opts: object) => Promise<string> })
         .toPng(content, { scale: SCALE });
 
-      const A4_W = 210; // mm
-      const A4_H = 297; // mm
-
-      // Margins: give text breathing room so page cuts never slice mid-line
-      const MARGIN_X = 0;   // mm — keep full width
-      const MARGIN_Y = 10;  // mm — top + bottom white space per page
-
-      const CONTENT_W = A4_W - MARGIN_X * 2; // printable width
-      const CONTENT_H = A4_H - MARGIN_Y * 2; // printable height per page (277mm)
+      const A4_W     = 210;
+      const A4_H     = 297;
+      const MARGIN_X = 0;
+      const MARGIN_Y = 12;                     // top + bottom white space per page
+      const CONTENT_W = A4_W - MARGIN_X * 2;
+      const CONTENT_H = A4_H - MARGIN_Y * 2;  // 273mm usable per page
 
       const img = new Image();
       await new Promise<void>((resolve) => { img.onload = () => resolve(); img.src = dataUrl; });
 
-      // Total image height mapped to mm (image fills CONTENT_W wide)
-      const imgH = (img.height / img.width) * CONTENT_W;
-
-      // css-px → mm conversion
+      // css-px → content-mm
       const cssPxToMm = SCALE * (CONTENT_W / img.width);
-      const breakPosMm = breakPosCssPx.map(px => px * cssPxToMm);
+      const imgH      = (img.height / img.width) * CONTENT_W;
 
-      // ── Build pages with smart page breaks ───────────────────────────
+      const breakPosMm    = breakPosCssPx.map(px => px * cssPxToMm);
+      const textBottomsMm = textBottomsCssPx.map(px => px * cssPxToMm);
+
+      // ── Page-building loop ───────────────────────────────────────────
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
-      let yMm = 0;       // current top of unrendered content (in content-mm)
+      let yMm  = 0;
       let first = true;
-      const ORPHAN_THRESHOLD = 0.78; // break early if section header in last 22% of page
+
+      const ORPHAN_ZONE   = 0.75;  // section header in last 25% → cut before it
+      const SNAP_ZONE     = 18;    // mm: pull cut back to paragraph bottom if cut falls here
+      const MIN_PAGE_FILL = 0.30;  // never cut before 30% of page is filled
 
       while (yMm < imgH - 0.5) {
         if (!first) pdf.addPage();
@@ -70,28 +81,40 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
         let pageEndMm = yMm + CONTENT_H;
 
         if (pageEndMm < imgH) {
-          // Look for a section break marker that falls in the orphan zone
-          const orphanZoneStart = yMm + CONTENT_H * ORPHAN_THRESHOLD;
-          const earlyBreak = breakPosMm.find(bp => bp > orphanZoneStart && bp < pageEndMm);
-          if (earlyBreak !== undefined) {
-            pageEndMm = earlyBreak;
+          // ── Tier 1: section orphan prevention ──────────────────
+          const orphanStart = yMm + CONTENT_H * ORPHAN_ZONE;
+          const sectionCut  = breakPosMm.find(bp => bp > orphanStart && bp < pageEndMm);
+
+          if (sectionCut !== undefined) {
+            pageEndMm = sectionCut;
+          } else {
+            // ── Tier 2: snap to paragraph boundary ─────────────
+            // Look for any text-block bottom in the snap zone just before the cut.
+            // We take the LATEST one (closest to the ideal cut) so we lose minimum space.
+            const snapStart = pageEndMm - SNAP_ZONE;
+            const minFill   = yMm + CONTENT_H * MIN_PAGE_FILL;
+
+            const snapCut = textBottomsMm
+              .filter(y => y >= Math.max(snapStart, minFill) && y < pageEndMm)
+              .at(-1); // last = highest = closest to page end
+
+            if (snapCut !== undefined) {
+              pageEndMm = snapCut;
+            }
           }
         }
 
         pageEndMm = Math.min(pageEndMm, imgH);
         const sliceMm = pageEndMm - yMm;
 
-        // Convert content-mm slice back to source image pixels
         const yPx     = Math.round((yMm     / imgH) * img.height);
         const slicePx = Math.round((sliceMm / imgH) * img.height);
 
-        const cv = document.createElement("canvas");
+        const cv  = document.createElement("canvas");
         cv.width  = img.width;
         cv.height = slicePx;
-        const ctx = cv.getContext("2d")!;
-        ctx.drawImage(img, 0, yPx, img.width, slicePx, 0, 0, img.width, slicePx);
+        cv.getContext("2d")!.drawImage(img, 0, yPx, img.width, slicePx, 0, 0, img.width, slicePx);
 
-        // Place with top/bottom margins — text never touches page edge
         pdf.addImage(cv.toDataURL("image/png"), "PNG", MARGIN_X, MARGIN_Y, CONTENT_W, sliceMm);
         yMm = pageEndMm;
       }
