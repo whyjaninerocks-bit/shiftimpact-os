@@ -32,57 +32,53 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
         return (el as HTMLElement).getBoundingClientRect().top - contentRect.top;
       });
 
-      // ── Capture at 2× for sharpness ─────────────────────────────────
-      const SCALE = 2;
+      // ── Capture at 1.5× — sharp enough, keeps file size reasonable ──
+      const SCALE = 1.5;
       const dataUrl = await (domtoimage as { toPng: (node: HTMLElement, opts: object) => Promise<string> })
         .toPng(content, { scale: SCALE });
 
       const A4_W = 210; // mm
       const A4_H = 297; // mm
 
+      // Margins: give text breathing room so page cuts never slice mid-line
+      const MARGIN_X = 0;   // mm — keep full width
+      const MARGIN_Y = 10;  // mm — top + bottom white space per page
+      const CONTENT_W = A4_W - MARGIN_X * 2;
+      const CONTENT_H = A4_H - MARGIN_Y * 2; // 277mm usable per page
+
       const img = new Image();
       await new Promise<void>((resolve) => { img.onload = () => resolve(); img.src = dataUrl; });
 
-      // ── Coordinate conversion factors ────────────────────────────────
-      // img.width = content.offsetWidth * SCALE  (dom-to-image-more doubles physical px)
-      // mm per img-px  = A4_W / img.width
-      // css-px to img-px = SCALE
-      // css-px to mm   = SCALE * (A4_W / img.width)
-      const cssPxToMm = SCALE * (A4_W / img.width);
-      const imgH = (img.height * A4_W) / img.width; // total image height in mm
-
-      // Convert break-before positions to mm
+      const imgH = (img.height / img.width) * CONTENT_W;
+      const cssPxToMm = SCALE * (CONTENT_W / img.width);
       const breakPosMm = breakPosCssPx.map(px => px * cssPxToMm);
 
       // ── Build pages with smart page breaks ───────────────────────────
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
-      let yMm = 0;   // current top of the current page slice (in mm)
+      let yMm = 0;
       let first = true;
-      const ORPHAN_THRESHOLD = 0.72; // break-before markers in the last 28% of a page trigger an early cut
+      const ORPHAN_THRESHOLD = 0.78;
 
       while (yMm < imgH - 0.5) {
         if (!first) pdf.addPage();
         first = false;
 
-        // Nominal end of this page
-        let pageEndMm = yMm + A4_H;
+        let pageEndMm = yMm + CONTENT_H;
 
-        // If there's still more content after this page, check for orphaned sections
         if (pageEndMm < imgH) {
-          const orphanZoneStart = yMm + A4_H * ORPHAN_THRESHOLD;
+          const orphanZoneStart = yMm + CONTENT_H * ORPHAN_THRESHOLD;
           const earlyBreak = breakPosMm.find(bp => bp > orphanZoneStart && bp < pageEndMm);
           if (earlyBreak !== undefined) {
-            pageEndMm = earlyBreak; // cut before the orphaned section
+            pageEndMm = earlyBreak;
           }
         }
 
         pageEndMm = Math.min(pageEndMm, imgH);
         const sliceMm = pageEndMm - yMm;
 
-        // Convert slice boundaries back to source img pixels
-        const yPx    = Math.round((yMm      / imgH) * img.height);
-        const slicePx = Math.round((sliceMm  / imgH) * img.height);
+        const yPx     = Math.round((yMm     / imgH) * img.height);
+        const slicePx = Math.round((sliceMm / imgH) * img.height);
 
         const cv = document.createElement("canvas");
         cv.width  = img.width;
@@ -90,9 +86,7 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
         const ctx = cv.getContext("2d")!;
         ctx.drawImage(img, 0, yPx, img.width, slicePx, 0, 0, img.width, slicePx);
 
-        // The slice may be shorter than A4_H (early cut or last page) — that's fine,
-        // jsPDF places it at the top of the page and the rest is blank white.
-        pdf.addImage(cv.toDataURL("image/png"), "PNG", 0, 0, A4_W, sliceMm);
+        pdf.addImage(cv.toDataURL("image/png"), "PNG", MARGIN_X, MARGIN_Y, CONTENT_W, sliceMm);
         yMm = pageEndMm;
       }
 
