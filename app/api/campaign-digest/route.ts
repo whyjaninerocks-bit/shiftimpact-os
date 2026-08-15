@@ -240,7 +240,7 @@ async function assembleSignalContext(campaign_id: string) {
 
   // S9 — Signal logs (recent breach signals)
   const { data: signalLogs } = await supabase
-    .from("signal_logs")
+    .from("gate_signal_log")
     .select("signal_label, actual_value, threshold_value, unit, pass, week_number")
     .eq("campaign_id", campaign_id)
     .eq("pass", false)
