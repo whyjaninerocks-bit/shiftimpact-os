@@ -536,9 +536,11 @@ export interface CampaignReportClientView {
   report_label: string;
   executive_summary: string;
   findings: CampaignReportClientFinding[];
+  risk_posture: string | null;
   status: string;
   report_week: number;
   created_at: string;
+  portal_published_at: string | null;
 }
 
 // ─── IQ Evaluation (F-IQ) ────────────────────────────────────────────────────
@@ -656,7 +658,7 @@ export async function getLatestCampaignReport(
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("campaign_reports")
-    .select("id, report_label, executive_summary, findings, status, report_week, created_at")
+    .select("id, report_label, executive_summary, findings, risk_posture, status, report_week, created_at, portal_published_at")
     .eq("campaign_id", campaignId)
     .in("status", ["ready", "exported"])
     .order("created_at", { ascending: false })
@@ -682,9 +684,11 @@ export async function getLatestCampaignReport(
     report_label: data.report_label,
     executive_summary: data.executive_summary ?? "",
     findings: clientFindings,
+    risk_posture: (data.risk_posture as string | null) ?? null,
     status: data.status,
     report_week: data.report_week ?? 0,
     created_at: data.created_at,
+    portal_published_at: (data.portal_published_at as string | null) ?? null,
   };
 }
 

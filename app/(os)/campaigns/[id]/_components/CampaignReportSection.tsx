@@ -57,6 +57,7 @@ interface CampaignReport {
   report_week: number;
   created_at: string;
   updated_at: string;
+  portal_published_at?: string | null;
 }
 
 interface DataCoverage {
@@ -133,6 +134,9 @@ export function CampaignReportSection({ campaignId, campaignName }: Props) {
   const [view, setView] = useState<"internal" | "client">("internal");
   const [copied, setCopied] = useState(false);
   const [showFindings, setShowFindings] = useState(true);
+  const [publishing, setPublishing] = useState(false);
+  const [portalPublished, setPortalPublished] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
 
   const fetchLatestReport = useCallback(async () => {
     setLoading(true);
@@ -206,6 +210,27 @@ export function CampaignReportSection({ campaignId, campaignName }: Props) {
     });
   }
 
+  async function handlePublishToPortal() {
+    if (!report) return;
+    setPublishing(true);
+    setPublishError(null);
+    try {
+      const res = await fetch(`/api/campaign-report/${report.id}/publish-to-portal`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPublishError(data.error ?? "Failed to publish to portal.");
+      } else {
+        setPortalPublished(true);
+      }
+    } catch {
+      setPublishError("Network error. Please try again.");
+    } finally {
+      setPublishing(false);
+    }
+  }
+
   return (
     <section id="campaign-report" className="space-y-6">
       {/* Header */}
@@ -265,6 +290,20 @@ export function CampaignReportSection({ campaignId, campaignName }: Props) {
                 {copied ? "Copied ✓" : "Copy for client"}
               </button>
             )}
+            {report.status === "ready" && !portalPublished && !report.portal_published_at && (
+              <button
+                onClick={handlePublishToPortal}
+                disabled={publishing}
+                className="px-4 py-1.5 bg-emerald-700 text-white text-sm font-semibold rounded-lg hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {publishing ? "Publishing…" : "Approve for Portal"}
+              </button>
+            )}
+            {(portalPublished || report.portal_published_at) && (
+              <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm font-medium rounded-lg">
+                ✓ Live in client portal
+              </span>
+            )}
           </>
         )}
 
@@ -279,6 +318,11 @@ export function CampaignReportSection({ campaignId, campaignName }: Props) {
       {error && (
         <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
           {error}
+        </div>
+      )}
+      {publishError && (
+        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          {publishError}
         </div>
       )}
 

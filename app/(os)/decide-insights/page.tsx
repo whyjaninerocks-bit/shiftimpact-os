@@ -78,12 +78,40 @@ const POSTURE_COLOUR: Record<string, string> = {
   investigate: "#3b82f6",
 };
 
+// Plain-English labels for each decision outcome
+const POSTURE_PLAIN: Record<string, string> = {
+  press:       "Push harder (Press)",
+  hold:        "Waiting it out (Hold)",
+  pivot:       "Need a new direction (Pivot)",
+  stop:        "Time to pause (Stop)",
+  investigate: "Need more information (Investigate)",
+};
+
+// Plain-English labels for signal types
 const SIGNAL_LABEL: Record<string, string> = {
-  "S1-Share of Search": "S1 Share of Search",
-  "S2-Save Rate": "S2 Save Rate",
-  "S3-UGC": "S3 UGC",
-  "S4-OOH": "S4 OOH",
-  "Multi-signal": "Multi-signal",
+  "S1-Share of Search": "Brand search trends (S1)",
+  "S2-Save Rate":       "Content saves (S2)",
+  "S3-UGC":             "User-created content (S3)",
+  "S4-OOH":             "Out-of-home reach (S4)",
+  "Multi-signal":       "Multiple signals",
+};
+
+// Plain-English labels for decision gap types
+const GAP_PLAIN: Record<string, string> = {
+  Evidence:   "Missing data to decide",
+  Logic:      "Data exists but unclear what it means",
+  Timing:     "Right decision, wrong moment",
+  Authority:  "Someone else controls the call",
+  Conviction: "Gut vs data conflict",
+  Framing:    "Wrong problem defined",
+};
+
+// Plain-English labels for campaign stages
+const STAGE_PLAIN: Record<string, string> = {
+  Demand:     "Building awareness (top of funnel)",
+  Conversion: "Getting sales",
+  Retention:  "Keeping customers",
+  Scale:      "Scaling what works",
 };
 
 function Bar({ pct, color = "#3b82f6" }: { pct: number; color?: string }) {
@@ -154,10 +182,10 @@ export default function DecideInsightsPage() {
   const topIndustry = industryBreakdown[0];
 
   const consultingRead = [
-    topPosture && `${topPosture.pct}% of decisions are ${topPosture.label.toUpperCase()} — your ICP is not stuck on action, they are stuck on confidence.`,
-    topSignal && `The most misread signal is ${SIGNAL_LABEL[topSignal.label] ?? topSignal.label} (${topSignal.pct}% of sessions) — this is your sharpest diagnostic hook.`,
-    topStage && `Most decisions sit at the ${topStage.label} gate — that is where ShiftImpact OS earns its keep.`,
-    topGap && `The dominant decision gap is ${topGap.label} — your consulting pitch should open on this gap, not on the solution.`,
+    topPosture && `${topPosture.pct}% of people who used /decide chose to ${POSTURE_PLAIN[topPosture.label] ?? topPosture.label} — they are not stuck on what to do, they are stuck on whether they are reading the situation correctly.`,
+    topSignal && `The most commonly misread data point is ${SIGNAL_LABEL[topSignal.label] ?? topSignal.label} (${topSignal.pct}% of sessions) — this is your clearest diagnostic entry point.`,
+    topStage && `Most decisions are stuck at the ${STAGE_PLAIN[topStage.label] ?? topStage.label} stage — that is where ShiftImpact OS makes the biggest difference.`,
+    topGap && `The most common reason people cannot decide: ${GAP_PLAIN[topGap.label] ?? topGap.label}. Open your pitch on this gap, not on your solution.`,
   ].filter(Boolean);
 
   // ── Selling pitch synthesis ────────────────────────────────────────────────
@@ -172,11 +200,11 @@ export default function DecideInsightsPage() {
     const postureLabel = topPosture?.label?.toUpperCase() ?? "HOLD";
     const postureCount = topPosture?.pct ?? 0;
 
-    const pattern = `Across ${summary.withSynthesis} decision sessions${industryCtx}, ${postureCount}% resolve to ${postureLabel}. Not because the brand is failing — because the decision-maker cannot read the signal that controls the ${stageLabel} gate.`;
+    const pattern = `Across ${summary.withSynthesis} decision sessions${industryCtx}, ${postureCount}% of people chose to ${POSTURE_PLAIN[topPosture?.label ?? ""] ?? postureLabel}. Not because the brand is failing — because the person making the call could not read the data at the stage where it mattered most (${STAGE_PLAIN[topStage?.label ?? ""] ?? stageLabel}).`;
 
-    const bottleneck = `The specific bottleneck is ${gapLabel.toLowerCase()} interpretation. ${signalName} is the most misread signal (${topSignal?.pct ?? 0}% of sessions). The data exists. The framework to read it under pressure does not.`;
+    const bottleneck = `The specific sticking point was ${GAP_PLAIN[gapLabel] ?? gapLabel.toLowerCase()}. The data point they struggled with most: ${signalName} (${topSignal?.pct ?? 0}% of sessions said this was the problem). The data existed. The ability to read it under pressure did not.`;
 
-    const angle = `ShiftImpact OS names the posture, locates the gate, and identifies the exact signal gap. ${postureLabel} stops being a feeling and becomes a diagnostic output — with a specific next move and a bridge question that unlocks the decision.`;
+    const angle = `ShiftImpact OS names exactly what kind of call this is, where in the campaign it sits, and which data point the person is misreading. A vague feeling of "should we hold or go?" becomes a specific diagnosis with a clear next move.`;
 
     return { pattern, bottleneck, angle };
   })();
@@ -193,7 +221,9 @@ export default function DecideInsightsPage() {
     if (!topPosture || !topStage || !topSignal) return null;
     const industryLabel = topIndustry ? ` in ${topIndustry.label}` : "";
     const signalName = SIGNAL_LABEL[topSignal.label] ?? topSignal.label;
-    return `Your ICP is not "a marketer${industryLabel}." It is a marketer${industryLabel} at the ${topStage.label} gate who cannot read ${signalName} signals and defaults to ${topPosture.label.toUpperCase()} when confidence drops.`;
+    const stagePlain = STAGE_PLAIN[topStage.label] ?? topStage.label;
+    const posturePlain = POSTURE_PLAIN[topPosture.label] ?? topPosture.label;
+    return `Your ideal client is not just "a marketer${industryLabel}." They are a marketer${industryLabel} who is stuck at the ${stagePlain} stage, cannot make sense of their ${signalName} data, and defaults to "${posturePlain}" when they lose confidence.`;
   })();
 
   // Gate signal thresholds for friction context
@@ -211,7 +241,7 @@ export default function DecideInsightsPage() {
         <div style={{ marginBottom: 32 }}>
           <p style={{ margin: "0 0 6px", fontSize: 11, color: "#374151", letterSpacing: "0.1em" }}>SHIFTIMPACT OS</p>
           <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 500, color: "#f9fafb" }}>Decision Intelligence</h1>
-          <p style={{ margin: 0, fontSize: 14, color: "#6b7280" }}>Pattern analysis across all /decide sessions. Use this to shape consulting positioning, service design, and prospect targeting.</p>
+          <p style={{ margin: 0, fontSize: 14, color: "#6b7280" }}>What people are deciding when they use /decide — and what it tells you about who needs ShiftImpact OS and why.</p>
         </div>
 
         {/* Consulting read */}
@@ -230,15 +260,15 @@ export default function DecideInsightsPage() {
             <p style={{ margin: "0 0 12px", fontSize: 11, color: "#10b981", letterSpacing: "0.12em", borderBottom: "0.5px solid #1f2937", paddingBottom: 8 }}>YOUR SELLING PITCH — DERIVED FROM LIVE SESSION PATTERNS</p>
             <div style={{ background: "#0a0f0a", border: "1px solid #10b981", borderRadius: 10, padding: "22px 26px" }}>
               <div style={{ marginBottom: 18 }}>
-                <p style={{ margin: "0 0 6px", fontSize: 10, color: "#10b981", letterSpacing: "0.12em" }}>THE PATTERN</p>
+                <p style={{ margin: "0 0 6px", fontSize: 10, color: "#10b981", letterSpacing: "0.12em" }}>WHAT IS HAPPENING ACROSS YOUR SESSIONS</p>
                 <p style={{ margin: 0, fontSize: 14, color: "#f9fafb", lineHeight: 1.75 }}>{sellingPitch.pattern}</p>
               </div>
               <div style={{ marginBottom: 18, paddingTop: 16, borderTop: "0.5px solid #1a2e1a" }}>
-                <p style={{ margin: "0 0 6px", fontSize: 10, color: "#10b981", letterSpacing: "0.12em" }}>THE BOTTLENECK</p>
+                <p style={{ margin: "0 0 6px", fontSize: 10, color: "#10b981", letterSpacing: "0.12em" }}>WHERE PEOPLE GET STUCK AND WHY</p>
                 <p style={{ margin: 0, fontSize: 14, color: "#f9fafb", lineHeight: 1.75 }}>{sellingPitch.bottleneck}</p>
               </div>
               <div style={{ paddingTop: 16, borderTop: "0.5px solid #1a2e1a" }}>
-                <p style={{ margin: "0 0 6px", fontSize: 10, color: "#10b981", letterSpacing: "0.12em" }}>WHAT SHIFTIMPACT OS DOES</p>
+                <p style={{ margin: "0 0 6px", fontSize: 10, color: "#10b981", letterSpacing: "0.12em" }}>HOW SHIFTIMPACT OS HELPS</p>
                 <p style={{ margin: 0, fontSize: 14, color: "#f9fafb", lineHeight: 1.75 }}>{sellingPitch.angle}</p>
               </div>
             </div>
@@ -282,30 +312,30 @@ export default function DecideInsightsPage() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
 
           {/* Risk posture breakdown */}
-          <Section title="RISK POSTURE DISTRIBUTION">
+          <Section title="WHAT DECISION DID THEY MAKE">
             {postureBreakdown.map((b) => (
-              <BreakdownRow key={b.label} {...b} />
+              <BreakdownRow key={b.label} {...b} label={POSTURE_PLAIN[b.label] ?? b.label} />
             ))}
           </Section>
 
           {/* Campaign stage */}
-          <Section title="CAMPAIGN STAGE">
+          <Section title="WHERE IN THE CAMPAIGN THEY GOT STUCK">
             {stageBreakdown.length > 0 ? stageBreakdown.map((b) => (
-              <BreakdownRow key={b.label} {...b} color="#8b5cf6" />
+              <BreakdownRow key={b.label} {...b} color="#8b5cf6" label={STAGE_PLAIN[b.label] ?? b.label} />
             )) : <p style={{ fontSize: 13, color: "#4b5563" }}>No data yet</p>}
           </Section>
 
           {/* Signal gap */}
-          <Section title="MOST MISREAD SIGNAL">
+          <Section title="WHICH DATA THEY COULD NOT READ">
             {signalGapBreakdown.length > 0 ? signalGapBreakdown.map((b) => (
               <BreakdownRow key={b.label} {...b} color="#f59e0b" label={SIGNAL_LABEL[b.label] ?? b.label} />
             )) : <p style={{ fontSize: 13, color: "#4b5563" }}>No data yet</p>}
           </Section>
 
           {/* Decision gap */}
-          <Section title="DECISION GAP TYPE">
+          <Section title="WHY THEY COULD NOT DECIDE">
             {decisionGapBreakdown.length > 0 ? decisionGapBreakdown.map((b) => (
-              <BreakdownRow key={b.label} {...b} color="#10b981" />
+              <BreakdownRow key={b.label} {...b} color="#10b981" label={GAP_PLAIN[b.label] ?? b.label} />
             )) : <p style={{ fontSize: 13, color: "#4b5563" }}>No data yet</p>}
           </Section>
 
@@ -322,7 +352,7 @@ export default function DecideInsightsPage() {
 
         {/* Top signal by industry */}
         {topSignalByIndustry.length > 0 && (
-          <Section title="PRIMARY SIGNAL GAP BY INDUSTRY — PROSPECTING TARGETING">
+          <Section title="WHICH DATA CONFUSED PEOPLE THE MOST — BY INDUSTRY">
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
               {topSignalByIndustry.map((r) => (
                 <div key={r.industry} style={{ background: "#13151e", border: "0.5px solid #2d3148", borderRadius: 8, padding: "14px 16px" }}>
@@ -337,7 +367,7 @@ export default function DecideInsightsPage() {
 
         {/* Feature 1: Sharper ICP sub-segment */}
         {icpSubSegment && (
-          <Section title="YOUR ACTUAL ICP — SHARPENED">
+          <Section title="WHO IS ACTUALLY FINDING YOU — YOUR REAL IDEAL CLIENT">
             <div style={{ background: "#0d1117", border: "0.5px solid #3b82f6", borderRadius: 10, padding: "20px 24px" }}>
               <p style={{ margin: "0 0 10px", fontSize: 11, color: "#3b82f6", letterSpacing: "0.1em" }}>ICP SUB-SEGMENT · DERIVED FROM SESSION PATTERNS</p>
               <p style={{ margin: "0 0 14px", fontSize: 15, color: "#f9fafb", lineHeight: 1.75, fontStyle: "italic" }}>&ldquo;{icpSubSegment}&rdquo;</p>
@@ -350,7 +380,7 @@ export default function DecideInsightsPage() {
 
         {/* Feature 2: Gate friction map */}
         {gateFriction.length > 0 && (
-          <Section title="GATE FRICTION MAP — WHERE DECISIONS BREAK DOWN">
+          <Section title="WHERE IN THE CAMPAIGN DECISIONS BREAK DOWN">
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               {gateFriction.map((entry) => (
                 <div key={entry.stage} style={{ background: "#13151e", border: "0.5px solid #2d3148", borderRadius: 8, padding: "14px 16px" }}>
@@ -382,7 +412,7 @@ export default function DecideInsightsPage() {
 
         {/* Feature 2: Bridge question library */}
         {bridgeLibrary.length > 0 && (
-          <Section title="BRIDGE QUESTION LIBRARY — QUESTIONS THAT MOVE DECISIONS">
+          <Section title="QUESTIONS THAT ACTUALLY MOVED PEOPLE TO A DECISION">
             <p style={{ margin: "0 0 14px", fontSize: 12, color: "#4b5563", lineHeight: 1.6 }}>
               These are the exact questions the OS generated to bridge each session from diagnosis to action. Recurring patterns reveal the consulting angles your ICP finds most useful.
             </p>
@@ -399,7 +429,7 @@ export default function DecideInsightsPage() {
 
         {/* Feature 3: Prospect matches from /decide sessions */}
         {prospectMatches.length > 0 && (
-          <Section title="PROSPECT MATCHES — KNOWN COMPANIES IN YOUR /DECIDE SESSIONS">
+          <Section title="COMPANIES YOU ARE TRACKING WHO USED /DECIDE">
             <p style={{ margin: "0 0 14px", fontSize: 12, color: "#4b5563", lineHeight: 1.6 }}>
               Email domains matched to tracked companies. These prospects engaged with the diagnostic — the highest-intent signal before a conversation.
             </p>
@@ -430,7 +460,7 @@ export default function DecideInsightsPage() {
 
         {/* Case study emerging */}
         {caseStudySession && (
-          <Section title="CASE STUDY EMERGING — THE STORY IN YOUR DATA">
+          <Section title="EXAMPLE SESSION — WHAT A FULL DIAGNOSTIC LOOKS LIKE">
             <p style={{ margin: "0 0 14px", fontSize: 12, color: "#4b5563", lineHeight: 1.65 }}>
               The most complete session in your data. This is what a ShiftImpact OS diagnostic looks like as a consulting case study — the decision they brought, what the OS read, and what it means for your pitch.
             </p>
@@ -439,34 +469,35 @@ export default function DecideInsightsPage() {
               <div style={{ background: "#1a1d2a", padding: "14px 20px", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                 {caseStudySession.posture && (
                   <span style={{ fontSize: 10, padding: "3px 10px", borderRadius: 4, fontWeight: 700, letterSpacing: "0.08em", background: (POSTURE_COLOUR[caseStudySession.posture] ?? "#9ca3af") + "33", color: POSTURE_COLOUR[caseStudySession.posture] ?? "#9ca3af" }}>
-                    {caseStudySession.posture.toUpperCase()}
+                    {POSTURE_PLAIN[caseStudySession.posture] ?? caseStudySession.posture}
                   </span>
                 )}
-                {caseStudySession.campaign_stage && <span style={{ fontSize: 10, padding: "3px 10px", borderRadius: 4, background: "#2d3148", color: "#9ca3af" }}>{caseStudySession.campaign_stage} gate</span>}
+                {caseStudySession.campaign_stage && <span style={{ fontSize: 10, padding: "3px 10px", borderRadius: 4, background: "#2d3148", color: "#9ca3af" }}>{STAGE_PLAIN[caseStudySession.campaign_stage] ?? caseStudySession.campaign_stage}</span>}
                 {caseStudySession.signal_gap_type && <span style={{ fontSize: 10, padding: "3px 10px", borderRadius: 4, background: "#2d3148", color: "#f59e0b" }}>{SIGNAL_LABEL[caseStudySession.signal_gap_type] ?? caseStudySession.signal_gap_type}</span>}
-                {caseStudySession.decision_gap_type && <span style={{ fontSize: 10, padding: "3px 10px", borderRadius: 4, background: "#2d3148", color: "#6b7280" }}>{caseStudySession.decision_gap_type} gap</span>}
+                {caseStudySession.decision_gap_type && <span style={{ fontSize: 10, padding: "3px 10px", borderRadius: 4, background: "#2d3148", color: "#6b7280" }}>{GAP_PLAIN[caseStudySession.decision_gap_type] ?? caseStudySession.decision_gap_type}</span>}
                 {caseStudySession.industry && <span style={{ fontSize: 10, padding: "3px 10px", borderRadius: 4, background: "#2d3148", color: "#6b7280" }}>{caseStudySession.industry}</span>}
               </div>
               {/* Body */}
               <div style={{ padding: "20px 22px" }}>
                 <div style={{ marginBottom: 18 }}>
-                  <p style={{ margin: "0 0 6px", fontSize: 10, color: "#4b5563", letterSpacing: "0.1em" }}>THE DECISION THEY BROUGHT</p>
+                  <p style={{ margin: "0 0 6px", fontSize: 10, color: "#4b5563", letterSpacing: "0.1em" }}>WHAT THEY BROUGHT TO THE SESSION</p>
                   <p style={{ margin: 0, fontSize: 13, color: "#e5e7eb", lineHeight: 1.7, fontStyle: "italic" }}>&ldquo;{caseStudySession.decision_text}&rdquo;</p>
                 </div>
                 {caseStudySession.bridge_question && (
                   <div style={{ marginBottom: 18, paddingTop: 14, borderTop: "0.5px solid #1f2937" }}>
-                    <p style={{ margin: "0 0 6px", fontSize: 10, color: "#4b5563", letterSpacing: "0.1em" }}>THE BRIDGE QUESTION THE OS ASKED</p>
+                    <p style={{ margin: "0 0 6px", fontSize: 10, color: "#4b5563", letterSpacing: "0.1em" }}>THE QUESTION THAT MOVED THEM FORWARD</p>
                     <p style={{ margin: 0, fontSize: 13, color: "#d1d5db", lineHeight: 1.7 }}>{caseStudySession.bridge_question}</p>
                   </div>
                 )}
                 <div style={{ paddingTop: 14, borderTop: "0.5px solid #1f2937" }}>
                   <p style={{ margin: "0 0 8px", fontSize: 10, color: "#4b5563", letterSpacing: "0.1em" }}>WHAT THIS MEANS FOR YOUR PITCH</p>
                   <p style={{ margin: 0, fontSize: 13, color: "#9ca3af", lineHeight: 1.7 }}>
-                    A {caseStudySession.industry ?? "brand"} marketer brought a {caseStudySession.campaign_stage ?? "growth"} gate decision. The OS identified a{" "}
-                    <span style={{ color: "#f59e0b" }}>{SIGNAL_LABEL[caseStudySession.signal_gap_type ?? ""] ?? caseStudySession.signal_gap_type ?? "signal"}</span>{" "}
-                    reading gap — an {caseStudySession.decision_gap_type?.toLowerCase() ?? "evidence"} problem, not a strategy problem. The posture resolved to{" "}
-                    <span style={{ color: POSTURE_COLOUR[caseStudySession.posture ?? ""] ?? "#9ca3af", fontWeight: 600 }}>{(caseStudySession.posture ?? "").toUpperCase()}</span>.
-                    {" "}That is the ShiftImpact OS value in one session: precision language where there was stall.
+                    A {caseStudySession.industry ?? "brand"} marketer was stuck at the {STAGE_PLAIN[caseStudySession.campaign_stage ?? ""] ?? caseStudySession.campaign_stage ?? "growth"} stage. The OS identified that the real problem was{" "}
+                    <span style={{ color: "#f59e0b" }}>{GAP_PLAIN[caseStudySession.decision_gap_type ?? ""] ?? caseStudySession.decision_gap_type ?? "missing clarity"}</span>{" "}
+                    — specifically around{" "}
+                    <span style={{ color: "#f59e0b" }}>{SIGNAL_LABEL[caseStudySession.signal_gap_type ?? ""] ?? caseStudySession.signal_gap_type ?? "their data"}</span>. They resolved to{" "}
+                    <span style={{ color: POSTURE_COLOUR[caseStudySession.posture ?? ""] ?? "#9ca3af", fontWeight: 600 }}>{POSTURE_PLAIN[caseStudySession.posture ?? ""] ?? caseStudySession.posture}</span>.
+                    {" "}That is ShiftImpact OS in one session: a clear name for what was unclear, and a specific next move.
                   </p>
                 </div>
               </div>
@@ -483,12 +514,12 @@ export default function DecideInsightsPage() {
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                   {r.posture && (
                     <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, fontWeight: 600, letterSpacing: "0.06em", background: POSTURE_COLOUR[r.posture] + "22", color: POSTURE_COLOUR[r.posture] ?? "#9ca3af" }}>
-                      {r.posture.toUpperCase()}
+                      {POSTURE_PLAIN[r.posture] ?? r.posture}
                     </span>
                   )}
-                  {r.campaign_stage && <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: "#1e2235", color: "#9ca3af" }}>{r.campaign_stage}</span>}
+                  {r.campaign_stage && <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: "#1e2235", color: "#9ca3af" }}>{STAGE_PLAIN[r.campaign_stage] ?? r.campaign_stage}</span>}
                   {r.signal_gap_type && <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: "#1e2235", color: "#f59e0b" }}>{SIGNAL_LABEL[r.signal_gap_type] ?? r.signal_gap_type}</span>}
-                  {r.decision_gap_type && <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: "#1e2235", color: "#6b7280" }}>{r.decision_gap_type} gap</span>}
+                  {r.decision_gap_type && <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: "#1e2235", color: "#6b7280" }}>{GAP_PLAIN[r.decision_gap_type] ?? r.decision_gap_type}</span>}
                   {r.industry && <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: "#1e2235", color: "#6b7280" }}>{r.industry}</span>}
                   {r.brand_category && <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: "#1e2235", color: "#6b7280" }}>{r.brand_category}</span>}
                   <span style={{ fontSize: 10, color: "#374151", marginLeft: "auto" }}>{new Date(r.created_at).toLocaleDateString("en-GB")}</span>

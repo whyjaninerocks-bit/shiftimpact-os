@@ -247,23 +247,70 @@ export default async function ClientPortalPage({
           </PortalSection>
         )}
 
-        {/* ── Campaign Intelligence Report ── */}
-        {report && (
-          <PortalSection title="Campaign intelligence">
-            <Card className="space-y-3">
+        {/* ── Weekly Intelligence Report (approved for portal) ── */}
+        {report && report.portal_published_at && (
+          <PortalSection title="Weekly intelligence report">
+            <Card className="space-y-4">
+              {/* Header */}
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold">{report.report_label}</p>
-                <Badge tone="green">Week {report.report_week}</Badge>
-              </div>
-              {report.executive_summary && (
-                <p className="text-sm text-neutral-700 leading-relaxed">{report.executive_summary}</p>
-              )}
-              {report.findings.slice(0, 3).map((f, i) => (
-                <div key={i} className="border-t border-neutral-100 pt-2.5">
-                  <p className="text-xs font-semibold text-neutral-700 mb-0.5">{f.headline}</p>
-                  <p className="text-xs text-neutral-500">{f.implication}</p>
+                <div>
+                  <p className="text-sm font-semibold text-neutral-900">{report.report_label}</p>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    Week {report.report_week} · Reviewed by your strategist
+                  </p>
                 </div>
-              ))}
+                <Badge tone="green">Ready</Badge>
+              </div>
+
+              {/* Executive summary */}
+              {report.executive_summary && (
+                <div className="bg-neutral-50 rounded-lg p-3.5">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Summary</p>
+                  <p className="text-sm text-neutral-700 leading-relaxed">{report.executive_summary}</p>
+                </div>
+              )}
+
+              {/* Risk posture */}
+              {report.risk_posture && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1.5">Brand posture this week</p>
+                  <span className={`inline-block text-xs font-semibold px-3 py-1 rounded-full border ${
+                    report.risk_posture === "Gaining"
+                      ? "bg-green-50 text-green-800 border-green-200"
+                      : report.risk_posture === "Plateauing"
+                      ? "bg-amber-50 text-amber-800 border-amber-200"
+                      : report.risk_posture === "Under Threat" || report.risk_posture === "Fragile" || report.risk_posture === "Eroding Slowly"
+                      ? "bg-red-50 text-red-800 border-red-200"
+                      : "bg-neutral-100 text-neutral-700 border-neutral-200"
+                  }`}>
+                    {report.risk_posture}
+                  </span>
+                </div>
+              )}
+
+              {/* Intelligence findings */}
+              {report.findings.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-2">What the data is telling us</p>
+                  <div className="space-y-3">
+                    {report.findings.map((f, i) => (
+                      <div key={i} className="border-l-2 border-neutral-200 pl-3">
+                        <p className="text-xs font-semibold text-neutral-800 mb-1">{f.headline}</p>
+                        <p className="text-xs text-neutral-500 leading-relaxed">{f.implication}</p>
+                        {f.recommendation && (
+                          <p className="text-xs text-emerald-700 mt-1.5 font-medium">→ {f.recommendation}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <p className="text-[10px] text-neutral-400 pt-1 border-t border-neutral-100">
+                Published {new Date(report.portal_published_at).toLocaleDateString("en-MY", {
+                  day: "numeric", month: "long", year: "numeric"
+                })} · Questions? Reply to the notification email.
+              </p>
             </Card>
           </PortalSection>
         )}

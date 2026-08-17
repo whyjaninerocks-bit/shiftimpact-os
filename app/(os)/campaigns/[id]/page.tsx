@@ -86,6 +86,7 @@ import { AudienceReplenishmentSection } from "./_components/AudienceReplenishmen
 import { CampaignLearningSection } from "./_components/CampaignLearningSection";
 import { SignalHealthSection } from "./_components/SignalHealthSection";
 import CampaignOsDigestSection from "./_components/CampaignOsDigestSection";
+import SignalMovementSection from "@/components/SignalMovementSection";
 
 const sectionGroups = [
   {
@@ -367,6 +368,10 @@ export default async function CampaignDetailPage({
             .slice(0, 5)
             .map((b) => ({ channel: b.channel, movement_type: b.movement_type })),
         } satisfies WeeklyDataContext}
+      />
+      <SignalMovementSection
+        campaignId={id}
+        weekNumber={latestSignalWeek ?? 1}
       />
       <CrossChannelSection
         campaignId={id}
