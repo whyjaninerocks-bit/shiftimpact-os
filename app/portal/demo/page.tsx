@@ -5,8 +5,299 @@
 
 import { useState, useRef, useEffect } from "react";
 
-// ─── AI assistant responses ───────────────────────────────────────────────────
+// ─── AI assistant — semantic topic engine ─────────────────────────────────────
+//
+// Architecture: Topic clusters, not keyword lists.
+// Best practices applied:
+//   1. Context stripping  — remove filler/frame words before matching, so "what does X mean
+//      in the compliance report" matches X, not "compliance report"
+//   2. Length-weighted scoring — longer trigger phrase = more specific = higher confidence
+//   3. Conversation memory — boost topics that match the previous turn
+//   4. Answer-first responses — open with the direct answer, not a system description
+//   5. Graceful clarification — below confidence threshold, ask rather than guess
 
+// Phrases that frame HOW a question is asked, not WHAT it is asking about.
+// Strip these before topic matching so they don't bias scores.
+const CONTEXT_PHRASES = [
+  "explain what this means in the compliance report",
+  "explain what this means in",
+  "explain what this means",
+  "explain what is this",
+  "what does this mean in",
+  "what does this mean",
+  "what does it mean",
+  "what is the meaning of",
+  "what is meant by",
+  "can you explain",
+  "help me understand",
+  "tell me about",
+  "tell me what",
+  "in the compliance report",
+  "in this report",
+  "in the report",
+  "compliance report",
+  "this report",
+  "the report",
+  "what does",
+  "what is",
+  "what are",
+  "how does",
+  "why does",
+  "what was",
+  "explain",
+  "elaborate",
+  "describe",
+  "clarify",
+];
+
+function normalizeQuery(q: string): string {
+  let s = q.toLowerCase().trim();
+  // Strip multi-word context phrases first (longest first to avoid partial overlap)
+  for (const p of CONTEXT_PHRASES) {
+    s = s.split(p).join(" ");
+  }
+  return s.replace(/\s+/g, " ").trim();
+}
+
+// Topic clusters. Each topic has:
+//   triggers: all phrasings users might use to refer to this topic, longest first
+//             (longer phrase = more specific = higher confidence score)
+//   answer: leads with the direct answer, not a system description
+type Topic = { id: string; triggers: string[]; answer: string };
+
+const TOPICS: Topic[] = [
+  {
+    id: "framing",
+    triggers: [
+      "your version of the dish", "your version of dish", "brand shortcut positioning",
+      "personal ownership frame", "not brand shortcut", "shortcut positioning",
+      "shortcut messaging", "your version", "personal ownership", "dish framing",
+      "this is my version", "creator story", "creator owns", "framing check",
+      "not shortcut", "brand shortcut", "framing", "frame",
+    ],
+    answer: "It checks whether the KOL content told the story from the creator's perspective, not the brand's. 'Your version of the dish' means the creator cooked it their own way and Cooks paste was part of their process — not a product ad where the brand is the hero.\n\nIn practice: personal ownership sounds like \"this is how I make rendang, I always use Cooks paste for the base.\" Brand shortcut sounds like \"Cooks paste gives you authentic rendang in 20 minutes.\" The first saves. The second doesn't.\n\nPersonal ownership framing produces 2.3× higher save rates than shortcut messaging in recipe content. When you watch the posted content, ask: does the creator own the cooking story, or does the product?",
+  },
+  {
+    id: "dashed-line",
+    triggers: [
+      "dashed line on the chart", "dotted line on the chart", "what does the line represent",
+      "dashed line", "dotted line", "threshold line", "what is the line", "the line mean",
+      "line on the chart", "line on the graph", "dashed", "dotted",
+    ],
+    answer: "The dashed line is the gate threshold — the minimum each signal must reach and hold before Phase 2 budget releases. It is not a target; it is a gate.\n\nOn save rate: ≥8% (you are at 6.1% — 1.9pp away). On brand search share: ≥18% (you are at 14.2%). On UGC authenticity: ≥65% (you are above it at 72%). The save rate gate is the one that matters most right now — it is the primary gate condition for Phase 2.",
+  },
+  {
+    id: "health-score",
+    triggers: [
+      "health score calculated", "health score derived", "score of 74", "score 74",
+      "how is health", "health score", "campaign health score", "composite score",
+      "what is 74", "score mean",
+    ],
+    answer: "74 is a composite of how all live signals are tracking toward their gate thresholds, weighted by how close each is to firing. Save rate carries the heaviest weight because it is the primary gate condition.\n\nAt Week 6, 74 reflects five consecutive weeks of improvement from a launch baseline of 52. A score in the 70s at the midpoint of Phase 1 is on track — it means the campaign is compounding, not plateauing.",
+  },
+  {
+    id: "gate",
+    triggers: [
+      "phase 2 budget release", "gate not yet fired", "why hasn't gate fired",
+      "gate fire", "gate fires", "when will gate", "gate threshold", "gate condition",
+      "unlock phase 2", "budget release", "phase 2 unlock", "gate 1",
+      "phase 2", "gate",
+    ],
+    answer: "Gate 1 requires save rate ≥8% held for 3 consecutive days — you are at 6.1%, which is 1.9pp away. The 3-day hold rule prevents a single viral post from releasing Phase 2 budget before the audience shift is real.\n\nAt +0.4pp growth per week without the creative brief, gate fires around Week 10–11. If the recipe-led brief is actioned this week, growth should accelerate to +0.6–0.8pp — gate in Week 7–8 is realistic. The Merdeka window this week creates additional tailwind for recipe content.",
+  },
+  {
+    id: "save-rate",
+    triggers: [
+      "save rate at 6.1", "save rate is 6", "why is save rate", "content save rate",
+      "what is save rate", "save rate mean", "bookmarks", "saves mean", "save rate",
+      "6.1%", "saves",
+    ],
+    answer: "Save rate is the percentage of people who see a piece of content and bookmark it for later. In the cooking category, saves are the strongest forward indicator of purchase intent — people save recipes they plan to cook, not recipes they have already made.\n\nYour save rate is 6.1% and has grown every week since launch. The issue is the creative mix — 60% lifestyle content, which saves at 1 base rate, vs 40% recipe content, which saves at 2.3× that rate. Shifting to 70% recipe content this week is the most direct lever to move save rate toward the 8% gate.",
+  },
+  {
+    id: "ics",
+    triggers: [
+      "idea certainty score", "what does conditional mean", "ics score", "ics 76",
+      "why conditional", "idea quality", "campaign idea quality", "ics",
+      "conditional rating", "conditional",
+    ],
+    answer: "CONDITIONAL means the campaign idea — Jadikan Caramu — is structurally sound and above the category average of 67, but one dimension is flagged: executional consistency. The idea is not being expressed consistently enough across formats and channels.\n\nThis is a tactical problem, not a strategic one. The brief this week addresses it directly — tightening the mix to recipe-led content gives the idea a clearer, more consistent expression across every channel it runs on.",
+  },
+  {
+    id: "competitors",
+    triggers: [
+      "maggi vs cooks", "how do we compare", "competitor benchmark", "knorr benchmark",
+      "adabi score", "maggi score", "maggi ics", "benchmark comparison",
+      "maggi", "knorr", "adabi", "competitor", "benchmark",
+    ],
+    answer: "Your ICS of 76 puts Cooks second in the category: MAGGI (81), Cooks (76), Knorr (74), Adabi (59). The gap to MAGGI is not budget or idea quality — it is executional consistency. MAGGI runs the same idea coherently across every format. Cooks is running two different ideas depending on the format (recipe vs lifestyle).\n\nTightening to a recipe-led mix this week closes that gap — by Week 8, the consistency score should pull the ICS to 79–81 range.",
+  },
+  {
+    id: "brand-posture",
+    triggers: [
+      "what does gaining mean", "posture gaining", "brand posture gaining",
+      "why gaining", "gaining posture", "fragile to gaining", "posture change",
+      "brand posture", "posture", "gaining",
+    ],
+    answer: "Gaining means every tracked signal improved week-on-week and none deteriorated. This campaign went Fragile (Weeks 1–2) → Plateauing (Weeks 3–4) → Gaining (Weeks 5–6).\n\nTwo consecutive Gaining weeks at the midpoint of Phase 1 is the correct trajectory — it confirms the campaign is compounding. The risk that would flip posture back to Plateauing is a save rate stall on Meta lifestyle content, which is why the brief to shift the mix is timed now.",
+  },
+  {
+    id: "kol",
+    triggers: [
+      "micro kol vs mid tier", "kol performance", "why micro kol", "kol budget",
+      "influencer performance", "creator performance", "kol save rate",
+      "masakdenganaishah", "eatwithzafran", "kol programme", "influencer",
+      "micro kol", "mid tier", "kol",
+    ],
+    answer: "KOL performance is measured on save rate only — not reach or follower count — because saves are the only KOL metric that directly moves the gate signal.\n\nYour three micro-KOLs average 7.4% save rate with 38% of the KOL budget. Your two mid-tier KOLs average 5.4% — below gate threshold — with 62% of the budget. The Phase 2 recommendation: do not renew mid-tier contracts. Concentrate all KOL budget on micro-tier performers and recruit two new Klang Valley food creators to the same profile.",
+  },
+  {
+    id: "creative-battery",
+    triggers: [
+      "creative battery at 24", "meta feed battery", "creative runway", "content fatigue",
+      "how many weeks remaining", "creative endurance", "battery mean", "battery low",
+      "creative battery", "battery", "fatigue", "runway",
+    ],
+    answer: "Creative Battery measures how many more weeks a specific format can sustain its performance before engagement drops. It is about format fatigue, not idea quality — the Jadikan Caramu idea is intact.\n\nMeta Feed lifestyle content is at 24% — roughly 2 weeks before diminishing returns set in. TikTok recipe formats are at 82% — no fatigue risk. The aggregate is 46% (~3 weeks). Actioning the recipe-led brief this week extends the Meta battery by 4–6 weeks and prevents a mid-campaign dip ahead of Merdeka.",
+  },
+  {
+    id: "ugc",
+    triggers: [
+      "ugc authenticity ratio", "authenticity ratio", "user generated content",
+      "organic posts", "72% authenticity", "ugc signal", "ugc above threshold",
+      "community content", "seeded content", "organic content",
+      "ugc", "authenticity",
+    ],
+    answer: "UGC Signal tracks content posted by real consumers who cooked with Cooks — not paid KOLs. The Authenticity Ratio (72%) measures how much of the brand-tagged content is genuine vs paid.\n\nYou crossed the 65% gate threshold at Week 5 and are holding above it. 28 organic posts were tagged this week, up from 19 at Week 4. A rising authenticity ratio is a leading indicator that the brand is building real cultural presence — it also makes your paid KOL content more credible because audiences see the brand in organic contexts too.",
+  },
+  {
+    id: "grabads",
+    triggers: [
+      "grabads purchase attribution", "grab purchase", "grabmart", "grabfood ads",
+      "what is grab", "grab super app", "purchase attribution", "grabads signal",
+      "grab ads", "grabads", "grab signal",
+    ],
+    answer: "Grab is the super-app Malaysians use daily — rides, GrabFood, GrabPay. Because Grab sees actual purchase transactions, GrabAds closes the loop between a TikTok recipe save and a physical Cooks paste purchase from GrabMart or a nearby store.\n\nIt is one of the only platforms in Malaysia that connects social activity to real buying behaviour. For this campaign, it answers the question keyword matching cannot: did someone who saved a Cooks recipe actually buy the product? This signal is in preview — it activates when your GrabAds account is connected.",
+  },
+  {
+    id: "prediction",
+    triggers: [
+      "prediction accuracy record", "locked predictions", "verified predictions",
+      "how accurate are predictions", "prediction track record", "5 of 5",
+      "100% accuracy", "prior predictions", "prediction verified",
+      "prediction accuracy", "predictions", "forecast",
+    ],
+    answer: "Every report has two prediction layers. This week's predictions are locked and timestamped at publication — they cannot be edited after delivery. Prior predictions are verified against actuals in the following week's report.\n\nAt Week 6, all five predictions from Weeks 1–5 have been verified within the stated range — 100% accuracy for this campaign so far. The locked predictions for this week are in the Full Intelligence Suite section. This closed loop — predict, lock, verify, publish — is the accountability structure that distinguishes this system from a standard reporting dashboard.",
+  },
+  {
+    id: "read-receipt",
+    triggers: [
+      "delivery acknowledgement record", "who acknowledged", "did they read",
+      "read receipt mean", "read timestamp", "acknowledgement status",
+      "priya menon awaiting", "farah nabilah", "azlan razak acknowledged",
+      "read receipt", "acknowledgement", "delivery record", "who received",
+    ],
+    answer: "The delivery record logs every recipient, delivery timestamp, and read timestamp for this report. Required owners — brand marketing lead and agency account director — must formally acknowledge before the brief is considered actioned.\n\nFarah Nabilah and Azlan Razak have acknowledged. Priya Menon (CC, media planner) has not yet read. The record is append-only — no entry can be removed or backdated. In any dispute about whether a brief was received or when, this log is the reference.",
+  },
+  {
+    id: "ai-visibility",
+    triggers: [
+      "ai brand visibility", "google ai overview", "appear in ai", "ai recommendation",
+      "chatgpt mention", "gemini mention", "ai generated results",
+      "ai visibility", "brand in ai", "ai search",
+    ],
+    answer: "AI Brand Visibility tracks whether Cooks appears when someone asks an AI assistant — Google AI Overview, ChatGPT, Gemini — for a recipe or product recommendation. 23% of purchase-intent queries in the cooking category now go to AI assistants first.\n\nIf your brand is not in those answers, you are invisible to a growing high-intent segment. This is a premium signal in the Full Intelligence Suite — it activates when brand monitoring is configured for your campaign.",
+  },
+  {
+    id: "compliance",
+    triggers: [
+      "compliance score mean", "how compliance works", "why compliance report",
+      "brief compliance score", "compliance score", "brief compliance",
+      "did they follow the brief", "agency followed",
+    ],
+    answer: "The compliance score tells you how closely the agency executed what was briefed — and it feeds directly into the prediction accuracy loop.\n\nIf a prediction misses and compliance was Low (under 50%), the miss is flagged as execution deviation — the brief was not followed, so the model did not have the inputs it predicted. If compliance was High (80%+) and a prediction still misses, the model recalibrates. This distinction protects you as a strategist: it separates your analysis from their execution.",
+  },
+  {
+    id: "horizon",
+    triggers: [
+      "when will gate fire", "week 7 week 8 prediction", "gate timeline",
+      "how long until gate", "signal horizon", "next 4 weeks",
+      "horizon signal", "gate estimate", "when does phase 2 start",
+      "horizon", "timeline",
+    ],
+    answer: "At current save-rate growth of +0.4pp per week, Gate 1 fires around Week 10–11 without any creative change. If this week's recipe-led brief is actioned, growth should accelerate to +0.6–0.8pp per week — Gate 1 in Week 7–8 is realistic.\n\nThe Merdeka window (31 August) creates additional tailwind specifically for recipe content this week. Acting now vs next week is the difference between a Week 7 gate and a Week 9 gate — roughly 2 weeks of Phase 2 budget locked unnecessarily.",
+  },
+  {
+    id: "market-context",
+    triggers: [
+      "merdeka window", "tiktok algorithm update", "why merdeka matters",
+      "algorithm boost", "seasonal opportunity", "market context mean",
+      "merdeka", "tiktok algorithm", "market context",
+    ],
+    answer: "Two live external factors this week both point in the same direction as the brief. Merdeka on 31 August is creating elevated reach for recipe content anchored to Malaysian heritage dishes — a 2-week window that closes at the end of August. TikTok's algorithm is currently giving recipe-format videos 1.4× distribution and deprioritising lifestyle and product close-ups.\n\nBoth factors amplify the value of the recipe-led brief this week specifically. This is the best-aligned week to shift the content mix.",
+  },
+  {
+    id: "phase-roadmap",
+    triggers: [
+      "phase 1 phase 2 phase 3", "three phases", "conversion phase",
+      "retention phase", "scale phase", "when does phase", "phase roadmap",
+      "phase 2 locked", "phase 3", "campaign phases", "roadmap",
+    ],
+    answer: "The campaign runs in three phases, each gated by a consumer behaviour signal — not a calendar date.\n\nPhase 1 (now — Demand): builds save rate to gate threshold. Phase 2 (Conversion): releases when Gate 1 fires — activates TikTok Shop mechanics and conversion-focused creative. Phase 3 (Retention and Scale): releases when Gate 2 fires in Phase 2. No phase releases early. This protects your budget from being deployed before the audience is ready.",
+  },
+];
+
+const CLARIFY = "That's a good question — could you be a bit more specific? For example: are you asking about the save rate gate, the KOL results, the creative battery, the compliance score, or something else in the report?";
+
+const FALLBACK = "I want to give you an accurate answer — could you rephrase or add a bit more detail? You can ask about the health score, gate threshold, KOL performance, save rate, creative battery, compliance report, predictions, or any specific number you see in the report.";
+
+function normalizeQuery(q: string): string {
+  let s = q.toLowerCase().trim();
+  for (const p of CONTEXT_PHRASES) { s = s.split(p).join(" "); }
+  return s.replace(/\s+/g, " ").trim();
+}
+
+function matchTopic(q: string, lastTopicId = ""): { answer: string; topicId: string } {
+  const raw = q.toLowerCase();
+  const norm = normalizeQuery(q);
+
+  let best = { score: 0, answer: "", topicId: "" };
+
+  for (const topic of TOPICS) {
+    let score = 0;
+    for (const trigger of topic.triggers) {
+      // Normalized match (after stripping context) is worth 3× phrase length
+      // Raw match (before stripping) is worth 1× phrase length
+      // Longer phrase = more specific = higher score
+      if (norm.includes(trigger))      score = Math.max(score, trigger.length * 3);
+      else if (raw.includes(trigger))  score = Math.max(score, trigger.length);
+    }
+    // Conversation continuity: boost the last topic so follow-up questions stay on topic
+    if (lastTopicId && topic.id === lastTopicId) score += 8;
+
+    if (score > best.score) best = { score, answer: topic.answer, topicId: topic.id };
+  }
+
+  // Confidence thresholds:
+  //   < 12: no meaningful match → fallback
+  //   12–18: weak match → clarify
+  //   > 18: confident → answer
+  if (best.score < 12) return { answer: FALLBACK, topicId: "" };
+  if (best.score < 18) return { answer: CLARIFY, topicId: "" };
+  return { answer: best.answer, topicId: best.topicId };
+}
+
+// Legacy wrapper kept for any call sites that use the old signature
+function matchAnswer(q: string): string { return matchTopic(q).answer; }
+
+const SUGGESTIONS = [
+  "What does the dashed line mean?",
+  "Why hasn't the gate fired yet?",
+  "What does 'your version of the dish' mean?",
+  "How is the compliance score used?",
+];
+
+// ─── Legacy QA placeholder (not used — replaced by TOPICS above) ──────────────
 const QA: Array<{ keywords: string[]; answer: string }> = [
   // ── Dashed line / gate threshold (must be first — most commonly misunderstood) ──
   {
@@ -93,15 +384,15 @@ const QA: Array<{ keywords: string[]; answer: string }> = [
     keywords: ["phase 1", "phase 3", "roadmap", "conversion phase", "retention phase", "scale phase", "three phases"],
     answer: "The campaign runs in three phases, each gated by a consumer behaviour signal. Phase 1 (now) builds demand — the gate is save rate ≥8%, which you are 1.9pp from. Phase 2 (Conversion) releases when Gate 1 fires — it activates TikTok Shop mechanics and conversion-focused creative. Phase 3 (Retention and Scale) releases when Gate 2 fires in Phase 2. No phase releases on a calendar date — each releases when the data confirms audience readiness. This protects your budget from being deployed before the market is primed.",
   },
-  // ── Compliance — system explanation ──
+  // ── Brief framing — 'your version of the dish' (must come before compliance — higher specificity) ──
   {
-    keywords: ["brief compliance", "compliance report", "did they follow", "what was actioned", "brief followed", "agency followed", "compliance score"],
-    answer: "The Brief Compliance Report is a structured sign-off the agency lead completes before each weekly report publishes. For every brief action, they select Done in full, Done partially, or Not done — and if partial or not done, they pick a preset reason: Budget constraint, Timeline pressure, Client override, Format changed, Creative shifted, or Planned for next activation. No free-text typing required. The compliance score feeds into the prediction accuracy loop: if a prediction misses and compliance was low, the variance analysis leads with execution deviation. If compliance was high, the model recalibrates. This is what separates model error from execution error.",
+    keywords: ["your version of the dish", "your version", "brand shortcut", "shortcut positioning", "dish framing", "personal ownership", "this is my version", "not brand shortcut", "framing", "frame"],
+    answer: "This compliance item checks whether the KOL content told the story from the creator's perspective, not the brand's. 'Your version of the dish' means the creator cooked it their own way and Cooks paste was part of their process — not a brand ad where the product is the hero. In practice: personal ownership sounds like 'this is how I make rendang — I always use Cooks paste for the base.' Brand shortcut positioning sounds like 'Cooks paste gives you authentic rendang in 20 minutes.' The first saves. The second doesn't. Personal ownership framing produces 2.3× higher save rates than shortcut messaging in recipe content, which is why it's in every KOL brief. The compliance item asks: when you watch the posted content, does the creator own the cooking story, or does the product?",
   },
-  // ── Brief framing — 'this is my version' ──
+  // ── Compliance — system explanation (lower priority than specific item questions) ──
   {
-    keywords: ["this is my version", "personal ownership", "frame", "framing", "shortcut messaging", "your version", "brand framing", "what does frame mean"],
-    answer: "The 'your version of the dish' frame is a specific storytelling direction in the brief. It means the KOL presents the dish as something they cooked their own way — not as a branded product demonstration. The difference in practice: a personal ownership frame sounds like 'this is how I make rendang, and Cooks paste is what I use' — the creator owns the cooking narrative. Shortcut messaging sounds like 'Cooks paste makes this in 10 minutes' — the brand owns the story. The brief checks for this because personal ownership framing saves at 2.3× the rate of shortcut messaging. It is the single biggest driver of save rate in the recipe content category. In the compliance report, this item checks whether the posted content felt like the creator's own cooking story or a product ad.",
+    keywords: ["brief compliance report", "compliance score", "did they follow the brief", "agency followed", "what was actioned", "how compliance works", "compliance system"],
+    answer: "The Brief Compliance Report is a structured sign-off the agency lead completes before each weekly report publishes. For every brief action, they select Done in full, Done partially, or Not done — and if partial or not done, they pick a preset reason: Budget constraint, Timeline pressure, Client override, Format changed, Creative shifted, or Planned for next activation. No free-text typing required. The compliance score feeds into the prediction accuracy loop: if a prediction misses and compliance was low, the variance analysis leads with execution deviation. If compliance was high, the model recalibrates. This is what separates model error from execution error.",
   },
   // ── Data sources ──
   {
@@ -150,10 +441,11 @@ type Message = { role: "user" | "ai"; text: string };
 function AskWidget() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { role: "ai", text: "Hi — I can explain any part of this report. Ask me about the health score, the gate, KOL performance, or anything else you'd like to understand better." },
+    { role: "ai", text: "Ask me anything about this report — the health score, gate threshold, KOL results, compliance score, predictions, or any number you're not sure about." },
   ]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
+  const [lastTopicId, setLastTopicId] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -168,7 +460,9 @@ function AskWidget() {
     setMessages(prev => [...prev, { role: "user", text: q }]);
     setThinking(true);
     setTimeout(() => {
-      setMessages(prev => [...prev, { role: "ai", text: matchAnswer(q) }]);
+      const { answer, topicId } = matchTopic(q, lastTopicId);
+      if (topicId) setLastTopicId(topicId);
+      setMessages(prev => [...prev, { role: "ai", text: answer }]);
       setThinking(false);
     }, 750);
   }
