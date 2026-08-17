@@ -136,13 +136,31 @@ export async function POST(
       return NextResponse.json({ error: updateErr.message }, { status: 500 });
     }
 
-    // 4. Send Resend email if client email exists
+    // 4. Collect all email recipients: primary contact + additional recipients
+    const allRecipients: string[] = [];
+    if (clientEmail) allRecipients.push(clientEmail);
+
+    if (campaign?.client_id) {
+      const { data: extraRecipients } = await supabase
+        .from("client_report_recipients")
+        .select("email")
+        .eq("client_id", campaign.client_id);
+      if (extraRecipients) {
+        for (const r of extraRecipients) {
+          if (r.email && !allRecipients.includes(r.email)) {
+            allRecipients.push(r.email);
+          }
+        }
+      }
+    }
+
+    // 5. Send Resend email to all recipients
     let emailSent = false;
     const resendKey = process.env.RESEND_API_KEY;
     const fromEmail = process.env.RESEND_FROM_EMAIL;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.shift-impact.com";
 
-    if (resendKey && fromEmail && clientEmail) {
+    if (resendKey && fromEmail && allRecipients.length > 0) {
       const portalUrl = `${appUrl}/portal/${report.campaign_id}`;
       const html = buildPortalEmail({
         clientName,
@@ -161,7 +179,7 @@ export async function POST(
           },
           body: JSON.stringify({
             from: fromEmail,
-            to: [clientEmail],
+            to: allRecipients,
             subject: `Your Week ${report.report_week ?? ""} report is ready — ${campaign?.name ?? ""}`,
             html,
           }),
@@ -180,7 +198,8 @@ export async function POST(
       ok: true,
       portal_published_at: now,
       email_sent: emailSent,
-      client_email: clientEmail ? `${clientEmail.split("@")[0]}@***` : null,
+      recipients_count: allRecipients.length,
+      recipients: allRecipients.map((e) => `${e.split("@")[0]}@***`),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

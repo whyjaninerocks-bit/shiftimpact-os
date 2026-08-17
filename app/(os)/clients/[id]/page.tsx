@@ -5,6 +5,7 @@ import { ChannelRegistrySection } from "./_components/ChannelRegistrySection";
 import { SignalSourcesSection } from "./_components/SignalSourcesSection";
 import { BrandMomentumSection } from "./_components/BrandMomentumSection";
 import { CulturalContextSection } from "./_components/CulturalContextSection";
+import { ReportRecipientsSection } from "./_components/ReportRecipientsSection";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createCampaign, updateClient } from "@/lib/actions";
 import {
@@ -34,13 +35,19 @@ export default async function ClientDetailPage({
   if (!client) notFound();
 
   const supabase = createAdminClient();
-  const [campaigns, teamMembers, clientChannels, signalSources, bmsScores] = await Promise.all([
+  const [campaigns, teamMembers, clientChannels, signalSources, bmsScores, reportRecipientsRes] = await Promise.all([
     getCampaignsForClient(id),
     getAllTeamMembers(),
     getClientChannels(id),
     getClientSignalSources(id),
     getBrandMomentumScores(id),
+    supabase
+      .from("client_report_recipients")
+      .select("id, name, email, created_at")
+      .eq("client_id", id)
+      .order("created_at", { ascending: true }),
   ]);
+  const reportRecipients = reportRecipientsRes.data ?? [];
 
   // Cultural signals: pull by direct client_id association, industry match, OR generic (applies to all brands)
   // Falls back gracefully if the columns don't exist yet (pre-migration 0042)
@@ -242,6 +249,11 @@ export default async function ClientDetailPage({
         clientId={id}
         clientIndustry={client.industry_profile ?? null}
         signals={culturalSignals}
+      />
+
+      <ReportRecipientsSection
+        clientId={id}
+        initial={reportRecipients}
       />
     </div>
   );
