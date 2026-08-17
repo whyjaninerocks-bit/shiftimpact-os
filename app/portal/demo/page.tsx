@@ -93,6 +93,11 @@ const QA: Array<{ keywords: string[]; answer: string }> = [
     keywords: ["phase 1", "phase 3", "roadmap", "conversion phase", "retention phase", "scale phase", "three phases"],
     answer: "The campaign runs in three phases, each gated by a consumer behaviour signal. Phase 1 (now) builds demand — the gate is save rate ≥8%, which you are 1.9pp from. Phase 2 (Conversion) releases when Gate 1 fires — it activates TikTok Shop mechanics and conversion-focused creative. Phase 3 (Retention and Scale) releases when Gate 2 fires in Phase 2. No phase releases on a calendar date — each releases when the data confirms audience readiness. This protects your budget from being deployed before the market is primed.",
   },
+  // ── Compliance ──
+  {
+    keywords: ["compliance", "brief compliance", "did they follow", "execution", "what was actioned", "brief followed", "agency followed"],
+    answer: "The Brief Compliance Report is a structured sign-off that the agency lead completes before each weekly report publishes. For every action in the brief, they select: Done in full, Done partially, or Not done. If partial or not done, they pick a reason from a preset list — Budget constraint, Timeline pressure, Client override, Format changed, Creative shifted, or Still in progress. No free-text typing required. This feeds directly into the prediction accuracy loop: if a prediction misses and compliance was low, the variance analysis leads with execution deviation. If compliance was high, the model recalibrates. The compliance score is the variable that distinguishes model error from execution error.",
+  },
   // ── Data sources ──
   {
     keywords: ["data source", "where does", "how is it measured", "what data", "where does this come from", "live data"],
@@ -874,9 +879,47 @@ function Collapsible({ label, children }: { label: string; children: React.React
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+// ─── Brief compliance data ────────────────────────────────────────────────────
+
+const COMPLIANCE_ITEMS = [
+  "Recruit 2 Klang Valley food creators (recipe-led, 10K–80K followers)",
+  "Activate Rendang Tok or Ayam Percik dish using Cooks paste",
+  "Deliver 2 × TikTok process videos + 1 × Instagram Reel per creator",
+  "'This is my version' frame — personal ownership, not shortcut messaging",
+];
+
+const COMPLIANCE_REASONS = [
+  "Budget constraint",
+  "Timeline pressure",
+  "Client override",
+  "Format changed",
+  "Creative shifted",
+  "Still in progress",
+] as const;
+type ComplianceReason = typeof COMPLIANCE_REASONS[number];
+type ComplianceStatus = "done" | "partial" | "skipped" | null;
+
 export default function PortalDemoPage() {
   const [selectedWeek, setSelectedWeek] = useState(6);
   const week = W6;
+
+  // Compliance form state (Week 5 brief executed in Week 6)
+  const [complianceStatus, setComplianceStatus] = useState<ComplianceStatus[]>(COMPLIANCE_ITEMS.map(() => null));
+  const [complianceReasons, setComplianceReasons] = useState<(ComplianceReason | null)[]>(COMPLIANCE_ITEMS.map(() => null));
+  const [complianceSubmitted, setComplianceSubmitted] = useState(false);
+
+  const allAnswered = complianceStatus.every(s => s !== null);
+  const needsReason = (i: number) => complianceStatus[i] === "partial" || complianceStatus[i] === "skipped";
+  const readyToSubmit = allAnswered && complianceStatus.every((s, i) => s === "done" || complianceReasons[i] !== null);
+
+  const complianceScore = complianceSubmitted
+    ? Math.round(complianceStatus.reduce((sum, s) => sum + (s === "done" ? 100 : s === "partial" ? 50 : 0), 0) / complianceStatus.length)
+    : 0;
+  const complianceRating = complianceScore >= 80 ? "High" : complianceScore >= 50 ? "Medium" : "Low";
+  const complianceRatingColor = complianceRating === "High" ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+    : complianceRating === "Medium" ? "bg-amber-50 text-amber-700 border-amber-200"
+    : "bg-red-50 text-red-700 border-red-200";
+
   const circumference = 138.23;
   const arcLen = (week.health / 100) * circumference;
 
@@ -1498,6 +1541,151 @@ export default function PortalDemoPage() {
                     <p className="text-[10px] text-neutral-400 leading-snug">Read receipts are recorded when a recipient opens the portal link. Acknowledgement is logged when they click the confirm button. This record is append-only — no entry can be removed. In any dispute about brief receipt or timing, this log is the reference.</p>
                   </div>
                 </div>
+
+                {/* ── Brief Compliance Report ── */}
+                <div className="rounded-2xl border border-neutral-200 bg-white overflow-hidden">
+                  <div className="flex items-start justify-between px-5 py-3.5 bg-neutral-50 border-b border-neutral-200 flex-wrap gap-2">
+                    <div>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-neutral-500"><path d="M3 8l3 3 7-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><rect x="1" y="1" width="14" height="14" rx="3" stroke="currentColor" strokeWidth="1.5"/></svg>
+                        <p className="text-xs font-bold text-neutral-700 uppercase tracking-widest">Brief compliance report</p>
+                      </div>
+                      <p className="text-[11px] text-neutral-500 pl-5">Week 5 brief · executed in Week 6 · required before this report publishes</p>
+                    </div>
+                    {complianceSubmitted ? (
+                      <div className={`flex items-center gap-1.5 border rounded-full px-3 py-1 ${complianceRatingColor}`}>
+                        <span className="text-xs font-black">{complianceRating}</span>
+                        <span className="text-xs font-semibold">{complianceScore}% compliance</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                        <span className="text-xs font-semibold text-amber-700">Pending submission</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {complianceSubmitted ? (
+                    /* ── Submitted summary view ── */
+                    <div className="divide-y divide-neutral-100">
+                      {COMPLIANCE_ITEMS.map((item, i) => {
+                        const s = complianceStatus[i];
+                        const r = complianceReasons[i];
+                        return (
+                          <div key={i} className="flex items-start gap-3 px-5 py-3.5">
+                            <div className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
+                              s === "done" ? "bg-emerald-100" : s === "partial" ? "bg-amber-100" : "bg-red-100"
+                            }`}>
+                              {s === "done"
+                                ? <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5 4-4" stroke="#059669" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                : s === "partial"
+                                ? <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6" stroke="#d97706" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                                : <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3 3l4 4M7 3l-4 4" stroke="#dc2626" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                              }
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm text-neutral-800">{item}</p>
+                              {r && <span className="inline-block mt-1 text-[10px] font-semibold bg-neutral-100 text-neutral-500 rounded-full px-2 py-0.5">{r}</span>}
+                            </div>
+                            <span className={`text-[11px] font-bold whitespace-nowrap ${
+                              s === "done" ? "text-emerald-600" : s === "partial" ? "text-amber-600" : "text-red-500"
+                            }`}>
+                              {s === "done" ? "Done in full" : s === "partial" ? "Done partially" : "Not done"}
+                            </span>
+                          </div>
+                        );
+                      })}
+                      <div className="px-5 py-3 bg-neutral-50 flex items-center gap-2">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="#737373" strokeWidth="1.2"/><path d="M6 4v4M6 3v.5" stroke="#737373" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                        <p className="text-[10px] text-neutral-400">Submitted by Azlan Razak · Agency Account Director · {new Date().toLocaleDateString("en-MY", { day: "numeric", month: "short" })} · {new Date().toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })} MYT · Compliance score informs prediction variance analysis</p>
+                      </div>
+                    </div>
+                  ) : (
+                    /* ── Interactive chip form ── */
+                    <div>
+                      <div className="divide-y divide-neutral-100">
+                        {COMPLIANCE_ITEMS.map((item, i) => (
+                          <div key={i} className="px-5 py-4">
+                            <p className="text-sm font-medium text-neutral-800 mb-3">{item}</p>
+
+                            {/* Status chips */}
+                            <div className="flex flex-wrap gap-2 mb-2">
+                              {(["done", "partial", "skipped"] as ComplianceStatus[]).map(opt => (
+                                <button
+                                  key={opt}
+                                  onClick={() => {
+                                    const next = [...complianceStatus];
+                                    next[i] = opt;
+                                    setComplianceStatus(next);
+                                    if (opt === "done") {
+                                      const nextR = [...complianceReasons];
+                                      nextR[i] = null;
+                                      setComplianceReasons(nextR);
+                                    }
+                                  }}
+                                  className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
+                                    complianceStatus[i] === opt
+                                      ? opt === "done" ? "bg-emerald-600 border-emerald-600 text-white"
+                                        : opt === "partial" ? "bg-amber-500 border-amber-500 text-white"
+                                        : "bg-red-500 border-red-500 text-white"
+                                      : "bg-white border-neutral-200 text-neutral-600 hover:border-neutral-400"
+                                  }`}
+                                >
+                                  {opt === "done" ? "Done in full" : opt === "partial" ? "Done partially" : "Not done"}
+                                </button>
+                              ))}
+                            </div>
+
+                            {/* Reason chips — appear only when partial or skipped */}
+                            {needsReason(i) && (
+                              <div className="flex flex-wrap gap-1.5 mt-2 ml-1">
+                                <span className="text-[10px] text-neutral-400 font-semibold self-center mr-1">Why?</span>
+                                {COMPLIANCE_REASONS.map(r => (
+                                  <button
+                                    key={r}
+                                    onClick={() => {
+                                      const next = [...complianceReasons];
+                                      next[i] = r;
+                                      setComplianceReasons(next);
+                                    }}
+                                    className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-all ${
+                                      complianceReasons[i] === r
+                                        ? "bg-neutral-800 border-neutral-800 text-white"
+                                        : "bg-white border-neutral-200 text-neutral-500 hover:border-neutral-400"
+                                    }`}
+                                  >
+                                    {r}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Submit */}
+                      <div className="px-5 py-4 bg-neutral-50 border-t border-neutral-100 flex items-center justify-between gap-3 flex-wrap">
+                        <p className="text-[11px] text-neutral-400 leading-snug">
+                          {readyToSubmit
+                            ? "Ready to submit — this report will publish once compliance is confirmed."
+                            : "Select a status for each brief action. If partial or not done, select a reason."}
+                        </p>
+                        <button
+                          onClick={() => { if (readyToSubmit) setComplianceSubmitted(true); }}
+                          disabled={!readyToSubmit}
+                          className={`text-sm font-bold px-5 py-2 rounded-xl transition-all ${
+                            readyToSubmit
+                              ? "bg-neutral-900 text-white hover:bg-neutral-700"
+                              : "bg-neutral-100 text-neutral-400 cursor-not-allowed"
+                          }`}
+                        >
+                          Submit compliance report
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
               </div>
             </SectionQ>
           </div>
