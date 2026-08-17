@@ -49,6 +49,14 @@ const QA: Array<{ keywords: string[]; answer: string }> = [
     answer: "AI Brand Visibility tracks whether your brand appears in AI-generated product recommendations — Google AI Overview, ChatGPT, Gemini. In FMCG and cooking categories, 23% of purchase-intent queries are now going to AI assistants first. If your brand is not showing up in those answers, you are invisible to a growing share of high-intent buyers. This is a premium signal available in the Full Intelligence Suite.",
   },
   {
+    keywords: ["predict", "prediction", "accuracy", "track record", "forecast", "verified", "locked"],
+    answer: "Every ShiftImpact OS report contains two prediction layers. First: this week's forward predictions are locked and timestamped at report publication — they cannot be edited after delivery. Second: the Full Intelligence Suite shows whether prior weeks' predictions were verified against actuals. At Week 6, 5 out of 5 predictions from Weeks 1–5 have been verified within the stated range. This is the accountability structure — not a confidence interval, an actual track record.",
+  },
+  {
+    keywords: ["read", "receipt", "acknowledged", "confirm", "seen", "sign", "owner"],
+    answer: "The delivery record at the bottom of each brief section shows who received the report, when it was opened, and who has formally acknowledged it. Required owners — typically the brand marketing lead and agency account lead — must acknowledge before the brief is considered actioned. This creates an audit trail that eliminates future disputes about whether a brief was received and when.",
+  },
+  {
     keywords: ["ugc", "user generated", "organic", "authenticity", "authenticity ratio", "community", "tagged"],
     answer: "UGC Signal tracks organic and seeded content posted by real consumers — people who cooked with Cooks and shared it without being paid. The Authenticity Ratio (currently 72%) measures how much of the brand-tagged content is genuine versus paid KOL posts. A rising authenticity ratio is a leading indicator that the brand is building real culture, not just buying attention. The gate threshold is 65% — you are above it and improving.",
   },
@@ -1019,71 +1027,144 @@ export default function PortalDemoPage() {
             </span>
           </div>
 
-          {/* ── At a glance ──────────────────────────── */}
-          <div id="glance" className="mb-10">
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-baseline gap-3">
-                <h2 className="text-xl font-bold text-neutral-900">At a glance</h2>
-                <span className="text-sm text-neutral-500">Weeks 1–6</span>
-              </div>
-              <p className="text-xs text-neutral-500 hidden sm:block">Dashed line = gate threshold · ask the widget to learn more</p>
+          {/* ── Campaign Health — hero ────────────────── */}
+          <div id="glance" className="mb-6">
+            <div className="flex items-baseline gap-3 mb-4">
+              <h2 className="text-xl font-bold text-neutral-900">Campaign Health</h2>
+              <span className="text-sm text-neutral-500">Week 6 of 12 · Phase 1 — Demand</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(SERIES).map(([key, s]) => (
-                <div key={key} className="bg-white rounded-2xl border border-neutral-200 shadow-sm px-5 py-4">
-                  <div className="flex items-start justify-between mb-1">
-                    <p className="text-sm font-semibold text-neutral-700">{s.label}</p>
-                    {"gateLabel" in s && (
-                      <span className="text-xs text-red-600 font-semibold shrink-0 ml-2">{(s as typeof SERIES.save).gateLabel}</span>
-                    )}
+            <div className="bg-neutral-900 rounded-2xl shadow-sm overflow-hidden">
+              <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-white/10">
+                {/* Score + posture */}
+                <div className="px-6 py-5">
+                  <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-3">Health score</p>
+                  <div className="flex items-baseline gap-3 mb-3">
+                    <span className="text-6xl font-black text-emerald-400 leading-none">74</span>
+                    <div>
+                      <p className="text-lg font-bold text-emerald-400">↑ +5 pts</p>
+                      <p className="text-xs text-neutral-500">this week</p>
+                    </div>
                   </div>
-                  <div className="flex items-baseline gap-2 mb-3">
-                    <span className="text-3xl font-black text-neutral-900">{s.current}</span>
-                    <span className={`text-sm font-bold ${s.tone === "green" ? "text-emerald-600" : s.tone === "amber" ? "text-amber-600" : "text-red-600"}`}>
-                      ↑ {s.delta}
-                    </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-emerald-400 border border-emerald-400/40 rounded-full px-3 py-1">Gaining</span>
+                    <span className="text-xs text-neutral-500">Signals trending positive</span>
                   </div>
-                  <Sparkline values={s.values} gate={"gate" in s ? (s as typeof SERIES.save).gate : undefined} color={s.color} />
-                  <p className="text-xs text-neutral-500 mt-2">{"gateLabel" in s ? "Dashed = gate threshold" : "Wk 1 → 6 progression"}</p>
+                  <div className="mt-4 pt-4 border-t border-white/10">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs text-neutral-500">Health trajectory</p>
+                      <p className="text-xs text-neutral-400">Wk 1 → 6</p>
+                    </div>
+                    <Sparkline values={SERIES.health.values} color="#34d399" />
+                    <div className="flex items-center justify-between text-xs mt-1.5">
+                      <span className="text-neutral-600">52 · Fragile</span>
+                      <span className="text-emerald-400 font-semibold">74 · Gaining</span>
+                    </div>
+                  </div>
                 </div>
-              ))}
 
-              {/* UGC Signal (Signal 3) */}
-              <div className="bg-white rounded-2xl border border-blue-200 shadow-sm px-5 py-4">
-                <div className="flex items-start justify-between mb-1">
-                  <p className="text-sm font-semibold text-neutral-700">UGC Signal</p>
-                  <span className="text-xs text-emerald-700 font-semibold shrink-0 ml-2">Above threshold</span>
+                {/* Verdict */}
+                <div className="px-6 py-5">
+                  <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-3">Strategist verdict</p>
+                  <p className="text-sm text-white leading-relaxed">{week.verdict}</p>
+                  <div className="mt-4 pt-4 border-t border-white/10 space-y-2">
+                    {week.marketContext.map((m, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <span className="text-sm shrink-0">{m.icon}</span>
+                        <p className="text-xs text-neutral-400 leading-relaxed">{m.note}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex items-baseline gap-2 mb-3">
-                  <span className="text-3xl font-black text-neutral-900">72%</span>
-                  <span className="text-sm font-bold text-emerald-600">↑ +8%</span>
+
+                {/* Gate status */}
+                <div className="px-6 py-5">
+                  <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-3">Phase 2 gate</p>
+                  <div className="flex items-baseline gap-2 mb-2">
+                    <span className="text-4xl font-black text-amber-400 leading-none">1.9pp</span>
+                    <span className="text-sm text-neutral-400">remaining</span>
+                  </div>
+                  <p className="text-xs text-neutral-400 mb-4">Save rate ≥8% · currently 6.1%</p>
+                  <div className="h-2 bg-white/10 rounded-full overflow-hidden mb-1">
+                    <div className="h-full bg-amber-400 rounded-full" style={{ width: "76%" }} />
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-neutral-500">
+                    <span>6.1% current</span>
+                    <span>8.0% gate</span>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-white/10">
+                    <p className="text-xs text-neutral-500 mb-1">Gate timeline prediction</p>
+                    <p className="text-sm font-bold text-white">Week 7–8</p>
+                    <p className="text-xs text-neutral-400">if brief actioned this week · 78% confidence</p>
+                  </div>
                 </div>
-                <Sparkline values={[52, 58, 62, 64, 68, 72]} gate={65} color="#3b82f6" />
-                <p className="text-xs text-neutral-500 mt-2">Authenticity ratio · Dashed = 65% threshold</p>
-                <p className="text-xs text-blue-600 mt-1 font-medium">28 organic posts tagged this week</p>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Signal boxes ──────────────────────────── */}
+          <div className="mb-10">
+            <div className="flex items-baseline gap-3 mb-4">
+              <h2 className="text-lg font-bold text-neutral-900">Live signals</h2>
+              <span className="text-sm text-neutral-500">Dashed = gate threshold · ask the widget to learn more</span>
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Save Rate */}
+              <div className="bg-white rounded-xl border border-neutral-200 shadow-sm px-4 py-3.5">
+                <div className="flex items-start justify-between mb-2">
+                  <p className="text-xs font-semibold text-neutral-500">Save rate</p>
+                  <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-1.5 py-0.5">Gate ≥8%</span>
+                </div>
+                <div className="flex items-baseline gap-1.5 mb-2">
+                  <span className="text-2xl font-black text-neutral-900">6.1%</span>
+                  <span className="text-xs font-bold text-amber-600">↑ +0.4%</span>
+                </div>
+                <Sparkline values={SERIES.save.values} gate={8} color="#f59e0b" />
               </div>
 
-              {/* GrabAds Attribution (Signal 4 — Preview) */}
-              <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm px-5 py-4 relative overflow-hidden">
-                <div className="flex items-start justify-between mb-1">
-                  <p className="text-sm font-semibold text-neutral-700">Purchase Attribution</p>
-                  <span className="text-xs font-semibold shrink-0 ml-2 text-neutral-400 border border-neutral-200 rounded-full px-2 py-0.5">Preview</span>
+              {/* Brand Search */}
+              <div className="bg-white rounded-xl border border-neutral-200 shadow-sm px-4 py-3.5">
+                <div className="flex items-start justify-between mb-2">
+                  <p className="text-xs font-semibold text-neutral-500">Brand search share</p>
+                  <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 rounded-full px-1.5 py-0.5">Target 18%</span>
                 </div>
-                <div className="flex items-baseline gap-2 mb-3">
-                  <span className="text-3xl font-black text-neutral-300">4.2%</span>
-                  <span className="text-sm font-bold text-neutral-300">lift</span>
+                <div className="flex items-baseline gap-1.5 mb-2">
+                  <span className="text-2xl font-black text-neutral-900">14.2%</span>
+                  <span className="text-xs font-bold text-violet-600">↑ +1.8%</span>
+                </div>
+                <Sparkline values={SERIES.search.values} gate={18} color="#818cf8" />
+              </div>
+
+              {/* UGC Signal */}
+              <div className="bg-white rounded-xl border border-blue-200 shadow-sm px-4 py-3.5">
+                <div className="flex items-start justify-between mb-2">
+                  <p className="text-xs font-semibold text-neutral-500">UGC Signal</p>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-1.5 py-0.5">Above threshold</span>
+                </div>
+                <div className="flex items-baseline gap-1.5 mb-2">
+                  <span className="text-2xl font-black text-neutral-900">72%</span>
+                  <span className="text-xs font-bold text-emerald-600">↑ +8%</span>
+                </div>
+                <Sparkline values={[52, 58, 62, 64, 68, 72]} gate={65} color="#3b82f6" />
+                <p className="text-[10px] text-blue-600 mt-1 font-medium">28 organic posts this week</p>
+              </div>
+
+              {/* GrabAds */}
+              <div className="bg-white rounded-xl border border-neutral-200 shadow-sm px-4 py-3.5 relative overflow-hidden">
+                <div className="flex items-start justify-between mb-2">
+                  <p className="text-xs font-semibold text-neutral-500">Purchase attribution</p>
+                  <span className="text-[10px] font-bold text-neutral-400 border border-neutral-200 rounded-full px-1.5 py-0.5">Preview</span>
+                </div>
+                <div className="flex items-baseline gap-1.5 mb-2">
+                  <span className="text-2xl font-black text-neutral-300">4.2%</span>
+                  <span className="text-xs font-bold text-neutral-300">lift</span>
                 </div>
                 <Sparkline values={[1.1, 1.8, 2.4, 2.9, 3.6, 4.2]} color="#d1d5db" />
-                <p className="text-xs text-neutral-400 mt-2">23,400 GrabAds impressions · last 14 days</p>
-                <div className="mt-3 pt-3 border-t border-neutral-100">
-                  <p className="text-xs text-neutral-500 leading-snug">Connects social ad impressions to actual GrabMart and in-store purchases via GrabAds. Activates when GrabAds account is linked.</p>
-                </div>
-                {/* Preview overlay */}
-                <div className="absolute inset-0 bg-white/60 flex items-center justify-center rounded-2xl">
-                  <div className="text-center px-4">
-                    <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">GrabAds · Signal 4</p>
-                    <p className="text-xs text-neutral-400">Connect GrabAds to unlock</p>
+                <div className="absolute inset-0 bg-white/65 flex items-center justify-center rounded-xl">
+                  <div className="text-center px-3">
+                    <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-0.5">GrabAds · Signal 4</p>
+                    <p className="text-[10px] text-neutral-400">Connect to unlock</p>
                   </div>
                 </div>
               </div>
@@ -1236,6 +1317,71 @@ export default function PortalDemoPage() {
                     </div>
                   </div>
                 ))}
+
+                {/* ── Delivery & Acknowledgement Record ── */}
+                <div className="rounded-2xl border border-neutral-200 bg-white overflow-hidden">
+                  <div className="flex items-center justify-between px-5 py-3.5 bg-neutral-50 border-b border-neutral-200">
+                    <div className="flex items-center gap-2">
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-neutral-500"><path d="M2 4l6 5 6-5M2 4h12v9a1 1 0 01-1 1H3a1 1 0 01-1-1V4z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      <p className="text-xs font-bold text-neutral-700 uppercase tracking-widest">Delivery &amp; acknowledgement record</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                      <span className="text-xs font-semibold text-amber-700">2 of 3 acknowledged</span>
+                    </div>
+                  </div>
+
+                  <div className="px-5 py-3 border-b border-neutral-100 flex items-center gap-3">
+                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Report locked</span>
+                    <span className="text-xs font-semibold text-neutral-700">17 Aug 2026 · 09:00 MYT</span>
+                    <span className="text-xs text-neutral-400">·</span>
+                    <span className="text-xs text-neutral-500">Strategist: Janine Wai · ShiftImpact OS</span>
+                    <span className="text-xs text-neutral-400 ml-auto">Report cannot be edited after lock</span>
+                  </div>
+
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-neutral-100">
+                        <th className="text-left font-bold text-neutral-400 uppercase tracking-widest px-5 py-2.5">Recipient</th>
+                        <th className="text-left font-bold text-neutral-400 uppercase tracking-widest px-4 py-2.5 hidden sm:table-cell">Role</th>
+                        <th className="text-left font-bold text-neutral-400 uppercase tracking-widest px-4 py-2.5 hidden md:table-cell">Delivered</th>
+                        <th className="text-left font-bold text-neutral-400 uppercase tracking-widest px-4 py-2.5">Read</th>
+                        <th className="text-left font-bold text-neutral-400 uppercase tracking-widest px-4 py-2.5">Acknowledgement</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        { name: "Farah Nabilah", role: "Brand Marketing Lead", type: "Required owner", delivered: "17 Aug · 09:01", read: "17 Aug · 09:14", ack: "Acknowledged", ackTime: "17 Aug · 09:31", tone: "green" },
+                        { name: "Azlan Razak", role: "Agency Account Director", type: "Required owner", delivered: "17 Aug · 09:01", read: "17 Aug · 11:42", ack: "Acknowledged", ackTime: "17 Aug · 11:55", tone: "green" },
+                        { name: "Priya Menon", role: "Media Planner", type: "CC", delivered: "17 Aug · 09:01", read: "—", ack: "Awaiting", ackTime: "", tone: "amber" },
+                      ].map((r) => (
+                        <tr key={r.name} className="border-b border-neutral-100 last:border-0 hover:bg-neutral-50 transition-colors">
+                          <td className="px-5 py-3">
+                            <p className="font-semibold text-neutral-800">{r.name}</p>
+                            <p className="text-neutral-400 text-[10px]">{r.type}</p>
+                          </td>
+                          <td className="px-4 py-3 text-neutral-600 hidden sm:table-cell">{r.role}</td>
+                          <td className="px-4 py-3 text-neutral-500 hidden md:table-cell">{r.delivered}</td>
+                          <td className="px-4 py-3 text-neutral-600">{r.read}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`inline-flex items-center gap-1 text-[10px] font-bold rounded-full px-2 py-0.5 ${
+                                r.tone === "green" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
+                              }`}>
+                                {r.tone === "green" ? "✓ " : "⏳ "}{r.ack}
+                              </span>
+                              {r.ackTime && <span className="text-neutral-400 text-[10px]">{r.ackTime}</span>}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  <div className="px-5 py-3 bg-neutral-50 border-t border-neutral-100">
+                    <p className="text-[10px] text-neutral-400 leading-snug">Read receipts are recorded when a recipient opens the portal link. Acknowledgement is logged when they click the confirm button. This record is append-only — no entry can be removed. In any dispute about brief receipt or timing, this log is the reference.</p>
+                  </div>
+                </div>
               </div>
             </SectionQ>
           </div>
@@ -1422,6 +1568,142 @@ export default function PortalDemoPage() {
               <h2 className="text-xl font-bold text-neutral-900">Full Intelligence Suite</h2>
             </div>
             <p className="text-sm text-neutral-600 mb-6">What activates when the client connects business performance data. Each layer below is live in ShiftImpact OS — this shows the maximum picture when all data is shared.</p>
+
+            {/* ── Prediction Accuracy Record ── CENTREPIECE ── */}
+            <div className="rounded-2xl border-2 border-neutral-900 bg-white shadow-sm overflow-hidden mb-5">
+              {/* Header */}
+              <div className="bg-neutral-900 px-6 py-4 flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-1">Prediction Intelligence</p>
+                  <h3 className="text-lg font-black text-white">Prediction Accuracy Record</h3>
+                  <p className="text-xs text-neutral-400 mt-0.5">Every prediction made is locked at publication. Every outcome is verified the following week.</p>
+                </div>
+                <div className="text-right">
+                  <div className="flex items-baseline gap-1.5 justify-end">
+                    <span className="text-4xl font-black text-emerald-400">5</span>
+                    <span className="text-lg text-neutral-400 font-bold">/ 5</span>
+                  </div>
+                  <p className="text-xs text-emerald-400 font-bold">Verified ✓</p>
+                  <p className="text-xs text-neutral-500 mt-0.5">Weeks 1–5 · 100% accuracy</p>
+                </div>
+              </div>
+
+              {/* Prior predictions table */}
+              <div className="px-6 pt-5 pb-4">
+                <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Prior predictions vs what actually happened</p>
+                <div className="space-y-2">
+                  {[
+                    {
+                      week: "Wk 1 → 2",
+                      prediction: "Save rate will reach 4.6–4.9% as UGC seeding kicks in",
+                      actual: "4.8% ✓",
+                      delta: "Within range",
+                      verified: true,
+                    },
+                    {
+                      week: "Wk 2 → 3",
+                      prediction: "UGC authenticity ratio will lift +3–5pp if seeding is actioned",
+                      actual: "+3pp ✓",
+                      delta: "Bottom of range",
+                      verified: true,
+                    },
+                    {
+                      week: "Wk 3 → 4",
+                      prediction: "Mid-tier KOLs will underperform micro-tier on save rate (below 6%)",
+                      actual: "5.2–5.6% ✓",
+                      delta: "Confirmed",
+                      verified: true,
+                    },
+                    {
+                      week: "Wk 4 → 5",
+                      prediction: "Recipe content will outperform lifestyle at 2×+ save rate ratio",
+                      actual: "2.3× ✓",
+                      delta: "Confirmed",
+                      verified: true,
+                    },
+                    {
+                      week: "Wk 5 → 6",
+                      prediction: "Campaign health will reach 72–76 if KOL rebalancing is actioned",
+                      actual: "74 ✓",
+                      delta: "Centre of range",
+                      verified: true,
+                    },
+                  ].map((p, i) => (
+                    <div key={i} className="grid grid-cols-[80px_1fr_140px_90px] gap-3 items-center py-2.5 border-b border-neutral-100 last:border-0">
+                      <span className="text-xs font-bold text-neutral-500 shrink-0">{p.week}</span>
+                      <p className="text-sm text-neutral-700">{p.prediction}</p>
+                      <div className="text-right">
+                        <span className="text-sm font-bold text-neutral-900">{p.actual}</span>
+                        <p className="text-[10px] text-neutral-500">{p.delta}</p>
+                      </div>
+                      <div className="flex justify-end">
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1">
+                          <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          Verified
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Current week's locked predictions */}
+              <div className="bg-neutral-50 border-t border-neutral-200 px-6 py-5">
+                <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                  <p className="text-xs font-bold text-neutral-700 uppercase tracking-widest">This week&apos;s predictions — locked at publication</p>
+                  <span className="text-[10px] font-bold text-neutral-500 border border-neutral-300 rounded-full px-2.5 py-1 bg-white">
+                    🔒 17 Aug 2026 · 09:00 MYT · Cannot be edited
+                  </span>
+                </div>
+                <div className="space-y-2.5">
+                  {[
+                    { label: "Save rate · Wk 7", prediction: "Will reach 7.0–7.6% if recipe brief is actioned this week", confidence: "81%", timeframe: "Week 7" },
+                    { label: "Gate 1 fire", prediction: "56% probability by Wk 7 · rises to 78% by Wk 8 if brief actioned", confidence: "78%", timeframe: "Week 7–8" },
+                    { label: "Creative battery", prediction: "Meta Feed format will fall below 20% by Week 8 without refresh", confidence: "73%", timeframe: "Week 8" },
+                    { label: "Campaign health", prediction: "Will reach 77–80 by Week 8 if KOL + creative brief both actioned", confidence: "69%", timeframe: "Week 8" },
+                  ].map((p, i) => (
+                    <div key={i} className="flex items-start gap-3 bg-white border border-neutral-200 rounded-xl px-4 py-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-0.5">{p.label} · {p.timeframe}</p>
+                        <p className="text-sm text-neutral-800">{p.prediction}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-lg font-black text-neutral-900">{p.confidence}</p>
+                        <p className="text-[10px] text-neutral-400">confidence</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-neutral-500 mt-3 leading-snug">These predictions will be verified against actuals in the Week 7 report. Prediction accuracy is your measure of how well ShiftImpact OS understands your campaign.</p>
+              </div>
+
+              {/* Prediction Miss Protocol */}
+              <div className="border-t border-neutral-200 px-6 py-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-lg bg-neutral-100 flex items-center justify-center shrink-0 mt-0.5">
+                    <span className="text-sm">🎯</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-neutral-700 mb-2">When a prediction misses — how we respond</p>
+                    <p className="text-xs text-neutral-500 leading-relaxed mb-3">A variance from a predicted range is always recorded in full and never removed from the log. When it occurs, the following week&apos;s report opens with a variance analysis — not an attribution of blame, but a factual examination of which input signal moved differently from what the model expected, and by how much.</p>
+                    <div className="space-y-2">
+                      {[
+                        { label: "Signal deviation", text: "We identify which specific signal — save rate, UGC ratio, search share, or KOL performance — diverged from its modelled trajectory, and quantify the delta between predicted and actual." },
+                        { label: "External factors", text: "We examine whether a market condition changed outside the campaign's control: platform algorithm update, competitor activity, seasonal demand shift, or macro event. These are documented with evidence, not assumed." },
+                        { label: "Model recalibration", text: "If the variance reveals a gap in how the model weights a variable, the weighting is adjusted for subsequent predictions. The recalibration rationale is disclosed in the report." },
+                        { label: "Revised forward outlook", text: "The following week's predictions are reissued with updated confidence intervals, reflecting what the miss has taught us about this specific campaign's dynamics." },
+                      ].map((item) => (
+                        <div key={item.label} className="flex gap-2">
+                          <span className="text-[10px] font-bold text-neutral-600 uppercase tracking-wide shrink-0 w-28 pt-0.5">{item.label}</span>
+                          <p className="text-[11px] text-neutral-500 leading-relaxed">{item.text}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-neutral-400 mt-3 pt-3 border-t border-neutral-100 leading-relaxed">A prediction miss is evidence the system is making falsifiable claims — not directional statements designed to be unfalsifiable. Sustained accuracy below 70% over three consecutive weeks triggers a formal model review, disclosed to the client with findings.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
