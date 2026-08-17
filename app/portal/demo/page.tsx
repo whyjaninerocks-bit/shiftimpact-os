@@ -1,682 +1,596 @@
-// /portal/demo — Cooks FMCG full portal showcase
-// Fully responsive (mobile + desktop). Static demo with illustrative data.
-// Reflects all live features: ICS, signal health with deltas, gate status,
-// market context, KOL tracker, competitor benchmark, phase roadmap,
-// approved weekly intelligence report with findings.
+"use client";
 
-export const dynamic = "force-static";
+// /portal/demo — Cooks · Jadikan Caramu
+// Client portal showcase. Three-question UX: Is it working? What do I do? Are we on track?
+// Web: fixed left sidebar + main panel. Mobile: sticky header + horizontal week pills + scroll.
+
+import { useState } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type RagTone = "green" | "amber" | "red" | "neutral";
+type Tone = "green" | "amber" | "red" | "neutral";
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
+// ─── Week timeline data ───────────────────────────────────────────────────────
 
-const SIGNALS = [
-  {
-    id: "s1",
-    label: "Brand search share",
-    description: "How much of the cooking category search Cooks owns this week",
-    actual: "14.2%",
-    target: "18%",
-    pct: 79,
-    delta: "+1.8%",
-    deltaDir: "up" as const,
-    tone: "amber" as RagTone,
-    status: "Building — 3.8pp to gate",
-    detail:
-      "Branded search share is accelerating week-on-week. At the current growth rate of +1.8pp per week, Gate 1 threshold is achievable by Week 8 without additional paid spend. Do not pull back search investment this week.",
-  },
-  {
-    id: "s2",
-    label: "Content save rate",
-    description: "Hero content save rate — gate trigger for Phase 2 budget release",
-    actual: "6.1%",
-    target: "≥8%",
-    pct: 76,
-    delta: "+0.4%",
-    deltaDir: "up" as const,
-    tone: "amber" as RagTone,
-    status: "Below gate — 1.9pp remaining",
-    detail:
-      "Save rate is growing but has not held the 8% threshold for 3 consecutive days — the condition required to release Phase 2 (Conversion) budget. Recipe-format content is outperforming lifestyle content 2.3× in saves. Brief creative to shift format mix before Week 7.",
-  },
-  {
-    id: "s3",
-    label: "User-created content",
-    description: "Organic UGC volume — brand advocacy signal",
-    actual: "28 pieces",
-    target: "40 pieces",
-    pct: 70,
-    delta: "+6 pieces",
-    deltaDir: "up" as const,
-    tone: "amber" as RagTone,
-    status: "On track — 12 pieces to monthly target",
-    detail:
-      "UGC is growing steadily. The current seeded micro-KOL programme is producing 4–6 pieces per week. At this rate the monthly target of 40 pieces is achievable. Quality is high — avg engagement rate on UGC pieces is 4.2% vs 1.8% on branded content.",
-  },
+const WEEKS = [
+  { n: 1, date: "7 Jul",  health: 52, posture: "Fragile",    dot: "red"     },
+  { n: 2, date: "14 Jul", health: 59, posture: "Fragile",    dot: "red"     },
+  { n: 3, date: "21 Jul", health: 63, posture: "Plateauing", dot: "amber"   },
+  { n: 4, date: "28 Jul", health: 67, posture: "Plateauing", dot: "amber"   },
+  { n: 5, date: "4 Aug",  health: 69, posture: "Gaining",    dot: "green"   },
+  { n: 6, date: "17 Aug", health: 74, posture: "Gaining",    dot: "green", current: true },
 ];
 
-const KOLS = [
-  { handle: "@masakdenganaishah", tier: "Micro", saveRate: "8.4%", tone: "green" as RagTone, status: "At gate" },
-  { handle: "@eatwithzafran", tier: "Micro", saveRate: "7.1%", tone: "amber" as RagTone, status: "Below gate" },
-  { handle: "@dapurrumahkuofficial", tier: "Micro", saveRate: "6.8%", tone: "amber" as RagTone, status: "Below gate" },
-  { handle: "@chefhanamariana", tier: "Mid", saveRate: "5.2%", tone: "red" as RagTone, status: "Underperforming" },
-  { handle: "@rawlinsganics", tier: "Mid", saveRate: "5.6%", tone: "red" as RagTone, status: "Underperforming" },
-];
+// ─── Current week content (Week 6) ───────────────────────────────────────────
 
-const COMPETITORS = [
-  { brand: "MAGGI", campaign: "Masak Sama-Sama", ics: 81, rating: "CONDITIONAL", gap: "Retention signals weak" },
-  { brand: "Cooks", campaign: "Jadikan Caramu", ics: 76, rating: "CONDITIONAL", gap: "Save rate gate not yet fired", isSelf: true },
-  { brand: "Knorr", campaign: "Resepi Warisan", ics: 74, rating: "CONDITIONAL", gap: "Generic audience tension" },
-  { brand: "Adabi", campaign: "Dapur Kita", ics: 59, rating: "REWORK", gap: "Scattered channel execution" },
-];
+const W6 = {
+  health: 74,
+  healthDelta: "+5",
+  posture: "Gaining",
+  verdict:
+    "The campaign is building correctly at the midpoint. Brand demand is accelerating. The only open item is pushing save rate over the gate threshold in the next 2 weeks.",
 
-const FINDINGS = [
-  {
-    headline: "Brand search interest is outpacing category growth by 2.1×",
-    implication:
-      "Consumers are actively seeking Cooks — not just browsing the category. This is earned demand, not paid-for reach. It converts at a 40–60% higher rate than category-average traffic.",
-    recommendation: "Protect search spend and add branded keyword coverage this week. Do not reallocate search budget to social even if social CPMs look cheaper.",
+  // Q2: What do I need to do?
+  actions: [
+    {
+      finding: "Recipe content saves at 2.3× the rate of lifestyle content",
+      implication:
+        "Audiences are bookmarking Cooks recipes for later — a pre-purchase signal. Current creative mix is 60% lifestyle, 40% recipe. This is the wrong way around.",
+      brief: {
+        label: "Creative brief — Week 7",
+        lines: [
+          "Format: Recipe-led process video (not product close-up)",
+          "Dishes: Ayam Percik, Rendang Tok, Sup Tulang — high Merdeka search intent",
+          "Frame: Cooking confidence (your version, not the shortcut)",
+          "Mix target: 70% recipe / 30% lifestyle",
+          "Channels: TikTok + Instagram Reels first, Meta feed second",
+        ],
+      },
+    },
+    {
+      finding: "Brand search interest is growing 2.1× faster than category",
+      implication:
+        "Consumers are actively looking for Cooks — not just browsing cooking sauce brands. Earned demand converts 40–60% better than paid-for reach. Do not pull search spend.",
+      brief: {
+        label: "Media brief — Week 7",
+        lines: [
+          "Protect branded search budget — no reallocation to social this week",
+          "Add 3 branded keyword variants: 'Cooks sos ayam', 'Cooks rendang', 'Cooks resipi'",
+          "Negative-match competitor brand terms to protect share",
+        ],
+      },
+    },
+    {
+      finding: "2 of 5 KOLs are below the save-rate gate",
+      implication:
+        "Mid-tier KOLs are generating reach but not saves. Micro-KOLs are delivering 7–8% save rates with 38% of the budget. Phase 2 contracts should not repeat the mid-tier split.",
+      brief: {
+        label: "KOL brief — Phase 2 planning",
+        lines: [
+          "Do not renew mid-tier KOL contracts for Phase 2",
+          "Reallocate their budget to the top 3 micro-KOLs (@masakdenganaishah, 2 new)",
+          "Recruit 2 new Klang Valley food micro-creators before Week 8",
+          "Briefing criteria: save rate history ≥7%, recipe-format content, 25–40k followers",
+        ],
+      },
+    },
+  ],
+
+  // Q3: Are we on track for the gate?
+  horizon: {
+    gateLabel: "Gate 1 — Phase 2 budget release",
+    gateCondition: "Save Rate ≥8% held 3 consecutive days + Branded search +40%",
+    fired: false,
+    prediction:
+      "At current save-rate growth (+0.4pp per week), Gate 1 is achievable by Week 8. If the creative mix shifts to recipe-led this week as briefed, the rate of growth should accelerate — Gate 1 in Week 7–8 is the realistic target. If the brief is not actioned, Gate 1 slips to Week 10 and Phase 2 budget is at risk.",
+    horizonItems: [
+      { timeframe: "This week", note: "Action the creative brief. Shift to 70% recipe-led." },
+      { timeframe: "Week 7–8", note: "Gate 1 fires if save rate holds ≥8% for 3 days." },
+      { timeframe: "Week 9+", note: "Phase 2 (Conversion) budget releases. TikTok Shop mechanics activate." },
+    ],
+    budgetStatus: "Phase 2 budget is locked until Gate 1 fires and holds.",
   },
-  {
-    headline: "Save rate on recipe content is 2.3× higher than lifestyle content",
-    implication:
-      "Audiences are bookmarking recipe-format posts for later action — a pre-purchase signal that typically precedes conversion spikes by 10 to 14 days. The current creative mix is 60% lifestyle, 40% recipe. This is the inverse of what the data shows works.",
-    recommendation: "Brief creative team to shift to 70% recipe-led formats for Week 7. Specifically: Ayam Percik, Rendang Tok, and Sup Tulang — dishes with strong search intent this season.",
-  },
-  {
-    headline: "Micro-KOL content is outperforming mid-tier by 1.6× on save rate",
-    implication:
-      "Two mid-tier KOLs are generating high reach but below-gate save rates (5.2% and 5.6% vs 8% gate). Micro-KOLs are delivering 7–8% save rates with 38% of the budget.",
-    recommendation: "Do not renew mid-tier KOL contracts for Phase 2. Reallocate their budget to the top 3 micro-KOLs and add 2 new micro-food creators identified in the Klang Valley.",
-  },
-];
 
-// ─── UI helpers ───────────────────────────────────────────────────────────────
+  // Supporting detail (collapsed)
+  ics: { score: 76, rating: "CONDITIONAL", note: "Campaign idea is well-matched to audience. Execution coherence is the gap — what the creative fixes above are addressing. Industry avg: 67." },
 
-function ragBg(tone: RagTone) {
-  return {
-    green: "bg-green-50 text-green-800 border-green-200",
-    amber: "bg-amber-50 text-amber-800 border-amber-200",
-    red: "bg-red-50 text-red-800 border-red-200",
-    neutral: "bg-neutral-100 text-neutral-600 border-neutral-200",
-  }[tone];
+  relativePosition: [
+    { label: "Category leader",  pct: 81 },
+    { label: "Cooks",            pct: 76, isSelf: true },
+    { label: "Challenger 2",     pct: 74 },
+    { label: "Challenger 3",     pct: 59 },
+  ],
+
+  kolTopline: { active: 5, atGate: 1, attention: 2, underperforming: 2, avgSave: "6.3%", gateSave: "≥8%" },
+
+  signals: [
+    { label: "Brand search share", actual: "14.2%", target: "18%", pct: 79, delta: "+1.8%", tone: "amber" as Tone },
+    { label: "Content save rate",  actual: "6.1%",  target: "≥8%", pct: 76, delta: "+0.4%", tone: "amber" as Tone },
+    { label: "UGC volume",         actual: "28",    target: "40",  pct: 70, delta: "+6 pcs", tone: "amber" as Tone },
+  ],
+
+  roadmap: [
+    { phase: "Phase 1 — Demand",            dates: "Jul–Aug",  active: true,  gated: false, note: "Build demand. Gate 1 fires on save rate." },
+    { phase: "Phase 2 — Conversion",        dates: "Sep–Oct",  active: false, gated: true,  note: "Locked. Releases when Gate 1 fires." },
+    { phase: "Phase 3 — Retention + Scale", dates: "Nov–Dec",  active: false, gated: true,  note: "Locked. Releases when Gate 2 fires." },
+  ],
+
+  marketContext: [
+    { icon: "🎌", note: "Merdeka 31 Aug — patriotic heritage frame is live. Recipe content anchored to 'Masakan Malaysia Asli' is getting elevated reach. 2-week window." },
+    { icon: "📱", note: "TikTok algorithm update this week: recipe-format videos getting 1.4× distribution. Lifestyle + product close-up is being deprioritised." },
+  ],
+};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function toneDot(t: string) {
+  return t === "green" ? "bg-green-500" : t === "amber" ? "bg-amber-400" : t === "red" ? "bg-red-500" : "bg-neutral-400";
+}
+function toneBar(t: Tone) {
+  return t === "green" ? "bg-green-500" : t === "amber" ? "bg-amber-400" : "bg-red-400";
+}
+function postureColor(p: string) {
+  return p === "Gaining" ? "text-emerald-400" : p === "Plateauing" ? "text-amber-400" : "text-red-400";
 }
 
-function ragDot(tone: RagTone) {
-  return { green: "bg-green-500", amber: "bg-amber-500", red: "bg-red-500", neutral: "bg-neutral-400" }[tone];
+function Pill({ children, tone = "neutral" }: { children: React.ReactNode; tone?: Tone | "blue" }) {
+  const cls =
+    tone === "green"  ? "bg-green-50 text-green-800 border-green-200" :
+    tone === "amber"  ? "bg-amber-50 text-amber-800 border-amber-200" :
+    tone === "red"    ? "bg-red-50 text-red-800 border-red-200" :
+    tone === "blue"   ? "bg-blue-50 text-blue-800 border-blue-200" :
+                        "bg-neutral-100 text-neutral-600 border-neutral-200";
+  return <span className={`inline-flex items-center text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${cls}`}>{children}</span>;
 }
 
-function ragBar(tone: RagTone) {
-  return { green: "bg-green-500", amber: "bg-amber-400", red: "bg-red-400", neutral: "bg-neutral-300" }[tone];
-}
-
-function Badge({ tone, children }: { tone: RagTone; children: React.ReactNode }) {
+function SectionQ({ q, label, children }: { q: string; label: string; children: React.ReactNode }) {
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${ragBg(tone)}`}>
+    <section className="mb-8">
+      <div className="flex items-baseline gap-2 mb-4">
+        <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">{q}</span>
+        <h2 className="text-base font-bold text-neutral-900">{label}</h2>
+      </div>
       {children}
-    </span>
+    </section>
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-2">{children}</p>;
-}
-
-function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`bg-white rounded-2xl border border-neutral-100 p-4 sm:p-5 shadow-sm ${className}`}>{children}</div>;
-}
-
-function IcsRating({ ics }: { ics: number }) {
-  if (ics >= 85) return <span className="text-emerald-600 font-bold">ADVANCE</span>;
-  if (ics >= 70) return <span className="text-violet-600 font-bold">CONDITIONAL</span>;
-  if (ics >= 55) return <span className="text-amber-600 font-bold">REWORK</span>;
-  return <span className="text-red-600 font-bold">STOP</span>;
+function Collapsible({ label, children }: { label: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border border-neutral-100 rounded-2xl overflow-hidden">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors"
+      >
+        <span>{label}</span>
+        <svg className={`w-4 h-4 text-neutral-400 transition-transform ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && <div className="border-t border-neutral-100 px-4 py-4">{children}</div>}
+    </div>
+  );
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function PortalDemoPage() {
-  // Ring arc: circumference = 2π × 22 ≈ 138.23
-  const healthScore = 74;
+  const [selectedWeek, setSelectedWeek] = useState(6);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  const week = W6; // in production, keyed by selectedWeek
   const circumference = 138.23;
-  const arcLen = (healthScore / 100) * circumference;
+  const arcLen = (week.health / 100) * circumference;
 
   return (
-    <div className="min-h-screen bg-neutral-50 text-neutral-900">
+    <div className="min-h-screen bg-neutral-50 text-neutral-900 lg:flex">
 
-      {/* ── Demo banner ── */}
-      <div className="bg-amber-50 border-b border-amber-200 py-2 px-4 flex items-start sm:items-center justify-center gap-2.5">
-        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-1 sm:mt-0" />
-        <p className="text-xs font-medium text-amber-800">
-          ShiftImpact OS · Capabilities Showcase — illustrative data showing what your portal looks like when your campaign is live
-        </p>
-      </div>
+      {/* ═══════════════════════════════════════════════════════════
+          SIDEBAR — desktop only (lg+)
+      ═══════════════════════════════════════════════════════════ */}
+      <aside className="hidden lg:flex flex-col w-60 xl:w-64 shrink-0 fixed top-0 left-0 h-screen bg-neutral-900 text-white overflow-y-auto z-20">
 
-      {/* ── Dark header ── */}
-      <div className="bg-neutral-900 text-white">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 pb-5">
+        {/* Demo label */}
+        <div className="px-4 pt-4 pb-3 border-b border-white/10">
+          <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-widest">Capabilities showcase</p>
+          <p className="text-[10px] text-neutral-500 mt-0.5">Illustrative data · ShiftImpact OS</p>
+        </div>
 
-          {/* Top bar */}
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-sm tracking-tight">ShiftImpact <span className="text-neutral-400 font-normal">OS</span></span>
-              <span className="text-neutral-700 hidden sm:inline">·</span>
-              <span className="text-xs text-neutral-400 uppercase tracking-wider font-medium hidden sm:inline">Campaign Intelligence Report</span>
+        {/* Campaign identity */}
+        <div className="px-4 py-4 border-b border-white/10">
+          <p className="text-[10px] text-neutral-400 mb-0.5">Cooks · FMCG</p>
+          <p className="text-sm font-bold leading-tight">Jadikan Caramu</p>
+          <p className="text-[11px] text-neutral-400 mt-1">Phase 1 — Demand · Jul–Aug 2026</p>
+        </div>
+
+        {/* Health ring */}
+        <div className="px-4 py-4 border-b border-white/10 flex items-center gap-3">
+          <div className="relative w-12 h-12 shrink-0">
+            <svg className="w-full h-full -rotate-90" viewBox="0 0 56 56">
+              <circle cx="28" cy="28" r="22" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="5" />
+              <circle cx="28" cy="28" r="22" fill="none" stroke="#34d399" strokeWidth="5"
+                strokeDasharray={`${arcLen} ${circumference}`} strokeLinecap="round" />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-xs font-bold text-emerald-400">{week.health}</span>
             </div>
-            <span className="text-xs text-neutral-500">17 Aug 2026</span>
           </div>
+          <div>
+            <p className="text-[10px] text-neutral-400">Campaign health</p>
+            <p className={`text-sm font-bold ${postureColor(week.posture)}`}>{week.posture}</p>
+            <p className="text-[10px] text-emerald-400 font-semibold">{week.healthDelta} pts this week</p>
+          </div>
+        </div>
 
-          {/* Campaign identity */}
-          <div className="flex items-start justify-between gap-3 mb-5">
+        {/* Week timeline */}
+        <div className="px-3 py-3 border-b border-white/10">
+          <p className="text-[10px] text-neutral-500 uppercase tracking-widest font-semibold px-1 mb-2">Timeline</p>
+          <div className="space-y-0.5">
+            {WEEKS.map(w => (
+              <button
+                key={w.n}
+                onClick={() => setSelectedWeek(w.n)}
+                className={`w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-left transition-colors ${
+                  selectedWeek === w.n ? "bg-white/15" : "hover:bg-white/8"
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full shrink-0 ${toneDot(w.dot)}`} />
+                <span className={`text-xs ${selectedWeek === w.n ? "font-semibold text-white" : "text-neutral-400"}`}>
+                  Week {w.n} · {w.date}
+                </span>
+                {w.current && (
+                  <span className="ml-auto text-[9px] font-bold text-emerald-400 border border-emerald-400/50 rounded px-1">NOW</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Nav */}
+        <div className="px-3 py-3 flex-1">
+          <p className="text-[10px] text-neutral-500 uppercase tracking-widest font-semibold px-1 mb-2">This report</p>
+          {[
+            { href: "#q1", label: "Is it working?" },
+            { href: "#q2", label: "What do I do now?" },
+            { href: "#q3", label: "Are we on track?" },
+            { href: "#detail", label: "Deep dive" },
+          ].map(item => (
+            <a key={item.href} href={item.href}
+              className="flex items-center gap-2 px-2 py-2 rounded-lg text-xs text-neutral-400 hover:text-white hover:bg-white/8 transition-colors">
+              {item.label}
+            </a>
+          ))}
+        </div>
+
+        {/* The ShiftImpact Rule */}
+        <div className="px-4 py-4 border-t border-white/10">
+          <p className="text-[10px] font-bold text-white mb-1">The ShiftImpact Rule</p>
+          <p className="text-[10px] text-neutral-400 leading-relaxed">Budget moves because a signal fired and held — not because a date arrived.</p>
+        </div>
+      </aside>
+
+      {/* ═══════════════════════════════════════════════════════════
+          MOBILE HEADER — visible below lg
+      ═══════════════════════════════════════════════════════════ */}
+      <div className="lg:hidden sticky top-0 z-20 bg-neutral-900 text-white shadow-lg">
+
+        {/* Demo banner */}
+        <div className="bg-amber-900/60 px-4 py-1.5 flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+          <p className="text-[10px] font-medium text-amber-200">ShiftImpact OS · Capabilities showcase · illustrative data</p>
+        </div>
+
+        {/* Campaign strip */}
+        <div className="px-4 pt-3 pb-2 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] text-neutral-400">Cooks · Jadikan Caramu</p>
+            <p className="text-sm font-bold">Week {selectedWeek} · 17 Aug 2026</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="relative w-9 h-9">
+              <svg className="w-full h-full -rotate-90" viewBox="0 0 56 56">
+                <circle cx="28" cy="28" r="22" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="6" />
+                <circle cx="28" cy="28" r="22" fill="none" stroke="#34d399" strokeWidth="6"
+                  strokeDasharray={`${arcLen} ${circumference}`} strokeLinecap="round" />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-[11px] font-bold text-emerald-400">{week.health}</span>
+              </div>
+            </div>
             <div>
-              <p className="text-xs text-neutral-400 mb-0.5">Cooks</p>
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight leading-tight">Jadikan Caramu</h1>
-              <p className="text-xs text-neutral-400 mt-1">FMCG · Cooking Sauces · Demand Phase</p>
-            </div>
-            <div className="text-right shrink-0">
-              <p className="text-xs text-neutral-400">Week 6 · 17 Aug 2026</p>
-              <p className="text-xs text-neutral-400 mt-0.5">Phase 1 — Demand</p>
-              <span className="inline-block mt-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-white/20 bg-white/10 text-white">Active</span>
+              <p className={`text-sm font-bold ${postureColor(week.posture)}`}>{week.posture}</p>
+              <p className="text-[10px] text-emerald-400">{week.healthDelta} pts</p>
             </div>
           </div>
+        </div>
 
-          {/* Health grid */}
-          <div className="grid grid-cols-2 gap-3">
-
-            {/* Health ring */}
-            <div className="flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3 rounded-xl" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}>
-              <div className="relative w-12 h-12 sm:w-14 sm:h-14 shrink-0">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 56 56">
-                  <circle cx="28" cy="28" r="22" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="5" />
-                  <circle cx="28" cy="28" r="22" fill="none" stroke="#34d399" strokeWidth="5"
-                    strokeDasharray={`${arcLen} ${circumference}`} strokeLinecap="round" />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-xs sm:text-sm font-bold text-emerald-400">{healthScore}</span>
-                </div>
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] text-neutral-400 uppercase tracking-wide font-medium">Campaign Health</p>
-                <p className="text-sm font-bold text-emerald-400">Building</p>
-                <p className="text-[11px] font-semibold text-emerald-400 mt-0.5">↑ +5 pts vs last week</p>
-              </div>
-            </div>
-
-            {/* Signal status + progress */}
-            <div className="flex flex-col justify-between px-3 sm:px-4 py-3 rounded-xl" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}>
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
-                  <span className="text-sm font-semibold text-white">Gate not yet fired</span>
-                </div>
-                <p className="text-xs text-neutral-400">0 of 3 signals at gate · 3 building</p>
-              </div>
-              <div className="mt-3">
-                <div className="flex items-center justify-between text-[11px] text-neutral-400 mb-1">
-                  <span>Campaign progress</span>
-                  <span>Wk 6/12 · 6w left</span>
-                </div>
-                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.1)" }}>
-                  <div className="h-full rounded-full bg-white/50" style={{ width: "50%" }} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Brand posture strip */}
-          <div className="mt-3 flex items-center justify-between px-3 sm:px-4 py-2.5 rounded-xl" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)" }}>
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-[11px] text-neutral-400 font-medium uppercase tracking-wide shrink-0">Brand posture</span>
-              <span className="text-neutral-700 hidden sm:inline">·</span>
-              <span className="text-[11px] text-neutral-500 truncate hidden sm:inline">Gaining momentum — signals trending positive</span>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full border" style={{ background: "rgba(52,211,153,0.15)", borderColor: "rgba(52,211,153,0.3)", color: "#6ee7b7" }}>
-                Gaining
-              </span>
-            </div>
-          </div>
-
+        {/* Horizontal week pills */}
+        <div className="flex gap-1.5 px-4 pb-3 overflow-x-auto scrollbar-hide">
+          {WEEKS.map(w => (
+            <button key={w.n} onClick={() => setSelectedWeek(w.n)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold border shrink-0 transition-colors ${
+                selectedWeek === w.n
+                  ? "bg-white text-neutral-900 border-white"
+                  : "bg-transparent text-neutral-400 border-white/20 hover:border-white/40"
+              }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${toneDot(w.dot)}`} />
+              Wk {w.n}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* ── Body ── */}
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+      {/* ═══════════════════════════════════════════════════════════
+          MAIN CONTENT
+      ═══════════════════════════════════════════════════════════ */}
+      <main className="lg:ml-60 xl:ml-64 flex-1 min-w-0">
 
-        {/* Clarity statement */}
-        <div className="rounded-2xl bg-neutral-900 text-white px-4 sm:px-6 py-4">
-          <SectionLabel>What we&apos;re here to do</SectionLabel>
-          <p className="text-sm leading-relaxed">
-            Build household brand search preference in the Klang Valley among families who cook at home 3 or more times a week — measured by a 15% lift in branded search share by Week 12, with Gate 1 (save rate ≥8%) triggering Phase 2 budget release.
+        {/* Desktop: demo banner */}
+        <div className="hidden lg:flex items-center gap-2 bg-amber-50 border-b border-amber-200 px-6 py-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+          <p className="text-xs font-medium text-amber-800">
+            ShiftImpact OS · Capabilities showcase — illustrative data. This is what your campaign portal looks like when live.
           </p>
         </div>
 
-        {/* ICS Score */}
-        <Card>
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+
+          {/* Date + week label */}
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <SectionLabel>Idea Certainty Score</SectionLabel>
-              <div className="flex items-baseline gap-3">
-                <span className="text-5xl font-black text-neutral-900">76</span>
+              <p className="text-xs text-neutral-400">17 August 2026</p>
+              <h1 className="text-lg font-bold text-neutral-900 mt-0.5">Week 6 Growth Intelligence Report</h1>
+            </div>
+            <Pill tone="green">Strategist reviewed</Pill>
+          </div>
+
+          {/* ── Q1: Is it working? ────────────────────────────────── */}
+          <div id="q1">
+            <SectionQ q="01" label="Is it working?">
+              <div className="rounded-2xl bg-neutral-900 text-white px-5 py-5 space-y-4">
+
+                {/* Verdict */}
                 <div>
-                  <p className="text-sm font-bold text-violet-600">CONDITIONAL</p>
-                  <p className="text-xs text-neutral-400">Industry avg: 67 · Top quartile: 80+</p>
+                  <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">This week's verdict</p>
+                  <p className="text-sm leading-relaxed text-neutral-100">{week.verdict}</p>
+                </div>
+
+                {/* Health + posture */}
+                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/10">
+                  <div>
+                    <p className="text-[10px] text-neutral-400 mb-1">Campaign health</p>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-3xl font-black text-white">{week.health}</span>
+                      <span className="text-sm text-emerald-400 font-semibold">{week.healthDelta} pts</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <div className="flex-1 h-1.5 bg-white/10 rounded-full">
+                        <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${week.health}%` }} />
+                      </div>
+                      <span className="text-[10px] text-neutral-400">/100</span>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-neutral-400 mb-1">Brand posture</p>
+                    <p className={`text-2xl font-black ${postureColor(week.posture)}`}>{week.posture}</p>
+                    <p className="text-[10px] text-neutral-400 mt-1">Signals trending positive</p>
+                  </div>
+                </div>
+
+                {/* Market context */}
+                <div className="pt-2 border-t border-white/10 space-y-2">
+                  <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Market context</p>
+                  {week.marketContext.map((m, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <span className="text-sm shrink-0">{m.icon}</span>
+                      <p className="text-[11px] text-neutral-400 leading-relaxed">{m.note}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <p className="text-xs text-emerald-700 font-semibold mt-2">↑ +13 pts vs original audit (63) after FRAME fixes</p>
-            </div>
-            <div className="sm:text-right sm:shrink-0">
-              <p className="text-[11px] text-neutral-400 mb-2 uppercase tracking-wider font-medium">Dimension scores</p>
-              <div className="space-y-1.5">
-                {[
-                  { label: "Cultural Fit ×20", score: 78, vs: "+11 vs avg" },
-                  { label: "Business Alignment ×20", score: 74, vs: "+7 vs avg" },
-                  { label: "Audience Tension ×20", score: 72, vs: "+5 vs avg" },
-                  { label: "Executional Coherence ×15", score: 76, vs: "+9 vs avg" },
-                  { label: "Measurability ×15", score: 71, vs: "+4 vs avg" },
-                  { label: "Scalability ×10", score: 70, vs: "+3 vs avg" },
-                ].map((d) => (
-                  <div key={d.label} className="flex items-center gap-2">
-                    <span className="text-[10px] text-neutral-500 w-40 text-right hidden sm:block">{d.label}</span>
-                    <span className="text-[10px] text-neutral-500 sm:hidden">{d.label}</span>
-                    <div className="w-20 h-1.5 bg-neutral-100 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full bg-violet-500" style={{ width: `${d.score}%` }} />
+            </SectionQ>
+          </div>
+
+          {/* ── Q2: What do I need to do? ─────────────────────────── */}
+          <div id="q2">
+            <SectionQ q="02" label="What do I need to do this week?">
+              <div className="space-y-4">
+                {week.actions.map((a, i) => (
+                  <div key={i} className="rounded-2xl border border-neutral-100 bg-white shadow-sm overflow-hidden">
+
+                    {/* Finding */}
+                    <div className="px-5 pt-5 pb-3">
+                      <div className="flex items-start gap-3">
+                        <span className="w-6 h-6 rounded-full bg-neutral-900 text-white text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                        <div>
+                          <p className="text-sm font-bold text-neutral-900 leading-snug">{a.finding}</p>
+                          <p className="text-xs text-neutral-500 mt-1.5 leading-relaxed">{a.implication}</p>
+                        </div>
+                      </div>
                     </div>
-                    <span className="text-[10px] font-bold text-neutral-800 w-5">{d.score}</span>
-                    <span className="text-[10px] text-emerald-600 font-medium hidden sm:inline">{d.vs}</span>
+
+                    {/* Creative brief — attached to finding */}
+                    <div className="mx-4 mb-4 rounded-xl bg-neutral-900 px-4 py-3.5">
+                      <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-2.5">
+                        → {a.brief.label}
+                      </p>
+                      <ul className="space-y-1.5">
+                        {a.brief.lines.map((line, j) => (
+                          <li key={j} className="flex items-start gap-2 text-[11px] text-neutral-300 leading-relaxed">
+                            <span className="text-emerald-500 shrink-0 mt-0.5">·</span>
+                            {line}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Campaign objective + big idea */}
-        <div className="grid sm:grid-cols-2 gap-3">
-          <Card>
-            <SectionLabel>Campaign objective</SectionLabel>
-            <p className="text-sm text-neutral-700 leading-relaxed">
-              Cooks Jadikan Caramu targets home cooks aged 25–45 in the Klang Valley — families who cook traditional Malaysian dishes 3+ times a week but rely on convenience sauces. The objective is to own the &apos;cooking confidence&apos; territory by making Cooks sauces the brand that believes you can cook Ayam Percik like your grandmother.
-            </p>
-            <div className="mt-3 pt-3 border-t border-neutral-100">
-              <p className="text-[10px] text-neutral-400 uppercase tracking-wider font-semibold mb-1">Primary KPI</p>
-              <p className="text-xs text-neutral-800 font-semibold">+15% branded search share lift by Week 12</p>
-            </div>
-          </Card>
-          <Card>
-            <SectionLabel>Campaign idea</SectionLabel>
-            <blockquote className="text-sm font-semibold text-neutral-900 leading-snug border-l-[3px] border-neutral-900 pl-3">
-              Jadikan Caramu — Make It Yours. Your grandmother&apos;s recipe. Your kitchen. Your version. Cooks gives you the confidence, not the shortcut.
-            </blockquote>
-            <p className="text-xs text-neutral-400 mt-3">
-              <span className="font-medium text-neutral-500">Brand role: </span>
-              Cooks as the brand that trusts you — not the brand that does it for you. Tension: GenZ home cooks who know the dish but fear getting it wrong.
-            </p>
-          </Card>
-        </div>
-
-        {/* This week's performance */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <SectionLabel>This week&apos;s signal performance</SectionLabel>
-            <span className="text-[11px] text-neutral-400">Week 6 · 17 Aug 2026</span>
+            </SectionQ>
           </div>
 
-          {/* Phase context */}
-          <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 mb-3 flex items-start gap-3">
-            <div className="w-1 h-full rounded-full bg-amber-400 shrink-0 self-stretch" />
-            <div>
-              <p className="text-xs font-semibold text-neutral-700 mb-1">Phase 1 — Demand · Week 6 of 12</p>
-              <p className="text-xs text-neutral-500 leading-relaxed">
-                Week 6 is the midpoint of Demand — the window where audience signals should be compounding and brand consideration visibly strengthening. No gate has fired yet. The next 3 weeks are the critical window to push save rate over the 8% threshold before Phase 2 budget is locked.
-              </p>
-            </div>
+          {/* ── Q3: Are we on track for the gate? ────────────────── */}
+          <div id="q3">
+            <SectionQ q="03" label="Are we on track for the gate?">
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-5 space-y-4">
+
+                {/* Gate answer */}
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest mb-1">{week.horizon.gateLabel}</p>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
+                      <p className="text-lg font-black text-neutral-900">Gate not yet fired</p>
+                    </div>
+                    <p className="text-[11px] text-amber-700 mt-1 font-medium border-l-2 border-amber-400 pl-2">{week.horizon.gateCondition}</p>
+                  </div>
+                </div>
+
+                {/* Prediction */}
+                <div className="pt-3 border-t border-amber-200">
+                  <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest mb-2">Signal horizon — next 4 weeks</p>
+                  <p className="text-xs text-neutral-700 leading-relaxed mb-3">{week.horizon.prediction}</p>
+                  <div className="space-y-2">
+                    {week.horizon.horizonItems.map((h, i) => (
+                      <div key={i} className="flex items-start gap-3">
+                        <span className="text-[11px] font-bold text-amber-700 shrink-0 w-20">{h.timeframe}</span>
+                        <p className="text-[11px] text-neutral-600">{h.note}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Budget status */}
+                <div className="pt-3 border-t border-amber-200 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                  <p className="text-xs font-semibold text-neutral-800">{week.horizon.budgetStatus}</p>
+                </div>
+              </div>
+            </SectionQ>
           </div>
 
-          {/* Market context */}
-          <div className="rounded-xl border border-neutral-200 bg-white px-4 py-3 mb-3">
-            <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wide mb-2.5">Market context this week</p>
+          {/* ── Deep dive (collapsed) ─────────────────────────────── */}
+          <div id="detail">
+            <div className="mb-4">
+              <div className="flex items-baseline gap-2 mb-3">
+                <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">04</span>
+                <h2 className="text-base font-bold text-neutral-900">Deep dive</h2>
+              </div>
+              <p className="text-xs text-neutral-400">Supporting evidence behind the findings above.</p>
+            </div>
+
             <div className="space-y-2">
-              <div className="flex items-start gap-2.5">
-                <span className="text-xs shrink-0">🎌</span>
-                <p className="text-xs text-neutral-600 leading-relaxed">
-                  <span className="font-semibold">Merdeka approaching (31 Aug) — Medium festive window.</span> Patriotic heritage frame is live. Recipe content anchored to &apos;Masakan Malaysia Asli&apos; is getting elevated reach. This is a 2-week window to push Ayam Percik and Rendang content — do not let it pass unused.
-                </p>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <span className="text-xs shrink-0">📱</span>
-                <p className="text-xs text-neutral-600 leading-relaxed">
-                  <span className="font-semibold">TikTok algorithm update.</span> Recipe-format videos with cooking process shots are receiving 1.4× distribution boost this week. Lifestyle content with product close-ups is being deprioritised. The OS flags this as the primary reason to shift creative mix this week.
-                </p>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <span className="text-xs shrink-0">⚡</span>
-                <p className="text-xs text-neutral-600 leading-relaxed">
-                  <span className="font-semibold">MAGGI launched &apos;Masak Sama-Sama&apos; paid amplification this week.</span> Their share of cooking category search increased by 2.1pp. This is not a threat to your gate signal — but monitor branded search share weekly to detect erosion early.
-                </p>
-              </div>
-            </div>
-          </div>
 
-          {/* Signal rows */}
-          <div className="space-y-3">
-            {SIGNALS.map((s) => (
-              <Card key={s.id}>
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center shrink-0 ${s.tone === "green" ? "bg-green-50" : s.tone === "amber" ? "bg-amber-50" : "bg-red-50"}`}>
-                      <span className={`w-2.5 h-2.5 rounded-full ${ragDot(s.tone)}`} />
+              {/* Signal detail */}
+              <Collapsible label="Signal performance · Week 6">
+                <div className="space-y-4">
+                  {week.signals.map(s => (
+                    <div key={s.label}>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-semibold text-neutral-700">{s.label}</p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-neutral-900">{s.actual}</span>
+                          <span className="text-[10px] text-neutral-400">/ {s.target}</span>
+                          <span className="text-[10px] font-semibold text-emerald-600">↑ {s.delta}</span>
+                        </div>
+                      </div>
+                      <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${toneBar(s.tone)}`} style={{ width: `${s.pct}%` }} />
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-neutral-800">{s.label}</p>
-                      <p className="text-xs text-neutral-400 mt-0.5 leading-snug">{s.description}</p>
+                  ))}
+                </div>
+              </Collapsible>
+
+              {/* Idea quality */}
+              <Collapsible label="Idea quality score">
+                <div className="flex items-start gap-4">
+                  <div className="text-center shrink-0">
+                    <span className="text-4xl font-black text-violet-700">{week.ics.score}</span>
+                    <p className="text-[11px] font-bold text-violet-600">{week.ics.rating}</p>
+                  </div>
+                  <p className="text-xs text-neutral-500 leading-relaxed pt-1">{week.ics.note}</p>
+                </div>
+              </Collapsible>
+
+              {/* Relative position */}
+              <Collapsible label="Category positioning">
+                <div className="space-y-2.5">
+                  {week.relativePosition.map(p => (
+                    <div key={p.label}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`text-xs ${p.isSelf ? "font-bold text-neutral-900" : "text-neutral-500"}`}>{p.label}</span>
+                        <span className={`text-xs font-bold ${p.isSelf ? "text-violet-700" : "text-neutral-500"}`}>{p.pct}</span>
+                      </div>
+                      <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${p.isSelf ? "bg-violet-500" : "bg-neutral-300"}`} style={{ width: `${p.pct}%` }} />
+                      </div>
                     </div>
-                  </div>
-                  <Badge tone={s.tone}>{s.status}</Badge>
+                  ))}
+                  <p className="text-[10px] text-neutral-400 pt-1">Idea Certainty Score — comparable campaigns, same category.</p>
                 </div>
+              </Collapsible>
 
-                {/* Metric row */}
-                <div className="flex items-end justify-between mb-1.5 ml-11 sm:ml-12">
-                  <div className="flex items-baseline gap-2 flex-wrap">
-                    <span className="text-2xl font-black text-neutral-900 leading-none">{s.actual}</span>
-                    <span className="text-xs text-neutral-400">/ {s.target} gate</span>
-                    <span className={`text-xs font-semibold ${s.deltaDir === "up" ? "text-emerald-600" : "text-red-600"}`}>
-                      {s.deltaDir === "up" ? "↑" : "↓"} {s.delta} vs last week
-                    </span>
-                  </div>
-                  <span className="text-xs font-bold text-neutral-500">{s.pct}%</span>
+              {/* KOL topline */}
+              <Collapsible label="KOL programme">
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  {[
+                    { label: "Active", val: week.kolTopline.active },
+                    { label: "At gate", val: week.kolTopline.atGate, tone: "green" as Tone },
+                    { label: "Needs attention", val: week.kolTopline.attention, tone: "amber" as Tone },
+                  ].map(k => (
+                    <div key={k.label} className="bg-neutral-50 rounded-xl p-3">
+                      <p className="text-xl font-black text-neutral-900">{k.val}</p>
+                      <p className="text-[10px] text-neutral-400 mt-0.5">{k.label}</p>
+                    </div>
+                  ))}
                 </div>
-
-                {/* Progress bar */}
-                <div className="ml-11 sm:ml-12">
-                  <div className="h-2 bg-neutral-100 rounded-full overflow-hidden mb-2">
-                    <div className={`h-full rounded-full ${ragBar(s.tone)}`} style={{ width: `${s.pct}%` }} />
-                  </div>
-                  <p className="text-xs text-neutral-500 leading-relaxed">{s.detail}</p>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-
-        {/* KOL tracker */}
-        <Card>
-          <div className="flex items-center justify-between mb-3">
-            <SectionLabel>KOL tracker</SectionLabel>
-            <div className="flex gap-2 text-[11px] text-neutral-500">
-              <span className="font-semibold">{KOLS.length} active</span>
-              <span>·</span>
-              <span>32% macro/mega spend</span>
-              <span>·</span>
-              <span className="text-amber-600 font-semibold">Avg save 6.3% (gate ≥8%)</span>
-            </div>
-          </div>
-          <div className="space-y-2">
-            {KOLS.map((k) => (
-              <div key={k.handle} className="flex items-center justify-between gap-3 py-1.5 border-b border-neutral-50 last:border-0">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${ragDot(k.tone)}`} />
-                  <span className="text-xs font-medium text-neutral-700 truncate">{k.handle}</span>
-                  <span className="text-[10px] text-neutral-400 shrink-0 hidden sm:inline">{k.tier}</span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className={`text-xs font-bold ${k.tone === "green" ? "text-emerald-600" : k.tone === "amber" ? "text-amber-600" : "text-red-600"}`}>
-                    {k.saveRate}
-                  </span>
-                  <Badge tone={k.tone}>{k.status}</Badge>
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-neutral-400 mt-3 pt-2 border-t border-neutral-100">
-            Recommendation: do not renew mid-tier contracts for Phase 2. Reallocate to top micro-KOLs and add 2 new Klang Valley food creators.
-          </p>
-        </Card>
-
-        {/* Competitor ICS benchmark */}
-        <Card>
-          <SectionLabel>Competitor ICS benchmark</SectionLabel>
-          <div className="overflow-x-auto -mx-1">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-neutral-100">
-                  <th className="text-left text-neutral-400 font-semibold pb-2 pr-3">Brand</th>
-                  <th className="text-left text-neutral-400 font-semibold pb-2 pr-3">Campaign</th>
-                  <th className="text-left text-neutral-400 font-semibold pb-2 pr-3">ICS</th>
-                  <th className="text-left text-neutral-400 font-semibold pb-2 pr-3">Rating</th>
-                  <th className="text-left text-neutral-400 font-semibold pb-2">Primary gap</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-50">
-                {COMPETITORS.map((c) => (
-                  <tr key={c.brand} className={c.isSelf ? "bg-violet-50/50" : ""}>
-                    <td className={`py-2 pr-3 font-semibold ${c.isSelf ? "text-violet-700" : "text-neutral-800"}`}>{c.brand}</td>
-                    <td className="py-2 pr-3 text-neutral-600">{c.campaign}</td>
-                    <td className={`py-2 pr-3 font-black text-base leading-none ${c.isSelf ? "text-violet-700" : "text-neutral-900"}`}>{c.ics}</td>
-                    <td className="py-2 pr-3"><IcsRating ics={c.ics} /></td>
-                    <td className="py-2 text-neutral-500">{c.gap}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-
-        {/* Gate signal status */}
-        <Card>
-          <SectionLabel>Gate signal status</SectionLabel>
-          <div className="space-y-3">
-            {[
-              {
-                phase: "Gate 1 — Phase 2 unlock",
-                condition: "Save Rate ≥8% held 3 consecutive days + Branded search +40%",
-                status: "NOT YET FIRED",
-                tone: "amber" as RagTone,
-                note: "Save rate at 6.1% (+0.4pp wk-on-wk). Need 1.9pp more and 3 consecutive days to trigger. On track at current growth rate by Week 8.",
-              },
-              {
-                phase: "Gate 2 — Phase 3 unlock",
-                condition: "TikTok Shop CVR ≥4% + Cart abandonment <25% held 7 days",
-                status: "LOCKED",
-                tone: "neutral" as RagTone,
-                note: "Requires Gate 1 to fire first. Phase 2 budget has not been released.",
-              },
-              {
-                phase: "Gate 3 — Scale",
-                condition: "Repeat purchase ≥30% + organic UGC growing MoM, held 2 weeks",
-                status: "LOCKED",
-                tone: "neutral" as RagTone,
-                note: "Requires Gates 1 and 2 to fire. Nov–Dec window.",
-              },
-            ].map((g) => (
-              <div key={g.phase} className="border border-neutral-100 rounded-xl p-3.5">
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <p className="text-xs font-semibold text-neutral-800">{g.phase}</p>
-                  <Badge tone={g.tone}>{g.status}</Badge>
-                </div>
-                <p className="text-[11px] text-violet-700 font-medium mb-1.5 border-l-2 border-violet-300 pl-2">{g.condition}</p>
-                <p className="text-xs text-neutral-500">{g.note}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* The ShiftImpact Rule */}
-          <div className="mt-4 rounded-xl bg-neutral-900 px-4 py-3 text-center">
-            <p className="text-xs font-bold text-white mb-1">The ShiftImpact Rule</p>
-            <p className="text-[11px] text-neutral-400">Budget does not move because a date arrived.</p>
-            <p className="text-[11px] text-neutral-400">Budget moves because a consumer behaviour signal fired — and held.</p>
-          </div>
-        </Card>
-
-        {/* Weekly intelligence report (strategist-approved) */}
-        <Card className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-neutral-900">Growth Intelligence — Week 6</p>
-              <p className="text-xs text-neutral-400 mt-0.5">Week 6 · Reviewed by your strategist</p>
-            </div>
-            <Badge tone="green">Ready</Badge>
-          </div>
-
-          {/* Executive summary */}
-          <div className="bg-neutral-50 rounded-xl p-3.5">
-            <SectionLabel>Summary</SectionLabel>
-            <p className="text-sm text-neutral-700 leading-relaxed">
-              Week 6 shows the campaign is building correctly. Brand search interest is accelerating at +1.8pp week-on-week — the strongest sustained growth since launch. Content saves are rising on recipe formats. The one watch area is the save-rate gate: at 6.1% it is 1.9pp short of the 8% threshold required to release Phase 2 budget. A creative mix shift to recipe-led formats this week is the single highest-leverage action available. No gate has fired. No Phase 2 budget has been released. This is the right state for Week 6.
-            </p>
-          </div>
-
-          {/* Signal health */}
-          <div>
-            <SectionLabel>Signal health this week</SectionLabel>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { label: "Demand", tone: "amber" as RagTone },
-                { label: "Nurture", tone: "green" as RagTone },
-                { label: "Conversion", tone: "green" as RagTone },
-              ].map((s) => (
-                <div key={s.label} className="text-center bg-neutral-50 rounded-xl p-2.5">
-                  <p className="text-[10px] text-neutral-400 mb-1.5">{s.label}</p>
-                  <Badge tone={s.tone}>{s.tone === "green" ? "Green" : s.tone === "amber" ? "Amber" : "Red"}</Badge>
-                </div>
-              ))}
-            </div>
-            <p className="text-xs text-neutral-500 mt-2">
-              Demand signal is Amber — building but not yet at gate. Nurture and Conversion are Green. Gate: Amber overall.
-            </p>
-          </div>
-
-          {/* Risk posture */}
-          <div>
-            <SectionLabel>Brand posture this week</SectionLabel>
-            <span className="inline-block text-xs font-semibold px-3 py-1 rounded-full border bg-green-50 text-green-800 border-green-200">
-              Gaining
-            </span>
-          </div>
-
-          {/* Findings */}
-          <div>
-            <SectionLabel>What the data is telling us</SectionLabel>
-            <div className="space-y-3">
-              {FINDINGS.map((f, i) => (
-                <div key={i} className="border-l-2 border-neutral-200 pl-3">
-                  <p className="text-xs font-semibold text-neutral-800 mb-1">{f.headline}</p>
-                  <p className="text-xs text-neutral-500 leading-relaxed">{f.implication}</p>
-                  <p className="text-xs text-emerald-700 mt-1.5 font-medium">→ {f.recommendation}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <p className="text-[10px] text-neutral-400 pt-1 border-t border-neutral-100">
-            Published 17 August 2026 · Questions? Reply to the notification email.
-          </p>
-        </Card>
-
-        {/* Phase roadmap */}
-        <Card>
-          <SectionLabel>Signal-led phase roadmap · Jul – Dec 2026</SectionLabel>
-          <p className="text-[11px] text-neutral-500 mb-4">Budget moves when your Gate Signal fires — not when the calendar says so.</p>
-          <div className="space-y-3">
-            {[
-              {
-                phase: "Phase 1 — Demand",
-                dates: "Jul – Aug 2026",
-                active: true,
-                desc: "Build cultural tension first. Hero content seeded via micro-KOL UGC (cooking confidence angle). No paid amplification until Gate 1 fires and holds.",
-                gate: "Save Rate ≥8% held 3 consecutive days + Branded search +40%",
-                festive: "Merdeka 31 Aug · Medium → leverage patriotic heritage frame",
-              },
-              {
-                phase: "Phase 2 — Conversion",
-                dates: "Sep – Oct 2026",
-                active: false,
-                desc: "Introduce purchase mechanic. TikTok Shop bundle + recipe challenge. Budget releases only when Gate 1 holds 3 consecutive days.",
-                gate: "TikTok Shop CVR ≥4% + Cart abandonment <25% held 7 days",
-                festive: "Deepavali Oct · High · 11.11 · High → idea must lead, not discounts",
-              },
-              {
-                phase: "Phase 3 — Retention + Scale",
-                dates: "Nov – Dec 2026",
-                active: false,
-                desc: "Repeat purchase engine. UGC advocacy. Scale only when NPS ≥45 and repeat purchase interval is decreasing.",
-                gate: "Repeat purchase ≥30% + organic UGC growing MoM held 2 weeks",
-                festive: "12.12 · High · Year-End Dec · Medium → do not add spend; let signal justify it",
-              },
-            ].map((p) => (
-              <div key={p.phase} className={`rounded-xl border p-3.5 ${p.active ? "border-violet-200 bg-violet-50/30" : "border-neutral-100 bg-white"}`}>
-                <div className="flex items-center justify-between gap-3 mb-1.5">
-                  <p className={`text-sm font-bold ${p.active ? "text-violet-800" : "text-neutral-700"}`}>{p.phase}</p>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {p.active && <span className="text-[10px] font-bold text-violet-600 bg-violet-100 px-2 py-0.5 rounded-full">Current</span>}
-                    <span className="text-[11px] text-neutral-400">{p.dates}</span>
+                <div className="mt-3 flex items-center justify-between text-xs">
+                  <span className="text-neutral-500">Avg save rate</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-amber-700">{week.kolTopline.avgSave}</span>
+                    <span className="text-neutral-400">vs gate {week.kolTopline.gateSave}</span>
                   </div>
                 </div>
-                <p className="text-xs text-neutral-600 leading-relaxed mb-2">{p.desc}</p>
-                <p className={`text-[11px] font-medium border-l-2 pl-2 mb-2 ${p.active ? "text-violet-700 border-violet-400" : "text-neutral-500 border-neutral-200"}`}>
-                  Gate: {p.gate}
+                <p className="text-[10px] text-neutral-400 mt-2 pt-2 border-t border-neutral-100">
+                  Brief: do not renew mid-tier contracts for Phase 2. See creative brief 3 above.
                 </p>
-                <p className="text-[10px] text-neutral-400">🗓 {p.festive}</p>
-              </div>
-            ))}
-          </div>
-        </Card>
+              </Collapsible>
 
-        {/* Active channels */}
-        <Card>
-          <SectionLabel>Active channels</SectionLabel>
-          <div className="flex flex-wrap gap-2">
-            {["Meta (Facebook & Instagram)", "TikTok", "Google Search (Branded)", "Shopee Ads", "KOL — Micro-tier (5 active)"].map((ch) => (
-              <span key={ch} className="px-2.5 py-1 rounded-full bg-neutral-100 text-neutral-700 text-xs font-medium">{ch}</span>
-            ))}
+              {/* Phase roadmap */}
+              <Collapsible label="Phase roadmap · Jul–Dec 2026">
+                <div className="space-y-2">
+                  {week.roadmap.map((r, i) => (
+                    <div key={i} className={`flex items-start gap-3 p-3 rounded-xl border ${r.active ? "border-violet-200 bg-violet-50/40" : "border-neutral-100 bg-neutral-50/50"}`}>
+                      <span className={`w-2 h-2 rounded-full shrink-0 mt-1 ${r.active ? "bg-violet-500" : "bg-neutral-200"}`} />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className={`text-xs font-semibold ${r.active ? "text-violet-800" : "text-neutral-500"}`}>{r.phase}</p>
+                          <span className="text-[10px] text-neutral-400">{r.dates}</span>
+                          {r.gated && <span className="text-[9px] font-bold bg-neutral-200 text-neutral-500 px-1.5 py-0.5 rounded">LOCKED</span>}
+                        </div>
+                        <p className="text-[11px] text-neutral-500 mt-0.5">{r.note}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 rounded-xl bg-neutral-900 px-3 py-2.5 text-center">
+                  <p className="text-[10px] font-bold text-white">The ShiftImpact Rule</p>
+                  <p className="text-[10px] text-neutral-400 mt-0.5">Budget moves because a signal fired and held — not because a date arrived.</p>
+                </div>
+              </Collapsible>
+            </div>
           </div>
-        </Card>
 
-        {/* Channel briefs */}
-        <Card>
-          <SectionLabel>Channel briefs</SectionLabel>
-          <div className="divide-y divide-neutral-100">
-            {[
-              { name: "Meta — Social Content Brief", status: "Approved", tone: "green" as RagTone },
-              { name: "TikTok — Creator + Recipe Brief", status: "Approved", tone: "green" as RagTone },
-              { name: "Google Search — Branded Keyword Brief", status: "Ready", tone: "green" as RagTone },
-              { name: "KOL — Micro Creator Brief (Week 7)", status: "Ready", tone: "green" as RagTone },
-            ].map((b) => (
-              <div key={b.name} className="py-2.5 flex items-center justify-between gap-3">
-                <span className="text-sm text-neutral-700">{b.name}</span>
-                <Badge tone={b.tone}>{b.status}</Badge>
-              </div>
-            ))}
+          {/* Footer */}
+          <div className="mt-10 pt-4 border-t border-neutral-200 flex items-center justify-between text-[10px] text-neutral-400">
+            <span>ShiftImpact OS</span>
+            <span>Week 6 · 17 Aug 2026 · Reviewed by your strategist</span>
           </div>
-        </Card>
 
-        {/* Campaign milestones */}
-        <Card>
-          <SectionLabel>Campaign milestones</SectionLabel>
-          <div className="space-y-2">
-            {[
-              { label: "FRAME Brief locked — ICS 76 (CONDITIONAL)", done: true },
-              { label: "Campaign launch — Go", done: true },
-              { label: "Week 4 signal gate — On track", done: true },
-              { label: "Week 8 phase review", done: false },
-              { label: "Gate 1 — Phase 2 budget release", done: false },
-            ].map((m) => (
-              <div key={m.label} className={`flex items-center gap-2.5 ${!m.done ? "pt-2 border-t border-neutral-100 first:border-0" : ""}`}>
-                <span className={m.done ? "text-emerald-500" : "text-neutral-300"}>{m.done ? "✓" : "○"}</span>
-                <span className={`text-sm ${m.done ? "text-neutral-600" : "text-neutral-400"}`}>{m.label}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {/* Footer */}
-        <div className="pt-4 border-t border-neutral-200 text-xs text-neutral-400">
-          <span>ShiftImpact OS</span>
         </div>
-
-      </div>
+      </main>
     </div>
   );
 }
