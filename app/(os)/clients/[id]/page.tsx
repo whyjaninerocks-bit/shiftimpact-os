@@ -43,7 +43,7 @@ export default async function ClientDetailPage({
     getBrandMomentumScores(id),
     supabase
       .from("client_report_recipients")
-      .select("id, name, email, created_at")
+      .select("id, name, email, recipient_type, created_at")
       .eq("client_id", id)
       .order("created_at", { ascending: true }),
   ]);
