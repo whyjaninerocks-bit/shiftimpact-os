@@ -93,10 +93,15 @@ const QA: Array<{ keywords: string[]; answer: string }> = [
     keywords: ["phase 1", "phase 3", "roadmap", "conversion phase", "retention phase", "scale phase", "three phases"],
     answer: "The campaign runs in three phases, each gated by a consumer behaviour signal. Phase 1 (now) builds demand — the gate is save rate ≥8%, which you are 1.9pp from. Phase 2 (Conversion) releases when Gate 1 fires — it activates TikTok Shop mechanics and conversion-focused creative. Phase 3 (Retention and Scale) releases when Gate 2 fires in Phase 2. No phase releases on a calendar date — each releases when the data confirms audience readiness. This protects your budget from being deployed before the market is primed.",
   },
-  // ── Compliance ──
+  // ── Compliance — system explanation ──
   {
-    keywords: ["compliance", "brief compliance", "did they follow", "execution", "what was actioned", "brief followed", "agency followed"],
-    answer: "The Brief Compliance Report is a structured sign-off that the agency lead completes before each weekly report publishes. For every action in the brief, they select: Done in full, Done partially, or Not done. If partial or not done, they pick a reason from a preset list — Budget constraint, Timeline pressure, Client override, Format changed, Creative shifted, or Still in progress. No free-text typing required. This feeds directly into the prediction accuracy loop: if a prediction misses and compliance was low, the variance analysis leads with execution deviation. If compliance was high, the model recalibrates. The compliance score is the variable that distinguishes model error from execution error.",
+    keywords: ["brief compliance", "compliance report", "did they follow", "what was actioned", "brief followed", "agency followed", "compliance score"],
+    answer: "The Brief Compliance Report is a structured sign-off the agency lead completes before each weekly report publishes. For every brief action, they select Done in full, Done partially, or Not done — and if partial or not done, they pick a preset reason: Budget constraint, Timeline pressure, Client override, Format changed, Creative shifted, or Planned for next activation. No free-text typing required. The compliance score feeds into the prediction accuracy loop: if a prediction misses and compliance was low, the variance analysis leads with execution deviation. If compliance was high, the model recalibrates. This is what separates model error from execution error.",
+  },
+  // ── Brief framing — 'this is my version' ──
+  {
+    keywords: ["this is my version", "personal ownership", "frame", "framing", "shortcut messaging", "your version", "brand framing", "what does frame mean"],
+    answer: "The 'your version of the dish' frame is a specific storytelling direction in the brief. It means the KOL presents the dish as something they cooked their own way — not as a branded product demonstration. The difference in practice: a personal ownership frame sounds like 'this is how I make rendang, and Cooks paste is what I use' — the creator owns the cooking narrative. Shortcut messaging sounds like 'Cooks paste makes this in 10 minutes' — the brand owns the story. The brief checks for this because personal ownership framing saves at 2.3× the rate of shortcut messaging. It is the single biggest driver of save rate in the recipe content category. In the compliance report, this item checks whether the posted content felt like the creator's own cooking story or a product ad.",
   },
   // ── Data sources ──
   {
