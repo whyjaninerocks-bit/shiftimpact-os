@@ -67,6 +67,11 @@ export default async function ClientPortalPage({
 }) {
   const { id } = await params;
 
+  // Guard: reject non-UUID segments (e.g. /portal/demo routes to demo/page.tsx first,
+  // but if that page isn't deployed yet, id="demo" would cause a Postgres UUID error)
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!UUID_RE.test(id)) notFound();
+
   const [campaign, frame, dashboards, extensions, report, signalReports, phaseGates] =
     await Promise.all([
       getCampaign(id),
