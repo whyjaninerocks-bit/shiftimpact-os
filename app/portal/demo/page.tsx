@@ -8,89 +8,107 @@ import { useState, useRef, useEffect } from "react";
 // ─── AI assistant responses ───────────────────────────────────────────────────
 
 const QA: Array<{ keywords: string[]; answer: string }> = [
+  // ── Dashed line / gate threshold (must be first — most commonly misunderstood) ──
   {
-    keywords: ["health", "score", "74", "calculated", "derived", "composite"],
-    answer: "Your health score is a weekly read of how well your live signals are tracking toward their targets. A score of 74 at Week 6 of Phase 1 is in the upper range for a campaign at this stage — signals are moving in the right direction and nothing has deteriorated. It updates every Monday from your live platform data.",
+    keywords: ["dashed", "dotted", "line", "what does the line", "what is the line", "red line", "line mean"],
+    answer: "The dashed line on each signal chart marks the gate threshold — the minimum level this signal must reach and hold before Phase 2 budget releases. On save rate, the gate is ≥8% (you are at 6.1%, so 1.9pp below). On brand search share, the target is 18% (you are at 14.2%). On the UGC chart, the threshold is 65% authenticity ratio (you are above it at 72%). The dashed line is not a soft target — it is the gate. Crossing it and holding it for 3 consecutive days unlocks the next phase.",
   },
+  // ── Health score ──
   {
-    keywords: ["gate", "fire", "fired", "phase 2", "budget", "release", "unlock"],
-    answer: "The gate is a consumer behaviour threshold that must be reached and held — not just touched once — before Phase 2 budget releases. The hold requirement is there to confirm a genuine shift in how your audience is responding, not a single spike from a viral post. You're 1.9 percentage points away. The creative brief this week is the most direct path to triggering it.",
+    keywords: ["health score", "74", "health", "composite", "derived", "calculated"],
+    answer: "Your health score is a weekly composite of how all live signals are tracking toward their gate thresholds. A score of 74 at Week 6 of Phase 1 is strong — it reflects 5 consecutive weeks of improvement, from 52 at launch. The score weights save rate most heavily because that is the gate signal. It updates every Monday from your live platform data.",
   },
+  // ── Gate ──
   {
-    keywords: ["save", "rate", "6.1", "8%", "threshold", "content"],
-    answer: "Save rate measures how many people who see your content choose to bookmark it for later. In your category, saves are the strongest forward indicator of purchase intent — people save recipes they intend to cook. Your save rate has grown every week since launch. The brief in Section 02 is specifically designed to accelerate that growth by shifting to recipe-led formats that are already outperforming your current mix.",
+    keywords: ["gate", "phase 2", "unlock", "fire", "fired", "budget release", "trigger"],
+    answer: "The gate is a consumer behaviour threshold that must be reached and held for 3 consecutive days before Phase 2 budget releases. Save rate must reach ≥8% — you are at 6.1%, which is 1.9pp away. The hold requirement prevents a single viral spike from unlocking budget prematurely. At your current growth rate of +0.4pp per week, you are 4–5 weeks from gate without the brief. With the recipe-led creative brief actioned this week, the growth rate should accelerate — gate in 2–3 weeks is realistic.",
   },
+  // ── Save rate ──
   {
-    keywords: ["conditional", "ics", "76", "idea", "quality", "certainty"],
-    answer: "CONDITIONAL means your campaign idea is structurally sound and performing above the category average. It signals that one area has room to improve — how consistently your idea is being expressed across your content. That's a tactical fix, not a strategic one. The brief this week addresses it directly. If it's actioned, you should see the score move by Week 8.",
+    keywords: ["save rate", "6.1", "saves", "bookmark", "8%", "content save"],
+    answer: "Save rate is the percentage of people who see your content and choose to bookmark it for later. In your category, saves are the strongest forward indicator of purchase intent — people save recipes they intend to cook, not recipes they have already made. Your save rate has grown every week since launch. Recipe-led content is saving at 2.3× the rate of lifestyle content, which is why the Week 7 brief shifts the mix to 70% recipe.",
   },
+  // ── ICS / idea quality ──
   {
-    keywords: ["maggi", "knorr", "adabi", "competitor", "benchmark", "category", "comparison"],
-    answer: "The benchmark shows where your campaign idea sits relative to comparable campaigns running in your category right now. The gap between you and the category leader is in executional consistency — not budget, reach, or idea quality. That gap narrows as your creative execution tightens. You're ahead of two of the four brands in this benchmark and closing on the leader.",
+    keywords: ["conditional", "ics", "76", "idea certainty", "idea quality", "campaign idea"],
+    answer: "CONDITIONAL means your campaign idea — Jadikan Caramu — is structurally sound and benchmarking above the category average of 67. The flag is on executional consistency: the idea is not being expressed consistently enough across formats and channels. That is a tactical fix, not a strategic problem. The brief this week addresses it directly by tightening the mix to recipe-led content that expresses the core idea more coherently.",
   },
+  // ── Competitors / benchmark ──
   {
-    keywords: ["posture", "gaining", "brand", "momentum"],
-    answer: "'Gaining' means your signals are trending upward and nothing has meaningfully deteriorated in the past 7 days. It's reviewed weekly. Two consecutive weeks of Gaining at a save rate approaching the gate threshold is a strong position at this point in the campaign arc.",
+    keywords: ["maggi", "knorr", "adabi", "competitor", "benchmark", "category leader"],
+    answer: "The benchmark compares your campaign idea against four active campaigns in the cooking category right now. Your ICS of 76 puts you second — ahead of Knorr (74) and Adabi (59), behind MAGGI (81). The gap to MAGGI is not in idea quality or budget — it is in executional consistency. Tighter creative execution this week closes that gap by Week 8.",
   },
+  // ── Brand posture ──
   {
-    keywords: ["kol", "influencer", "creator", "activation", "micro", "mid", "programme"],
-    answer: "KOL performance is evaluated on save rate — not follower count or reach — because saves are what drive your gate signal. Your micro-KOLs are delivering 7–8% save rates at 38% of the total KOL budget. The two mid-tier KOLs are generating reach but not saves. Phase 2 recommendation: concentrate budget on what is already at gate, recruit 2 new Klang Valley food creators to the same profile. Save rate is the only metric that moves the gate.",
+    keywords: ["posture", "gaining", "fragile", "plateauing", "brand posture", "what does gaining mean"],
+    answer: "Brand posture is a weekly classification of signal momentum. Gaining means every tracked signal improved week-on-week and none deteriorated. This campaign moved from Fragile (Weeks 1–2) to Plateauing (Weeks 3–4) to Gaining (Weeks 5–6). Two consecutive Gaining weeks at this point in Phase 1 is the correct trajectory — it confirms the campaign is compounding, not just recovering. The risk that would flip posture back to Plateauing is a save rate stall caused by the current creative mix.",
   },
+  // ── KOL ──
   {
-    keywords: ["battery", "creative", "fatigue", "endurance", "refresh", "weeks remaining", "runway"],
-    answer: "Creative Battery measures how many more weeks the current creative execution can sustain its performance trajectory before engagement plateaus. At Week 6, your lifestyle-heavy mix (60% lifestyle, 40% recipe) has roughly 2 weeks before diminishing returns set in — this is why the brief to shift to recipe-led formats is timed now, not next month. Actioning it extends your creative runway by 4–6 weeks and prevents a mid-campaign performance dip ahead of the Merdeka window.",
+    keywords: ["kol", "influencer", "creator", "micro kol", "mid tier", "kol programme", "activation"],
+    answer: "KOL performance is measured on save rate only — not reach, follower count, or views — because saves are the only KOL metric that directly moves your gate signal. Your three micro-KOLs (@masakdenganaishah at 8.4%, @eatwithzafran at 7.1%, @dapurrumahkuofficial at 6.8%) are averaging 7.4% save rate with 38% of the total KOL budget. Your two mid-tier KOLs are averaging 5.4% — below gate threshold — with 62% of the budget. Phase 2 recommendation: do not renew mid-tier contracts. Concentrate budget on micro-tier performers and recruit two new Klang Valley food creators to the same profile.",
   },
+  // ── Creative battery ──
   {
-    keywords: ["business", "revenue", "sales", "roi", "return", "outcome", "performance", "spend"],
-    answer: "Business outcome tracking — linking campaign signals to actual sales, revenue lift, and media ROI — activates when you share business performance data with your strategist. The Full Intelligence Suite at the bottom of this report shows exactly what becomes visible when that data is connected. Signal intelligence tells you what the market is doing. Business data tells you what it is worth.",
+    keywords: ["creative battery", "battery", "fatigue", "endurance", "weeks remaining", "creative runway"],
+    answer: "Creative Battery measures how many more weeks the current execution format can sustain its performance trajectory before audiences stop responding at the same rate. This is about format fatigue, not idea quality — the Jadikan Caramu idea is intact. At Week 6, your Meta Feed lifestyle content (60% of the mix) is showing early fatigue: save rate per impression is declining 3% week-on-week even as total impressions grow. TikTok recipe formats are not declining. The battery for Meta lifestyle is approximately 2 weeks. The recipe-led brief this week resets it.",
   },
+  // ── UGC ──
   {
-    keywords: ["ai", "visibility", "search", "gemini", "chatgpt", "recommendation", "brand appear"],
-    answer: "AI Brand Visibility tracks whether your brand appears in AI-generated product recommendations — Google AI Overview, ChatGPT, Gemini. In FMCG and cooking categories, 23% of purchase-intent queries are now going to AI assistants first. If your brand is not showing up in those answers, you are invisible to a growing share of high-intent buyers. This is a premium signal available in the Full Intelligence Suite.",
+    keywords: ["ugc", "user generated", "organic posts", "authenticity ratio", "authenticity", "community content"],
+    answer: "UGC Signal measures organic and seeded content posted by real consumers who cooked with Cooks. The Authenticity Ratio (currently 72%) is the proportion of brand-tagged content that is genuine versus paid. You crossed the 65% threshold at Week 5 and are holding above it — this means the brand is building real cultural presence, not just buying reach. Twenty-eight organic posts were tagged this week, up from 19 at Week 4. This is a compounding signal: rising authenticity makes your paid KOL content more credible.",
   },
+  // ── GrabAds ──
   {
-    keywords: ["predict", "prediction", "accuracy", "track record", "forecast", "verified", "locked"],
-    answer: "Every ShiftImpact OS report contains two prediction layers. First: this week's forward predictions are locked and timestamped at report publication — they cannot be edited after delivery. Second: the Full Intelligence Suite shows whether prior weeks' predictions were verified against actuals. At Week 6, 5 out of 5 predictions from Weeks 1–5 have been verified within the stated range. This is the accountability structure — not a confidence interval, an actual track record.",
+    keywords: ["grabads", "grab ads", "purchase attribution", "grabart", "grabmart", "grab signal"],
+    answer: "GrabAds is Grab's advertising platform — the super-app Malaysians use daily for rides, food, and payments. Because Grab sees actual purchase transactions, GrabAds closes the loop between your content (a TikTok recipe save) and a physical purchase (Cooks paste from GrabMart or a nearby store). It is one of the only platforms in Malaysia that connects social activity to real buying behaviour. This signal is in preview — it activates when your GrabAds account is linked to ShiftImpact OS.",
   },
+  // ── Prediction accuracy ──
   {
-    keywords: ["read", "receipt", "acknowledged", "confirm", "seen", "sign", "owner"],
-    answer: "The delivery record at the bottom of each brief section shows who received the report, when it was opened, and who has formally acknowledged it. Required owners — typically the brand marketing lead and agency account lead — must acknowledge before the brief is considered actioned. This creates an audit trail that eliminates future disputes about whether a brief was received and when.",
+    keywords: ["prediction", "accuracy", "track record", "verified prediction", "what you predicted", "predictions"],
+    answer: "Every report contains two prediction layers. This week's predictions are locked and timestamped at publication — they cannot be edited after delivery. Prior predictions are verified against actuals in the following week's report. At Week 6, all five predictions made in Weeks 1–5 have been verified within the stated range, giving a 100% accuracy rate for this campaign so far. The locked predictions for this week are in the Full Intelligence Suite section at the bottom of the report.",
   },
+  // ── Read receipts ──
   {
-    keywords: ["ugc", "user generated", "organic", "authenticity", "authenticity ratio", "community", "tagged"],
-    answer: "UGC Signal tracks organic and seeded content posted by real consumers — people who cooked with Cooks and shared it without being paid. The Authenticity Ratio (currently 72%) measures how much of the brand-tagged content is genuine versus paid KOL posts. A rising authenticity ratio is a leading indicator that the brand is building real culture, not just buying attention. The gate threshold is 65% — you are above it and improving.",
+    keywords: ["read receipt", "acknowledged", "delivery record", "who received", "confirm receipt", "brief delivered"],
+    answer: "The delivery and acknowledgement record at the bottom of the brief section logs every recipient, delivery timestamp, and read timestamp for this report. Required owners — the brand marketing lead and agency account director — must formally acknowledge receipt before the brief is considered actioned. This record is append-only and cannot be modified after publication. It is the reference in any future dispute about whether a brief was received or when.",
   },
+  // ── AI brand visibility ──
   {
-    keywords: ["grab", "grabads", "grab ads", "purchase", "attribution", "transaction", "grabmart"],
-    answer: "GrabAds is Grab's advertising platform. Grab is the super-app used daily across Malaysia — ride-hailing, GrabFood, GrabPay. Because Grab sees actual purchase transactions (not just clicks), GrabAds closes the loop between your social ad impressions and whether someone physically bought your product. For Cooks, this means tracking: did someone who saved a TikTok recipe then buy Cooks paste from GrabMart or a store on their route? It is one of the only platforms in Malaysia that connects social activity directly to purchase. This signal is in preview here — it activates when your GrabAds account is connected.",
+    keywords: ["ai visibility", "ai brand", "chatgpt", "gemini", "google ai overview", "ai recommendation", "appear in ai"],
+    answer: "AI Brand Visibility tracks whether Cooks appears when someone asks an AI assistant — Google AI Overview, ChatGPT, Gemini — for a recipe or product recommendation. In FMCG and cooking categories, 23% of purchase-intent queries now go to AI assistants first. If your brand is not in those answers, you are invisible to a growing high-intent segment. This is a premium signal in the Full Intelligence Suite — it activates when your brand monitoring is configured.",
   },
+  // ── Gate timeline / horizon ──
   {
-    keywords: ["horizon", "predict", "week 7", "week 8", "forecast", "next"],
-    answer: "The horizon signal is a directional projection based on your current growth trajectory. It tells you what to expect if present conditions hold. The key variable is whether this week's creative brief is actioned — if it is, the timeline improves; if it isn't, it extends. It's designed to give you a decision window, not a guarantee.",
+    keywords: ["horizon", "week 7", "week 8", "when will gate fire", "gate timeline", "how long"],
+    answer: "At the current save rate growth of +0.4pp per week, Gate 1 would fire around Week 10–11 without any creative change. If this week's recipe-led brief is actioned, growth should accelerate to +0.6–0.8pp per week — putting Gate 1 at Week 7–8. The Merdeka window (31 August) creates additional tailwind for recipe content this week specifically. Acting now versus next week is the difference between a Week 7 gate and a Week 9 gate.",
   },
+  // ── Market context / Merdeka ──
   {
-    keywords: ["merdeka", "market", "context", "tiktok", "algorithm", "seasonal"],
-    answer: "Market context flags external conditions affecting your campaign this week — platform algorithm shifts, seasonal windows, competitor activity. These are real signals from the market that change what the data means and what you should prioritise. Merdeka on 31 August is a live window right now. Acting this week captures it; acting next week doesn't.",
+    keywords: ["merdeka", "tiktok algorithm", "market context", "seasonal", "platform update", "algorithm"],
+    answer: "Market context captures external conditions that change what your data means this week. Two active factors: Merdeka on 31 August is creating elevated reach for recipe content anchored to Malaysian heritage dishes — this is a 2-week window that closes at end of August. TikTok's algorithm is currently giving 1.4× distribution to recipe-format videos and deprioritising lifestyle and product close-ups. Both factors point in the same direction as the creative brief: shift to recipe-led content now.",
   },
+  // ── Phase roadmap ──
   {
-    keywords: ["phase", "roadmap", "conversion", "retention", "scale"],
-    answer: "Your campaign runs in three phases, each gated by consumer behaviour signals. Phase 1 builds demand. Phase 2 converts it. Phase 3 scales what worked. No phase releases on a calendar date — each releases when the data confirms the audience is ready. That's what protects your budget from being spent before the market is primed.",
+    keywords: ["phase 1", "phase 3", "roadmap", "conversion phase", "retention phase", "scale phase", "three phases"],
+    answer: "The campaign runs in three phases, each gated by a consumer behaviour signal. Phase 1 (now) builds demand — the gate is save rate ≥8%, which you are 1.9pp from. Phase 2 (Conversion) releases when Gate 1 fires — it activates TikTok Shop mechanics and conversion-focused creative. Phase 3 (Retention and Scale) releases when Gate 2 fires in Phase 2. No phase releases on a calendar date — each releases when the data confirms audience readiness. This protects your budget from being deployed before the market is primed.",
   },
+  // ── Data sources ──
   {
-    keywords: ["signal", "track", "measure", "source", "data"],
-    answer: "Every metric in this report comes directly from your campaign's live data — platform analytics, search data, and content performance combined. Nothing is modelled or estimated. If you'd like to see the specific source for any number, your strategist can walk you through the data trail at your next session.",
+    keywords: ["data source", "where does", "how is it measured", "what data", "where does this come from", "live data"],
+    answer: "Every number in this report is drawn from live platform data — TikTok and Instagram analytics for save rate and UGC, Google Trends for brand search share, and platform-level impression data for creative battery calculations. Nothing is modelled or estimated without disclosure. Signal sources are documented in the Deep Dive section. Your strategist can provide the raw data trail for any figure on request.",
   },
 ];
 
 const SUGGESTIONS = [
-  "How is the health score derived?",
+  "What does the dashed line mean?",
   "Why hasn't the gate fired yet?",
   "How is the KOL programme evaluated?",
-  "What does the creative battery mean?",
+  "What does brand posture Gaining mean?",
 ];
 
 const FALLBACK =
-  "Good question — and one worth taking to your next strategy session. Every classification and number in this report is grounded in your live campaign data and a structured methodology. Your ShiftImpact strategist can walk you through the specific reasoning behind any figure in detail.";
+  "That question is best answered with your specific campaign data in front of you — your ShiftImpact strategist can walk through it in your next session. Every number and classification in this report is grounded in your live platform data and a documented methodology.";
 
 function matchAnswer(q: string): string {
   const lower = q.toLowerCase();
@@ -100,8 +118,8 @@ function matchAnswer(q: string): string {
     let score = 0;
     for (let i = 0; i < item.keywords.length; i++) {
       if (lower.includes(item.keywords[i])) {
-        // First keyword (most topic-specific) worth 3 pts, second 2, rest 1
-        score += i === 0 ? 3 : i === 1 ? 2 : 1;
+        // First keyword (most topic-specific) = 4 pts, second = 3, third = 2, rest = 1
+        score += i === 0 ? 4 : i === 1 ? 3 : i === 2 ? 2 : 1;
       }
     }
     if (score > bestScore) {
@@ -109,6 +127,9 @@ function matchAnswer(q: string): string {
       bestAnswer = item.answer;
     }
   }
+  // Require a minimum score of 2 to return a match — prevents weak single-word matches
+  // from returning a confident but wrong answer
+  if (bestScore < 2) return FALLBACK;
   return bestAnswer;
 }
 
@@ -1249,42 +1270,137 @@ export default function PortalDemoPage() {
           {/* ── Q1: Is it working? ────────────────────── */}
           <div id="q1">
             <SectionQ q="01" label="Is it working?">
-              <div className="rounded-2xl bg-neutral-900 px-6 py-6 space-y-5">
-                <div>
-                  <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">This week&apos;s verdict</p>
-                  <p className="text-base leading-relaxed text-white">{week.verdict}</p>
-                </div>
+              <div className="space-y-4">
 
-                <div className="grid grid-cols-2 gap-4 pt-5 border-t border-white/15">
-                  <div>
-                    <p className="text-sm font-medium text-neutral-400 mb-1.5">Campaign health</p>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-5xl font-black text-white">{week.health}</span>
-                      <span className="text-base text-emerald-400 font-semibold">{week.healthDelta} pts</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 mt-2">
-                      <div className="flex-1 h-2 bg-white/15 rounded-full overflow-hidden">
-                        <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${week.health}%` }} />
-                      </div>
-                      <span className="text-sm text-neutral-400">/100</span>
+                {/* ── Posture journey timeline ── */}
+                <div className="rounded-2xl bg-neutral-900 px-6 py-5">
+                  <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Brand posture journey · Weeks 1–6</p>
+                  <div className="relative">
+                    {/* connector line */}
+                    <div className="absolute top-4 left-0 right-0 h-px bg-white/10" />
+                    <div className="grid grid-cols-3 relative">
+                      {[
+                        { weeks: "Wk 1–2", posture: "Fragile", color: "text-red-400", dot: "bg-red-400", note: "Signals launching, below baselines", active: false },
+                        { weeks: "Wk 3–4", posture: "Plateauing", color: "text-amber-400", dot: "bg-amber-400", note: "Save rate stalled · Brief issued", active: false },
+                        { weeks: "Wk 5–6", posture: "Gaining", color: "text-emerald-400", dot: "bg-emerald-400", note: "5 consecutive weeks of improvement", active: true },
+                      ].map((stage) => (
+                        <div key={stage.weeks} className="flex flex-col items-center text-center px-2">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${stage.active ? stage.dot : "bg-white/10"} z-10 relative mb-3`}>
+                            {stage.active && <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7l3 3 6-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                          </div>
+                          <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-0.5">{stage.weeks}</p>
+                          <p className={`text-sm font-black ${stage.active ? stage.color : "text-neutral-400"}`}>{stage.posture}</p>
+                          <p className="text-[11px] text-neutral-500 mt-1 leading-tight">{stage.note}</p>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-neutral-400 mb-1.5">Brand posture</p>
-                    <p className={`text-4xl font-black ${postureColor(week.posture)}`}>{week.posture}</p>
-                    <p className="text-sm text-neutral-400 mt-1.5">Signals trending positive</p>
+                  <p className="text-sm text-neutral-300 mt-5 leading-relaxed border-t border-white/10 pt-4">
+                    <span className="text-emerald-400 font-semibold">Yes, it is working.</span> The campaign has compounded week-on-week from Fragile to Gaining in six weeks — the correct trajectory for Phase 1. The risk is not in strategy or idea quality. It is in execution mix. One brief, actioned this week, is the difference between firing the gate in Week 7 or Week 10.
+                  </p>
+                </div>
+
+                {/* ── Signal vs gate: visual comparison ── */}
+                <div className="rounded-2xl border border-neutral-200 bg-white overflow-hidden">
+                  <div className="px-6 py-4 border-b border-neutral-100">
+                    <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest">Signal vs gate threshold · Week 6</p>
+                  </div>
+                  <div className="px-6 py-4 space-y-5">
+                    {[
+                      { label: "Save rate", current: 6.1, gate: 8.0, unit: "%", color: "bg-amber-400", gateColor: "amber", gap: "−1.9pp to gate", improving: true, note: "5 consecutive weeks positive" },
+                      { label: "Brand search share", current: 14.2, gate: 18.0, unit: "%", color: "bg-blue-400", gateColor: "blue", gap: "−3.8pp to gate", improving: true, note: "Growing 2.1× faster than category" },
+                      { label: "UGC authenticity ratio", current: 72, gate: 65, unit: "%", color: "bg-emerald-500", gateColor: "emerald", gap: "7pp above gate ✓", improving: true, note: "Above threshold, holding" },
+                    ].map((sig) => {
+                      const aboveGate = sig.current >= sig.gate;
+                      const pct = Math.min((sig.current / sig.gate) * 100, 100);
+                      return (
+                        <div key={sig.label}>
+                          <div className="flex items-baseline justify-between mb-1.5">
+                            <span className="text-sm font-semibold text-neutral-800">{sig.label}</span>
+                            <div className="flex items-center gap-3">
+                              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${aboveGate ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{sig.gap}</span>
+                            </div>
+                          </div>
+                          <div className="relative h-2 bg-neutral-100 rounded-full overflow-visible">
+                            {/* current */}
+                            <div className={`h-full rounded-full ${sig.color} transition-all`} style={{ width: `${pct}%` }} />
+                            {/* gate line */}
+                            {!aboveGate && (
+                              <div className="absolute top-1/2 -translate-y-1/2 w-0.5 h-5 bg-neutral-400" style={{ left: "100%" }}>
+                                <div className="absolute -top-6 left-1 text-[10px] text-neutral-400 whitespace-nowrap font-semibold">Gate {sig.gate}{sig.unit}</div>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between mt-1">
+                            <span className="text-[11px] text-neutral-500">{sig.note}</span>
+                            <span className="text-[11px] font-bold text-neutral-700">{sig.current}{sig.unit} / {sig.gate}{sig.unit}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
-                <div className="pt-5 border-t border-white/15 space-y-3">
-                  <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest">Market context</p>
-                  {week.marketContext.map((m, i) => (
-                    <div key={i} className="flex items-start gap-3">
-                      <span className="text-base shrink-0">{m.icon}</span>
-                      <p className="text-sm text-neutral-200 leading-relaxed">{m.note}</p>
-                    </div>
-                  ))}
+                {/* ── What's working / not working ── */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
+                    <p className="text-xs font-bold text-emerald-700 uppercase tracking-widest mb-3">What&apos;s driving Gaining</p>
+                    <ul className="space-y-2.5">
+                      {[
+                        { label: "Micro-KOL save rate avg", value: "7.4%", sub: "Above gate threshold" },
+                        { label: "Brand search growth", value: "2.1×", sub: "Faster than cooking category" },
+                        { label: "UGC authenticity ratio", value: "72%", sub: "Above 65% threshold, holding" },
+                        { label: "Save rate trend", value: "+5 wks", sub: "Consecutive weeks positive" },
+                      ].map((item) => (
+                        <li key={item.label} className="flex items-start gap-3">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline gap-2 flex-wrap">
+                              <span className="text-sm text-emerald-900 font-medium">{item.label}</span>
+                              <span className="text-sm font-black text-emerald-700">{item.value}</span>
+                            </div>
+                            <p className="text-[11px] text-emerald-600">{item.sub}</p>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-5 py-4">
+                    <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-3">What&apos;s not yet working</p>
+                    <ul className="space-y-2.5">
+                      {[
+                        { label: "Gate 1", value: "Not fired", sub: "1.9pp from save rate gate" },
+                        { label: "Creative mix", value: "60% lifestyle", sub: "Suppressing save rate signal" },
+                        { label: "Mid-tier KOL avg", value: "5.4%", sub: "Below gate · 62% of budget" },
+                        { label: "Meta save rate/impression", value: "−3% WoW", sub: "Declining as totals grow — watch" },
+                      ].map((item) => (
+                        <li key={item.label} className="flex items-start gap-3">
+                          <span className="w-1.5 h-1.5 rounded-full bg-neutral-400 mt-1.5 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline gap-2 flex-wrap">
+                              <span className="text-sm text-neutral-700 font-medium">{item.label}</span>
+                              <span className="text-sm font-black text-neutral-900">{item.value}</span>
+                            </div>
+                            <p className="text-[11px] text-neutral-500">{item.sub}</p>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
+
+                {/* ── Critical watch signal ── */}
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
+                  <div className="flex items-start gap-3">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="text-amber-500 mt-0.5 shrink-0"><path d="M9 2L1.5 15h15L9 2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M9 7v4M9 13v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                    <div>
+                      <p className="text-xs font-bold text-amber-700 uppercase tracking-widest mb-1">Critical watch signal</p>
+                      <p className="text-sm text-amber-900 leading-relaxed">Meta Feed save rate <span className="font-bold">per impression</span> is declining 3% week-on-week even as total impressions grow. This means reach is increasing but content resonance is decreasing — a sign of creative fatigue, not audience growth. If unaddressed, this will pull the overall save rate down before the gate is reached. The brief issued this week directly targets this.</p>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </SectionQ>
           </div>
