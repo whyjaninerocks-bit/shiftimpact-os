@@ -885,7 +885,7 @@ const COMPLIANCE_ITEMS = [
   "Recruit 2 Klang Valley food creators (recipe-led, 10K–80K followers)",
   "Activate Rendang Tok or Ayam Percik dish using Cooks paste",
   "Deliver 2 × TikTok process videos + 1 × Instagram Reel per creator",
-  "'This is my version' frame — personal ownership, not shortcut messaging",
+  "Content uses 'your version of the dish' framing — not brand shortcut positioning",
 ];
 
 const COMPLIANCE_REASONS = [
@@ -894,7 +894,7 @@ const COMPLIANCE_REASONS = [
   "Client override",
   "Format changed",
   "Creative shifted",
-  "Still in progress",
+  "Planned for next activation",
 ] as const;
 type ComplianceReason = typeof COMPLIANCE_REASONS[number];
 type ComplianceStatus = "done" | "partial" | "skipped" | null;
