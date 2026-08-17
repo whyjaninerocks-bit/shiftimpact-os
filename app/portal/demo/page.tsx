@@ -33,8 +33,20 @@ const QA: Array<{ keywords: string[]; answer: string }> = [
     answer: "'Gaining' means your signals are trending upward and nothing has meaningfully deteriorated in the past 7 days. It's reviewed weekly. Two consecutive weeks of Gaining at a save rate approaching the gate threshold is a strong position at this point in the campaign arc.",
   },
   {
-    keywords: ["kol", "influencer", "creator", "activation", "micro", "mid"],
-    answer: "KOL performance is evaluated on save rate — not follower count or reach — because saves are what drive your gate signal. Your top performer this week is already above the gate threshold. The recommendation to concentrate Phase 2 budget on what's working rather than renewing underperforming activations is driven by that data, not by opinion.",
+    keywords: ["kol", "influencer", "creator", "activation", "micro", "mid", "programme"],
+    answer: "KOL performance is evaluated on save rate — not follower count or reach — because saves are what drive your gate signal. Your micro-KOLs are delivering 7–8% save rates at 38% of the total KOL budget. The two mid-tier KOLs are generating reach but not saves. Phase 2 recommendation: concentrate budget on what is already at gate, recruit 2 new Klang Valley food creators to the same profile. Save rate is the only metric that moves the gate.",
+  },
+  {
+    keywords: ["battery", "creative", "fatigue", "endurance", "refresh", "weeks remaining", "runway"],
+    answer: "Creative Battery measures how many more weeks the current creative execution can sustain its performance trajectory before engagement plateaus. At Week 6, your lifestyle-heavy mix (60% lifestyle, 40% recipe) has roughly 2 weeks before diminishing returns set in — this is why the brief to shift to recipe-led formats is timed now, not next month. Actioning it extends your creative runway by 4–6 weeks and prevents a mid-campaign performance dip ahead of the Merdeka window.",
+  },
+  {
+    keywords: ["business", "revenue", "sales", "roi", "return", "outcome", "performance", "spend"],
+    answer: "Business outcome tracking — linking campaign signals to actual sales, revenue lift, and media ROI — activates when you share business performance data with your strategist. The Full Intelligence Suite at the bottom of this report shows exactly what becomes visible when that data is connected. Signal intelligence tells you what the market is doing. Business data tells you what it is worth.",
+  },
+  {
+    keywords: ["ai", "visibility", "search", "gemini", "chatgpt", "recommendation", "brand appear"],
+    answer: "AI Brand Visibility tracks whether your brand appears in AI-generated product recommendations — Google AI Overview, ChatGPT, Gemini. In FMCG and cooking categories, 23% of purchase-intent queries are now going to AI assistants first. If your brand is not showing up in those answers, you are invisible to a growing share of high-intent buyers. This is a premium signal available in the Full Intelligence Suite.",
   },
   {
     keywords: ["horizon", "predict", "week 7", "week 8", "forecast", "next"],
@@ -57,8 +69,8 @@ const QA: Array<{ keywords: string[]; answer: string }> = [
 const SUGGESTIONS = [
   "How is the health score derived?",
   "Why hasn't the gate fired yet?",
-  "What does CONDITIONAL mean?",
-  "How are we tracking vs competitors?",
+  "How is the KOL programme evaluated?",
+  "What does the creative battery mean?",
 ];
 
 const FALLBACK =
@@ -66,10 +78,22 @@ const FALLBACK =
 
 function matchAnswer(q: string): string {
   const lower = q.toLowerCase();
+  let bestScore = 0;
+  let bestAnswer = FALLBACK;
   for (const item of QA) {
-    if (item.keywords.some(k => lower.includes(k))) return item.answer;
+    let score = 0;
+    for (let i = 0; i < item.keywords.length; i++) {
+      if (lower.includes(item.keywords[i])) {
+        // First keyword (most topic-specific) worth 3 pts, second 2, rest 1
+        score += i === 0 ? 3 : i === 1 ? 2 : 1;
+      }
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestAnswer = item.answer;
+    }
   }
-  return FALLBACK;
+  return bestAnswer;
 }
 
 // ─── Floating assistant widget ────────────────────────────────────────────────
@@ -252,6 +276,30 @@ function Sparkline({ values, gate, color = "#34d399" }: { values: number[]; gate
           fill={i === values.length - 1 ? color : "white"} stroke={color} strokeWidth="2" />
       ))}
     </svg>
+  );
+}
+
+// ─── Battery gauge ────────────────────────────────────────────────────────────
+
+function BatteryBar({ pct, label, sublabel }: { pct: number; label: string; sublabel: string }) {
+  const color = pct > 60 ? "#34d399" : pct > 30 ? "#f59e0b" : "#f87171";
+  const textColor = pct > 60 ? "text-emerald-600" : pct > 30 ? "text-amber-600" : "text-red-600";
+  return (
+    <div className="space-y-3 mt-1">
+      <div className="flex items-center gap-2">
+        {/* Battery body */}
+        <div className="flex-1 h-5 rounded-md bg-neutral-100 border border-neutral-200 relative overflow-hidden">
+          <div className="absolute inset-y-0 left-0 rounded-l-md transition-all" style={{ width: `${pct}%`, background: color, opacity: 0.85 }} />
+          <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-neutral-800 mix-blend-multiply">{pct}%</span>
+        </div>
+        {/* Battery cap */}
+        <div className="w-1.5 h-3 rounded-r-sm shrink-0" style={{ background: color }} />
+      </div>
+      <div className="flex items-baseline gap-1.5">
+        <span className={`text-xl font-black ${textColor}`}>{label}</span>
+      </div>
+      <p className="text-xs text-neutral-500 leading-snug">{sublabel}</p>
+    </div>
   );
 }
 
@@ -479,11 +527,12 @@ export default function PortalDemoPage() {
         <div className="px-4 py-4 flex-1">
           <p className="text-xs text-neutral-400 uppercase tracking-widest font-semibold px-1 mb-2">This report</p>
           {[
-            { href: "#glance", label: "At a glance" },
-            { href: "#q1",     label: "Is it working?" },
-            { href: "#q2",     label: "What do I do now?" },
-            { href: "#q3",     label: "Are we on track?" },
-            { href: "#detail", label: "Deep dive" },
+            { href: "#glance",  label: "At a glance" },
+            { href: "#q1",      label: "Is it working?" },
+            { href: "#q2",      label: "What do I do now?" },
+            { href: "#q3",      label: "Are we on track?" },
+            { href: "#detail",  label: "Deep dive" },
+            { href: "#premium", label: "Full intelligence suite" },
           ].map(item => (
             <a key={item.href} href={item.href}
               className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-neutral-300 hover:text-white hover:bg-white/8 transition-colors">
@@ -573,7 +622,7 @@ export default function PortalDemoPage() {
               <p className="text-xs text-neutral-500 hidden sm:block">Dashed line = gate threshold · ask the widget to learn more</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {Object.entries(SERIES).map(([key, s]) => (
                 <div key={key} className="bg-white rounded-2xl border border-neutral-200 shadow-sm px-5 py-4">
                   <div className="flex items-start justify-between mb-1">
@@ -592,6 +641,19 @@ export default function PortalDemoPage() {
                   <p className="text-xs text-neutral-500 mt-2">{"gateLabel" in s ? "Dashed = gate threshold" : "Wk 1 → 6 progression"}</p>
                 </div>
               ))}
+
+              {/* Creative Battery card */}
+              <div className="bg-white rounded-2xl border border-amber-200 shadow-sm px-5 py-4">
+                <div className="flex items-start justify-between mb-1">
+                  <p className="text-sm font-semibold text-neutral-700">Creative Battery</p>
+                  <span className="text-xs text-amber-600 font-semibold shrink-0 ml-2">Action needed</span>
+                </div>
+                <BatteryBar
+                  pct={28}
+                  label="~2 wks remaining"
+                  sublabel="Current 60/40 lifestyle mix is losing effectiveness vs recipe-led content. Refresh brief issued this week."
+                />
+              </div>
             </div>
           </div>
 
@@ -842,6 +904,149 @@ export default function PortalDemoPage() {
                 </div>
               </Collapsible>
 
+            </div>
+          </div>
+
+          {/* ── Full Intelligence Suite ───────────────── */}
+          <div id="premium" className="mt-12">
+            <div className="flex items-baseline gap-3 mb-2">
+              <span className="text-xs font-bold text-neutral-400 uppercase tracking-widest">05</span>
+              <h2 className="text-xl font-bold text-neutral-900">Full Intelligence Suite</h2>
+            </div>
+            <p className="text-sm text-neutral-600 mb-6">What activates when the client connects business performance data. Each layer below is live in ShiftImpact OS — this shows the maximum picture when all data is shared.</p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+              {/* Business Outcome Tracking */}
+              <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm px-5 py-5 relative overflow-hidden">
+                <div className="absolute top-3 right-3">
+                  <span className="text-[10px] font-bold bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">Requires: sales data</span>
+                </div>
+                <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Business Outcome Tracking</p>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-neutral-700">Revenue lift vs pre-campaign baseline</p>
+                    <span className="text-sm font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">+12.4%</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-neutral-700">Sales velocity (units/week)</p>
+                    <span className="text-sm font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">+8.1%</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-neutral-700">Customer acquisition cost</p>
+                    <span className="text-sm font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">RM 4.20 → RM 3.61</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-neutral-700">Market share (cooking sauces, MY)</p>
+                    <span className="text-sm font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">14.2% → 15.1%</span>
+                  </div>
+                </div>
+                <div className="mt-4 pt-3 border-t border-neutral-100">
+                  <p className="text-xs text-neutral-400">Signal → sales lag is 10–14 days. Health score at 74 predicts revenue lift 2 weeks forward.</p>
+                </div>
+              </div>
+
+              {/* Media ROI Waterfall */}
+              <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm px-5 py-5 relative overflow-hidden">
+                <div className="absolute top-3 right-3">
+                  <span className="text-[10px] font-bold bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">Requires: media spend data</span>
+                </div>
+                <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Media ROI by Channel</p>
+                <div className="space-y-2.5">
+                  {[
+                    { channel: "TikTok Creator", roas: "4.8×", bar: 95, tone: "green" },
+                    { channel: "Meta Feed", roas: "3.2×", bar: 64, tone: "green" },
+                    { channel: "Google Search", roas: "6.1×", bar: 100, tone: "green" },
+                    { channel: "Shopee Ads", roas: "1.8×", bar: 36, tone: "amber" },
+                    { channel: "KOL (Mid-tier)", roas: "0.9×", bar: 18, tone: "red" },
+                  ].map(r => (
+                    <div key={r.channel}>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-medium text-neutral-700">{r.channel}</p>
+                        <span className={`text-xs font-bold ${r.tone === "green" ? "text-emerald-600" : r.tone === "amber" ? "text-amber-600" : "text-red-600"}`}>{r.roas} ROAS</span>
+                      </div>
+                      <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${r.tone === "green" ? "bg-emerald-400" : r.tone === "amber" ? "bg-amber-400" : "bg-red-400"}`} style={{ width: `${r.bar}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 pt-3 border-t border-neutral-100">
+                  <p className="text-xs text-neutral-400">Mid-tier KOL ROAS below 1.0× confirms Phase 2 budget reallocation recommendation above.</p>
+                </div>
+              </div>
+
+              {/* AI Brand Visibility */}
+              <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm px-5 py-5 relative overflow-hidden">
+                <div className="absolute top-3 right-3">
+                  <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">AI monitoring</span>
+                </div>
+                <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">AI Brand Visibility</p>
+                <p className="text-xs text-neutral-500 mb-4">Is Cooks appearing in AI-generated answers when consumers ask about cooking sauces?</p>
+                <div className="space-y-3">
+                  {[
+                    { query: '"best cooking sauce Malaysia"', result: "Cooks mentioned · Position 3", tone: "amber" },
+                    { query: '"resipi ayam percik sauce"', result: "Not mentioned · Competitor gap", tone: "red" },
+                    { query: '"Cooks sos review"', result: "Brand results · Full control", tone: "green" },
+                    { query: '"halal cooking sauce brand"', result: "Cooks mentioned · Position 2", tone: "green" },
+                  ].map(v => (
+                    <div key={v.query} className="flex items-start gap-2">
+                      <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${v.tone === "green" ? "bg-emerald-400" : v.tone === "amber" ? "bg-amber-400" : "bg-red-400"}`} />
+                      <div>
+                        <p className="text-xs font-mono text-neutral-600">{v.query}</p>
+                        <p className={`text-xs font-medium mt-0.5 ${v.tone === "green" ? "text-emerald-700" : v.tone === "amber" ? "text-amber-700" : "text-red-700"}`}>{v.result}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 pt-3 border-t border-neutral-100">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-neutral-400">AI Eligibility Score</p>
+                    <span className="text-sm font-bold text-amber-600">61 / 100</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Social Currency + Creative Fatigue */}
+              <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm px-5 py-5">
+                <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Advanced Signals</p>
+                <div className="space-y-5">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-semibold text-neutral-800">Social Currency Index</p>
+                      <span className="text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-md">Tier 2 of 5</span>
+                    </div>
+                    <p className="text-xs text-neutral-600">Earned amplification rate: content is being saved and shared but not yet voluntarily advocated. UGC seeding this week is the trigger for Tier 3.</p>
+                  </div>
+                  <div className="pt-4 border-t border-neutral-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-semibold text-neutral-800">Predictive Gate Timing</p>
+                      <span className="text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md">78% confidence</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-neutral-600">Gate fires Week 7</span>
+                        <span className="font-bold text-neutral-800">22%</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-neutral-600">Gate fires Week 8</span>
+                        <span className="font-bold text-emerald-700">56%</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-neutral-600">Gate fires Week 9+</span>
+                        <span className="font-bold text-amber-700">22%</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-neutral-400 mt-2">Shifts if brief is actioned this week. Week 7 probability rises to 48%.</p>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <div className="mt-6 rounded-2xl bg-neutral-900 px-6 py-5">
+              <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">What this means for the conversation</p>
+              <p className="text-sm text-white leading-relaxed">This dashboard is not reporting on what happened. It is telling you what to do next and why — in time to act. Business outcome data closes the loop between signal intelligence and revenue. When both are running together, every budget decision has a number behind it.</p>
             </div>
           </div>
 
