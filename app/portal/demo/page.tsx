@@ -50,15 +50,6 @@ const CONTEXT_PHRASES = [
   "clarify",
 ];
 
-function normalizeQuery(q: string): string {
-  let s = q.toLowerCase().trim();
-  // Strip multi-word context phrases first (longest first to avoid partial overlap)
-  for (const p of CONTEXT_PHRASES) {
-    s = s.split(p).join(" ");
-  }
-  return s.replace(/\s+/g, " ").trim();
-}
-
 // Topic clusters. Each topic has:
 //   triggers: all phrasings users might use to refer to this topic, longest first
 //             (longer phrase = more specific = higher confidence score)
@@ -400,39 +391,6 @@ const QA: Array<{ keywords: string[]; answer: string }> = [
     answer: "Every number in this report is drawn from live platform data — TikTok and Instagram analytics for save rate and UGC, Google Trends for brand search share, and platform-level impression data for creative battery calculations. Nothing is modelled or estimated without disclosure. Signal sources are documented in the Deep Dive section. Your strategist can provide the raw data trail for any figure on request.",
   },
 ];
-
-const SUGGESTIONS = [
-  "What does the dashed line mean?",
-  "Why hasn't the gate fired yet?",
-  "How is the KOL programme evaluated?",
-  "What does brand posture Gaining mean?",
-];
-
-const FALLBACK =
-  "That question is best answered with your specific campaign data in front of you — your ShiftImpact strategist can walk through it in your next session. Every number and classification in this report is grounded in your live platform data and a documented methodology.";
-
-function matchAnswer(q: string): string {
-  const lower = q.toLowerCase();
-  let bestScore = 0;
-  let bestAnswer = FALLBACK;
-  for (const item of QA) {
-    let score = 0;
-    for (let i = 0; i < item.keywords.length; i++) {
-      if (lower.includes(item.keywords[i])) {
-        // First keyword (most topic-specific) = 4 pts, second = 3, third = 2, rest = 1
-        score += i === 0 ? 4 : i === 1 ? 3 : i === 2 ? 2 : 1;
-      }
-    }
-    if (score > bestScore) {
-      bestScore = score;
-      bestAnswer = item.answer;
-    }
-  }
-  // Require a minimum score of 2 to return a match — prevents weak single-word matches
-  // from returning a confident but wrong answer
-  if (bestScore < 2) return FALLBACK;
-  return bestAnswer;
-}
 
 // ─── Floating assistant widget ────────────────────────────────────────────────
 
