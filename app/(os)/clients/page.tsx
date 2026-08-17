@@ -130,6 +130,13 @@ export default async function ClientsPage() {
               <input className={inputClass} type="email" id="contact_email" name="contact_email" placeholder="e.g. ahmad@brand.com" />
             </div>
             <div className="sm:col-span-2">
+              <label className={labelClass} htmlFor="client_type">Client type</label>
+              <select className={inputClass} id="client_type" name="client_type" defaultValue="brand">
+                <option value="brand">Brand — direct client, receives intelligence reports</option>
+                <option value="agency">Agency — paymaster and primary relationship; receives agency preview before brand client</option>
+              </select>
+            </div>
+            <div className="sm:col-span-2">
               <button type="submit" className={buttonClass}>Create Client</button>
             </div>
           </form>

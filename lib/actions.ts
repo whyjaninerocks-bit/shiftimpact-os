@@ -62,6 +62,7 @@ export async function createClient(formData: FormData) {
       retention_metric_label: str(formData, "retention_metric_label") || "Retention Metric",
       contact_name: str(formData, "contact_name") || null,
       contact_email: str(formData, "contact_email") || null,
+      client_type: str(formData, "client_type") || "brand",
     })
     .select("id")
     .single();

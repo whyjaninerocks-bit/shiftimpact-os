@@ -58,6 +58,9 @@ interface CampaignReport {
   created_at: string;
   updated_at: string;
   portal_published_at?: string | null;
+  agency_preview_at?: string | null;
+  client_released_at?: string | null;
+  agency_note?: string | null;
 }
 
 interface DataCoverage {
@@ -134,9 +137,17 @@ export function CampaignReportSection({ campaignId, campaignName }: Props) {
   const [view, setView] = useState<"internal" | "client">("internal");
   const [copied, setCopied] = useState(false);
   const [showFindings, setShowFindings] = useState(true);
+  // Two-stage portal release
+  const [sendingPreview, setSendingPreview] = useState(false);
+  const [releasing, setReleasing] = useState(false);
+  const [agencyPreviewSent, setAgencyPreviewSent] = useState(false);
+  const [clientReleased, setClientReleased] = useState(false);
+  const [agencyNote, setAgencyNote] = useState("");
+  const [showNoteInput, setShowNoteInput] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  // Legacy single-publish (kept for older reports that used publish-to-portal)
   const [publishing, setPublishing] = useState(false);
   const [portalPublished, setPortalPublished] = useState(false);
-  const [publishError, setPublishError] = useState<string | null>(null);
 
   const fetchLatestReport = useCallback(async () => {
     setLoading(true);
@@ -231,6 +242,53 @@ export function CampaignReportSection({ campaignId, campaignName }: Props) {
     }
   }
 
+  async function handleSendAgencyPreview() {
+    if (!report) return;
+    setSendingPreview(true);
+    setPublishError(null);
+    try {
+      const res = await fetch(`/api/campaign-report/${report.id}/send-agency-preview`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPublishError(data.error ?? "Failed to send agency preview.");
+      } else {
+        setAgencyPreviewSent(true);
+        await fetchLatestReport();
+      }
+    } catch {
+      setPublishError("Network error. Please try again.");
+    } finally {
+      setSendingPreview(false);
+    }
+  }
+
+  async function handleReleaseToClient() {
+    if (!report) return;
+    setReleasing(true);
+    setPublishError(null);
+    try {
+      const res = await fetch(`/api/campaign-report/${report.id}/release-to-client`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agency_note: agencyNote.trim() || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPublishError(data.error ?? "Failed to release to client.");
+      } else {
+        setClientReleased(true);
+        setShowNoteInput(false);
+        await fetchLatestReport();
+      }
+    } catch {
+      setPublishError("Network error. Please try again.");
+    } finally {
+      setReleasing(false);
+    }
+  }
+
   return (
     <section id="campaign-report" className="space-y-6">
       {/* Header */}
@@ -290,20 +348,68 @@ export function CampaignReportSection({ campaignId, campaignName }: Props) {
                 {copied ? "Copied ✓" : "Copy for client"}
               </button>
             )}
-            {report.status === "ready" && !portalPublished && !report.portal_published_at && (
-              <button
-                onClick={handlePublishToPortal}
-                disabled={publishing}
-                className="px-4 py-1.5 bg-emerald-700 text-white text-sm font-semibold rounded-lg hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                {publishing ? "Publishing…" : "Approve for Portal"}
-              </button>
-            )}
-            {(portalPublished || report.portal_published_at) && (
-              <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm font-medium rounded-lg">
-                ✓ Live in client portal
-              </span>
-            )}
+            {/* ── Two-stage portal release ─────────────────────── */}
+            {report.status === "ready" && (() => {
+              const previewed = agencyPreviewSent || !!report.agency_preview_at;
+              const released = clientReleased || !!report.client_released_at;
+
+              if (released) {
+                return (
+                  <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm font-medium rounded-lg">
+                    ✓ Released to client
+                  </span>
+                );
+              }
+
+              if (previewed) {
+                return (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 text-sm font-medium rounded-lg">
+                        ✓ Agency preview sent
+                      </span>
+                      {!showNoteInput && (
+                        <button
+                          onClick={() => setShowNoteInput(true)}
+                          className="px-3 py-1.5 border border-neutral-300 text-sm text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors"
+                        >
+                          Add agency note
+                        </button>
+                      )}
+                      <button
+                        onClick={handleReleaseToClient}
+                        disabled={releasing}
+                        className="px-4 py-1.5 bg-emerald-700 text-white text-sm font-semibold rounded-lg hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {releasing ? "Releasing…" : "Release to Brand Client"}
+                      </button>
+                    </div>
+                    {showNoteInput && (
+                      <div className="w-full">
+                        <textarea
+                          value={agencyNote}
+                          onChange={(e) => setAgencyNote(e.target.value)}
+                          placeholder="Add a note for the client — context, tone-setting, or a heads-up before they read the report…"
+                          rows={3}
+                          className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <p className="text-xs text-neutral-400 mt-1">This note will appear at the top of the client portal and in the notification email.</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              return (
+                <button
+                  onClick={handleSendAgencyPreview}
+                  disabled={sendingPreview}
+                  className="px-4 py-1.5 bg-blue-800 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  {sendingPreview ? "Sending…" : "Send Agency Preview"}
+                </button>
+              );
+            })()}
           </>
         )}
 

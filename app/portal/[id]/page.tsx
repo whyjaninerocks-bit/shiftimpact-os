@@ -12,6 +12,8 @@ import {
 import { Badge, Card, ragTone } from "@/app/_components/ui";
 import type { CampaignPhase, IndustryProfile } from "@/lib/types";
 
+type PortalView = "brand" | "agency" | "partner";
+
 export const dynamic = "force-dynamic";
 
 // ─── Phase labels ─────────────────────────────────────────────────────────────
@@ -62,10 +64,15 @@ function PortalSection({ title, children }: { title: string; children: React.Rea
 
 export default async function ClientPortalPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ view?: string }>;
 }) {
   const { id } = await params;
+  const { view: viewParam } = await searchParams;
+  const view: PortalView =
+    viewParam === "agency" ? "agency" : viewParam === "partner" ? "partner" : "brand";
 
   // Guard: reject non-UUID segments (e.g. /portal/demo routes to demo/page.tsx first,
   // but if that page isn't deployed yet, id="demo" would cause a Postgres UUID error)
@@ -252,73 +259,116 @@ export default async function ClientPortalPage({
           </PortalSection>
         )}
 
-        {/* ── Weekly Intelligence Report (approved for portal) ── */}
-        {report && report.portal_published_at && (
-          <PortalSection title="Weekly intelligence report">
-            <Card className="space-y-4">
-              {/* Header */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-neutral-900">{report.report_label}</p>
-                  <p className="text-xs text-neutral-400 mt-0.5">
-                    Week {report.report_week} · Reviewed by your strategist
-                  </p>
-                </div>
-                <Badge tone="green">Ready</Badge>
-              </div>
+        {/* ── Weekly Intelligence Report — staged visibility ── */}
+        {(() => {
+          if (!report) return null;
 
-              {/* Executive summary */}
-              {report.executive_summary && (
-                <div className="bg-neutral-50 rounded-lg p-3.5">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Summary</p>
-                  <p className="text-sm text-neutral-700 leading-relaxed">{report.executive_summary}</p>
-                </div>
-              )}
+          // Determine if this viewer can see the report
+          const hasAgencyPreview = !!report.agency_preview_at;
+          const hasClientRelease = !!report.client_released_at;
+          // Legacy: portal_published_at used before two-stage system
+          const legacyPublished = !!report.portal_published_at;
 
-              {/* Risk posture */}
-              {report.risk_posture && (
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1.5">Brand posture this week</p>
-                  <span className={`inline-block text-xs font-semibold px-3 py-1 rounded-full border ${
-                    report.risk_posture === "Gaining"
-                      ? "bg-green-50 text-green-800 border-green-200"
-                      : report.risk_posture === "Plateauing"
-                      ? "bg-amber-50 text-amber-800 border-amber-200"
-                      : report.risk_posture === "Under Threat" || report.risk_posture === "Fragile" || report.risk_posture === "Eroding Slowly"
-                      ? "bg-red-50 text-red-800 border-red-200"
-                      : "bg-neutral-100 text-neutral-700 border-neutral-200"
-                  }`}>
-                    {report.risk_posture}
-                  </span>
-                </div>
-              )}
+          const canSeeReport =
+            view === "agency"
+              ? hasAgencyPreview || legacyPublished
+              : view === "partner"
+              ? hasClientRelease || legacyPublished
+              : hasClientRelease || legacyPublished; // brand default
 
-              {/* Intelligence findings */}
-              {report.findings.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-2">What the data is telling us</p>
-                  <div className="space-y-3">
-                    {report.findings.map((f, i) => (
-                      <div key={i} className="border-l-2 border-neutral-200 pl-3">
-                        <p className="text-xs font-semibold text-neutral-800 mb-1">{f.headline}</p>
-                        <p className="text-xs text-neutral-500 leading-relaxed">{f.implication}</p>
-                        {f.recommendation && (
-                          <p className="text-xs text-emerald-700 mt-1.5 font-medium">→ {f.recommendation}</p>
-                        )}
-                      </div>
-                    ))}
+          if (!canSeeReport) return null;
+
+          const isAgencyPreviewOnly = view === "agency" && hasAgencyPreview && !hasClientRelease;
+          const releasedAt = report.client_released_at ?? report.portal_published_at;
+
+          return (
+            <PortalSection title="Weekly intelligence report">
+              {/* Agency preview banner */}
+              {isAgencyPreviewOnly && (
+                <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 flex items-start gap-2">
+                  <span className="text-amber-600 text-sm shrink-0">⏳</span>
+                  <div>
+                    <p className="text-xs font-semibold text-amber-800">Agency preview — not yet released to the brand client</p>
+                    <p className="text-xs text-amber-700 mt-0.5">You are viewing this report before it has been shared with the brand. Add your narrative note in the OS and release when ready.</p>
                   </div>
                 </div>
               )}
 
-              <p className="text-[10px] text-neutral-400 pt-1 border-t border-neutral-100">
-                Published {new Date(report.portal_published_at).toLocaleDateString("en-MY", {
-                  day: "numeric", month: "long", year: "numeric"
-                })} · Questions? Reply to the notification email.
-              </p>
-            </Card>
-          </PortalSection>
-        )}
+              <Card className="space-y-4">
+                {/* Agency note — shown to brand client after release */}
+                {report.agency_note && view !== "agency" && (
+                  <div className="bg-blue-50 border-l-4 border-blue-400 rounded-r-lg px-4 py-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600 mb-1.5">A note from your agency</p>
+                    <p className="text-sm text-blue-900 leading-relaxed">{report.agency_note}</p>
+                  </div>
+                )}
+
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-neutral-900">{report.report_label}</p>
+                    <p className="text-xs text-neutral-400 mt-0.5">
+                      Week {report.report_week} · Reviewed by your strategist
+                    </p>
+                  </div>
+                  <Badge tone="green">Ready</Badge>
+                </div>
+
+                {/* Executive summary */}
+                {report.executive_summary && (
+                  <div className="bg-neutral-50 rounded-lg p-3.5">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Summary</p>
+                    <p className="text-sm text-neutral-700 leading-relaxed">{report.executive_summary}</p>
+                  </div>
+                )}
+
+                {/* Risk posture */}
+                {report.risk_posture && (
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1.5">Brand posture this week</p>
+                    <span className={`inline-block text-xs font-semibold px-3 py-1 rounded-full border ${
+                      report.risk_posture === "Gaining"
+                        ? "bg-green-50 text-green-800 border-green-200"
+                        : report.risk_posture === "Plateauing"
+                        ? "bg-amber-50 text-amber-800 border-amber-200"
+                        : report.risk_posture === "Under Threat" || report.risk_posture === "Fragile" || report.risk_posture === "Eroding Slowly"
+                        ? "bg-red-50 text-red-800 border-red-200"
+                        : "bg-neutral-100 text-neutral-700 border-neutral-200"
+                    }`}>
+                      {report.risk_posture}
+                    </span>
+                  </div>
+                )}
+
+                {/* Intelligence findings — partner view strips competitor-sensitive details */}
+                {report.findings.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-2">What the data is telling us</p>
+                    <div className="space-y-3">
+                      {report.findings.map((f, i) => (
+                        <div key={i} className="border-l-2 border-neutral-200 pl-3">
+                          <p className="text-xs font-semibold text-neutral-800 mb-1">{f.headline}</p>
+                          <p className="text-xs text-neutral-500 leading-relaxed">{f.implication}</p>
+                          {f.recommendation && (
+                            <p className="text-xs text-emerald-700 mt-1.5 font-medium">→ {f.recommendation}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <p className="text-[10px] text-neutral-400 pt-1 border-t border-neutral-100">
+                  {releasedAt
+                    ? `Published ${new Date(releasedAt).toLocaleDateString("en-MY", {
+                        day: "numeric", month: "long", year: "numeric",
+                      })} · Questions? Reply to the notification email.`
+                    : "Prepared by your ShiftImpact strategist."}
+                </p>
+              </Card>
+            </PortalSection>
+          );
+        })()}
 
         {/* ── Discipline briefs ready ── */}
         {readyBriefs.length > 0 && (

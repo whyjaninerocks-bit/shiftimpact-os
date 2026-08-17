@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(req: NextRequest) {
   try {
-    const { client_id, name, email } = await req.json();
+    const { client_id, name, email, recipient_type } = await req.json();
 
     if (!client_id || !email) {
       return NextResponse.json(
@@ -15,11 +15,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const validTypes = ["brand_contact", "agency_partner", "agency_client"];
+    const type = validTypes.includes(recipient_type) ? recipient_type : "brand_contact";
+
     const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("client_report_recipients")
-      .insert({ client_id, name: name || null, email })
-      .select("id, name, email, created_at")
+      .insert({ client_id, name: name || null, email, recipient_type: type })
+      .select("id, name, email, recipient_type, created_at")
       .single();
 
     if (error) {
