@@ -120,6 +120,14 @@ export default async function ClientsPage() {
               <label className={labelClass} htmlFor="retention_metric_label">Retention Metric Label</label>
               <input className={inputClass} id="retention_metric_label" name="retention_metric_label" placeholder="e.g. Repeat Purchase Rate (60-day)" />
             </div>
+            <div>
+              <label className={labelClass} htmlFor="contact_name">Client Contact Name</label>
+              <input className={inputClass} id="contact_name" name="contact_name" placeholder="e.g. Ahmad Khalil" />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="contact_email">Client Contact Email</label>
+              <input className={inputClass} type="email" id="contact_email" name="contact_email" placeholder="e.g. ahmad@brand.com" />
+            </div>
             <div className="sm:col-span-2">
               <button type="submit" className={buttonClass}>Create Client</button>
             </div>

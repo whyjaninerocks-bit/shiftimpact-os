@@ -356,11 +356,8 @@ export default async function ClientPortalPage({
         )}
 
         {/* Footer */}
-        <div className="pt-4 border-t border-neutral-200 flex items-center justify-between text-xs text-neutral-400">
+        <div className="pt-4 border-t border-neutral-200 text-xs text-neutral-400">
           <span>ShiftImpact OS</span>
-          <Link href={`/brief/${id}`} className="hover:text-neutral-700">
-            Submit brief inputs →
-          </Link>
         </div>
       </main>
     </div>
