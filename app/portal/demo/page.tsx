@@ -49,6 +49,14 @@ const QA: Array<{ keywords: string[]; answer: string }> = [
     answer: "AI Brand Visibility tracks whether your brand appears in AI-generated product recommendations — Google AI Overview, ChatGPT, Gemini. In FMCG and cooking categories, 23% of purchase-intent queries are now going to AI assistants first. If your brand is not showing up in those answers, you are invisible to a growing share of high-intent buyers. This is a premium signal available in the Full Intelligence Suite.",
   },
   {
+    keywords: ["ugc", "user generated", "organic", "authenticity", "authenticity ratio", "community", "tagged"],
+    answer: "UGC Signal tracks organic and seeded content posted by real consumers — people who cooked with Cooks and shared it without being paid. The Authenticity Ratio (currently 72%) measures how much of the brand-tagged content is genuine versus paid KOL posts. A rising authenticity ratio is a leading indicator that the brand is building real culture, not just buying attention. The gate threshold is 65% — you are above it and improving.",
+  },
+  {
+    keywords: ["grab", "grabads", "grab ads", "purchase", "attribution", "transaction", "grabmart"],
+    answer: "GrabAds is Grab's advertising platform. Grab is the super-app used daily across Malaysia — ride-hailing, GrabFood, GrabPay. Because Grab sees actual purchase transactions (not just clicks), GrabAds closes the loop between your social ad impressions and whether someone physically bought your product. For Cooks, this means tracking: did someone who saved a TikTok recipe then buy Cooks paste from GrabMart or a store on their route? It is one of the only platforms in Malaysia that connects social activity directly to purchase. This signal is in preview here — it activates when your GrabAds account is connected.",
+  },
+  {
     keywords: ["horizon", "predict", "week 7", "week 8", "forecast", "next"],
     answer: "The horizon signal is a directional projection based on your current growth trajectory. It tells you what to expect if present conditions hold. The key variable is whether this week's creative brief is actioned — if it is, the timeline improves; if it isn't, it extends. It's designed to give you a decision window, not a guarantee.",
   },
@@ -281,26 +289,412 @@ function Sparkline({ values, gate, color = "#34d399" }: { values: number[]; gate
 
 // ─── Battery gauge ────────────────────────────────────────────────────────────
 
-function BatteryBar({ pct, label, sublabel }: { pct: number; label: string; sublabel: string }) {
+function MiniBar({ pct }: { pct: number }) {
   const color = pct > 60 ? "#34d399" : pct > 30 ? "#f59e0b" : "#f87171";
-  const textColor = pct > 60 ? "text-emerald-600" : pct > 30 ? "text-amber-600" : "text-red-600";
   return (
-    <div className="space-y-3 mt-1">
-      <div className="flex items-center gap-2">
-        {/* Battery body */}
-        <div className="flex-1 h-5 rounded-md bg-neutral-100 border border-neutral-200 relative overflow-hidden">
-          <div className="absolute inset-y-0 left-0 rounded-l-md transition-all" style={{ width: `${pct}%`, background: color, opacity: 0.85 }} />
-          <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-neutral-800 mix-blend-multiply">{pct}%</span>
-        </div>
-        {/* Battery cap */}
-        <div className="w-1.5 h-3 rounded-r-sm shrink-0" style={{ background: color }} />
+    <div className="flex items-center gap-1.5 flex-1">
+      <div className="flex-1 h-2 rounded-full bg-neutral-100 border border-neutral-200 overflow-hidden">
+        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
       </div>
-      <div className="flex items-baseline gap-1.5">
-        <span className={`text-xl font-black ${textColor}`}>{label}</span>
-      </div>
-      <p className="text-xs text-neutral-500 leading-snug">{sublabel}</p>
+      <div className="w-1 h-2 rounded-r-sm shrink-0" style={{ background: color, opacity: 0.7 }} />
     </div>
   );
+}
+
+const CREATIVE_ASSETS = [
+  {
+    idea: "Jadikan Caramu",
+    ics: 76,
+    rating: "CONDITIONAL",
+    assets: [
+      { label: "TikTok · Micro-KOL recipe activations", format: "Creator video", pct: 82, est: "5–6 wks", status: "Holding", tone: "green" as Tone },
+      { label: "Meta Feed · Lifestyle product content", format: "Lifestyle/product", pct: 24, est: "~2 wks", status: "Fatigue risk", tone: "red" as Tone },
+      { label: "Instagram Reels · UGC seeded content", format: "UGC / seeded", pct: 68, est: "3–4 wks", status: "Stable", tone: "green" as Tone },
+      { label: "Google Search · Branded keywords", format: "Search copy", pct: 91, est: "Stable", status: "No decay", tone: "green" as Tone },
+    ],
+    aggregate: { pct: 46, label: "~3 wks avg", action: "Meta feed refresh is the priority — brief issued this week." },
+  },
+];
+
+function CreativeBatteryCard() {
+  const ca = CREATIVE_ASSETS[0];
+  const aggColor = ca.aggregate.pct > 60 ? "text-emerald-600" : ca.aggregate.pct > 30 ? "text-amber-600" : "text-red-600";
+  return (
+    <div className="bg-white rounded-2xl border border-amber-200 shadow-sm px-5 py-4">
+      <div className="flex items-start justify-between mb-3">
+        <p className="text-sm font-semibold text-neutral-700">Creative Battery</p>
+        <span className="text-xs text-amber-600 font-semibold shrink-0 ml-2">1 asset at risk</span>
+      </div>
+
+      {/* Big idea anchor */}
+      <div className="flex items-center gap-2 mb-3 pb-3 border-b border-neutral-100">
+        <span className="text-xs font-bold text-neutral-400 uppercase tracking-wide">Big idea</span>
+        <span className="text-xs font-bold text-violet-700">{ca.idea}</span>
+        <span className="text-xs text-neutral-500">ICS {ca.ics} · {ca.rating}</span>
+      </div>
+
+      {/* Per-asset readings */}
+      <div className="space-y-2.5 mb-4">
+        {ca.assets.map((a) => (
+          <div key={a.label}>
+            <div className="flex items-center gap-2 mb-1">
+              <MiniBar pct={a.pct} />
+              <span className={`text-xs font-bold shrink-0 w-14 text-right ${
+                a.tone === "green" ? "text-emerald-600" : a.tone === "amber" ? "text-amber-600" : "text-red-600"
+              }`}>{a.est}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                a.tone === "green" ? "bg-emerald-400" : a.tone === "amber" ? "bg-amber-400" : "bg-red-400"
+              }`} />
+              <p className="text-xs text-neutral-600 truncate">{a.label}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Aggregate */}
+      <div className="pt-3 border-t border-neutral-100">
+        <div className="flex items-baseline gap-2 mb-1">
+          <span className={`text-xl font-black ${aggColor}`}>{ca.aggregate.label}</span>
+          <span className="text-xs text-neutral-400">campaign avg</span>
+        </div>
+        <p className="text-xs text-neutral-500 leading-snug">{ca.aggregate.action}</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Per-week PDF data & generator ───────────────────────────────────────────
+
+type WeekReport = {
+  n: number; date: string; health: number; posture: string; dot: string;
+  healthDelta: string; save: string; saveDelta: string;
+  brandSearch: string; brandSearchDelta: string;
+  ugcRatio: string; ugcPosts: number; ugcDelta: string;
+  gateDelta: string; gateStatus: string;
+  batteryStatus: string;
+  verdict: string;
+  action: string;
+  brief: string[];
+};
+
+const WEEK_REPORTS: WeekReport[] = [
+  {
+    n: 6, date: "17 Aug 2026", health: 74, posture: "Gaining", dot: "green",
+    healthDelta: "+5", save: "6.1%", saveDelta: "+0.4pp", brandSearch: "14.2%", brandSearchDelta: "+1.3pp",
+    ugcRatio: "72%", ugcPosts: 28, ugcDelta: "+8pp",
+    gateDelta: "−1.9pp", gateStatus: "1.9pp from ≥8% threshold — on track",
+    batteryStatus: "Meta Feed at 24% — ~2 wks · TikTok KOL at 82% · Aggregate ~3 wks",
+    verdict: "The campaign is building correctly at the midpoint. Brand demand is accelerating ahead of Merdeka. The only open item is pushing save rate over the gate threshold in the next 2 weeks — and this week's creative brief is the lever.",
+    action: "Shift to recipe-led creative mix before the Merdeka window. Issue Week 7 brief to micro-KOLs this week.",
+    brief: [
+      "Format: Recipe-led process video — cooking steps, not product close-up",
+      "Dishes: Ayam Percik, Rendang Tok, Sup Tulang — high Merdeka search intent",
+      "Frame: Cooking confidence (your version, not the shortcut)",
+      "Mix target: 70% recipe / 30% lifestyle",
+      "Channels: TikTok + Instagram Reels first, Meta feed second",
+    ],
+  },
+  {
+    n: 5, date: "4 Aug 2026", health: 69, posture: "Gaining", dot: "green",
+    healthDelta: "+2", save: "5.7%", saveDelta: "+0.2pp", brandSearch: "12.9%", brandSearchDelta: "+0.9pp",
+    ugcRatio: "68%", ugcPosts: 23, ugcDelta: "+4pp",
+    gateDelta: "−2.3pp", gateStatus: "2.3pp from ≥8% threshold — trajectory positive",
+    batteryStatus: "All formats holding — aggregate ~5 wks · No immediate risk",
+    verdict: "Campaign is gaining momentum. Save rate growth rate is consistent with reaching gate by Week 8. UGC authenticity is above threshold, and brand search is pulling away from the cooking category baseline. Priority this week is KOL roster expansion.",
+    action: "Expand micro-KOL roster — brief 2 new Klang Valley food creators matching @masakdenganaishah profile. 38% of KOL budget producing 68% of save outcomes.",
+    brief: [
+      "Creator profile: Klang Valley home cook, recipe-led, 10K–80K followers",
+      "Activation: Rendang Tok or Ayam Percik dish using Cooks paste",
+      "Deliverable: 2 × TikTok process videos + 1 × Instagram Reel each",
+      "Frame: 'This is my version' — personal ownership of the dish",
+      "Performance gate: Save rate ≥7.0% within 5 days of posting",
+    ],
+  },
+  {
+    n: 4, date: "28 Jul 2026", health: 67, posture: "Plateauing", dot: "amber",
+    healthDelta: "+4", save: "5.5%", saveDelta: "+0.4pp", brandSearch: "12.0%", brandSearchDelta: "+0.7pp",
+    ugcRatio: "64%", ugcPosts: 19, ugcDelta: "+2pp",
+    gateDelta: "−2.5pp", gateStatus: "2.5pp from ≥8% threshold — plateau risk if mix unchanged",
+    batteryStatus: "Meta Feed declining — early fatigue signal · TikTok KOL stable",
+    verdict: "Health improved but plateauing signal is a warning. Budget concentration is the issue — two mid-tier KOLs absorbing 62% of KOL spend while producing below-gate save rates. Correcting this is the single highest-impact move available this week.",
+    action: "Reallocate mid-tier KOL budget (RM 12,000) to micro-tier performers. Gate save rate threshold within reach if spend is concentrated on what is already working.",
+    brief: [
+      "Suspend Weekend Cooking Vibes activation (5.6% SR — below gate)",
+      "Redirect budget to @masakdenganaishah and @eatwithzafran",
+      "Brief: second dish activation — Sup Tulang Merdeka edition",
+      "Reporting requirement: daily save rate tracking for 7 days post-activation",
+    ],
+  },
+  {
+    n: 3, date: "21 Jul 2026", health: 63, posture: "Plateauing", dot: "amber",
+    healthDelta: "+4", save: "5.1%", saveDelta: "+0.3pp", brandSearch: "11.3%", brandSearchDelta: "+0.8pp",
+    ugcRatio: "62%", ugcPosts: 18, ugcDelta: "+3pp",
+    gateDelta: "−2.9pp", gateStatus: "2.9pp from ≥8% threshold — retargeting can accelerate",
+    batteryStatus: "All formats stable — no fatigue signal detected",
+    verdict: "Signals are advancing but at a slower pace than Phase 1 mid-point targets. Save rate growth is real but insufficient. The audience segment that is saving recipe content is highly intent-qualified — retargeting this group with GrabAds can compress the time to gate.",
+    action: "Launch GrabAds retargeting campaign targeting users who saved Cooks recipe content in the past 14 days. This group has demonstrated intent — GrabAds closes the loop to purchase.",
+    brief: [
+      "GrabAds audience: custom segment — TikTok + Instagram Reels savers (past 14 days)",
+      "Creative: product-close recipe result, not process video",
+      "Placement: GrabFood + GrabMart sponsored",
+      "Budget: RM 8,000 over 10 days",
+      "Measurement: GrabAds conversion lift vs organic save rate baseline",
+    ],
+  },
+  {
+    n: 2, date: "14 Jul 2026", health: 59, posture: "Fragile", dot: "red",
+    healthDelta: "+7", save: "4.8%", saveDelta: "+0.6pp", brandSearch: "10.5%", brandSearchDelta: "+0.7pp",
+    ugcRatio: "58%", ugcPosts: 15, ugcDelta: "+0pp",
+    gateDelta: "−3.2pp", gateStatus: "3.2pp from ≥8% threshold — seeding programme needed",
+    batteryStatus: "Insufficient data — week 2 baseline only · Creative format evaluation in progress",
+    verdict: "Week 2 shows the strongest health improvement of the campaign so far, but from a low base. Posture is Fragile because save rate has not yet demonstrated sustained momentum. The UGC authenticity ratio is stuck — organic content is not generating without a seeding stimulus.",
+    action: "Issue UGC seeding brief to micro-KOL tier. Seed 3–5 creators with Cooks product and recipe brief. Focus on Klang Valley food content creators with audience overlap in the target save-rate demographic.",
+    brief: [
+      "Seeding approach: product gifting + recipe brief (not paid activation)",
+      "Creator profile: home cook aesthetic, recipe focus, 5K–30K followers",
+      "Content ask: one authentic recipe video using Cooks paste, any dish",
+      "No scripted content — authenticity ratio is the metric being moved",
+      "Track: organic save rate on seeded posts vs paid activation baseline",
+    ],
+  },
+  {
+    n: 1, date: "7 Jul 2026", health: 52, posture: "Fragile", dot: "red",
+    healthDelta: "—", save: "4.2%", saveDelta: "baseline", brandSearch: "9.8%", brandSearchDelta: "baseline",
+    ugcRatio: "52%", ugcPosts: 12, ugcDelta: "baseline",
+    gateDelta: "−3.8pp", gateStatus: "3.8pp from ≥8% threshold — campaign baseline established",
+    batteryStatus: "Week 1 — no fatigue data · Execution mix: 60% lifestyle / 40% recipe",
+    verdict: "Campaign launched. Week 1 baselines are set. All signals tracking below gate thresholds as expected for launch week. Brand search share at 9.8% is above category average for a new campaign, indicating the pre-launch seeding created awareness. Phase 1 objective is to build save rate to ≥8% by Week 8.",
+    action: "No brief issued — Week 1 is a listening and calibration week. Review first-week signal performance before brief direction is set. Expect Week 2 data to show first meaningful trend.",
+    brief: [
+      "Phase 1 objective: content save rate ≥8% sustained for 2 consecutive weeks",
+      "Gate measurement: Thursday weekly read from all active platforms",
+      "ICS baseline: 76 (CONDITIONAL) — consistency is the focus, not idea quality",
+      "Budget: hold existing allocation · No rebalancing until Week 3 signal read",
+    ],
+  },
+];
+
+function generateWeeklyPDF(w: WeekReport) {
+  const healthColor = w.health >= 70 ? "#059669" : w.health >= 60 ? "#d97706" : "#dc2626";
+  const postureColor = w.dot === "green" ? "#059669" : w.dot === "amber" ? "#d97706" : "#dc2626";
+  const dotColor = w.dot === "green" ? "#34d399" : w.dot === "amber" ? "#f59e0b" : "#f87171";
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Growth Intelligence Report — Week ${w.n} · ${w.date}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fff; color: #171717; font-size: 13px; line-height: 1.5; }
+  @page { size: A4 portrait; margin: 18mm 16mm; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+
+  .page { max-width: 720px; margin: 0 auto; padding: 32px 0; }
+
+  /* Header */
+  .hdr { display: flex; align-items: flex-start; justify-content: space-between; padding-bottom: 18px; border-bottom: 2px solid #171717; margin-bottom: 22px; }
+  .hdr-left .brand { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #737373; margin-bottom: 6px; }
+  .hdr-left h1 { font-size: 22px; font-weight: 900; }
+  .hdr-left .sub { font-size: 13px; color: #525252; margin-top: 3px; }
+  .hdr-right { text-align: right; }
+  .hdr-right .wk { font-size: 28px; font-weight: 900; color: #171717; }
+  .hdr-right .dt { font-size: 12px; color: #737373; margin-top: 2px; }
+  .reviewed { display: inline-block; border: 1.5px solid #bbf7d0; background: #f0fdf4; color: #166534; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 20px; margin-top: 6px; }
+
+  /* Health banner */
+  .health-banner { background: #171717; border-radius: 14px; padding: 20px 24px; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  .hb-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #737373; margin-bottom: 6px; }
+  .hb-big { font-size: 40px; font-weight: 900; line-height: 1; }
+  .hb-sub { font-size: 12px; color: #a3a3a3; margin-top: 4px; }
+  .hb-delta { font-size: 14px; font-weight: 700; margin-left: 8px; }
+
+  /* Signal grid */
+  .signal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+  .signal-card { border: 1.5px solid #e5e7eb; border-radius: 12px; padding: 14px 16px; }
+  .sc-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #737373; margin-bottom: 6px; }
+  .sc-val { font-size: 26px; font-weight: 900; }
+  .sc-delta { font-size: 11px; font-weight: 700; color: #059669; margin-left: 6px; }
+  .sc-note { font-size: 11px; color: #737373; margin-top: 4px; }
+  .sc-gate { display: inline-block; margin-top: 6px; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; }
+  .gate-amber { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+  .gate-green { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+
+  /* Verdict */
+  .section { margin-bottom: 20px; }
+  .section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #737373; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: #e5e7eb; }
+  .verdict-box { background: #f9fafb; border: 1.5px solid #e5e7eb; border-radius: 12px; padding: 16px 18px; }
+  .verdict-text { font-size: 13px; line-height: 1.65; color: #262626; }
+
+  /* Action */
+  .action-box { border-left: 4px solid #171717; background: #f9fafb; border-radius: 0 12px 12px 0; padding: 14px 18px; margin-bottom: 12px; }
+  .action-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #737373; margin-bottom: 5px; }
+  .action-text { font-size: 13px; font-weight: 600; color: #171717; }
+
+  /* Brief */
+  .brief-box { border: 1.5px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
+  .brief-header { background: #f3f4f6; padding: 10px 16px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #525252; }
+  .brief-item { padding: 9px 16px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #404040; display: flex; align-items: flex-start; gap: 10px; }
+  .brief-item::before { content: '→'; color: #737373; shrink: 0; }
+
+  /* Battery */
+  .battery-row { display: flex; gap: 12px; align-items: flex-start; }
+  .battery-info { flex: 1; }
+  .battery-status-box { border: 1.5px solid #fef3c7; background: #fffbeb; border-radius: 12px; padding: 14px 16px; flex: 1; }
+  .battery-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #d97706; margin-bottom: 6px; }
+  .battery-text { font-size: 12px; color: #78350f; line-height: 1.55; }
+
+  /* Gate */
+  .gate-box { border: 1.5px solid #ddd6fe; background: #faf5ff; border-radius: 12px; padding: 14px 16px; }
+  .gate-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #6d28d9; margin-bottom: 6px; }
+  .gate-text { font-size: 12px; color: #3b0764; }
+  .gate-delta { font-size: 22px; font-weight: 900; color: #6d28d9; margin-right: 6px; }
+
+  /* Footer */
+  .footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; }
+  .footer-left { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #a3a3a3; }
+  .footer-right { font-size: 11px; color: #a3a3a3; }
+  .confidential { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #d1d5db; background: #f3f4f6; border-radius: 4px; padding: 2px 6px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="hdr">
+    <div class="hdr-left">
+      <div class="brand">ShiftImpact OS · Growth Intelligence Report</div>
+      <h1>Cooks · Jadikan Caramu</h1>
+      <div class="sub">Phase 1 — Demand · Week ${w.n} of 12</div>
+    </div>
+    <div class="hdr-right">
+      <div class="wk">W${w.n}</div>
+      <div class="dt">${w.date}</div>
+      <div class="reviewed">✓ Strategist reviewed</div>
+    </div>
+  </div>
+
+  <!-- Health banner -->
+  <div class="health-banner">
+    <div>
+      <div class="hb-label">Campaign health</div>
+      <div style="display:flex; align-items:baseline; gap:8px;">
+        <div class="hb-big" style="color:${healthColor}">${w.health}</div>
+        <div class="hb-delta" style="color:${healthColor}">${w.healthDelta !== "—" ? "↑ " + w.healthDelta : "—"}</div>
+      </div>
+      <div class="hb-sub">Out of 100 · weekly composite</div>
+    </div>
+    <div>
+      <div class="hb-label">Brand posture</div>
+      <div class="hb-big" style="color:${postureColor}">${w.posture}</div>
+      <div class="hb-sub">Signals trending ${w.dot === "green" ? "positive" : w.dot === "amber" ? "mixed" : "below target"}</div>
+    </div>
+    <div>
+      <div class="hb-label">Gate distance</div>
+      <div class="hb-big" style="color:#f59e0b">${w.gateDelta}</div>
+      <div class="hb-sub">Save rate vs ≥8% threshold</div>
+    </div>
+  </div>
+
+  <!-- Signal snapshot -->
+  <div class="section">
+    <div class="section-label">Signal snapshot</div>
+    <div class="signal-grid">
+      <div class="signal-card">
+        <div class="sc-label">Content save rate</div>
+        <div style="display:flex; align-items:baseline;">
+          <div class="sc-val" style="color:#d97706">${w.save}</div>
+          <div class="sc-delta">${w.saveDelta !== "baseline" ? "↑ " + w.saveDelta : "Baseline"}</div>
+        </div>
+        <div class="sc-note">Gate threshold: ≥8%</div>
+        <div class="sc-gate gate-amber">Platform save rate · TikTok + Reels</div>
+      </div>
+      <div class="signal-card">
+        <div class="sc-label">Brand search share</div>
+        <div style="display:flex; align-items:baseline;">
+          <div class="sc-val" style="color:#818cf8">${w.brandSearch}</div>
+          <div class="sc-delta" style="color:#6d28d9">${w.brandSearchDelta !== "baseline" ? "↑ " + w.brandSearchDelta : "Baseline"}</div>
+        </div>
+        <div class="sc-note">Target: ≥18% by Phase 2</div>
+        <div class="sc-gate" style="background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;">Google Trends · branded queries</div>
+      </div>
+      <div class="signal-card">
+        <div class="sc-label">UGC signal (Signal 3)</div>
+        <div style="display:flex; align-items:baseline;">
+          <div class="sc-val" style="color:#3b82f6">${w.ugcRatio}</div>
+          <div class="sc-delta" style="color:#3b82f6">${w.ugcDelta !== "baseline" ? "↑ " + w.ugcDelta : "Baseline"}</div>
+        </div>
+        <div class="sc-note">Authenticity ratio · ${w.ugcPosts} organic posts</div>
+        <div class="sc-gate ${w.ugcRatio >= "65" ? "gate-green" : "gate-amber"}">${w.ugcRatio >= "65" ? "Above 65% threshold" : "Building toward threshold"}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gate status -->
+  <div class="section">
+    <div class="section-label">Gate status — Phase 2 unlock</div>
+    <div class="gate-box">
+      <div class="gate-label">Save rate gate</div>
+      <div style="display:flex; align-items:baseline; gap:4px; margin-bottom:6px;">
+        <div class="gate-delta">${w.save}</div>
+        <span style="font-size:13px; color:#6d28d9;">of ≥8% required · sustained 2 consecutive weeks</span>
+      </div>
+      <div class="gate-text">${w.gateStatus}</div>
+    </div>
+  </div>
+
+  <!-- Strategist verdict -->
+  <div class="section">
+    <div class="section-label">Strategist verdict</div>
+    <div class="verdict-box">
+      <div class="verdict-text">${w.verdict}</div>
+    </div>
+  </div>
+
+  <!-- Key action -->
+  <div class="section">
+    <div class="section-label">This week's brief</div>
+    <div class="action-box">
+      <div class="action-label">Key action issued</div>
+      <div class="action-text">${w.action}</div>
+    </div>
+    ${w.brief.length > 0 ? `
+    <div class="brief-box">
+      <div class="brief-header">Brief direction — Week ${w.n}</div>
+      ${w.brief.map(line => `<div class="brief-item">${line}</div>`).join("")}
+    </div>` : ""}
+  </div>
+
+  <!-- Creative battery -->
+  <div class="section">
+    <div class="section-label">Creative battery</div>
+    <div class="battery-status-box">
+      <div class="battery-label">⚡ Creative endurance — Jadikan Caramu</div>
+      <div class="battery-text">${w.batteryStatus}</div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-left">ShiftImpact OS · Growth Intelligence · Cooks MY</div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <span class="confidential">Confidential</span>
+      <span class="footer-right">Week ${w.n} · ${w.date} · Reviewed by your strategist</span>
+    </div>
+  </div>
+
+</div>
+<script>window.onload = function(){ window.print(); }</script>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank");
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 // ─── Types & Data ─────────────────────────────────────────────────────────────
@@ -507,19 +901,30 @@ export default function PortalDemoPage() {
         <div className="px-4 py-4 border-b border-white/10">
           <p className="text-xs text-neutral-400 uppercase tracking-widest font-semibold px-1 mb-2">Report history</p>
           <div className="space-y-0.5">
-            {WEEKS.map(w => (
-              <button key={w.n} onClick={() => setSelectedWeek(w.n)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors ${
-                  selectedWeek === w.n ? "bg-white/15" : "hover:bg-white/8"
-                }`}>
-                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${toneDot(w.dot)}`} />
-                <span className={`text-sm flex-1 ${selectedWeek === w.n ? "font-semibold text-white" : "text-neutral-300"}`}>
-                  Week {w.n} · {w.date}
-                </span>
-                <span className={`text-sm font-semibold ${postureColor(w.posture)}`}>{w.health}</span>
-                {w.current && <span className="text-[10px] font-bold text-emerald-400 border border-emerald-400/40 rounded px-1.5 py-0.5">NOW</span>}
-              </button>
-            ))}
+            {WEEKS.map(w => {
+              const wr = WEEK_REPORTS.find(r => r.n === w.n)!;
+              return (
+                <div key={w.n} className={`flex items-center gap-1 rounded-xl transition-colors ${selectedWeek === w.n ? "bg-white/15" : "hover:bg-white/8"}`}>
+                  <button onClick={() => setSelectedWeek(w.n)}
+                    className="flex items-center gap-3 px-3 py-2.5 text-left flex-1 min-w-0">
+                    <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${toneDot(w.dot)}`} />
+                    <span className={`text-sm flex-1 truncate ${selectedWeek === w.n ? "font-semibold text-white" : "text-neutral-300"}`}>
+                      Week {w.n} · {w.date}
+                    </span>
+                    <span className={`text-sm font-semibold shrink-0 ${postureColor(w.posture)}`}>{w.health}</span>
+                    {w.current && <span className="text-[10px] font-bold text-emerald-400 border border-emerald-400/40 rounded px-1.5 py-0.5 shrink-0">NOW</span>}
+                  </button>
+                  <button
+                    onClick={() => generateWeeklyPDF(wr)}
+                    title="Download PDF report"
+                    className="p-2 mr-1 rounded-lg text-neutral-500 hover:text-white hover:bg-white/10 transition-colors shrink-0">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 2v9M4 8l4 4 4-4"/><rect x="2" y="12" width="12" height="2" rx="1"/>
+                    </svg>
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -528,11 +933,13 @@ export default function PortalDemoPage() {
           <p className="text-xs text-neutral-400 uppercase tracking-widest font-semibold px-1 mb-2">This report</p>
           {[
             { href: "#glance",  label: "At a glance" },
+            { href: "#battery", label: "Creative battery" },
             { href: "#q1",      label: "Is it working?" },
             { href: "#q2",      label: "What do I do now?" },
             { href: "#q3",      label: "Are we on track?" },
             { href: "#detail",  label: "Deep dive" },
             { href: "#premium", label: "Full intelligence suite" },
+            { href: "#history", label: "Report history" },
           ].map(item => (
             <a key={item.href} href={item.href}
               className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-neutral-300 hover:text-white hover:bg-white/8 transition-colors">
@@ -622,7 +1029,7 @@ export default function PortalDemoPage() {
               <p className="text-xs text-neutral-500 hidden sm:block">Dashed line = gate threshold · ask the widget to learn more</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {Object.entries(SERIES).map(([key, s]) => (
                 <div key={key} className="bg-white rounded-2xl border border-neutral-200 shadow-sm px-5 py-4">
                   <div className="flex items-start justify-between mb-1">
@@ -642,17 +1049,118 @@ export default function PortalDemoPage() {
                 </div>
               ))}
 
-              {/* Creative Battery card */}
-              <div className="bg-white rounded-2xl border border-amber-200 shadow-sm px-5 py-4">
+              {/* UGC Signal (Signal 3) */}
+              <div className="bg-white rounded-2xl border border-blue-200 shadow-sm px-5 py-4">
                 <div className="flex items-start justify-between mb-1">
-                  <p className="text-sm font-semibold text-neutral-700">Creative Battery</p>
-                  <span className="text-xs text-amber-600 font-semibold shrink-0 ml-2">Action needed</span>
+                  <p className="text-sm font-semibold text-neutral-700">UGC Signal</p>
+                  <span className="text-xs text-emerald-700 font-semibold shrink-0 ml-2">Above threshold</span>
                 </div>
-                <BatteryBar
-                  pct={28}
-                  label="~2 wks remaining"
-                  sublabel="Current 60/40 lifestyle mix is losing effectiveness vs recipe-led content. Refresh brief issued this week."
-                />
+                <div className="flex items-baseline gap-2 mb-3">
+                  <span className="text-3xl font-black text-neutral-900">72%</span>
+                  <span className="text-sm font-bold text-emerald-600">↑ +8%</span>
+                </div>
+                <Sparkline values={[52, 58, 62, 64, 68, 72]} gate={65} color="#3b82f6" />
+                <p className="text-xs text-neutral-500 mt-2">Authenticity ratio · Dashed = 65% threshold</p>
+                <p className="text-xs text-blue-600 mt-1 font-medium">28 organic posts tagged this week</p>
+              </div>
+
+              {/* GrabAds Attribution (Signal 4 — Preview) */}
+              <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm px-5 py-4 relative overflow-hidden">
+                <div className="flex items-start justify-between mb-1">
+                  <p className="text-sm font-semibold text-neutral-700">Purchase Attribution</p>
+                  <span className="text-xs font-semibold shrink-0 ml-2 text-neutral-400 border border-neutral-200 rounded-full px-2 py-0.5">Preview</span>
+                </div>
+                <div className="flex items-baseline gap-2 mb-3">
+                  <span className="text-3xl font-black text-neutral-300">4.2%</span>
+                  <span className="text-sm font-bold text-neutral-300">lift</span>
+                </div>
+                <Sparkline values={[1.1, 1.8, 2.4, 2.9, 3.6, 4.2]} color="#d1d5db" />
+                <p className="text-xs text-neutral-400 mt-2">23,400 GrabAds impressions · last 14 days</p>
+                <div className="mt-3 pt-3 border-t border-neutral-100">
+                  <p className="text-xs text-neutral-500 leading-snug">Connects social ad impressions to actual GrabMart and in-store purchases via GrabAds. Activates when GrabAds account is linked.</p>
+                </div>
+                {/* Preview overlay */}
+                <div className="absolute inset-0 bg-white/60 flex items-center justify-center rounded-2xl">
+                  <div className="text-center px-4">
+                    <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">GrabAds · Signal 4</p>
+                    <p className="text-xs text-neutral-400">Connect GrabAds to unlock</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Creative Battery ─────────────────────── */}
+          <div id="battery" className="mb-10">
+            <div className="flex items-baseline gap-3 mb-5">
+              <h2 className="text-xl font-bold text-neutral-900">Creative Battery</h2>
+              <span className="text-sm text-neutral-500">How long can the current creative execution sustain performance?</span>
+            </div>
+
+            <div className="rounded-2xl border border-amber-200 bg-white shadow-sm overflow-hidden">
+              {/* Big idea anchor */}
+              <div className="flex items-center gap-3 px-6 py-4 border-b border-neutral-100 bg-neutral-50">
+                <span className="text-xs font-bold text-neutral-400 uppercase tracking-widest">Anchored to</span>
+                <span className="text-sm font-bold text-violet-700">Jadikan Caramu</span>
+                <span className="text-xs text-neutral-500">·</span>
+                <span className="text-xs font-bold text-amber-700 border border-amber-200 bg-amber-50 rounded-full px-2 py-0.5">ICS 76 · CONDITIONAL</span>
+                <span className="text-xs text-neutral-400 hidden sm:block">The battery measures endurance of this specific idea's execution — not the idea itself</span>
+              </div>
+
+              <div className="grid lg:grid-cols-2 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-neutral-100">
+                {/* Left: What it means */}
+                <div className="px-6 py-5 space-y-4">
+                  <div>
+                    <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">What this measures</p>
+                    <p className="text-sm text-neutral-700 leading-relaxed">Creative Battery is how many more weeks the current execution format can sustain its engagement trajectory before audiences stop responding. It is not about your campaign idea — the idea (Jadikan Caramu) is intact. It is about whether the <em>way</em> you are expressing it is still working.</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Why it matters now</p>
+                    <p className="text-sm text-neutral-700 leading-relaxed">At Week 6, the Meta Feed lifestyle content (60% of your mix) is showing early fatigue — save rate per impression is declining 3% week-on-week even as total impressions grow. Recipe-led formats on TikTok and Reels are not declining. The battery makes this visible before it becomes a campaign dip.</p>
+                  </div>
+                  <div className="pt-3 border-t border-neutral-100">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-black text-amber-600">~3 wks</span>
+                      <span className="text-sm text-neutral-500">campaign average · weighted by spend</span>
+                    </div>
+                    <p className="text-xs text-amber-700 mt-1.5 font-medium">⚠ Meta feed refresh is the priority — brief issued this week</p>
+                  </div>
+                </div>
+
+                {/* Right: Per-asset bars */}
+                <div className="px-6 py-5">
+                  <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Endurance by asset</p>
+                  <div className="space-y-5">
+                    {CREATIVE_ASSETS[0].assets.map((a) => {
+                      const barColor = a.pct > 60 ? "#34d399" : a.pct > 30 ? "#f59e0b" : "#f87171";
+                      const textColor = a.pct > 60 ? "text-emerald-600" : a.pct > 30 ? "text-amber-600" : "text-red-600";
+                      const dotColor = a.pct > 60 ? "bg-emerald-400" : a.pct > 30 ? "bg-amber-400" : "bg-red-400";
+                      return (
+                        <div key={a.label}>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
+                              <span className="text-xs font-semibold text-neutral-700 truncate">{a.label}</span>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0 ml-3">
+                              <span className={`text-xs font-bold ${textColor}`}>{a.est}</span>
+                              <span className="text-xs text-neutral-400">{a.status}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-3 rounded-md bg-neutral-100 border border-neutral-200 overflow-hidden">
+                              <div className="h-full rounded-l-md" style={{ width: `${a.pct}%`, background: barColor, opacity: 0.85 }} />
+                            </div>
+                            <span className="text-xs font-bold text-neutral-500 w-8 text-right">{a.pct}%</span>
+                            <div className="w-1.5 h-2.5 rounded-r-sm shrink-0" style={{ background: barColor, opacity: 0.7 }} />
+                          </div>
+                          <p className="text-xs text-neutral-400 mt-1 pl-4">{a.format}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-neutral-400 mt-5 pt-4 border-t border-neutral-100 leading-snug">Each reading is derived from the save rate trajectory for that channel over the trailing 3 weeks. A declining save rate per impression — even when total numbers rise — signals creative fatigue.</p>
+                </div>
               </div>
             </div>
           </div>
@@ -1047,6 +1555,70 @@ export default function PortalDemoPage() {
             <div className="mt-6 rounded-2xl bg-neutral-900 px-6 py-5">
               <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">What this means for the conversation</p>
               <p className="text-sm text-white leading-relaxed">This dashboard is not reporting on what happened. It is telling you what to do next and why — in time to act. Business outcome data closes the loop between signal intelligence and revenue. When both are running together, every budget decision has a number behind it.</p>
+            </div>
+          </div>
+
+          {/* ── Report History ────────────────────────── */}
+          <div id="history" className="mt-12">
+            <div className="flex items-baseline gap-3 mb-5">
+              <span className="text-xs font-bold text-neutral-400 uppercase tracking-widest">06</span>
+              <h2 className="text-xl font-bold text-neutral-900">Report History</h2>
+              <span className="text-sm text-neutral-500">All weekly intelligence records for this campaign</span>
+            </div>
+
+            <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-neutral-100 bg-neutral-50">
+                    <th className="text-left text-xs font-bold text-neutral-400 uppercase tracking-widest px-5 py-3">Week</th>
+                    <th className="text-left text-xs font-bold text-neutral-400 uppercase tracking-widest px-4 py-3 hidden sm:table-cell">Date</th>
+                    <th className="text-left text-xs font-bold text-neutral-400 uppercase tracking-widest px-4 py-3">Health</th>
+                    <th className="text-left text-xs font-bold text-neutral-400 uppercase tracking-widest px-4 py-3 hidden md:table-cell">Posture</th>
+                    <th className="text-left text-xs font-bold text-neutral-400 uppercase tracking-widest px-4 py-3 hidden lg:table-cell">Save rate</th>
+                    <th className="text-left text-xs font-bold text-neutral-400 uppercase tracking-widest px-4 py-3">Key action</th>
+                    <th className="px-4 py-3 w-10"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {WEEK_REPORTS.slice().reverse().map((w, idx) => {
+                    const isCurrent = w.n === 6;
+                    return (
+                      <tr key={w.n} className={`border-b border-neutral-100 last:border-0 transition-colors ${isCurrent ? "bg-emerald-50" : "hover:bg-neutral-50"}`}>
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${w.dot === "green" ? "bg-emerald-400" : w.dot === "amber" ? "bg-amber-400" : "bg-red-400"}`} />
+                            <span className="font-bold text-neutral-900">Wk {w.n}</span>
+                            {isCurrent && <span className="text-xs bg-emerald-100 text-emerald-700 font-semibold rounded-full px-1.5 py-0.5">Current</span>}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5 text-neutral-500 hidden sm:table-cell">{w.date.replace(" 2026", "")}</td>
+                        <td className="px-4 py-3.5">
+                          <span className={`font-bold ${w.health >= 70 ? "text-emerald-600" : w.health >= 60 ? "text-amber-600" : "text-red-600"}`}>{w.health}</span>
+                          <span className="text-neutral-400">/100</span>
+                        </td>
+                        <td className="px-4 py-3.5 hidden md:table-cell">
+                          <span className={`text-xs font-semibold ${w.dot === "green" ? "text-emerald-700" : w.dot === "amber" ? "text-amber-700" : "text-red-700"}`}>{w.posture}</span>
+                        </td>
+                        <td className="px-4 py-3.5 hidden lg:table-cell">
+                          <span className="font-medium text-neutral-700">{w.save}</span>
+                        </td>
+                        <td className="px-4 py-3.5 text-neutral-600 text-xs leading-snug">{w.action}</td>
+                        <td className="px-3 py-3.5">
+                          <button
+                            onClick={() => generateWeeklyPDF(w)}
+                            title={`Download Week ${w.n} PDF report`}
+                            className="flex items-center gap-1.5 text-xs font-semibold text-neutral-500 hover:text-neutral-900 border border-neutral-200 hover:border-neutral-400 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap">
+                            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M8 2v9M4 8l4 4 4-4"/><rect x="2" y="12" width="12" height="2" rx="1"/>
+                            </svg>
+                            PDF
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
 
