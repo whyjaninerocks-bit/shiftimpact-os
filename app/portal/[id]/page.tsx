@@ -11,6 +11,7 @@ import {
 } from "@/lib/data";
 import { Badge, Card, ragTone } from "@/app/_components/ui";
 import type { CampaignPhase, IndustryProfile } from "@/lib/types";
+import { PortalChatWidget } from "./_components/PortalChatWidget";
 
 type PortalView = "brand" | "agency" | "partner";
 
@@ -415,6 +416,9 @@ export default async function ClientPortalPage({
           <span>ShiftImpact OS</span>
         </div>
       </main>
+
+      {/* LLM-backed Q&A widget — pulls live signal data, streams from Claude */}
+      <PortalChatWidget campaignId={id} />
     </div>
   );
 }
