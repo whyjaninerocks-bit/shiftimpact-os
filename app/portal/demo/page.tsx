@@ -236,11 +236,60 @@ const TOPICS: Topic[] = [
     ],
     answer: "The campaign runs in three phases, each gated by a consumer behaviour signal — not a calendar date.\n\nPhase 1 (now — Demand): builds save rate to gate threshold. Phase 2 (Conversion): releases when Gate 1 fires — activates TikTok Shop mechanics and conversion-focused creative. Phase 3 (Retention and Scale): releases when Gate 2 fires in Phase 2. No phase releases early. This protects your budget from being deployed before the audience is ready.",
   },
+  {
+    id: "revenue-lift",
+    triggers: [
+      "revenue lift vs pre campaign baseline", "revenue lift pre campaign",
+      "how was revenue lift measured", "revenue lift derived", "revenue lift calculated",
+      "pre campaign baseline", "business outcome numbers derived", "business outcome derived",
+      "how was this measured and derived", "how was the business outcome",
+      "revenue lift", "sales lift", "12.4%", "+12.4", "revenue baseline",
+      "business outcome", "revenue measured", "baseline measured",
+    ],
+    answer: "Revenue lift compares current weekly sales against the 4-week pre-campaign baseline — the average performance in the four weeks before the campaign launched. +12.4% means weekly sales are running 12.4% above that baseline.\n\nThe baseline is set once at campaign launch and held fixed — it does not drift as the campaign runs, so every week's lift figure is measured against the same reference point. This section shows 'Requires: sales data' because it activates when you share your weekly sales or revenue figures with your strategist. Once connected, the system tracks revenue lift weekly alongside your signal data and checks whether save rate movements are predicting sales changes 10–14 days forward — which is the closed prediction loop.",
+  },
+  {
+    id: "media-roi",
+    triggers: [
+      "media roi by channel", "roi by channel", "tiktok creator roi", "meta feed roi",
+      "mid tier kol roas", "kol roas below", "roas below 1", "channel efficiency",
+      "media efficiency", "return on ad spend", "how is roi calculated",
+      "media roi", "channel roi", "roas",
+    ],
+    answer: "Media ROI by Channel measures the signal return generated per ringgit spent on each channel — specifically save-rate contribution weighted by spend share. Green bars mean the channel is generating saves above its cost-per-save benchmark. Red means it is spending more than it is producing in gate-relevant signal.\n\nMid-tier KOL is in red because ROAS is below 1.0× — it is consuming 62% of the KOL budget while producing below-gate save rates. That is the quantitative case for the Phase 2 budget reallocation in the brief. The bars update when sales data and spend data are both connected.",
+  },
+  {
+    id: "social-currency",
+    triggers: [
+      "social currency index", "what is social currency", "earned amplification rate",
+      "content being saved and shared", "tier 3 trigger", "tier 2",
+      "social currency", "earned amplification", "amplification rate",
+    ],
+    answer: "Social Currency Index measures how much your content is being amplified beyond paid reach — through saves, shares, and organic reposts by people who were not paid. A rising index means the brand is generating earned media on top of paid spend.\n\nYou are currently in Tier 2. The Tier 3 trigger fires when content is simultaneously saved AND shared at above-threshold rates. Your save rate is crossing the Tier 2 floor, but the share rate has not yet hit the Tier 3 threshold. Tier 3 is the point at which a campaign generates more earned reach than paid reach — the highest efficiency state in the model.",
+  },
+  {
+    id: "predictive-gate-timing",
+    triggers: [
+      "predictive gate timing", "gate fires week 7", "gate fires week 8", "gate fires week 9",
+      "week 7 probability", "48% probability", "gate probability", "when gate fires",
+      "gate timing prediction", "probability of gate", "predictive timing",
+    ],
+    answer: "Predictive Gate Timing models three scenarios based on your current weekly growth rate. Week 7: brief is actioned this week, growth accelerates to +0.6–0.8pp per week — probability currently 48%. Week 8: partial brief action, slower acceleration. Week 9+: no creative change, +0.4pp per week continues.\n\nThe probabilities update every Monday when new signal data arrives. Submitting the compliance report this week also shifts the Week 7 probability — high compliance raises it, low compliance lowers it, because compliance tells the model whether the inputs it assumed were actually executed.",
+  },
+  {
+    id: "full-suite",
+    triggers: [
+      "full intelligence suite", "premium section", "requires sales data",
+      "how to unlock", "unlock premium", "advanced signals section",
+      "business tracking section", "full suite",
+    ],
+    answer: "The Full Intelligence Suite activates when you connect your business data — weekly sales, media spend by channel, and revenue figures. Once connected, it tracks revenue lift against the pre-campaign baseline, media ROI by channel, the Social Currency Index, and Predictive Gate Timing.\n\n'Requires: sales data' on any section means it is waiting for that data connection. Your strategist sets this up at the start of engagement — it typically involves sharing a weekly data export from your sales system or agency reporting dashboard.",
+  },
 ];
 
-const CLARIFY = "That's a good question — could you be a bit more specific? For example: are you asking about the save rate gate, the KOL results, the creative battery, the compliance score, or something else in the report?";
+const CLARIFY = "I can see you're asking about something in the report — could you name the specific section or number? For example: revenue lift, media ROI, save rate, gate threshold, KOL performance, compliance score, Social Currency Index, or predictions.";
 
-const FALLBACK = "I want to give you an accurate answer — could you rephrase or add a bit more detail? You can ask about the health score, gate threshold, KOL performance, save rate, creative battery, compliance report, predictions, or any specific number you see in the report.";
+const FALLBACK = "I don't have a specific answer for that in this report's knowledge base. I can explain: the health score (74), gate threshold, save rate, KOL results, creative battery, brand posture, revenue lift, media ROI by channel, compliance score, Social Currency Index, predictive gate timing, predictions, or the dashed line on any chart. Try naming the specific section or number you're looking at.";
 
 function normalizeQuery(q: string): string {
   let s = q.toLowerCase().trim();
