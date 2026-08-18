@@ -388,7 +388,7 @@ export async function POST(req: NextRequest) {
       const contextBlock = buildDemoContextBlock();
       const model = await getModel("model_portal_chat", "claude-haiku-4-5-20251001");
       const systemPrompt = buildSystemPrompt("Jadikan Caramu", "Cooks Malaysia", "Janine Wai");
-      return streamResponse({ contextBlock, systemPrompt, model, campaignId: "demo", campaignName: "Jadikan Caramu", clientName: "Cooks Malaysia" });
+      return streamResponse({ contextBlock, systemPrompt, model, question, campaignId: "demo", campaignName: "Jadikan Caramu", clientName: "Cooks Malaysia" });
     }
 
     if (!campaign_id) {
@@ -409,7 +409,7 @@ export async function POST(req: NextRequest) {
     const contextBlock = buildContextBlock(ctx);
     const systemPrompt = buildSystemPrompt(campaignName, clientName, ctx.strategistName);
 
-    return streamResponse({ contextBlock, systemPrompt, model, campaignId: campaign_id, campaignName, clientName });
+    return streamResponse({ contextBlock, systemPrompt, model, question, campaignId: campaign_id, campaignName, clientName });
   } catch (err) {
     console.error("[portal-chat] route error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -424,6 +424,7 @@ async function streamResponse({
   contextBlock,
   systemPrompt,
   model,
+  question,
   campaignId,
   campaignName,
   clientName,
@@ -431,6 +432,7 @@ async function streamResponse({
   contextBlock: string;
   systemPrompt: string;
   model: string;
+  question: string;
   campaignId: string;
   campaignName: string;
   clientName: string;
@@ -452,7 +454,7 @@ async function streamResponse({
           messages: [
             {
               role: "user",
-              content: `Here is the current campaign data:\n\n${contextBlock}\n\n---\n\nClient question (answer in plain text, no markdown headers):`,
+              content: `Here is the current campaign data:\n\n${contextBlock}\n\n---\n\nClient question (answer in plain text, no markdown headers):\n${question}`,
             },
           ],
         });
@@ -494,21 +496,4 @@ async function streamResponse({
   return new Response(stream, {
     headers: { "Content-Type": "text/plain; charset=utf-8" },
   });
-}
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "X-Campaign-Id": campaign_id,
-        "X-Strategist": ctx.strategistName ?? "",
-      },
-    });
-  } catch (err) {
-    console.error("[portal-chat] route error:", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
 }

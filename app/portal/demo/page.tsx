@@ -647,7 +647,7 @@ function AskWidget() {
                 ref={inputRef}
                 value={input}
                 onChange={e => setInput(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (input.trim() && !streaming) { const form = e.currentTarget.closest("form"); form?.requestSubmit(); } } }}
+                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (input.trim() && !streaming) send(input); } }}
                 placeholder="Ask anything about this report…"
                 disabled={streaming}
                 rows={2}
@@ -1368,7 +1368,7 @@ export default function PortalDemoPage() {
     <div className="min-h-screen bg-neutral-50 text-neutral-900 lg:flex">
 
       {/* ═══════════════════════════════════════ SIDEBAR ════════════════════════════════════ */}
-      <aside className="hidden lg:flex flex-col w-80 xl:w-[340px] shrink-0 fixed top-0 left-0 h-screen bg-neutral-900 text-white overflow-y-auto z-20">
+      <aside className="hidden lg:flex flex-col w-[380px] xl:w-[440px] shrink-0 fixed top-0 left-0 h-screen bg-neutral-900 text-white overflow-y-auto z-20">
 
         <div className="px-5 pt-5 pb-3 border-b border-white/10">
           <p className="text-xs font-semibold text-amber-400 uppercase tracking-widest">Capabilities showcase</p>
@@ -1381,32 +1381,22 @@ export default function PortalDemoPage() {
           <p className="text-sm text-neutral-400 mt-1.5">Phase 1 — Demand · Jul–Aug 2026</p>
         </div>
 
-        {/* Health ring */}
-        <div className="px-5 py-5 border-b border-white/10 flex items-center gap-4">
-          <div className="relative w-16 h-16 shrink-0">
-            <svg className="w-full h-full -rotate-90" viewBox="0 0 56 56">
-              <circle cx="28" cy="28" r="22" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="5" />
-              <circle cx="28" cy="28" r="22" fill="none" stroke="#34d399" strokeWidth="5"
-                strokeDasharray={`${arcLen} ${circumference}`} strokeLinecap="round" />
+        {/* Health ring — large */}
+        <div className="px-6 py-6 border-b border-white/10 flex items-center gap-6">
+          <div className="relative w-24 h-24 shrink-0">
+            <svg className="w-full h-full -rotate-90" viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="6" />
+              <circle cx="40" cy="40" r="32" fill="none" stroke="#34d399" strokeWidth="6"
+                strokeDasharray={`${(week.health / 100) * (2 * Math.PI * 32)} ${2 * Math.PI * 32}`} strokeLinecap="round" />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-base font-bold text-emerald-400">{week.health}</span>
+              <span className="text-2xl font-black text-emerald-400">{week.health}</span>
             </div>
           </div>
           <div>
-            <p className="text-sm text-neutral-400">Campaign health</p>
-            <p className={`text-xl font-bold ${postureColor(week.posture)}`}>{week.posture}</p>
-            <p className="text-sm text-emerald-400 font-semibold mt-0.5">{week.healthDelta} pts this week</p>
-          </div>
-        </div>
-
-        {/* Sparkline */}
-        <div className="px-5 py-4 border-b border-white/10">
-          <p className="text-sm text-neutral-400 mb-2">Health trajectory · Wk 1 → 6</p>
-          <Sparkline values={SERIES.health.values} color="#34d399" />
-          <div className="flex items-center justify-between text-sm text-neutral-400 mt-1.5">
-            <span>Wk 1 · 52</span>
-            <span className="text-emerald-400 font-semibold">Wk 6 · 74 ↑</span>
+            <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-1">Campaign health</p>
+            <p className={`text-2xl font-black ${postureColor(week.posture)}`}>{week.posture}</p>
+            <p className="text-sm text-emerald-400 font-semibold mt-1">{week.healthDelta} pts this week</p>
           </div>
         </div>
 
@@ -1509,7 +1499,7 @@ export default function PortalDemoPage() {
       </div>
 
       {/* ═══════════════════════════════════════ MAIN CONTENT ═══════════════════════════════ */}
-      <main className="lg:ml-80 xl:ml-[340px] flex-1 min-w-0">
+      <main className="lg:ml-[380px] xl:ml-[440px] flex-1 min-w-0">
 
         <div className="hidden lg:flex items-center gap-2 bg-amber-50 border-b border-amber-200 px-8 py-2.5">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-600 shrink-0" />
@@ -1556,12 +1546,18 @@ export default function PortalDemoPage() {
                     <span className="text-xs text-neutral-500">Signals trending positive</span>
                   </div>
                   <div className="mt-4 pt-4 border-t border-white/10">
-                    <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center justify-between mb-2">
                       <p className="text-xs text-neutral-500">Health trajectory</p>
                       <p className="text-xs text-neutral-400">Wk 1 → 6</p>
                     </div>
                     <Sparkline values={SERIES.health.values} color="#34d399" />
-                    <div className="flex items-center justify-between text-xs mt-1.5">
+                    {/* Week labels */}
+                    <div className="flex items-center justify-between text-[10px] mt-1 px-0.5">
+                      {["Wk 1","Wk 2","Wk 3","Wk 4","Wk 5","Wk 6"].map((w, i) => (
+                        <span key={i} className={i === 5 ? "text-emerald-400 font-bold" : "text-neutral-600"}>{w}</span>
+                      ))}
+                    </div>
+                    <div className="flex items-center justify-between text-xs mt-1">
                       <span className="text-neutral-600">52 · Fragile</span>
                       <span className="text-emerald-400 font-semibold">74 · Gaining</span>
                     </div>
