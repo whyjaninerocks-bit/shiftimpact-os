@@ -467,58 +467,111 @@ const QA: Array<{ keywords: string[]; answer: string }> = [
   },
 ];
 
-// ─── Floating assistant widget ────────────────────────────────────────────────
+// ─── Floating assistant widget — LLM-backed (demo mode) ──────────────────────
+// Calls /api/portal-chat with demo:true — uses hardcoded Cooks context,
+// no DB fetch. Same 3-tier logic: defend data / caveat / escalate with confirm.
 
-type Message = { role: "user" | "ai"; text: string };
+type DemoEscalateMeta = { reason: string; campaign_id: string; campaign_name: string; client_name: string };
+type Message = {
+  role: "user" | "ai";
+  text: string;
+  escalateMeta?: DemoEscalateMeta | null;
+  notifyState?: "pending" | "sent" | "dismissed";
+};
+
+function stripTokens(text: string): string {
+  return text.replace(/\[ESCALATE:[^\]]*\]/gi, "").replace(/\[__ESCALATE_META__[^\]]*\]/g, "").trim();
+}
+function extractEscalateMeta(text: string): DemoEscalateMeta | null {
+  const match = text.match(/\[__ESCALATE_META__(.*?)\]/s);
+  if (!match) return null;
+  try { return JSON.parse(match[1]) as DemoEscalateMeta; } catch { return null; }
+}
 
 function AskWidget() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { role: "ai", text: "Ask me anything about this report — the health score, gate threshold, KOL results, compliance score, predictions, or any number you're not sure about." },
+    { role: "ai", text: "Ask me anything about this report — the health score, gate threshold, KOL results, save rate, predictions, or any number you want explained." },
   ]);
   const [input, setInput] = useState("");
-  const [thinking, setThinking] = useState(false);
-  const [lastTopicId, setLastTopicId] = useState("");
+  const [streaming, setStreaming] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, thinking]);
+    if (open) setTimeout(() => inputRef.current?.focus(), 80);
+  }, [open]);
 
-  function send(text: string) {
-    if (!text.trim() || thinking) return;
-    const q = text.trim();
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, streaming]);
+
+  async function send(question: string) {
+    if (!question.trim() || streaming) return;
+    setMessages(prev => [...prev, { role: "user", text: question }]);
     setInput("");
-    setMessages(prev => [...prev, { role: "user", text: q }]);
-    setThinking(true);
-    setTimeout(() => {
-      const { answer, topicId } = matchTopic(q, lastTopicId);
-      if (topicId) setLastTopicId(topicId);
-      setMessages(prev => [...prev, { role: "ai", text: answer }]);
-      setThinking(false);
-    }, 750);
+    setStreaming(true);
+    setMessages(prev => [...prev, { role: "ai", text: "" }]);
+
+    try {
+      const res = await fetch("/api/portal-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ demo: true, question }),
+      });
+
+      if (!res.ok || !res.body) {
+        setMessages(prev => { const m = [...prev]; m[m.length - 1] = { role: "ai", text: "Something went wrong. Please try again." }; return m; });
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let fullText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        fullText += decoder.decode(value, { stream: true });
+        setMessages(prev => { const m = [...prev]; m[m.length - 1] = { role: "ai", text: fullText }; return m; });
+      }
+
+      const escalateMeta = extractEscalateMeta(fullText);
+      const cleanText = stripTokens(fullText);
+      setMessages(prev => {
+        const m = [...prev];
+        m[m.length - 1] = { role: "ai", text: cleanText, escalateMeta: escalateMeta ?? undefined, notifyState: escalateMeta ? "pending" : undefined };
+        return m;
+      });
+    } catch {
+      setMessages(prev => { const m = [...prev]; m[m.length - 1] = { role: "ai", text: "Unable to reach the intelligence layer. Try again." }; return m; });
+    } finally {
+      setStreaming(false);
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  }
+
+  function handleNotifyConfirm(msgIndex: number, confirm: boolean) {
+    setMessages(prev => {
+      const m = [...prev];
+      m[msgIndex] = { ...m[msgIndex], notifyState: confirm ? "sent" : "dismissed" };
+      return m;
+    });
+    // In demo, we log rather than actually sending (no real campaign_id)
+    if (confirm) console.log("[demo] Would notify strategist for question:", messages[msgIndex - 1]?.text);
   }
 
   return (
     <>
-      {/* Backdrop (mobile) */}
-      {open && (
-        <div className="fixed inset-0 bg-black/30 z-40 lg:hidden" onClick={() => setOpen(false)} />
-      )}
+      {open && <div className="fixed inset-0 bg-black/30 z-40 lg:hidden" onClick={() => setOpen(false)} />}
 
-      {/* Panel */}
       {open && (
-        <div className={`
-          fixed z-50 bg-white shadow-2xl border border-neutral-100 flex flex-col
-          bottom-0 left-0 right-0 rounded-t-2xl max-h-[72vh]
-          lg:bottom-24 lg:right-6 lg:left-auto lg:rounded-2xl lg:w-[360px] lg:max-h-[520px]
-        `}>
+        <div className="fixed z-50 bg-white shadow-2xl border border-neutral-100 flex flex-col bottom-0 left-0 right-0 rounded-t-2xl max-h-[72vh] lg:bottom-24 lg:right-6 lg:left-auto lg:rounded-2xl lg:w-[380px] lg:max-h-[540px]">
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 bg-neutral-900 rounded-t-2xl lg:rounded-t-2xl shrink-0">
+          <div className="flex items-center justify-between px-5 py-4 bg-neutral-900 rounded-t-2xl shrink-0">
             <div className="flex items-center gap-2.5">
               <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <p className="text-sm font-bold text-white">Ask about this report</p>
+              <p className="text-sm font-bold text-white">Report Intelligence</p>
             </div>
             <button onClick={() => setOpen(false)} className="text-neutral-400 hover:text-white transition-colors">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -530,7 +583,7 @@ function AskWidget() {
           {/* Suggestions */}
           {messages.length <= 1 && (
             <div className="px-4 pt-3 pb-0 shrink-0">
-              <p className="text-xs font-semibold text-neutral-400 mb-2">Suggested questions</p>
+              <p className="text-xs font-semibold text-neutral-400 mb-2">Try asking</p>
               <div className="flex flex-wrap gap-1.5">
                 {SUGGESTIONS.map(s => (
                   <button key={s} onClick={() => send(s)}
@@ -546,36 +599,44 @@ function AskWidget() {
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-0">
             {messages.map((m, i) => (
               <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                {m.role === "ai" && (
-                  <div className="w-6 h-6 rounded-full bg-neutral-900 flex items-center justify-center shrink-0 mr-2 mt-0.5">
-                    <svg className="w-3 h-3 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                    </svg>
+                <div className="max-w-[88%] space-y-2">
+                  <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                    m.role === "user" ? "bg-neutral-900 text-white rounded-br-sm" : "bg-neutral-100 text-neutral-800 rounded-bl-sm"
+                  }`}>
+                    {m.role === "ai" && m.text === "" && streaming
+                      ? <span className="flex gap-1 items-center">
+                          <span className="w-1.5 h-1.5 rounded-full bg-neutral-400 animate-bounce" style={{ animationDelay: "0ms" }} />
+                          <span className="w-1.5 h-1.5 rounded-full bg-neutral-400 animate-bounce" style={{ animationDelay: "150ms" }} />
+                          <span className="w-1.5 h-1.5 rounded-full bg-neutral-400 animate-bounce" style={{ animationDelay: "300ms" }} />
+                        </span>
+                      : m.text}
                   </div>
-                )}
-                <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                  m.role === "user"
-                    ? "bg-neutral-900 text-white rounded-br-sm"
-                    : "bg-neutral-100 text-neutral-800 rounded-bl-sm"
-                }`}>
-                  {m.text}
+
+                  {/* Escalation confirm */}
+                  {m.role === "ai" && m.notifyState === "pending" && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-3 space-y-2">
+                      <p className="text-xs font-semibold text-amber-900">This question may need your strategist&apos;s input.</p>
+                      <p className="text-xs text-amber-800">Would you like them to follow up and investigate?</p>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleNotifyConfirm(i, true)}
+                          className="text-xs bg-amber-900 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-amber-800 transition-colors">
+                          Yes, notify my strategist
+                        </button>
+                        <button onClick={() => handleNotifyConfirm(i, false)}
+                          className="text-xs text-amber-700 hover:text-amber-900 px-2 py-1.5 transition-colors">
+                          No, I&apos;m good
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {m.role === "ai" && m.notifyState === "sent" && (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2.5">
+                      <p className="text-xs text-emerald-800"><span className="font-semibold">✓ Strategist notified</span> — they&apos;ll follow up directly.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
-            {thinking && (
-              <div className="flex justify-start">
-                <div className="w-6 h-6 rounded-full bg-neutral-900 flex items-center justify-center shrink-0 mr-2 mt-0.5">
-                  <svg className="w-3 h-3 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                  </svg>
-                </div>
-                <div className="bg-neutral-100 rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-neutral-400 animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-1.5 h-1.5 rounded-full bg-neutral-400 animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="w-1.5 h-1.5 rounded-full bg-neutral-400 animate-bounce" style={{ animationDelay: "300ms" }} />
-                </div>
-              </div>
-            )}
             <div ref={bottomRef} />
           </div>
 
@@ -587,13 +648,15 @@ function AskWidget() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 placeholder="Ask anything about this report…"
-                className="flex-1 text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2.5 text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-400"
+                disabled={streaming}
+                className="flex-1 text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2.5 text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-400 disabled:opacity-50"
               />
-              <button type="submit" disabled={!input.trim() || thinking}
+              <button type="submit" disabled={!input.trim() || streaming}
                 className="w-9 h-9 rounded-xl bg-neutral-900 text-white flex items-center justify-center shrink-0 disabled:opacity-40 hover:bg-neutral-700 transition-colors">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                </svg>
+                {streaming
+                  ? <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                  : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
+                }
               </button>
             </form>
           </div>

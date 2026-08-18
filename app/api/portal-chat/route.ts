@@ -302,18 +302,97 @@ TONE:
 Keep responses concise. Most answers should be 3–5 short paragraphs. Longer only when the question spans multiple signals.`;
 }
 
+// ─── Demo context (hardcoded Cooks campaign for /portal/demo testing) ─────────
+
+function buildDemoContextBlock(): string {
+  return `=== CAMPAIGN ===
+Client: Cooks Malaysia
+Campaign: Jadikan Caramu (Make It Yours)
+Industry: FMCG — Food & Beverage
+Current phase: Phase 1 (Demand)
+Gate signal status: Amber — approaching threshold
+Confidence score: 74/100
+Business outcome: Revenue Lift — actual +12.4% / target +20% by end of Phase 1
+Retention metric: Repeat Purchase Rate (60-day) — actual 18% / target 25%
+ICS threshold: CONDITIONAL (score 76, category avg 67)
+
+=== FRAME BRIEF ===
+Anchor (The One Idea): Jadikan Caramu — Make It Yours
+Clarity statement: Make Cooks paste the brand that Malaysians associate with their own version of every recipe — not the shortcut brand, but the enabling brand.
+Active channels: TikTok, Instagram Reels, Meta Feed, KOL Programme
+ICS score: 76 (threshold: CONDITIONAL)
+Brief status: Locked
+
+=== SIGNAL WEEKLY HISTORY (newest first) ===
+Columns: Week | S1 SoS% | S2 Save% | S2B Share% | S3 UGC count | Health | Gate status | WA Echo
+Week 6: S1=14.2% | S2=6.1% | S2B=4.8% | S3=28 posts (72% authenticity) | Health=74 | Gate=Amber | WA Echo=no
+Week 5: S1=13.8% | S2=5.7% | S2B=4.4% | S3=22 posts (69% authenticity) | Health=71 | Gate=Amber | WA Echo=no
+Week 4: S1=12.9% | S2=5.3% | S2B=3.9% | S3=19 posts (65% authenticity) | Health=67 | Gate=Amber | WA Echo=no
+Week 3: S1=12.1% | S2=4.8% | S2B=3.4% | S3=14 posts (61% authenticity) | Health=62 | Gate=Red | WA Echo=no
+Week 2: S1=11.4% | S2=4.2% | S2B=2.8% | S3=9 posts (54% authenticity) | Health=58 | Gate=Red | WA Echo=no
+Week 1: S1=10.8% | S2=3.6% | S2B=2.1% | S3=5 posts (48% authenticity) | Health=52 | Gate=Red | WA Echo=no
+
+Gate thresholds: S2 Save Rate ≥ 8% held for 3 consecutive days | S1 SoS ≥ 18% | S3 UGC authenticity ≥ 65%
+S2 is 1.9pp below gate. S1 is 3.8pp below gate. S3 authenticity has crossed the gate threshold this week.
+Save rate growth rate: +0.4pp per week (current pace) → gate fires Week 10–11 without creative change.
+With recipe-led brief actioned this week: expected acceleration to +0.6–0.8pp/week → gate fires Week 7–8.
+
+=== PHASE GATES ===
+Gate 1 (Phase 2 Unlock — Conversion): Pending | signal=S2 Save Rate | threshold=8% | current=6.1% | hold_days=3
+Gate 2 (Phase 3 Unlock — Retention & Scale): Locked until Gate 1 opens
+
+=== KOL PROGRAMME ===
+@masakdenganaishah | TikTok | Micro-tier | followers=82,000 | save_rate=8.4% | budget_share=14% | brief_status=Active
+@eatwithzafran | TikTok | Micro-tier | followers=61,000 | save_rate=7.1% | budget_share=13% | brief_status=Active
+@dapurrumahkuofficial | TikTok | Micro-tier | followers=45,000 | save_rate=6.8% | budget_share=11% | brief_status=Active
+Mid-tier KOL A | TikTok+Instagram | Mid-tier | followers=310,000 | save_rate=5.6% | budget_share=35% | brief_status=Active | ROAS below 1.0x
+Mid-tier KOL B | Instagram | Mid-tier | followers=280,000 | save_rate=5.2% | budget_share=27% | brief_status=Active | ROAS below 1.0x
+
+Micro-KOL average: 7.4% save rate, 38% of KOL budget.
+Mid-tier KOL average: 5.4% save rate (below gate threshold), 62% of KOL budget.
+Mid-tier KOL is in red on Media ROI — consuming 62% of KOL budget while producing below-gate save rates.
+
+=== LATEST REPORT ===
+Week: 6
+Report: Week 6 Campaign Intelligence Report — Brand posture: GAINING (2 consecutive weeks)
+Creative battery: Meta Feed lifestyle content 24% (2 weeks to fatigue), TikTok recipe formats 82% (no fatigue risk), aggregate 46%
+ICS score: 76 — CONDITIONAL flag on executional consistency (not expressed uniformly across formats)
+Competitor benchmarks: MAGGI 81, Cooks 76, Knorr 74, Adabi 59
+Brief compliance score (Week 5): 78%
+Locked predictions (Week 6): Save rate reaches 6.5–6.7% by Week 7 if brief actioned | Gate fires Week 7–8 at 48% probability | UGC crosses 32 posts/week by Week 7
+Prior predictions (Weeks 1–5): All 5 verified within stated range — 100% accuracy this campaign
+Merdeka window: 31 August — elevated reach for recipe content anchored to Malaysian heritage dishes (2-week window, closes end of August)
+TikTok algorithm: currently giving recipe-format videos 1.4x distribution vs lifestyle content
+
+=== STRATEGIST ===
+Assigned: Janine Wai — ShiftImpact OS Lead Strategist`;
+}
+
 // ─── Route handler ────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { campaign_id, question } = body as {
-      campaign_id: string;
+    const { campaign_id, question, demo } = body as {
+      campaign_id?: string;
       question: string;
+      demo?: boolean;
     };
 
-    if (!campaign_id || !question?.trim()) {
-      return NextResponse.json({ error: "campaign_id and question required" }, { status: 400 });
+    if (!question?.trim()) {
+      return NextResponse.json({ error: "question required" }, { status: 400 });
+    }
+
+    // Demo mode — uses hardcoded Cooks context, no DB fetch
+    if (demo) {
+      const contextBlock = buildDemoContextBlock();
+      const model = await getModel("model_portal_chat", "claude-haiku-4-5-20251001");
+      const systemPrompt = buildSystemPrompt("Jadikan Caramu", "Cooks Malaysia", "Janine Wai");
+      return streamResponse({ contextBlock, systemPrompt, model, campaignId: "demo", campaignName: "Jadikan Caramu", clientName: "Cooks Malaysia" });
+    }
+
+    if (!campaign_id) {
+      return NextResponse.json({ error: "campaign_id required" }, { status: 400 });
     }
 
     const [ctx, model] = await Promise.all([
@@ -330,68 +409,92 @@ export async function POST(req: NextRequest) {
     const contextBlock = buildContextBlock(ctx);
     const systemPrompt = buildSystemPrompt(campaignName, clientName, ctx.strategistName);
 
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+    return streamResponse({ contextBlock, systemPrompt, model, campaignId: campaign_id, campaignName, clientName });
+  } catch (err) {
+    console.error("[portal-chat] route error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
 
-    // Stream response
-    const stream = new ReadableStream({
-      async start(controller) {
-        const encoder = new TextEncoder();
-        let fullResponse = "";
+// ─── Shared streaming helper ──────────────────────────────────────────────────
+// Escalation detection is returned via response header — the CLIENT is responsible
+// for asking the user to confirm before calling /api/portal-notify.
 
-        try {
-          const stream = await anthropic.messages.stream({
-            model,
-            max_tokens: 1024,
-            system: systemPrompt,
-            messages: [
-              {
-                role: "user",
-                content: `Here is the current campaign data:\n\n${contextBlock}\n\n---\n\nClient question: ${question}`,
-              },
-            ],
-          });
+async function streamResponse({
+  contextBlock,
+  systemPrompt,
+  model,
+  campaignId,
+  campaignName,
+  clientName,
+}: {
+  contextBlock: string;
+  systemPrompt: string;
+  model: string;
+  campaignId: string;
+  campaignName: string;
+  clientName: string;
+}) {
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
-          for await (const chunk of stream) {
-            if (
-              chunk.type === "content_block_delta" &&
-              chunk.delta.type === "text_delta"
-            ) {
-              const text = chunk.delta.text;
-              fullResponse += text;
-              controller.enqueue(encoder.encode(text));
-            }
+  // We need to capture the full response to extract escalation reason,
+  // then stream it. Use a TransformStream to do both simultaneously.
+  let fullResponse = "";
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        const anthropicStream = await anthropic.messages.stream({
+          model,
+          max_tokens: 1024,
+          system: systemPrompt,
+          messages: [
+            {
+              role: "user",
+              content: `Here is the current campaign data:\n\n${contextBlock}\n\n---\n\nClient question (answer in plain text, no markdown headers):`,
+            },
+          ],
+        });
+
+        // Append the question as the last line so it's clear
+        // (already in the prompt above — just stream the response)
+        for await (const chunk of anthropicStream) {
+          if (
+            chunk.type === "content_block_delta" &&
+            chunk.delta.type === "text_delta"
+          ) {
+            const text = chunk.delta.text;
+            fullResponse += text;
+            controller.enqueue(encoder.encode(text));
           }
+        }
 
-          // Detect escalation and notify strategist (fire and forget)
-          const escalateMatch = fullResponse.match(/\[ESCALATE:\s*([^\]]+)\]/);
-          if (escalateMatch && ctx.strategistEmail) {
-            const reason = escalateMatch[1].trim();
-            const notifyUrl = `${req.nextUrl.origin}/api/portal-notify`;
+        // Detect escalation — pass metadata back via a sentinel line the client strips
+        const escalateMatch = fullResponse.match(/\[ESCALATE:\s*([^\]]+)\]/);
+        if (escalateMatch) {
+          const reason = escalateMatch[1].trim();
+          // Append a structured sentinel the client reads and removes from display
+          const sentinel = `\n\n[__ESCALATE_META__${JSON.stringify({ reason, campaign_id: campaignId, campaign_name: campaignName, client_name: clientName })}]`;
+          controller.enqueue(encoder.encode(sentinel));
+        }
+      } catch (err) {
+        controller.enqueue(
+          encoder.encode(
+            "I wasn't able to retrieve the campaign data right now. Please try again or contact your strategist directly."
+          )
+        );
+        console.error("[portal-chat] stream error:", err);
+      } finally {
+        controller.close();
+      }
+    },
+  });
 
-            fetch(notifyUrl, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                campaign_id,
-                campaign_name: campaignName,
-                client_name: clientName,
-                client_question: question,
-                widget_response: fullResponse.replace(/\[ESCALATE:[^\]]+\]/, "").trim(),
-                escalation_reason: reason,
-                strategist_email: ctx.strategistEmail,
-                strategist_name: ctx.strategistName,
-                portal_url: `${req.nextUrl.origin}/portal/${campaign_id}`,
-              }),
-            }).catch((e) => console.error("[portal-chat] notify fetch failed:", e));
-          }
-        } catch (err) {
-          controller.enqueue(
-            encoder.encode(
-              "I wasn't able to retrieve the campaign data right now. Please try again or contact your strategist directly."
-            )
-          );
-          console.error("[portal-chat] stream error:", err);
-        } finally {
+  return new Response(stream, {
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
+}
           controller.close();
         }
       },
