@@ -12,6 +12,7 @@ import {
 import { Badge, Card, ragTone } from "@/app/_components/ui";
 import type { CampaignPhase, IndustryProfile } from "@/lib/types";
 import { PortalChatWidget } from "./_components/PortalChatWidget";
+import { Collapse } from "../_components/Collapse";
 
 type PortalView = "brand" | "agency" | "partner";
 
@@ -224,14 +225,18 @@ export default async function ClientPortalPage({
         {/* ── Signal Health ── */}
         {signalReports.length > 0 && !signalReports[0].flags_suppressed && (
           <PortalSection title="Signal health">
+            {/* Topline — always visible */}
             <Card>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between">
                 <p className="text-xs text-neutral-500">Week {signalReports[0].week_number} — measured signals</p>
                 <Badge tone={ragTone(signalReports[0].gate_status ?? "Red")}>
                   Gate: {signalReports[0].gate_status ?? "—"}
                 </Badge>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+            </Card>
+            {/* Signal breakdown — collapsed by default */}
+            <Collapse label="Signal breakdown" sublabel="Demand · Nurture · Conversion">
+              <div className="grid grid-cols-3 gap-2 mb-3">
                 <div className="text-center bg-neutral-50 rounded-md p-2">
                   <p className="text-[10px] text-neutral-400 mb-1">Demand</p>
                   <Badge tone={ragTone(signalReports[0].demand_health ?? "Red")}>
@@ -252,11 +257,11 @@ export default async function ClientPortalPage({
                 </div>
               </div>
               {signalReports[0].gate_note && (
-                <p className="text-xs text-neutral-500 mt-3 pt-2 border-t border-neutral-100">
+                <p className="text-xs text-neutral-500 pt-3 border-t border-neutral-100">
                   {signalReports[0].gate_note}
                 </p>
               )}
-            </Card>
+            </Collapse>
           </PortalSection>
         )}
 
@@ -341,11 +346,13 @@ export default async function ClientPortalPage({
                   </div>
                 )}
 
-                {/* Intelligence findings — partner view strips competitor-sensitive details */}
+                {/* Intelligence findings — collapsed by default to reduce scroll */}
                 {report.findings.length > 0 && (
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-2">What the data is telling us</p>
-                    <div className="space-y-3">
+                  <Collapse
+                    label={`What the data is telling us · ${report.findings.length} finding${report.findings.length !== 1 ? "s" : ""}`}
+                    defaultOpen={false}
+                  >
+                    <div className="space-y-4">
                       {report.findings.map((f, i) => (
                         <div key={i} className="border-l-2 border-neutral-200 pl-3">
                           <p className="text-xs font-semibold text-neutral-800 mb-1">{f.headline}</p>
@@ -356,7 +363,7 @@ export default async function ClientPortalPage({
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </Collapse>
                 )}
 
                 <p className="text-[10px] text-neutral-400 pt-1 border-t border-neutral-100">
@@ -394,20 +401,34 @@ export default async function ClientPortalPage({
         {/* ── Phase gates ── */}
         {phaseGates.length > 0 && (
           <PortalSection title="Campaign milestones">
-            <Card className="space-y-2">
-              {completedGates.map((g) => (
-                <div key={g.id} className="flex items-center gap-2">
-                  <span className="text-emerald-500">✓</span>
-                  <span className="text-sm text-neutral-600">{g.gate_type}</span>
-                </div>
-              ))}
-              {nextGate && (
-                <div className="flex items-center gap-2 pt-2 border-t border-neutral-100">
+            {/* Next gate — always visible */}
+            {nextGate && (
+              <Card>
+                <div className="flex items-center gap-2">
                   <span className="text-neutral-300">○</span>
-                  <span className="text-sm text-neutral-400">Next: {nextGate.gate_type}</span>
+                  <div>
+                    <p className="text-xs text-neutral-400">Next milestone</p>
+                    <p className="text-sm font-medium text-neutral-700">{nextGate.gate_type}</p>
+                  </div>
                 </div>
-              )}
-            </Card>
+              </Card>
+            )}
+            {/* Completed gates — collapsed */}
+            {completedGates.length > 0 && (
+              <Collapse
+                label={`${completedGates.length} completed milestone${completedGates.length !== 1 ? "s" : ""}`}
+                defaultOpen={false}
+              >
+                <div className="space-y-2">
+                  {completedGates.map((g) => (
+                    <div key={g.id} className="flex items-center gap-2">
+                      <span className="text-emerald-500">✓</span>
+                      <span className="text-sm text-neutral-600">{g.gate_type}</span>
+                    </div>
+                  ))}
+                </div>
+              </Collapse>
+            )}
           </PortalSection>
         )}
 

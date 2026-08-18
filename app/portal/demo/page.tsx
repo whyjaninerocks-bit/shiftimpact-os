@@ -496,7 +496,7 @@ function AskWidget() {
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 80);
@@ -566,7 +566,7 @@ function AskWidget() {
       {open && <div className="fixed inset-0 bg-black/30 z-40 lg:hidden" onClick={() => setOpen(false)} />}
 
       {open && (
-        <div className="fixed z-50 bg-white shadow-2xl border border-neutral-100 flex flex-col bottom-0 left-0 right-0 rounded-t-2xl max-h-[72vh] lg:bottom-24 lg:right-6 lg:left-auto lg:rounded-2xl lg:w-[380px] lg:max-h-[540px]">
+        <div className="fixed z-50 bg-white shadow-2xl border border-neutral-100 flex flex-col bottom-0 left-0 right-0 rounded-t-2xl max-h-[80vh] lg:bottom-24 lg:right-6 lg:left-auto lg:rounded-2xl lg:w-[480px] lg:max-h-[640px]">
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 bg-neutral-900 rounded-t-2xl shrink-0">
             <div className="flex items-center gap-2.5">
@@ -643,13 +643,15 @@ function AskWidget() {
           {/* Input */}
           <div className="px-4 pb-4 pt-2 border-t border-neutral-100 shrink-0">
             <form onSubmit={e => { e.preventDefault(); send(input); }} className="flex items-center gap-2">
-              <input
+              <textarea
                 ref={inputRef}
                 value={input}
                 onChange={e => setInput(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (input.trim() && !streaming) { const form = e.currentTarget.closest("form"); form?.requestSubmit(); } } }}
                 placeholder="Ask anything about this report…"
                 disabled={streaming}
-                className="flex-1 text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2.5 text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-400 disabled:opacity-50"
+                rows={2}
+                className="flex-1 text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-400 disabled:opacity-50 resize-none leading-relaxed"
               />
               <button type="submit" disabled={!input.trim() || streaming}
                 className="w-9 h-9 rounded-xl bg-neutral-900 text-white flex items-center justify-center shrink-0 disabled:opacity-40 hover:bg-neutral-700 transition-colors">
@@ -1272,6 +1274,50 @@ function Collapsible({ label, children }: { label: string; children: React.React
   );
 }
 
+// ─── Action card with collapsible brief ──────────────────────────────────────
+
+function ActionCard({ index, action }: { index: number; action: typeof W6.actions[number] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
+      <div className="px-6 pt-6 pb-4">
+        <div className="flex items-start gap-4">
+          <span className="w-7 h-7 rounded-full bg-neutral-900 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{index + 1}</span>
+          <div className="flex-1">
+            <p className="text-base font-bold text-neutral-900 leading-snug">{action.finding}</p>
+            <p className="text-sm text-neutral-600 mt-2 leading-relaxed">{action.implication}</p>
+          </div>
+        </div>
+      </div>
+      {/* Brief — collapsed by default */}
+      <div className="px-6 pb-5">
+        <button
+          onClick={() => setOpen(v => !v)}
+          className="flex items-center gap-2 text-xs font-semibold text-emerald-700 hover:text-emerald-900 transition-colors"
+        >
+          <svg className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+          {open ? "Hide brief" : `See brief → ${action.brief.label}`}
+        </button>
+        {open && (
+          <div className="mt-3 rounded-xl bg-neutral-900 px-5 py-4">
+            <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-3">→ {action.brief.label}</p>
+            <ul className="space-y-2">
+              {action.brief.lines.map((line, j) => (
+                <li key={j} className="flex items-start gap-2.5 text-sm text-neutral-200 leading-relaxed">
+                  <span className="text-emerald-500 shrink-0 mt-0.5 font-bold">·</span>
+                  {line}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 // ─── Brief compliance data ────────────────────────────────────────────────────
@@ -1667,9 +1713,9 @@ export default function PortalDemoPage() {
                   </div>
                 </div>
 
-                {/* Right: Per-asset bars */}
+                {/* Right: Per-asset bars — collapsed behind a toggle on mobile */}
                 <div className="px-6 py-5">
-                  <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Endurance by asset</p>
+                  <Collapsible label="Endurance by asset · 4 formats tracked">
                   <div className="space-y-5">
                     {CREATIVE_ASSETS[0].assets.map((a) => {
                       const barColor = a.pct > 60 ? "#34d399" : a.pct > 30 ? "#f59e0b" : "#f87171";
@@ -1700,6 +1746,7 @@ export default function PortalDemoPage() {
                     })}
                   </div>
                   <p className="text-xs text-neutral-400 mt-5 pt-4 border-t border-neutral-100 leading-snug">Each reading is derived from the save rate trajectory for that channel over the trailing 3 weeks. A declining save rate per impression — even when total numbers rise — signals creative fatigue.</p>
+                  </Collapsible>
                 </div>
               </div>
             </div>
@@ -1848,31 +1895,11 @@ export default function PortalDemoPage() {
             <SectionQ q="02" label="What do I need to do this week?">
               <div className="space-y-5">
                 {week.actions.map((a, i) => (
-                  <div key={i} className="rounded-2xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
-                    <div className="px-6 pt-6 pb-4">
-                      <div className="flex items-start gap-4">
-                        <span className="w-7 h-7 rounded-full bg-neutral-900 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
-                        <div className="flex-1">
-                          <p className="text-base font-bold text-neutral-900 leading-snug">{a.finding}</p>
-                          <p className="text-sm text-neutral-600 mt-2 leading-relaxed">{a.implication}</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mx-5 mb-5 rounded-xl bg-neutral-900 px-5 py-4">
-                      <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-3">→ {a.brief.label}</p>
-                      <ul className="space-y-2">
-                        {a.brief.lines.map((line, j) => (
-                          <li key={j} className="flex items-start gap-2.5 text-sm text-neutral-200 leading-relaxed">
-                            <span className="text-emerald-500 shrink-0 mt-0.5 font-bold">·</span>
-                            {line}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
+                  <ActionCard key={i} index={i} action={a} />
                 ))}
 
-                {/* ── Delivery & Acknowledgement Record ── */}
+                {/* ── Delivery & Acknowledgement Record — collapsed by default ── */}
+                <Collapsible label="Delivery & acknowledgement record — 2 of 3 acknowledged">
                 <div className="rounded-2xl border border-neutral-200 bg-white overflow-hidden">
                   <div className="flex items-center justify-between px-5 py-3.5 bg-neutral-50 border-b border-neutral-200">
                     <div className="flex items-center gap-2">
@@ -1936,6 +1963,7 @@ export default function PortalDemoPage() {
                     <p className="text-[10px] text-neutral-400 leading-snug">Read receipts are recorded when a recipient opens the portal link. Acknowledgement is logged when they click the confirm button. This record is append-only — no entry can be removed. In any dispute about brief receipt or timing, this log is the reference.</p>
                   </div>
                 </div>
+                </Collapsible>
 
                 {/* ── Brief Compliance Report ── */}
                 <div className="rounded-2xl border border-neutral-200 bg-white overflow-hidden">
@@ -2088,35 +2116,87 @@ export default function PortalDemoPage() {
           {/* ── Q3: Are we on track? ──────────────────── */}
           <div id="q3">
             <SectionQ q="03" label="Are we on track for the gate?">
-              <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 px-6 py-6 space-y-5">
-                <div>
-                  <p className="text-xs font-bold text-amber-800 uppercase tracking-widest mb-2">{week.horizon.gateLabel}</p>
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="w-3 h-3 rounded-full bg-amber-500 shrink-0" />
-                    <p className="text-2xl font-black text-neutral-900">Gate not yet fired</p>
+              <div className="space-y-3">
+
+                {/* ── Gate status banner ── */}
+                <div className="rounded-2xl bg-neutral-900 px-6 py-5">
+                  <p className="text-xs font-bold text-amber-400 uppercase tracking-widest mb-3">{week.horizon.gateLabel}</p>
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-3xl font-black text-white leading-tight">Gate not yet fired</p>
+                      <p className="text-sm text-neutral-400 mt-1">1.9pp below threshold · Phase 2 budget locked</p>
+                    </div>
+                    <div className="shrink-0 w-14 h-14 rounded-full border-4 border-amber-400 flex items-center justify-center bg-amber-400/10">
+                      <span className="text-amber-400 text-xl font-black">!</span>
+                    </div>
                   </div>
-                  <p className="text-sm font-semibold text-amber-900 border-l-2 border-amber-500 pl-3 bg-amber-100/60 py-2 pr-3 rounded-r-lg">
-                    {week.horizon.gateCondition}
-                  </p>
                 </div>
 
-                <div className="pt-4 border-t border-amber-300">
-                  <p className="text-xs font-bold text-amber-800 uppercase tracking-widest mb-3">Signal horizon — next 4 weeks</p>
-                  <p className="text-sm text-neutral-800 leading-relaxed mb-4">{week.horizon.prediction}</p>
-                  <div className="space-y-3">
-                    {week.horizon.horizonItems.map((h, i) => (
-                      <div key={i} className="flex items-start gap-4 bg-white/60 rounded-xl px-4 py-3">
-                        <span className="text-sm font-bold text-amber-800 shrink-0 w-24">{h.timeframe}</span>
-                        <p className="text-sm text-neutral-700 font-medium">{h.note}</p>
+                {/* ── Gate conditions ── */}
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Condition 1 — Save Rate */}
+                  <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 px-4 py-4">
+                    <p className="text-xs font-bold text-amber-700 uppercase tracking-widest mb-1">Save rate</p>
+                    <div className="flex items-baseline gap-1 mb-2">
+                      <span className="text-2xl font-black text-neutral-900">6.1%</span>
+                      <span className="text-sm text-neutral-400 font-medium">/ ≥8%</span>
+                    </div>
+                    <div className="h-2 bg-amber-200 rounded-full overflow-hidden mb-2">
+                      <div className="h-full bg-amber-500 rounded-full" style={{ width: "76%" }} />
+                    </div>
+                    <p className="text-xs font-semibold text-amber-800">−1.9pp to gate · primary condition</p>
+                  </div>
+                  {/* Condition 2 — Brand Search */}
+                  <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 px-4 py-4">
+                    <p className="text-xs font-bold text-amber-700 uppercase tracking-widest mb-1">Brand search share</p>
+                    <div className="flex items-baseline gap-1 mb-2">
+                      <span className="text-2xl font-black text-neutral-900">14.2%</span>
+                      <span className="text-sm text-neutral-400 font-medium">/ ≥18%</span>
+                    </div>
+                    <div className="h-2 bg-amber-200 rounded-full overflow-hidden mb-2">
+                      <div className="h-full bg-amber-400 rounded-full" style={{ width: "79%" }} />
+                    </div>
+                    <p className="text-xs font-semibold text-amber-800">−3.8pp to gate · secondary condition</p>
+                  </div>
+                </div>
+
+                {/* ── What fires the gate ── */}
+                <div className="rounded-2xl bg-white border border-neutral-200 px-5 py-4">
+                  <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-2">What fires Gate 1</p>
+                  <p className="text-sm font-semibold text-neutral-800 leading-snug">Save Rate ≥8% held 3 consecutive days <span className="text-neutral-400 font-normal">+</span> Branded search +40% from campaign start</p>
+                </div>
+
+                {/* ── Timeline ── */}
+                <div className="rounded-2xl bg-neutral-900 px-5 py-5">
+                  <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-4">Signal horizon · next 4 weeks</p>
+                  <div className="space-y-0">
+                    {[
+                      { timeframe: "This week", note: "Action creative brief — shift to 70% recipe-led content", dot: "bg-amber-400", line: true },
+                      { timeframe: "Weeks 7–8", note: "Gate 1 fires if save rate holds ≥8% for 3 consecutive days", dot: "bg-amber-300", line: true },
+                      { timeframe: "Week 9+",   note: "Phase 2 budget releases — TikTok Shop mechanics activate", dot: "bg-emerald-400", line: false },
+                    ].map((h, i) => (
+                      <div key={i} className="flex gap-4">
+                        <div className="flex flex-col items-center">
+                          <div className={`w-3 h-3 rounded-full shrink-0 mt-0.5 ${h.dot}`} />
+                          {h.line && <div className="w-px flex-1 bg-neutral-700 my-1" style={{ minHeight: "28px" }} />}
+                        </div>
+                        <div className="pb-4 min-w-0">
+                          <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-0.5">{h.timeframe}</p>
+                          <p className="text-sm text-white font-medium leading-snug">{h.note}</p>
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-amber-300 flex items-center gap-3 bg-amber-100/50 rounded-xl px-4 py-3">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-600 shrink-0" />
-                  <p className="text-sm font-bold text-neutral-900">{week.horizon.budgetStatus}</p>
+                {/* ── Budget lock status ── */}
+                <div className="rounded-2xl border-2 border-amber-400 bg-amber-400 px-5 py-3 flex items-center gap-3">
+                  <svg className="w-4 h-4 text-neutral-900 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                  </svg>
+                  <p className="text-sm font-black text-neutral-900">{week.horizon.budgetStatus}</p>
                 </div>
+
               </div>
             </SectionQ>
           </div>
