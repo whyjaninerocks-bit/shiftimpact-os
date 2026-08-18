@@ -1249,10 +1249,10 @@ function SectionQ({ q, label, children }: { q: string; label: string; children: 
   return (
     <section className="mb-12">
       {/* Chapter break */}
-      <div className="bg-neutral-900 rounded-2xl px-6 py-5 mb-6 flex items-center gap-5">
-        <span className="text-5xl font-black text-white/15 leading-none shrink-0">{q}</span>
-        <div className="w-px h-10 bg-white/15 shrink-0" />
-        <h2 className="text-2xl lg:text-3xl font-black text-white leading-tight">{label}</h2>
+      <div className="bg-neutral-900 rounded-2xl px-5 py-4 mb-6 flex items-center gap-4">
+        <span className="text-3xl sm:text-5xl font-black text-white/15 leading-none shrink-0">{q}</span>
+        <div className="w-px h-8 sm:h-10 bg-white/15 shrink-0" />
+        <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-white leading-tight">{label}</h2>
       </div>
       {children}
     </section>
@@ -1510,22 +1510,22 @@ export default function PortalDemoPage() {
           </p>
         </div>
 
-        <div className="px-5 sm:px-8 lg:px-10 py-7 lg:py-8 pb-24">
+        <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-8 pb-32">
 
           {/* Header */}
           <div className="mb-8">
-            <div className="flex items-start justify-between gap-4 mb-3">
-              <div>
-                <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-1">ShiftImpact · Decision Intelligence System · 17 Aug 2026 · Week 6 of 12</p>
-                <h1 className="text-3xl lg:text-4xl font-black text-neutral-900 leading-tight">Growth Intelligence Report</h1>
-                <p className="text-base text-neutral-500 mt-1">Jadikan Caramu · Phase 1 — Demand</p>
+            <p className="text-[10px] sm:text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">ShiftImpact · Decision Intelligence System · 17 Aug 2026 · Week 6 of 12</p>
+            <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-neutral-900 leading-tight">Growth Intelligence Report</h1>
+                <p className="text-sm sm:text-base text-neutral-500 mt-1">Jadikan Caramu · Phase 1 — Demand</p>
               </div>
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border bg-emerald-50 text-emerald-800 border-emerald-300 shrink-0 mt-1">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border bg-emerald-50 text-emerald-800 border-emerald-300 shrink-0">
                 <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
                 Strategist reviewed
               </span>
             </div>
-            <p className="text-base lg:text-lg font-semibold text-neutral-700 border-l-4 border-neutral-900 pl-4 leading-snug">
+            <p className="text-sm sm:text-base lg:text-lg font-semibold text-neutral-700 border-l-4 border-neutral-900 pl-4 leading-snug">
               What your campaign signals are telling you right now — and the decisions that can&apos;t wait until the post-campaign review.
             </p>
           </div>
@@ -1538,9 +1538,8 @@ export default function PortalDemoPage() {
             </div>
 
             <div className="bg-neutral-900 rounded-2xl shadow-sm overflow-hidden">
-              {/* Top: 3 metric columns */}
               <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-white/10">
-                {/* Score + posture */}
+                {/* Score + trajectory */}
                 <div className="px-6 py-6">
                   <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-3">Health score</p>
                   <div className="flex items-baseline gap-3 mb-3">
@@ -1550,9 +1549,24 @@ export default function PortalDemoPage() {
                       <p className="text-sm text-neutral-500">this week</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 mb-5">
                     <span className="text-base font-black text-emerald-400 border border-emerald-400/40 rounded-full px-3 py-1">Gaining</span>
                     <span className="text-sm text-neutral-500">Signals trending positive</span>
+                  </div>
+                  <div className="pt-4 border-t border-white/10">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs text-neutral-500">Health trajectory · Wk 1 → 6</p>
+                    </div>
+                    <Sparkline values={SERIES.health.values} color="#34d399" height={80} />
+                    <div className="flex items-center justify-between text-[11px] mt-1.5 px-0.5">
+                      {["Wk 1","Wk 2","Wk 3","Wk 4","Wk 5","Wk 6"].map((w, i) => (
+                        <span key={i} className={i === 5 ? "text-emerald-400 font-bold" : "text-neutral-600"}>{w}</span>
+                      ))}
+                    </div>
+                    <div className="flex items-center justify-between text-xs mt-1">
+                      <span className="text-neutral-600">52 · Fragile</span>
+                      <span className="text-emerald-400 font-semibold">74 · Gaining</span>
+                    </div>
                   </div>
                 </div>
 
@@ -1560,10 +1574,10 @@ export default function PortalDemoPage() {
                 <div className="px-6 py-6">
                   <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-3">Strategist verdict</p>
                   <p className="text-base text-white leading-relaxed">{week.verdict}</p>
-                  <div className="mt-4 pt-4 border-t border-white/10 space-y-2">
+                  <div className="mt-4 pt-4 border-t border-white/10 space-y-3">
                     {week.marketContext.map((m, i) => (
                       <div key={i} className="flex items-start gap-2">
-                        <span className="text-sm shrink-0">{m.icon}</span>
+                        <span className="text-base shrink-0">{m.icon}</span>
                         <p className="text-sm text-neutral-400 leading-relaxed">{m.note}</p>
                       </div>
                     ))}
@@ -1578,35 +1592,18 @@ export default function PortalDemoPage() {
                     <span className="text-base text-neutral-400">remaining</span>
                   </div>
                   <p className="text-sm text-neutral-400 mb-4">Save rate ≥8% · currently 6.1%</p>
-                  <div className="h-2.5 bg-white/10 rounded-full overflow-hidden mb-1">
+                  <div className="h-2.5 bg-white/10 rounded-full overflow-hidden mb-1.5">
                     <div className="h-full bg-amber-400 rounded-full" style={{ width: "76%" }} />
                   </div>
-                  <div className="flex items-center justify-between text-sm text-neutral-500">
+                  <div className="flex items-center justify-between text-sm text-neutral-500 mb-5">
                     <span>6.1% current</span>
                     <span>8.0% gate</span>
                   </div>
-                  <div className="mt-4 pt-4 border-t border-white/10">
+                  <div className="pt-4 border-t border-white/10">
                     <p className="text-xs text-neutral-500 mb-1">Gate fires</p>
-                    <p className="text-base font-black text-white">Week 7–8</p>
-                    <p className="text-sm text-neutral-400">if brief actioned this week · 78% confidence</p>
+                    <p className="text-lg font-black text-white">Week 7–8</p>
+                    <p className="text-sm text-neutral-400 mt-0.5">if brief actioned this week · 78% confidence</p>
                   </div>
-                </div>
-              </div>
-
-              {/* Bottom: full-width large health trajectory graph */}
-              <div className="border-t border-white/10 px-6 pt-5 pb-4">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-bold text-neutral-400 uppercase tracking-widest">Health trajectory · Week 1 → 6</p>
-                  <div className="flex items-center gap-4 text-sm">
-                    <span className="text-neutral-600">52 · Fragile</span>
-                    <span className="text-emerald-400 font-bold">74 · Gaining ↑</span>
-                  </div>
-                </div>
-                <Sparkline values={SERIES.health.values} color="#34d399" height={120} />
-                <div className="flex items-center justify-between text-xs mt-2 px-0.5">
-                  {["Wk 1","Wk 2","Wk 3","Wk 4","Wk 5","Wk 6"].map((w, i) => (
-                    <span key={i} className={i === 5 ? "text-emerald-400 font-bold text-sm" : "text-neutral-600"}>{w}</span>
-                  ))}
                 </div>
               </div>
             </div>
@@ -1619,62 +1616,64 @@ export default function PortalDemoPage() {
               <span className="text-sm font-medium text-neutral-500">Dashed = gate threshold · ask the widget to learn more</span>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Save Rate */}
-              <div className="bg-white rounded-xl border border-neutral-200 shadow-sm px-4 py-3.5">
-                <div className="flex items-start justify-between mb-2">
-                  <p className="text-xs font-semibold text-neutral-500">Save rate</p>
-                  <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-1.5 py-0.5">Gate ≥8%</span>
+              <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm px-5 py-5">
+                <div className="flex items-start justify-between mb-3">
+                  <p className="text-sm font-bold text-neutral-600">Save rate</p>
+                  <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">Gate ≥8%</span>
                 </div>
-                <div className="flex items-baseline gap-1.5 mb-2">
-                  <span className="text-2xl font-black text-neutral-900">6.1%</span>
-                  <span className="text-xs font-bold text-amber-600">↑ +0.4%</span>
+                <div className="flex items-baseline gap-2 mb-3">
+                  <span className="text-4xl font-black text-neutral-900">6.1%</span>
+                  <span className="text-sm font-bold text-amber-600">↑ +0.4%</span>
                 </div>
-                <Sparkline values={SERIES.save.values} gate={8} color="#f59e0b" />
+                <Sparkline values={SERIES.save.values} gate={8} color="#f59e0b" height={72} />
+                <p className="text-xs text-amber-700 font-semibold mt-2">1.9pp below gate — primary condition</p>
               </div>
 
               {/* Brand Search */}
-              <div className="bg-white rounded-xl border border-neutral-200 shadow-sm px-4 py-3.5">
-                <div className="flex items-start justify-between mb-2">
-                  <p className="text-xs font-semibold text-neutral-500">Brand search share</p>
-                  <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 rounded-full px-1.5 py-0.5">Target 18%</span>
+              <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm px-5 py-5">
+                <div className="flex items-start justify-between mb-3">
+                  <p className="text-sm font-bold text-neutral-600">Brand search share</p>
+                  <span className="text-xs font-bold text-violet-700 bg-violet-50 border border-violet-200 rounded-full px-2 py-0.5">Target 18%</span>
                 </div>
-                <div className="flex items-baseline gap-1.5 mb-2">
-                  <span className="text-2xl font-black text-neutral-900">14.2%</span>
-                  <span className="text-xs font-bold text-violet-600">↑ +1.8%</span>
+                <div className="flex items-baseline gap-2 mb-3">
+                  <span className="text-4xl font-black text-neutral-900">14.2%</span>
+                  <span className="text-sm font-bold text-violet-600">↑ +1.8%</span>
                 </div>
-                <Sparkline values={SERIES.search.values} gate={18} color="#818cf8" />
+                <Sparkline values={SERIES.search.values} gate={18} color="#818cf8" height={72} />
+                <p className="text-xs text-violet-700 font-semibold mt-2">3.8pp below target</p>
               </div>
 
               {/* UGC Signal */}
-              <div className="bg-white rounded-xl border border-blue-200 shadow-sm px-4 py-3.5">
-                <div className="flex items-start justify-between mb-2">
-                  <p className="text-xs font-semibold text-neutral-500">UGC Signal</p>
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-1.5 py-0.5">Above threshold</span>
+              <div className="bg-white rounded-2xl border border-emerald-200 shadow-sm px-5 py-5">
+                <div className="flex items-start justify-between mb-3">
+                  <p className="text-sm font-bold text-neutral-600">UGC authenticity</p>
+                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">Above threshold</span>
                 </div>
-                <div className="flex items-baseline gap-1.5 mb-2">
-                  <span className="text-2xl font-black text-neutral-900">72%</span>
-                  <span className="text-xs font-bold text-emerald-600">↑ +8%</span>
+                <div className="flex items-baseline gap-2 mb-3">
+                  <span className="text-4xl font-black text-neutral-900">72%</span>
+                  <span className="text-sm font-bold text-emerald-600">↑ +8%</span>
                 </div>
-                <Sparkline values={[52, 58, 62, 64, 68, 72]} gate={65} color="#3b82f6" />
-                <p className="text-[10px] text-blue-600 mt-1 font-medium">28 organic posts this week</p>
+                <Sparkline values={[52, 58, 62, 64, 68, 72]} gate={65} color="#3b82f6" height={72} />
+                <p className="text-xs text-emerald-700 font-semibold mt-2">28 organic posts this week</p>
               </div>
 
               {/* GrabAds */}
-              <div className="bg-white rounded-xl border border-neutral-200 shadow-sm px-4 py-3.5 relative overflow-hidden">
-                <div className="flex items-start justify-between mb-2">
-                  <p className="text-xs font-semibold text-neutral-500">Purchase attribution</p>
-                  <span className="text-[10px] font-bold text-neutral-400 border border-neutral-200 rounded-full px-1.5 py-0.5">Preview</span>
+              <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm px-5 py-5 relative overflow-hidden">
+                <div className="flex items-start justify-between mb-3">
+                  <p className="text-sm font-bold text-neutral-300">Purchase attribution</p>
+                  <span className="text-xs font-bold text-neutral-400 border border-neutral-200 rounded-full px-2 py-0.5">Preview</span>
                 </div>
-                <div className="flex items-baseline gap-1.5 mb-2">
-                  <span className="text-2xl font-black text-neutral-300">4.2%</span>
-                  <span className="text-xs font-bold text-neutral-300">lift</span>
+                <div className="flex items-baseline gap-2 mb-3">
+                  <span className="text-4xl font-black text-neutral-200">4.2%</span>
+                  <span className="text-sm font-bold text-neutral-300">lift</span>
                 </div>
-                <Sparkline values={[1.1, 1.8, 2.4, 2.9, 3.6, 4.2]} color="#d1d5db" />
-                <div className="absolute inset-0 bg-white/65 flex items-center justify-center rounded-xl">
-                  <div className="text-center px-3">
-                    <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-0.5">GrabAds · Signal 4</p>
-                    <p className="text-[10px] text-neutral-400">Connect to unlock</p>
+                <Sparkline values={[1.1, 1.8, 2.4, 2.9, 3.6, 4.2]} color="#d1d5db" height={72} />
+                <div className="absolute inset-0 bg-white/70 flex items-center justify-center rounded-2xl">
+                  <div className="text-center px-4">
+                    <p className="text-xs font-bold text-neutral-600 uppercase tracking-wider mb-1">GrabAds · Signal 4</p>
+                    <p className="text-xs text-neutral-500">Connect to unlock purchase attribution</p>
                   </div>
                 </div>
               </div>
@@ -2372,73 +2371,73 @@ export default function PortalDemoPage() {
                 </div>
               </div>
 
-              {/* Horizontal scrollable prediction timeline */}
+              {/* Horizontal scrollable prediction timeline — latest first */}
               <div className="px-6 pt-5 pb-2">
-                <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Prediction timeline · scroll to see all weeks →</p>
+                <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-1">Prediction timeline · latest first · scroll to see history →</p>
+                <p className="text-xs text-neutral-500 mb-4">Every prediction locked at publication · verified against actuals the following week</p>
               </div>
-              <div className="overflow-x-auto pb-5 px-4" style={{ scrollbarWidth: "none" }}>
+              <div className="overflow-x-auto pb-5 px-4" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
                 <div className="flex gap-3" style={{ width: "max-content" }}>
-                  {/* Verified past predictions */}
-                  {[
-                    { week: "Wk 1→2", prediction: "Save rate will reach 4.6–4.9% as UGC seeding kicks in", actual: "4.8%", delta: "Within range", confidence: "—" },
-                    { week: "Wk 2→3", prediction: "UGC authenticity ratio will lift +3–5pp if seeding is actioned", actual: "+3pp", delta: "Bottom of range", confidence: "—" },
-                    { week: "Wk 3→4", prediction: "Mid-tier KOLs will underperform micro-tier on save rate (below 6%)", actual: "5.2–5.6%", delta: "Confirmed", confidence: "—" },
-                    { week: "Wk 4→5", prediction: "Recipe content will outperform lifestyle at 2×+ save rate ratio", actual: "2.3×", delta: "Confirmed", confidence: "—" },
-                    { week: "Wk 5→6", prediction: "Campaign health will reach 72–76 if KOL rebalancing is actioned", actual: "74", delta: "Centre of range", confidence: "—" },
-                  ].map((p, i) => (
-                    <div key={i} className="w-56 shrink-0 rounded-2xl border-2 border-emerald-200 bg-emerald-50 flex flex-col">
-                      <div className="px-4 pt-4 pb-3 border-b border-emerald-200">
-                        <p className="text-xs font-black text-emerald-700 uppercase tracking-widest mb-1">{p.week}</p>
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 rounded-full px-2 py-0.5">
-                          <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                          Verified
-                        </span>
-                      </div>
-                      <div className="px-4 py-3 flex-1">
-                        <p className="text-xs text-neutral-700 leading-snug mb-3">{p.prediction}</p>
-                        <div className="mt-auto">
-                          <p className="text-[10px] text-neutral-500 uppercase tracking-wider mb-0.5">What happened</p>
-                          <p className="text-lg font-black text-neutral-900">{p.actual}</p>
-                          <p className="text-xs text-emerald-700 font-semibold">{p.delta}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* Divider card */}
-                  <div className="w-12 shrink-0 flex flex-col items-center justify-center gap-2">
-                    <div className="w-px flex-1 bg-neutral-300" />
-                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider rotate-90 whitespace-nowrap">Now</span>
-                    <div className="w-px flex-1 bg-neutral-300" />
-                  </div>
-
-                  {/* Locked forward predictions */}
+                  {/* Locked forward predictions — FIRST (most recent/current) */}
                   {[
                     { week: "Wk 6→7", prediction: "Save rate will reach 7.0–7.6% if recipe brief is actioned this week", confidence: "81%", label: "Save rate" },
                     { week: "Wk 6→7", prediction: "Gate 1: 56% probability by Wk 7 · rises to 78% by Wk 8 if brief actioned", confidence: "78%", label: "Gate 1 fire" },
                     { week: "Wk 7→8", prediction: "Meta Feed format will fall below 20% by Week 8 without creative refresh", confidence: "73%", label: "Creative battery" },
                     { week: "Wk 7→8", prediction: "Campaign health will reach 77–80 if KOL + creative brief both actioned", confidence: "69%", label: "Health score" },
                   ].map((p, i) => (
-                    <div key={i} className="w-56 shrink-0 rounded-2xl border-2 border-neutral-300 bg-white flex flex-col">
-                      <div className="px-4 pt-4 pb-3 border-b border-neutral-200">
-                        <p className="text-xs font-black text-neutral-600 uppercase tracking-widest mb-1">{p.week} · {p.label}</p>
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-neutral-600 bg-neutral-100 rounded-full px-2 py-0.5">
-                          🔒 Locked at publication
+                    <div key={i} className="w-56 shrink-0 rounded-2xl border-2 border-neutral-800 bg-neutral-900 flex flex-col">
+                      <div className="px-4 pt-4 pb-3 border-b border-white/10">
+                        <p className="text-xs font-black text-neutral-300 uppercase tracking-widest mb-1">{p.week} · {p.label}</p>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-400 bg-amber-400/10 border border-amber-400/30 rounded-full px-2 py-0.5">
+                          🔒 Locked · awaiting verification
+                        </span>
+                      </div>
+                      <div className="px-4 py-3 flex-1">
+                        <p className="text-xs text-neutral-300 leading-snug mb-3">{p.prediction}</p>
+                        <div>
+                          <p className="text-[10px] text-neutral-500 uppercase tracking-wider mb-0.5">Confidence</p>
+                          <p className="text-xl font-black text-white">{p.confidence}</p>
+                          <p className="text-xs text-neutral-500 mt-0.5">Verified in Week 7 report</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Divider */}
+                  <div className="w-14 shrink-0 flex flex-col items-center justify-center gap-1 py-4">
+                    <div className="w-px flex-1 bg-neutral-300" />
+                    <span className="text-[9px] font-black text-neutral-500 uppercase tracking-wider whitespace-nowrap" style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}>Now · Wk 6</span>
+                    <div className="w-px flex-1 bg-neutral-300" />
+                  </div>
+
+                  {/* Verified past predictions — newest to oldest */}
+                  {[
+                    { week: "Wk 5→6", prediction: "Campaign health will reach 72–76 if KOL rebalancing is actioned", actual: "74", delta: "Centre of range" },
+                    { week: "Wk 4→5", prediction: "Recipe content will outperform lifestyle at 2×+ save rate ratio", actual: "2.3×", delta: "Confirmed" },
+                    { week: "Wk 3→4", prediction: "Mid-tier KOLs will underperform micro-tier on save rate (below 6%)", actual: "5.2–5.6%", delta: "Confirmed" },
+                    { week: "Wk 2→3", prediction: "UGC authenticity ratio will lift +3–5pp if seeding is actioned", actual: "+3pp", delta: "Bottom of range" },
+                    { week: "Wk 1→2", prediction: "Save rate will reach 4.6–4.9% as UGC seeding kicks in", actual: "4.8%", delta: "Within range" },
+                  ].map((p, i) => (
+                    <div key={i} className="w-56 shrink-0 rounded-2xl border-2 border-emerald-200 bg-emerald-50 flex flex-col">
+                      <div className="px-4 pt-4 pb-3 border-b border-emerald-200">
+                        <p className="text-xs font-black text-emerald-800 uppercase tracking-widest mb-1">{p.week}</p>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-200 rounded-full px-2 py-0.5">
+                          <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          Verified
                         </span>
                       </div>
                       <div className="px-4 py-3 flex-1">
                         <p className="text-xs text-neutral-700 leading-snug mb-3">{p.prediction}</p>
-                        <div className="mt-auto">
-                          <p className="text-[10px] text-neutral-500 uppercase tracking-wider mb-0.5">Confidence</p>
-                          <p className="text-lg font-black text-neutral-900">{p.confidence}</p>
-                          <p className="text-xs text-neutral-500">Verified in Week 7 report</p>
+                        <div>
+                          <p className="text-[10px] text-neutral-500 uppercase tracking-wider mb-0.5">What happened</p>
+                          <p className="text-xl font-black text-neutral-900">{p.actual}</p>
+                          <p className="text-xs text-emerald-700 font-semibold mt-0.5">{p.delta}</p>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-              <p className="text-xs text-neutral-500 px-6 pb-4 leading-snug">Every prediction is locked at publication and verified against actuals the following week. This is your measure of how well ShiftImpact OS reads your campaign.</p>
 
               {/* Prediction Miss Protocol */}
               <div className="border-t border-neutral-200 px-6 py-4">
