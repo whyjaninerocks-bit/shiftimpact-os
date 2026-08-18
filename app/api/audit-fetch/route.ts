@@ -472,6 +472,97 @@ async function fetchArticleUrl(url: string): Promise<{ content: string; count: n
   return fetchBrandWebsite(url);
 }
 
+// ── Threads (Meta) — brand posts + keyword search ─────────────────────────────
+// Actor: futurizerush/meta-threads-scraper
+// Modes used:
+//   "keywords" — search brand name or campaign hashtag across all Threads posts
+//   "usernames" — fetch brand's own Threads profile posts
+//
+// Malaysian context: Threads reached ~200M MAU globally by end-2024.
+// MY adoption is growing in the 25–40 urban professional segment, driven by
+// Instagram account integration. Tracked as ATTITUDE signal (supporting only)
+// — not gate-eligible. Useful for brand conversation monitoring and cultural signal
+// seeding, not weekly S1/S2/S3 gate inputs.
+
+async function fetchThreads(
+  brandName: string,
+  handle?: string,
+  campaignName?: string
+): Promise<{ content: string; count: number }> {
+  const keywords: string[] = [];
+  if (brandName) keywords.push(brandName);
+  if (campaignName) keywords.push(campaignName);
+
+  // Mode: if handle provided, fetch profile posts + do keyword search
+  // Otherwise keyword-only
+  const results: string[] = [];
+  let totalCount = 0;
+
+  // Keyword search — brand mentions across all Threads
+  if (keywords.length > 0) {
+    const keywordItems = await runApifyActor("futurizerush/meta-threads-scraper", {
+      mode: "keywords",
+      keywords,
+      max_posts: 20,
+      search_filter: "recent",
+    });
+
+    if (Array.isArray(keywordItems) && keywordItems.length > 0) {
+      const lines = keywordItems.slice(0, 20).map((post: Record<string, unknown>, i) => {
+        const text = ((post.text || post.content || post.caption || "") as string).slice(0, 400);
+        const author = ((post.username || post.author || post.ownerUsername || "unknown") as string);
+        const likes = (post.likeCount || post.likes || 0) as number;
+        const replies = (post.replyCount || post.replies || 0) as number;
+        const date = ((post.timestamp || post.createdAt || "") as string).slice(0, 10);
+        const parts = [`[Threads Post ${i + 1}] @${author}${date ? ` — ${date}` : ""}`];
+        parts.push(text || "No text");
+        if (likes || replies) parts.push(`Likes: ${likes}  Replies: ${replies}`);
+        return parts.join("\n");
+      });
+      results.push(
+        `=== Threads — Keyword search "${keywords.join(" / ")}" — ${keywordItems.length} posts ===\n\n` +
+        lines.join("\n\n---\n\n")
+      );
+      totalCount += keywordItems.length;
+    }
+  }
+
+  // Profile posts — brand's own Threads account
+  if (handle) {
+    const clean = handle.replace(/^@/, "");
+    const profileItems = await runApifyActor("futurizerush/meta-threads-scraper", {
+      mode: "usernames",
+      usernames: [clean],
+      max_posts: 15,
+    });
+
+    if (Array.isArray(profileItems) && profileItems.length > 0) {
+      const lines = profileItems.slice(0, 15).map((post: Record<string, unknown>, i) => {
+        const text = ((post.text || post.content || "") as string).slice(0, 400);
+        const likes = (post.likeCount || post.likes || 0) as number;
+        const replies = (post.replyCount || post.replies || 0) as number;
+        const date = ((post.timestamp || post.createdAt || "") as string).slice(0, 10);
+        const parts = [`[Brand Post ${i + 1}${date ? ` — ${date}` : ""}]`];
+        parts.push(text || "No text");
+        if (likes || replies) parts.push(`Likes: ${likes}  Replies: ${replies}`);
+        return parts.join("\n");
+      });
+      results.push(
+        `=== Threads — @${clean} brand posts — ${profileItems.length} posts ===\n\n` +
+        lines.join("\n\n---\n\n")
+      );
+      totalCount += profileItems.length;
+    }
+  }
+
+  if (results.length === 0) return { content: "", count: 0 };
+
+  return {
+    content: results.join("\n\n" + "─".repeat(60) + "\n\n"),
+    count: totalCount,
+  };
+}
+
 // ── YouTube channel ───────────────────────────────────────────────────────────
 async function fetchYouTubeChannel(channelUrl: string, brandName: string): Promise<{ content: string; count: number }> {
   // Normalise: accept handle, @handle, or full URL
@@ -518,9 +609,10 @@ export async function POST(req: NextRequest) {
       website_url?: string;
       hashtag?: string;
       kol_platform?: "instagram" | "tiktok";
+      threads_handle?: string;
     };
 
-    const { platform, handle, brand_name, campaign_name, page_url, website_url, hashtag, kol_platform } = body;
+    const { platform, handle, brand_name, campaign_name, page_url, website_url, hashtag, kol_platform, threads_handle } = body;
 
     // Website scraping: tries Apify crawler first (handles JS), falls back to plain fetch
     if (platform === "website") {
@@ -586,6 +678,9 @@ export async function POST(req: NextRequest) {
         break;
       case "trade_press_deep":
         result = await fetchTradePressDeep(brand_name ?? "", campaign_name);
+        break;
+      case "threads":
+        result = await fetchThreads(brand_name ?? "", threads_handle ?? handle, campaign_name);
         break;
       default:
         return NextResponse.json({ error: "Unknown platform." }, { status: 400 });

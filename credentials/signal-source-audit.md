@@ -26,6 +26,7 @@ These are active Apify actors wired into `/app/api/audit-fetch/route.ts`. They f
 | Brand website | `apify~website-content-crawler` | JS-rendered brand site content |
 | Article URL | `apify~website-content-crawler` | Single article deep scrape |
 | Podcasts | iTunes API (free, no Apify) | Apple Podcasts search + RSS episode data |
+| Threads | `futurizerush/meta-threads-scraper` | Brand keyword mentions + profile posts; attitude signal, no login required |
 
 **OIE / Prospect intelligence (separate Apify pipeline):**
 
@@ -158,7 +159,7 @@ Cross-referenced against Signal Gap Framework v2 (August 2026). Signals are grou
 |---|---|---|
 | Xiaohongshu / RedNote | Save rate, UGC volume | High — MY Chinese community (23% of population); XHS is the primary discovery platform for this segment |
 | LinkedIn | Share rate, comment depth | Medium — relevant for B2B vertical expansion |
-| Threads | Engagement rate | Low (early stage in MY) |
+| Threads | Engagement rate | **NOW TRACKED** — keyword + profile scraping via `futurizerush/meta-threads-scraper` in `/api/audit-fetch`; attitude signal (on-demand, not cron); classified as supporting only, not gate-eligible |
 | Pinterest | Save rate | Low (niche use case) |
 | Viu / Disney+ / streaming | Content completion | Low (no current client use case) |
 
