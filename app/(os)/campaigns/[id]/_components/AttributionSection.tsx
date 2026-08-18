@@ -1,0 +1,465 @@
+"use client";
+
+// app/campaigns/[id]/_components/AttributionSection.tsx
+// Feature 14B — Universal Business Outcome Attribution Framework (Sprint 4)
+// Data capture layer only. AI-assisted MMM analysis: Sprint 5+.
+//
+// Three-lens methodology:
+//   MMM      — Marketing Mix Modelling (quarterly, cross-channel aggregate)
+//   Holdout  — Incrementality / Holdout Testing (per-channel, per-campaign)
+//   Proxy    — Proxy Correlation (weekly signal-to-sales estimation)
+//
+// Strategy lead adds one record per channel per week.
+// Minimum 12 weeks of MMM data before AI analysis is viable.
+// INTERNAL ONLY.
+
+import { useState, useTransition, useEffect } from "react";
+import { addAttributionRecord, deleteAttributionRecord } from "@/lib/actions";
+import type { AttributionRecord } from "@/lib/types";
+import {
+  Badge,
+  Card,
+  SectionTitle,
+  buttonClass,
+  buttonSecondaryClass,
+  inputClass,
+  labelClass,
+} from "@/app/_components/ui";
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const TEST_TYPE_META: Record<string, { label: string; tone: "neutral" | "blue" | "purple" }> = {
+  MMM:     { label: "MMM",     tone: "neutral" },
+  Holdout: { label: "Holdout", tone: "blue"    },
+  Proxy:   { label: "Proxy",   tone: "purple"  },
+};
+
+function fmtRM(val: number | null) {
+  if (val == null) return "—";
+  return `RM ${val.toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+}
+
+// ─── Add record form ──────────────────────────────────────────────────────────
+
+interface AddRecordFormProps {
+  campaignId: string;
+  suggestedWeek: number;
+}
+
+function AddRecordForm({ campaignId, suggestedWeek }: AddRecordFormProps) {
+  const [isPending, startTransition] = useTransition();
+  const [open, setOpen] = useState(false);
+  const [weekNum, setWeekNum] = useState(String(suggestedWeek));
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const [weekOf, setWeekOf] = useState(todayStr);
+  const [channelName, setChannelName] = useState("");
+  const [spendRm, setSpendRm] = useState("");
+  const [salesUnits, setSalesUnits] = useState("");
+  const [salesRm, setSalesRm] = useState("");
+  const [liftPct, setLiftPct] = useState("");
+  const [testType, setTestType] = useState("MMM");
+  const [notes, setNotes] = useState("");
+
+  const handleAdd = () => {
+    if (!channelName.trim() || !weekNum) return;
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.append("week_number",          weekNum);
+      fd.append("week_of",              weekOf);
+      fd.append("channel_name",         channelName.trim());
+      fd.append("spend_rm",             spendRm);
+      fd.append("sales_units",          salesUnits);
+      fd.append("sales_rm",             salesRm);
+      fd.append("incremental_lift_pct", liftPct);
+      fd.append("test_type",            testType);
+      fd.append("notes",                notes);
+      await addAttributionRecord(campaignId, fd);
+      // Reset form
+      setChannelName("");
+      setSpendRm("");
+      setSalesUnits("");
+      setSalesRm("");
+      setLiftPct("");
+      setNotes("");
+      setOpen(false);
+    });
+  };
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} className={buttonClass}>
+        + Add Record
+      </button>
+    );
+  }
+
+  return (
+    <Card className="mt-3 border-blue-200 bg-blue-50/30">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-semibold text-neutral-700">New Attribution Record</p>
+        <button onClick={() => setOpen(false)} className="text-xs text-neutral-400 hover:text-neutral-700">Cancel</button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={labelClass}>Week #</label>
+          <input type="number" min={1} value={weekNum} onChange={e => setWeekNum(e.target.value)} className={inputClass} />
+        </div>
+        <div>
+          <label className={labelClass}>Week of</label>
+          <input type="date" value={weekOf} onChange={e => setWeekOf(e.target.value)} className={inputClass} />
+        </div>
+        <div className="col-span-2">
+          <label className={labelClass}>Channel name *</label>
+          <input value={channelName} onChange={e => setChannelName(e.target.value)}
+            placeholder="e.g. Meta Paid Social, TikTok TopView, OOH Klang Valley"
+            className={inputClass} />
+        </div>
+        <div>
+          <label className={labelClass}>Spend (RM)</label>
+          <input type="number" step="0.01" value={spendRm} onChange={e => setSpendRm(e.target.value)} className={inputClass} placeholder="0.00" />
+        </div>
+        <div>
+          <label className={labelClass}>Incremental lift %</label>
+          <input type="number" step="0.1" value={liftPct} onChange={e => setLiftPct(e.target.value)} className={inputClass} placeholder="Holdout result" />
+        </div>
+        <div>
+          <label className={labelClass}>Sales units</label>
+          <input type="number" value={salesUnits} onChange={e => setSalesUnits(e.target.value)} className={inputClass} placeholder="Total / sample" />
+        </div>
+        <div>
+          <label className={labelClass}>Sales value (RM)</label>
+          <input type="number" step="0.01" value={salesRm} onChange={e => setSalesRm(e.target.value)} className={inputClass} placeholder="0.00" />
+        </div>
+        <div>
+          <label className={labelClass}>Data type</label>
+          <select value={testType} onChange={e => setTestType(e.target.value)} className={inputClass}>
+            <option value="MMM">MMM — weekly spend/sales for regression model</option>
+            <option value="Holdout">Holdout — incrementality test result</option>
+            <option value="Proxy">Proxy — signal-to-sales correlation estimate</option>
+          </select>
+        </div>
+        <div>
+          <label className={labelClass}>Notes</label>
+          <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional context" className={inputClass} />
+        </div>
+      </div>
+
+      <button onClick={handleAdd} disabled={isPending || !channelName.trim()} className={buttonClass + " mt-3"}>
+        {isPending ? "Adding…" : "Add Record"}
+      </button>
+    </Card>
+  );
+}
+
+// ─── Records table ────────────────────────────────────────────────────────────
+
+interface RecordsTableProps {
+  campaignId: string;
+  records: AttributionRecord[];
+}
+
+function RecordsTable({ campaignId, records }: RecordsTableProps) {
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  if (records.length === 0) return null;
+
+  // Group by week
+  const byWeek: Record<number, AttributionRecord[]> = {};
+  for (const r of records) {
+    if (!byWeek[r.week_number]) byWeek[r.week_number] = [];
+    byWeek[r.week_number].push(r);
+  }
+  const weeks = Object.keys(byWeek).map(Number).sort((a, b) => b - a);
+
+  const handleDelete = (id: string) => {
+    setDeletingId(id);
+    startTransition(async () => {
+      await deleteAttributionRecord(id, campaignId);
+      setDeletingId(null);
+    });
+  };
+
+  return (
+    <div className="mt-4 space-y-4">
+      {weeks.map(w => (
+        <Card key={w}>
+          <p className="text-xs font-semibold text-neutral-500 mb-2">Week {w}</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-neutral-200">
+                  <th className="text-left py-1 pr-3 font-medium text-neutral-500">Channel</th>
+                  <th className="text-left py-1 pr-3 font-medium text-neutral-500">Type</th>
+                  <th className="text-right py-1 pr-3 font-medium text-neutral-500">Spend</th>
+                  <th className="text-right py-1 pr-3 font-medium text-neutral-500">Sales (RM)</th>
+                  <th className="text-right py-1 pr-3 font-medium text-neutral-500">Lift %</th>
+                  <th className="text-left py-1 pr-3 font-medium text-neutral-500">Notes</th>
+                  <th className="py-1" />
+                </tr>
+              </thead>
+              <tbody>
+                {byWeek[w].map(r => {
+                  const ttm = TEST_TYPE_META[r.test_type] ?? TEST_TYPE_META.MMM;
+                  return (
+                    <tr key={r.id} className="border-b border-neutral-100 last:border-0">
+                      <td className="py-1.5 pr-3 font-medium text-neutral-800 whitespace-nowrap">{r.channel_name}</td>
+                      <td className="py-1.5 pr-3 whitespace-nowrap">
+                        <Badge tone={ttm.tone}>{ttm.label}</Badge>
+                      </td>
+                      <td className="py-1.5 pr-3 text-right whitespace-nowrap">{fmtRM(r.spend_rm)}</td>
+                      <td className="py-1.5 pr-3 text-right whitespace-nowrap">{fmtRM(r.sales_rm)}</td>
+                      <td className="py-1.5 pr-3 text-right whitespace-nowrap">
+                        {r.incremental_lift_pct != null ? `${r.incremental_lift_pct}%` : "—"}
+                      </td>
+                      <td className="py-1.5 pr-3 text-neutral-500 max-w-xs truncate">{r.notes || "—"}</td>
+                      <td className="py-1.5">
+                        <button
+                          onClick={() => handleDelete(r.id)}
+                          disabled={isPending && deletingId === r.id}
+                          className="text-neutral-300 hover:text-red-500 text-xs"
+                          title="Remove"
+                        >
+                          ×
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ─── GA5 benchmark placeholder ───────────────────────────────────────────────
+
+const GA5_MIN_N = 5;
+
+// ─── Own campaign performance baseline (Sprint 10) ────────────────────────────
+
+interface OwnBaselineData {
+  week_count: number;
+  avg_s1: number | null;
+  avg_s2: number | null;
+  avg_s3: number | null;
+  weeks: Array<{ week: number; s1: number | null; s2: number | null; s3: number | null; demand: string | null; nurture: string | null; conversion: string | null }>;
+}
+
+interface Ga5Response {
+  own_baseline: OwnBaselineData;
+  own_attribution: { week_count: number; total_spend_rm: number | null; total_sales_rm: number | null; roi_ratio: number | null; avg_lift_pct: number | null };
+  category: string | null;
+  category_n: number;
+  unlocked: boolean;
+  ga5_min_n: number;
+}
+
+function healthDot(status: string | null) {
+  if (!status) return <span className="w-2 h-2 rounded-full bg-neutral-200 inline-block" />;
+  if (status === "On Track") return <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />;
+  if (status === "Watch") return <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />;
+  return <span className="w-2 h-2 rounded-full bg-red-400 inline-block" />;
+}
+
+function OwnBaselinePanel({ campaignId }: { campaignId: string }) {
+  const [data, setData] = useState<Ga5Response | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/ga5-benchmarks?campaign_id=${campaignId}`)
+      .then(r => r.json())
+      .then(setData)
+      .catch(() => {/* non-critical */})
+      .finally(() => setLoading(false));
+  }, [campaignId]);
+
+  if (loading) return (
+    <Card className="mb-4">
+      <p className="text-xs text-neutral-400 animate-pulse">Loading performance baseline...</p>
+    </Card>
+  );
+
+  if (!data || data.own_baseline.week_count === 0) return null;
+
+  const { own_baseline: bl, own_attribution: attr } = data;
+
+  return (
+    <Card className="mb-4">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-semibold text-neutral-700">Performance Baseline</p>
+        <Badge tone="neutral">{bl.week_count} week{bl.week_count !== 1 ? "s" : ""} of data</Badge>
+      </div>
+
+      {/* Signal averages */}
+      <div className="grid grid-cols-3 gap-3 mb-3">
+        {[
+          { label: "Avg S1", value: bl.avg_s1 !== null ? `${bl.avg_s1}%` : "—" },
+          { label: "Avg S2", value: bl.avg_s2 !== null ? `${bl.avg_s2}%` : "—" },
+          { label: "Avg S3", value: bl.avg_s3 !== null ? `${bl.avg_s3}/wk` : "—" },
+        ].map(({ label, value }) => (
+          <div key={label} className="rounded-md bg-neutral-50 border border-neutral-100 px-3 py-2 text-center">
+            <p className="text-xs text-neutral-500 mb-0.5">{label}</p>
+            <p className="text-sm font-semibold text-neutral-800">{value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Attribution ROI */}
+      {attr.week_count > 0 && (
+        <div className="flex items-center gap-4 pt-2 border-t border-neutral-100">
+          {attr.roi_ratio !== null && (
+            <div>
+              <p className="text-xs text-neutral-500">ROI ratio</p>
+              <p className="text-sm font-semibold text-neutral-800">{attr.roi_ratio}x</p>
+            </div>
+          )}
+          {attr.avg_lift_pct !== null && (
+            <div>
+              <p className="text-xs text-neutral-500">Avg lift</p>
+              <p className="text-sm font-semibold text-neutral-800">{attr.avg_lift_pct}%</p>
+            </div>
+          )}
+          {attr.total_spend_rm !== null && (
+            <div>
+              <p className="text-xs text-neutral-500">Total spend</p>
+              <p className="text-sm font-semibold text-neutral-800">
+                RM {attr.total_spend_rm.toLocaleString("en-MY")}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Week-by-week health dots */}
+      {bl.weeks.length > 1 && (
+        <div className="mt-3 pt-2 border-t border-neutral-100">
+          <p className="text-xs text-neutral-400 mb-1.5">Weekly signal health (Demand / Nurture / Conversion)</p>
+          <div className="flex flex-wrap gap-1.5">
+            {bl.weeks.map(w => (
+              <div key={w.week} className="flex items-center gap-0.5 rounded bg-neutral-50 border border-neutral-100 px-1.5 py-0.5">
+                <span className="text-xs text-neutral-400 mr-1">W{w.week}</span>
+                {healthDot(w.demand)}
+                {healthDot(w.nurture)}
+                {healthDot(w.conversion)}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <p className="text-xs text-neutral-400 mt-2">
+        Category benchmarks ({data.category ?? "unknown"}) unlock at {GA5_MIN_N}+ clients.
+        Currently {data.category_n} client{data.category_n !== 1 ? "s" : ""}.
+      </p>
+    </Card>
+  );
+}
+
+function Ga5BenchmarkBanner({
+  industryCategory,
+  clientCount,
+}: {
+  industryCategory: string;
+  clientCount: number;
+}) {
+  const needed = GA5_MIN_N - clientCount;
+  if (clientCount >= GA5_MIN_N) return null; // unlocked — render benchmarks in a future sprint
+  return (
+    <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50/60 px-4 py-3 flex items-start gap-3">
+      <div className="mt-0.5 shrink-0">
+        {/* lock icon */}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <div>
+        <p className="text-xs font-semibold text-amber-800">
+          Category Benchmarks — {industryCategory}
+        </p>
+        <p className="text-xs text-amber-700 mt-0.5">
+          Benchmarks unlock with {GA5_MIN_N}+ clients in this category.{" "}
+          Currently {clientCount} client{clientCount !== 1 ? "s" : ""} — {needed} more needed.
+          Once unlocked, ShiftImpact OS will surface spend efficiency comparisons,
+          signal health norms, and outcome lift benchmarks for your category.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── MMM readiness indicator ──────────────────────────────────────────────────
+
+function MmmReadiness({ weekCount }: { weekCount: number }) {
+  const pct = Math.min(100, Math.round((weekCount / 12) * 100));
+  const ready = weekCount >= 12;
+  return (
+    <Card className="mb-4">
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-xs font-medium text-neutral-600">MMM Data Readiness</p>
+        <Badge tone={ready ? "green" : weekCount >= 6 ? "amber" : "neutral"}>
+          {ready ? "Ready" : weekCount >= 6 ? "Building" : "Early"}
+        </Badge>
+      </div>
+      <div className="h-1.5 rounded-full bg-neutral-100 overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all ${ready ? "bg-emerald-500" : weekCount >= 6 ? "bg-amber-400" : "bg-neutral-300"}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <p className="text-xs text-neutral-400 mt-1">
+        {weekCount} of 12 weeks collected — {ready ? "MMM analysis viable in Sprint 5+." : `${12 - weekCount} more weeks needed before MMM regression is viable.`}
+      </p>
+    </Card>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+interface AttributionSectionProps {
+  campaignId: string;
+  attributionRecords: AttributionRecord[];
+  industryCategory: string;
+  categoryClientCount: number;
+}
+
+export function AttributionSection({
+  campaignId,
+  attributionRecords,
+  industryCategory,
+  categoryClientCount,
+}: AttributionSectionProps) {
+  // Count distinct weeks that have records
+  const weekCount = new Set(attributionRecords.map(r => r.week_number)).size;
+  const latestWeek = attributionRecords[0]?.week_number ?? 0;
+  const suggestedWeek = latestWeek + 1 || 1;
+
+  return (
+    <section id="attribution">
+      <div className="flex items-center gap-2 mb-3">
+        <SectionTitle id="attribution">Attribution Data Capture</SectionTitle>
+        <Badge tone="neutral">F14B ⚿</Badge>
+      </div>
+
+      <p className="text-xs text-neutral-500 mb-4">
+        Three-lens attribution framework (MMM / Holdout / Proxy). Enter weekly spend and sales data
+        per channel. AI-assisted MMM analysis requires minimum 12 weeks.
+      </p>
+
+      <OwnBaselinePanel campaignId={campaignId} />
+
+      <Ga5BenchmarkBanner industryCategory={industryCategory} clientCount={categoryClientCount} />
+
+      <MmmReadiness weekCount={weekCount} />
+
+      <AddRecordForm campaignId={campaignId} suggestedWeek={suggestedWeek} />
+
+      <RecordsTable campaignId={campaignId} records={attributionRecords} />
+    </section>
+  );
+}

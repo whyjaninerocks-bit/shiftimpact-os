@@ -1,0 +1,311 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { getCampaignsForClient, getClient, getAllTeamMembers, getClientChannels, getClientSignalSources, getBrandMomentumScores } from "@/lib/data";
+import { ChannelRegistrySection } from "./_components/ChannelRegistrySection";
+import { SignalSourcesSection } from "./_components/SignalSourcesSection";
+import { BrandMomentumSection } from "./_components/BrandMomentumSection";
+import { CulturalContextSection } from "./_components/CulturalContextSection";
+import { ReportRecipientsSection } from "./_components/ReportRecipientsSection";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createCampaign, updateClient } from "@/lib/actions";
+import {
+  Badge,
+  Card,
+  ErrorBanner,
+  SectionTitle,
+  buttonClass,
+  buttonSecondaryClass,
+  gateSignalTone,
+  icsThresholdTone,
+  inputClass,
+  labelClass,
+  phaseTone,
+} from "@/app/_components/ui";
+
+export default async function ClientDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { id } = await params;
+  const { error } = await searchParams;
+  const client = await getClient(id);
+  if (!client) notFound();
+
+  const supabase = createAdminClient();
+  const [campaigns, teamMembers, clientChannels, signalSources, bmsScores, reportRecipientsRes] = await Promise.all([
+    getCampaignsForClient(id),
+    getAllTeamMembers(),
+    getClientChannels(id),
+    getClientSignalSources(id),
+    getBrandMomentumScores(id),
+    supabase
+      .from("client_report_recipients")
+      .select("id, name, email, recipient_type, created_at")
+      .eq("client_id", id)
+      .order("created_at", { ascending: true }),
+  ]);
+  const reportRecipients = reportRecipientsRes.data ?? [];
+
+  // Cultural signals: pull by direct client_id association, industry match, OR generic (applies to all brands)
+  // Falls back gracefully if the columns don't exist yet (pre-migration 0042)
+  let culturalSignals: {
+    id: string; signal_name: string; signal_type: string; is_trending: boolean;
+    evidence: string; why_it_matters: string | null; brand_fit_status: string;
+    status: string; geographic_scope: string; relevant_industries: string[];
+    is_generic: boolean; client_id: string | null; created_at: string;
+  }[] = [];
+  try {
+    const SELECT_COLS = "id,signal_name,signal_type,is_trending,evidence,why_it_matters,brand_fit_status,status,geographic_scope,relevant_industries,is_generic,client_id,created_at";
+
+    // 1. Signals directly linked to this client
+    const { data: byClient } = await supabase
+      .from("cultural_signals")
+      .select(SELECT_COLS)
+      .eq("client_id", id)
+      .neq("status", "archived")
+      .order("created_at", { ascending: false });
+
+    // 2. Signals tagged with this client's industry — use industry_profile (not .industry)
+    const clientIndustry = client.industry_profile;
+    let byIndustry: typeof byClient = [];
+    if (clientIndustry) {
+      const { data } = await supabase
+        .from("cultural_signals")
+        .select(SELECT_COLS)
+        .contains("relevant_industries", [clientIndustry])
+        .neq("status", "archived")
+        .is("client_id", null)       // only unattached-to-specific-client ones
+        .order("created_at", { ascending: false });
+      byIndustry = data ?? [];
+    }
+
+    // 3. Generic signals — applies to every MY/SEA brand regardless of industry
+    const { data: generic } = await supabase
+      .from("cultural_signals")
+      .select(SELECT_COLS)
+      .eq("is_generic", true)
+      .neq("status", "archived")
+      .is("client_id", null)
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    const seen = new Set<string>();
+    for (const s of [...(byClient ?? []), ...(byIndustry ?? []), ...(generic ?? [])]) {
+      if (!seen.has(s.id)) {
+        seen.add(s.id);
+        culturalSignals.push(s as typeof culturalSignals[number]);
+      }
+    }
+  } catch {
+    // Column doesn't exist yet (pre-migration 0042) — silently skip
+  }
+
+  const updateClientWithId = updateClient.bind(null, id);
+  const createCampaignWithClient = createCampaign;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <Link href="/clients" className="text-sm text-neutral-500 hover:text-neutral-900">← Clients</Link>
+        <h1 className="text-2xl font-bold tracking-tight mt-1">{client.name}</h1>
+        <Badge tone="blue">{client.active_campaigns} active campaigns</Badge>
+      </div>
+
+      <ErrorBanner message={error} />
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-3">
+          <SectionTitle>Campaigns</SectionTitle>
+          {campaigns.map((c) => (
+            <Card key={c.id} className="hover:border-neutral-400 transition-colors">
+              <Link href={`/campaigns/${c.id}`} className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold">{c.name}</p>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    {c.team_member_name ?? "Unassigned"} · Confidence {c.confidence_score}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {c.ics_threshold && (
+                    <Badge tone={icsThresholdTone(c.ics_threshold)}>{c.ics_threshold}</Badge>
+                  )}
+                  <Badge tone={gateSignalTone(c.gate_signal_status)}>{c.gate_signal_status}</Badge>
+                  <Badge tone={phaseTone(c.current_phase)}>{c.current_phase}</Badge>
+                </div>
+              </Link>
+              <div className="mt-2 pt-2 border-t border-neutral-100 flex items-center gap-4 flex-wrap">
+                <a
+                  href={`/brief/${c.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                >
+                  Share Brief Link →
+                </a>
+                <a
+                  href={`/portal/${c.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-emerald-600 hover:text-emerald-800 hover:underline"
+                >
+                  Share Client Portal →
+                </a>
+              </div>
+            </Card>
+          ))}
+          {campaigns.length === 0 && (
+            <Card><p className="text-sm text-neutral-500">No campaigns yet for this client.</p></Card>
+          )}
+
+          <Card>
+            <SectionTitle>New Campaign</SectionTitle>
+            <form action={createCampaignWithClient} className="space-y-3">
+              <input type="hidden" name="client_id" value={client.id} />
+              <div>
+                <label className={labelClass} htmlFor="name">Campaign Name</label>
+                <input className={inputClass} id="name" name="name" required />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="team_member_id">Owner</label>
+                <select className={inputClass} id="team_member_id" name="team_member_id" defaultValue="">
+                  <option value="">Unassigned</option>
+                  {teamMembers.map((tm) => (
+                    <option key={tm.id} value={tm.id}>{tm.name} — {tm.role}</option>
+                  ))}
+                </select>
+              </div>
+              <p className="text-xs text-neutral-400">
+                Creates a Draft FRAME Brief and the 4 standard Phase Gates automatically.
+              </p>
+              <button type="submit" className={buttonClass}>Create Campaign</button>
+            </form>
+          </Card>
+        </div>
+
+        <Card>
+          <SectionTitle>Client Profile</SectionTitle>
+          <form action={updateClientWithId} className="space-y-3">
+            <div>
+              <label className={labelClass} htmlFor="name">Name</label>
+              <input className={inputClass} id="name" name="name" defaultValue={client.name} required />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="industry_profile">Industry Profile</label>
+              <select className={inputClass} id="industry_profile" name="industry_profile" defaultValue={client.industry_profile} required>
+                <option value="FMCG">FMCG</option>
+                <option value="QSR">QSR</option>
+                <option value="Retail">Retail</option>
+                <option value="Financial Services">Financial Services</option>
+                <option value="Telco">Telco</option>
+                <option value="Healthcare">Healthcare</option>
+                <option value="Insurance">Insurance</option>
+                <option value="Automotive">Automotive</option>
+                <option value="Hospitality">Hospitality</option>
+                <option value="Media & Entertainment">Media & Entertainment</option>
+                <option value="E-Commerce">E-Commerce</option>
+                <option value="Education">Education</option>
+                <option value="B2B">B2B</option>
+                <option value="B2B SaaS">B2B SaaS</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="business_outcome_label">Business Outcome Label</label>
+              <input className={inputClass} id="business_outcome_label" name="business_outcome_label" defaultValue={client.business_outcome_label} />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="retention_metric_label">Retention Metric Label</label>
+              <input className={inputClass} id="retention_metric_label" name="retention_metric_label" defaultValue={client.retention_metric_label} />
+            </div>
+            <div className="pt-2 border-t border-neutral-100">
+              <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">Brief notification recipient</p>
+              <div className="space-y-2">
+                <div>
+                  <label className={labelClass} htmlFor="contact_name">Contact name</label>
+                  <input className={inputClass} id="contact_name" name="contact_name" defaultValue={client.contact_name ?? ""} placeholder="e.g. Aisha Omar" />
+                </div>
+                <div>
+                  <label className={labelClass} htmlFor="contact_email">Contact email</label>
+                  <input className={inputClass} type="email" id="contact_email" name="contact_email" defaultValue={client.contact_email ?? ""} placeholder="client@brand.com" />
+                </div>
+              </div>
+            </div>
+
+            {/* Signal automation config — feeds S1 and S3 weekly crons */}
+            <div className="pt-2 border-t border-neutral-100">
+              <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1">Signal Automation</p>
+              <p className="text-[11px] text-neutral-400 mb-2">
+                Set these once. The OS will auto-update S1 (Share of Search) and S3 (UGC Volume) each week without manual entry.
+              </p>
+              <div className="space-y-2">
+                <div>
+                  <label className={labelClass} htmlFor="primary_hashtag">Primary Hashtag (for S3 UGC scan)</label>
+                  <input
+                    className={inputClass}
+                    id="primary_hashtag"
+                    name="primary_hashtag"
+                    defaultValue={(client as unknown as Record<string, string>).primary_hashtag ?? ""}
+                    placeholder="e.g. cookswith (without #)"
+                  />
+                </div>
+                <div>
+                  <label className={labelClass} htmlFor="brand_search_term">Brand Search Term (for S1 Google Trends)</label>
+                  <input
+                    className={inputClass}
+                    id="brand_search_term"
+                    name="brand_search_term"
+                    defaultValue={(client as unknown as Record<string, string>).brand_search_term ?? ""}
+                    placeholder="e.g. Cooks sauce Malaysia"
+                  />
+                </div>
+                <div>
+                  <label className={labelClass} htmlFor="tiktok_handle">TikTok Handle</label>
+                  <input
+                    className={inputClass}
+                    id="tiktok_handle"
+                    name="tiktok_handle"
+                    defaultValue={(client as unknown as Record<string, string>).tiktok_handle ?? ""}
+                    placeholder="e.g. cooksmalaysia (without @)"
+                  />
+                </div>
+                <div>
+                  <label className={labelClass} htmlFor="ga4_property_id">GA4 Property ID (for WA Echo detection — Phase 2)</label>
+                  <input
+                    className={inputClass}
+                    id="ga4_property_id"
+                    name="ga4_property_id"
+                    defaultValue={(client as unknown as Record<string, string>).ga4_property_id ?? ""}
+                    placeholder="e.g. properties/123456789"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" className={buttonSecondaryClass}>Save</button>
+          </form>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ChannelRegistrySection clientId={id} channels={clientChannels} />
+        <SignalSourcesSection clientId={id} sources={signalSources} />
+      </div>
+
+      <BrandMomentumSection clientId={id} scores={bmsScores} />
+
+      <CulturalContextSection
+        clientId={id}
+        clientIndustry={client.industry_profile ?? null}
+        signals={culturalSignals}
+      />
+
+      <ReportRecipientsSection
+        clientId={id}
+        initial={reportRecipients}
+      />
+    </div>
+  );
+}
