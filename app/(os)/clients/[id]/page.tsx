@@ -233,6 +233,57 @@ export default async function ClientDetailPage({
                 </div>
               </div>
             </div>
+
+            {/* Signal automation config — feeds S1 and S3 weekly crons */}
+            <div className="pt-2 border-t border-neutral-100">
+              <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1">Signal Automation</p>
+              <p className="text-[11px] text-neutral-400 mb-2">
+                Set these once. The OS will auto-update S1 (Share of Search) and S3 (UGC Volume) each week without manual entry.
+              </p>
+              <div className="space-y-2">
+                <div>
+                  <label className={labelClass} htmlFor="primary_hashtag">Primary Hashtag (for S3 UGC scan)</label>
+                  <input
+                    className={inputClass}
+                    id="primary_hashtag"
+                    name="primary_hashtag"
+                    defaultValue={(client as unknown as Record<string, string>).primary_hashtag ?? ""}
+                    placeholder="e.g. cookswith (without #)"
+                  />
+                </div>
+                <div>
+                  <label className={labelClass} htmlFor="brand_search_term">Brand Search Term (for S1 Google Trends)</label>
+                  <input
+                    className={inputClass}
+                    id="brand_search_term"
+                    name="brand_search_term"
+                    defaultValue={(client as unknown as Record<string, string>).brand_search_term ?? ""}
+                    placeholder="e.g. Cooks sauce Malaysia"
+                  />
+                </div>
+                <div>
+                  <label className={labelClass} htmlFor="tiktok_handle">TikTok Handle</label>
+                  <input
+                    className={inputClass}
+                    id="tiktok_handle"
+                    name="tiktok_handle"
+                    defaultValue={(client as unknown as Record<string, string>).tiktok_handle ?? ""}
+                    placeholder="e.g. cooksmalaysia (without @)"
+                  />
+                </div>
+                <div>
+                  <label className={labelClass} htmlFor="ga4_property_id">GA4 Property ID (for WA Echo detection — Phase 2)</label>
+                  <input
+                    className={inputClass}
+                    id="ga4_property_id"
+                    name="ga4_property_id"
+                    defaultValue={(client as unknown as Record<string, string>).ga4_property_id ?? ""}
+                    placeholder="e.g. properties/123456789"
+                  />
+                </div>
+              </div>
+            </div>
+
             <button type="submit" className={buttonSecondaryClass}>Save</button>
           </form>
         </Card>

@@ -11,6 +11,14 @@
     {
       "path": "/api/cron/cultural-scan",
       "schedule": "0 2 * * 1"
+    },
+    {
+      "path": "/api/cron/signal-s3-scan",
+      "schedule": "0 3 * * 2"
+    },
+    {
+      "path": "/api/cron/signal-s1-scan",
+      "schedule": "0 4 * * 2"
     }
   ]
 }

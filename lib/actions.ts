@@ -98,6 +98,11 @@ export async function updateClient(clientId: string, formData: FormData) {
       retention_metric_label: str(formData, "retention_metric_label") || "Retention Metric",
       contact_name: str(formData, "contact_name") || null,
       contact_email: str(formData, "contact_email") || null,
+      // Signal automation config (Migration 0066)
+      primary_hashtag:   str(formData, "primary_hashtag")   || null,
+      brand_search_term: str(formData, "brand_search_term") || null,
+      tiktok_handle:     str(formData, "tiktok_handle")     || null,
+      ga4_property_id:   str(formData, "ga4_property_id")   || null,
     })
     .eq("id", clientId);
 

@@ -634,14 +634,20 @@ export type SignalWeeklyReport = {
 
   // Raw signal inputs
   signal_1_actual_pct: number | null;    // Branded search lift % (Share of Search)
+  signal_1_auto: boolean | null;         // true = written by signal-s1-scan cron
   signal_2_actual_pct: number | null;    // Content save rate %
   signal_2b_actual_pct: number | null;   // TikTok share rate %  (Signal 2B — Sprint 24)
   signal_2b_label: string | null;        // Label for Signal 2B
   signal_3_actual_count: number | null;  // UGC volume
+  signal_3_auto: boolean | null;         // true = written by signal-s3-scan cron
   signal_3b_actual_pct: number | null;   // Video completion rate % (Signal 3B — Sprint 25)
   signal_3b_label: string | null;        // Label for Signal 3B
   signal_4_actual_pct: number | null;    // Retention / repeat visit rate % (Signal 4 — Sprint 25)
   signal_4_label: string | null;         // Label for Signal 4
+
+  // WA Echo Event detection (Migration 0066)
+  direct_traffic_sessions: number | null; // GA4 direct/none sessions (manual v1, GA4 API Phase 2)
+  wa_echo_event: boolean | null;          // S2+S3 convergence confirms WA amplification
 
   // Campaign phase (1-4), computed from week_number / campaign_duration_weeks
   campaign_phase: CampaignPhaseNumber;

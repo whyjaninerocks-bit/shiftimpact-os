@@ -35,7 +35,12 @@ interface MdhRecord {
 interface SignalReport {
   week_number: number;
   signal_1_actual_pct: number | null;
+  signal_1_auto: boolean | null;
   signal_2_actual_pct: number | null;
+  signal_3_actual_count: number | null;
+  signal_3_auto: boolean | null;
+  wa_echo_event: boolean | null;
+  direct_traffic_sessions: number | null;
 }
 
 interface SignalThreshold {
@@ -54,6 +59,7 @@ interface LightResult {
   latestValue: string;
   label: string;
   sublabel: string;
+  auto?: boolean;  // true when value was written by cron, not manual entry
 }
 
 interface AiNarrative {
@@ -204,8 +210,19 @@ export function SignalHealthSection({
   const [loading, setLoading] = useState(false);
   const [aiError, setAiError] = useState("");
 
+  // WA Echo Events — find the most recent flagged week
+  const latestEcho = useMemo(
+    () => signalReports.find(r => r.wa_echo_event),
+    [signalReports]
+  );
+
+  // Auto-updated signals — is the latest week auto-sourced?
+  const latestReport = signalReports[0] ?? null;
+  const s1IsAuto = latestReport?.signal_1_auto ?? false;
+  const s3IsAuto = latestReport?.signal_3_auto ?? false;
+
   const s0 = useMemo(() => computeS0(mdhRecords), [mdhRecords]);
-  const s1 = useMemo(() => computeS1(signalReports, signalThreshold), [signalReports, signalThreshold]);
+  const s1 = useMemo(() => ({ ...computeS1(signalReports, signalThreshold), auto: s1IsAuto }), [signalReports, signalThreshold, s1IsAuto]);
   const s2 = useMemo(() => computeS2(signalReports, signalThreshold), [signalReports, signalThreshold]);
 
   const lights: LightResult[] = [s0, s1, s2];
@@ -269,6 +286,24 @@ export function SignalHealthSection({
         )}
       </div>
 
+      {/* WA Echo Event alert */}
+      {latestEcho && (
+        <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 flex items-start gap-2">
+          <span className="text-emerald-600 text-sm shrink-0">◎</span>
+          <div>
+            <p className="text-xs font-semibold text-emerald-800">
+              WA Echo Event — Week {latestEcho.week_number}
+            </p>
+            <p className="text-[11px] text-emerald-700 mt-0.5">
+              S2 save rate spike and S3 UGC growth converged — content is travelling through WhatsApp networks.
+              {latestEcho.direct_traffic_sessions != null && (
+                <> Direct traffic: {latestEcho.direct_traffic_sessions.toLocaleString()} sessions.</>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Three lights */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
         {lights.map((light) => (
@@ -281,9 +316,16 @@ export function SignalHealthSection({
                 {lightDot(light.status)}
                 <span className="text-xs font-semibold text-neutral-700">{light.label}</span>
               </div>
-              <Badge tone={confidenceTone(light.confidence)} className="text-[9px] shrink-0">
-                {light.confidence}
-              </Badge>
+              <div className="flex items-center gap-1 shrink-0">
+                {light.auto && (
+                  <span className="text-[9px] text-sky-600 font-medium bg-sky-50 border border-sky-200 rounded px-1">
+                    auto
+                  </span>
+                )}
+                <Badge tone={confidenceTone(light.confidence)} className="text-[9px]">
+                  {light.confidence}
+                </Badge>
+              </div>
             </div>
 
             <p className="text-[11px] text-neutral-500 mb-1.5">{light.sublabel}</p>
