@@ -93,17 +93,16 @@ function ViewSwitcher({ current }: { current: "brand" | "agency" | "partner" }) 
     { label: "Partner",       href: "/portal/demo-partner", key: "partner" as const },
   ];
   return (
-    <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 200,
-      background: "#0a0a0a", borderBottom: "1px solid #262626",
-      display: "flex", alignItems: "center", gap: 6, padding: "0 20px", height: 40 }}>
-      <span style={{ color: "#525252", fontSize: 11, letterSpacing: "0.08em",
-        textTransform: "uppercase" as const, fontFamily: "monospace", marginRight: 8 }}>
+    <div className="fixed top-0 left-0 right-0 z-[200] flex items-center gap-1.5 overflow-x-auto"
+      style={{ background: "#0a0a0a", borderBottom: "1px solid #262626", height: 40, padding: "0 12px" }}>
+      <span className="hidden sm:inline shrink-0 mr-1" style={{ color: "#525252", fontSize: 11,
+        letterSpacing: "0.08em", textTransform: "uppercase" as const, fontFamily: "monospace" }}>
         Portal view
       </span>
       {views.map(v => (
-        <a key={v.key} href={v.href} style={{
-          padding: "3px 12px", borderRadius: 4, fontSize: 12, fontWeight: 500,
-          textDecoration: "none",
+        <a key={v.key} href={v.href} className="shrink-0" style={{
+          padding: "3px 10px", borderRadius: 4, fontSize: 12, fontWeight: 500,
+          textDecoration: "none", whiteSpace: "nowrap" as const,
           background: current === v.key ? "#f5f5f4" : "transparent",
           color:      current === v.key ? "#1c1917"  : "#737373",
           border:     `1px solid ${current === v.key ? "#e5e5e4" : "#404040"}`,
@@ -111,7 +110,7 @@ function ViewSwitcher({ current }: { current: "brand" | "agency" | "partner" }) 
           {v.label}
         </a>
       ))}
-      <span style={{ color: "#404040", fontSize: 11, marginLeft: "auto" }}>
+      <span className="hidden sm:inline shrink-0 ml-auto" style={{ color: "#404040", fontSize: 11 }}>
         Demo · illustrative data
       </span>
     </div>
@@ -123,7 +122,7 @@ function SectionQ({ q, label, id, children }: { q: string; label: string; id?: s
   return (
     <section id={id} className="mb-8">
       <div className="bg-neutral-900 px-5 py-3 flex items-baseline gap-3 rounded-t">
-        <span className="text-xs font-bold text-emerald-400 font-mono">{q}</span>
+        <span className="text-xs font-bold text-blue-400 font-mono">{q}</span>
         <span className="text-sm font-semibold text-white">{label}</span>
       </div>
       <div className="border border-neutral-200 border-t-0 rounded-b bg-white p-5 space-y-4">
@@ -143,15 +142,15 @@ function DeliverableRow({
 }) {
   return (
     <div className={`border rounded p-4 ${status === "delivered" ? "border-emerald-200 bg-emerald-50" : status === "partial" ? "border-amber-200 bg-amber-50" : "border-neutral-200 bg-white"}`}>
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div className="flex-1">
           <p className="text-sm font-medium text-neutral-800 leading-snug">{d.task}</p>
           <p className="text-xs text-neutral-500 mt-1">{d.format} · Due {d.due}</p>
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex flex-wrap gap-2 shrink-0">
           {(["delivered", "partial", "pending"] as DeliveryStatus[]).map(s => (
             <button key={s as string} onClick={() => onStatus(s)}
-              className={`px-3 py-1 text-xs rounded border font-medium transition-all ${
+              className={`px-3 py-1.5 text-xs rounded border font-medium transition-all ${
                 status === s
                   ? s === "delivered" ? "bg-emerald-600 border-emerald-600 text-white"
                   : s === "partial"   ? "bg-amber-500 border-amber-500 text-white"
@@ -297,8 +296,8 @@ export default function PartnerDemoPage() {
                 Brief active · Due {ACTIVE_BRIEF.due}
               </div>
             </div>
-            <div className="bg-emerald-50 border border-emerald-200 rounded p-3 text-sm text-emerald-800">
-              <strong>Partner access:</strong> This view is scoped to your deliverables for {CAMPAIGN.campaign}. You can see your brief, your content's performance signals, your compliance record, and upcoming scope. Campaign-level business data is not included in this view.
+            <div className="bg-neutral-50 border border-neutral-200 rounded p-3 text-sm text-neutral-600">
+              <strong className="text-neutral-800">Partner access:</strong> This view is scoped to your deliverables for {CAMPAIGN.campaign}. You can see your brief, your content's performance signals, your compliance record, and upcoming scope. Campaign-level business data is not included.
             </div>
           </div>
 

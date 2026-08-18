@@ -1350,17 +1350,16 @@ function ViewSwitcher({ current }: { current: "brand" | "agency" | "partner" }) 
     { label: "Partner",       href: "/portal/demo-partner", key: "partner" as const },
   ];
   return (
-    <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 200,
-      background: "#0a0a0a", borderBottom: "1px solid #262626",
-      display: "flex", alignItems: "center", gap: 6, padding: "0 20px", height: 40 }}>
-      <span style={{ color: "#525252", fontSize: 11, letterSpacing: "0.08em",
-        textTransform: "uppercase" as const, fontFamily: "monospace", marginRight: 8 }}>
+    <div className="fixed top-0 left-0 right-0 z-[200] flex items-center gap-1.5 overflow-x-auto"
+      style={{ background: "#0a0a0a", borderBottom: "1px solid #262626", height: 40, padding: "0 12px" }}>
+      <span className="hidden sm:inline shrink-0 mr-1" style={{ color: "#525252", fontSize: 11,
+        letterSpacing: "0.08em", textTransform: "uppercase" as const, fontFamily: "monospace" }}>
         Portal view
       </span>
       {views.map(v => (
-        <a key={v.key} href={v.href} style={{
-          padding: "3px 12px", borderRadius: 4, fontSize: 12, fontWeight: 500,
-          textDecoration: "none",
+        <a key={v.key} href={v.href} className="shrink-0" style={{
+          padding: "3px 10px", borderRadius: 4, fontSize: 12, fontWeight: 500,
+          textDecoration: "none", whiteSpace: "nowrap" as const,
           background: current === v.key ? "#f5f5f4" : "transparent",
           color:      current === v.key ? "#1c1917"  : "#737373",
           border:     `1px solid ${current === v.key ? "#e5e5e4" : "#404040"}`,
@@ -1368,7 +1367,7 @@ function ViewSwitcher({ current }: { current: "brand" | "agency" | "partner" }) 
           {v.label}
         </a>
       ))}
-      <span style={{ color: "#404040", fontSize: 11, marginLeft: "auto" }}>
+      <span className="hidden sm:inline shrink-0 ml-auto" style={{ color: "#404040", fontSize: 11 }}>
         Demo · illustrative data
       </span>
     </div>
