@@ -63,7 +63,7 @@ export function PortalChatWidget({ campaignId }: { campaignId: string }) {
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 80);
@@ -199,8 +199,8 @@ export function PortalChatWidget({ campaignId }: { campaignId: string }) {
 
       {open && (
         <div
-          className="fixed bottom-0 right-0 z-50 w-full sm:w-[500px] sm:bottom-6 sm:right-6 flex flex-col bg-white border border-neutral-200 rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
-          style={{ maxHeight: "85vh" }}
+          className="fixed bottom-0 right-0 z-50 w-full sm:w-[420px] sm:bottom-6 sm:right-6 flex flex-col bg-white border border-neutral-200 rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
+          style={{ maxHeight: "80vh" }}
         >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800 bg-neutral-900">
@@ -287,20 +287,18 @@ export function PortalChatWidget({ campaignId }: { campaignId: string }) {
           {/* Input */}
           <div className="px-4 pb-4 pt-2 border-t border-neutral-100">
             <form onSubmit={(e) => { e.preventDefault(); handleSubmit(input); }} className="flex gap-2">
-              <textarea
+              <input
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (input.trim() && !streaming) handleSubmit(input); } }}
                 placeholder="Ask about any number in this report…"
                 disabled={streaming}
-                rows={2}
-                className="flex-1 text-sm border border-neutral-200 rounded-xl px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-neutral-900 disabled:bg-neutral-50 disabled:text-neutral-400 resize-none leading-relaxed"
+                className="flex-1 text-sm border border-neutral-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-neutral-900 disabled:bg-neutral-50 disabled:text-neutral-400"
               />
               <button
                 type="submit"
                 disabled={streaming || !input.trim()}
-                className="bg-neutral-900 text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-neutral-700 disabled:opacity-40 transition-colors self-end"
+                className="bg-neutral-900 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-neutral-700 disabled:opacity-40 transition-colors"
               >
                 {streaming ? "…" : "Ask"}
               </button>

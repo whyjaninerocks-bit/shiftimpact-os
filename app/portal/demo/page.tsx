@@ -684,12 +684,12 @@ function AskWidget() {
 
 // ─── Sparkline ────────────────────────────────────────────────────────────────
 
-function Sparkline({ values, gate, color = "#34d399" }: { values: number[]; gate?: number; color?: string }) {
+function Sparkline({ values, gate, color = "#34d399", height = 56 }: { values: number[]; gate?: number; color?: string; height?: number }) {
   const allVals = [...values, ...(gate !== undefined ? [gate] : [])];
   const min = Math.min(...allVals) * 0.95;
   const max = Math.max(...allVals) * 1.05;
   const range = max - min || 1;
-  const W = 200, H = 56, px = 6, py = 8;
+  const W = 200, H = height, px = 6, py = height > 80 ? 14 : 8;
   const x = (i: number) => px + (i / (values.length - 1)) * (W - px * 2);
   const y = (v: number) => H - py - ((v - min) / range) * (H - py * 2);
   const linePath = values.map((v, i) => `${i === 0 ? "M" : "L"} ${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
@@ -698,7 +698,7 @@ function Sparkline({ values, gate, color = "#34d399" }: { values: number[]; gate
   const gradId = `grad-${color.replace("#", "")}`;
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 56 }}>
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height }}>
       <defs>
         <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity="0.2" />
@@ -1247,10 +1247,12 @@ function postureColor(p: string) {
 
 function SectionQ({ q, label, children }: { q: string; label: string; children: React.ReactNode }) {
   return (
-    <section className="mb-10">
-      <div className="flex items-baseline gap-3 mb-5">
-        <span className="text-xs font-bold text-neutral-400 uppercase tracking-widest">{q}</span>
-        <h2 className="text-xl font-bold text-neutral-900">{label}</h2>
+    <section className="mb-12">
+      {/* Chapter break */}
+      <div className="bg-neutral-900 rounded-2xl px-6 py-5 mb-6 flex items-center gap-5">
+        <span className="text-5xl font-black text-white/15 leading-none shrink-0">{q}</span>
+        <div className="w-px h-10 bg-white/15 shrink-0" />
+        <h2 className="text-2xl lg:text-3xl font-black text-white leading-tight">{label}</h2>
       </div>
       {children}
     </section>
@@ -1511,93 +1513,100 @@ export default function PortalDemoPage() {
         <div className="px-5 sm:px-8 lg:px-10 py-7 lg:py-8 pb-24">
 
           {/* Header */}
-          <div className="flex items-start justify-between mb-8">
-            <div>
-              <p className="text-sm font-medium text-neutral-500">17 August 2026 · Week 6 of 12</p>
-              <h1 className="text-2xl lg:text-3xl font-bold text-neutral-900 mt-1">Growth Intelligence Report</h1>
-              <p className="text-base text-neutral-600 mt-1">Jadikan Caramu · Phase 1 — Demand</p>
+          <div className="mb-8">
+            <div className="flex items-start justify-between gap-4 mb-3">
+              <div>
+                <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-1">ShiftImpact · Decision Intelligence System · 17 Aug 2026 · Week 6 of 12</p>
+                <h1 className="text-3xl lg:text-4xl font-black text-neutral-900 leading-tight">Growth Intelligence Report</h1>
+                <p className="text-base text-neutral-500 mt-1">Jadikan Caramu · Phase 1 — Demand</p>
+              </div>
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border bg-emerald-50 text-emerald-800 border-emerald-300 shrink-0 mt-1">
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
+                Strategist reviewed
+              </span>
             </div>
-            <span className="inline-flex items-center text-sm font-semibold px-3 py-1.5 rounded-full border bg-green-50 text-green-800 border-green-300 shrink-0">
-              Strategist reviewed
-            </span>
+            <p className="text-base lg:text-lg font-semibold text-neutral-700 border-l-4 border-neutral-900 pl-4 leading-snug">
+              What your campaign signals are telling you right now — and the decisions that can&apos;t wait until the post-campaign review.
+            </p>
           </div>
 
           {/* ── Campaign Health — hero ────────────────── */}
           <div id="glance" className="mb-6">
             <div className="flex items-baseline gap-3 mb-4">
-              <h2 className="text-xl font-bold text-neutral-900">Campaign Health</h2>
-              <span className="text-sm text-neutral-500">Week 6 of 12 · Phase 1 — Demand</span>
+              <h2 className="text-2xl font-black text-neutral-900">Campaign Health</h2>
+              <span className="text-sm font-medium text-neutral-500">Week 6 of 12 · Phase 1 — Demand</span>
             </div>
 
             <div className="bg-neutral-900 rounded-2xl shadow-sm overflow-hidden">
+              {/* Top: 3 metric columns */}
               <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-white/10">
                 {/* Score + posture */}
-                <div className="px-6 py-5">
+                <div className="px-6 py-6">
                   <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-3">Health score</p>
                   <div className="flex items-baseline gap-3 mb-3">
-                    <span className="text-6xl font-black text-emerald-400 leading-none">74</span>
+                    <span className="text-7xl font-black text-emerald-400 leading-none">74</span>
                     <div>
-                      <p className="text-lg font-bold text-emerald-400">↑ +5 pts</p>
-                      <p className="text-xs text-neutral-500">this week</p>
+                      <p className="text-xl font-black text-emerald-400">↑ +5 pts</p>
+                      <p className="text-sm text-neutral-500">this week</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-emerald-400 border border-emerald-400/40 rounded-full px-3 py-1">Gaining</span>
-                    <span className="text-xs text-neutral-500">Signals trending positive</span>
-                  </div>
-                  <div className="mt-4 pt-4 border-t border-white/10">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs text-neutral-500">Health trajectory</p>
-                      <p className="text-xs text-neutral-400">Wk 1 → 6</p>
-                    </div>
-                    <Sparkline values={SERIES.health.values} color="#34d399" />
-                    {/* Week labels */}
-                    <div className="flex items-center justify-between text-[10px] mt-1 px-0.5">
-                      {["Wk 1","Wk 2","Wk 3","Wk 4","Wk 5","Wk 6"].map((w, i) => (
-                        <span key={i} className={i === 5 ? "text-emerald-400 font-bold" : "text-neutral-600"}>{w}</span>
-                      ))}
-                    </div>
-                    <div className="flex items-center justify-between text-xs mt-1">
-                      <span className="text-neutral-600">52 · Fragile</span>
-                      <span className="text-emerald-400 font-semibold">74 · Gaining</span>
-                    </div>
+                    <span className="text-base font-black text-emerald-400 border border-emerald-400/40 rounded-full px-3 py-1">Gaining</span>
+                    <span className="text-sm text-neutral-500">Signals trending positive</span>
                   </div>
                 </div>
 
                 {/* Verdict */}
-                <div className="px-6 py-5">
+                <div className="px-6 py-6">
                   <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-3">Strategist verdict</p>
-                  <p className="text-sm text-white leading-relaxed">{week.verdict}</p>
+                  <p className="text-base text-white leading-relaxed">{week.verdict}</p>
                   <div className="mt-4 pt-4 border-t border-white/10 space-y-2">
                     {week.marketContext.map((m, i) => (
                       <div key={i} className="flex items-start gap-2">
                         <span className="text-sm shrink-0">{m.icon}</span>
-                        <p className="text-xs text-neutral-400 leading-relaxed">{m.note}</p>
+                        <p className="text-sm text-neutral-400 leading-relaxed">{m.note}</p>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 {/* Gate status */}
-                <div className="px-6 py-5">
+                <div className="px-6 py-6">
                   <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-3">Phase 2 gate</p>
                   <div className="flex items-baseline gap-2 mb-2">
-                    <span className="text-4xl font-black text-amber-400 leading-none">1.9pp</span>
-                    <span className="text-sm text-neutral-400">remaining</span>
+                    <span className="text-5xl font-black text-amber-400 leading-none">1.9pp</span>
+                    <span className="text-base text-neutral-400">remaining</span>
                   </div>
-                  <p className="text-xs text-neutral-400 mb-4">Save rate ≥8% · currently 6.1%</p>
-                  <div className="h-2 bg-white/10 rounded-full overflow-hidden mb-1">
+                  <p className="text-sm text-neutral-400 mb-4">Save rate ≥8% · currently 6.1%</p>
+                  <div className="h-2.5 bg-white/10 rounded-full overflow-hidden mb-1">
                     <div className="h-full bg-amber-400 rounded-full" style={{ width: "76%" }} />
                   </div>
-                  <div className="flex items-center justify-between text-xs text-neutral-500">
+                  <div className="flex items-center justify-between text-sm text-neutral-500">
                     <span>6.1% current</span>
                     <span>8.0% gate</span>
                   </div>
                   <div className="mt-4 pt-4 border-t border-white/10">
-                    <p className="text-xs text-neutral-500 mb-1">Gate timeline prediction</p>
-                    <p className="text-sm font-bold text-white">Week 7–8</p>
-                    <p className="text-xs text-neutral-400">if brief actioned this week · 78% confidence</p>
+                    <p className="text-xs text-neutral-500 mb-1">Gate fires</p>
+                    <p className="text-base font-black text-white">Week 7–8</p>
+                    <p className="text-sm text-neutral-400">if brief actioned this week · 78% confidence</p>
                   </div>
+                </div>
+              </div>
+
+              {/* Bottom: full-width large health trajectory graph */}
+              <div className="border-t border-white/10 px-6 pt-5 pb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-bold text-neutral-400 uppercase tracking-widest">Health trajectory · Week 1 → 6</p>
+                  <div className="flex items-center gap-4 text-sm">
+                    <span className="text-neutral-600">52 · Fragile</span>
+                    <span className="text-emerald-400 font-bold">74 · Gaining ↑</span>
+                  </div>
+                </div>
+                <Sparkline values={SERIES.health.values} color="#34d399" height={120} />
+                <div className="flex items-center justify-between text-xs mt-2 px-0.5">
+                  {["Wk 1","Wk 2","Wk 3","Wk 4","Wk 5","Wk 6"].map((w, i) => (
+                    <span key={i} className={i === 5 ? "text-emerald-400 font-bold text-sm" : "text-neutral-600"}>{w}</span>
+                  ))}
                 </div>
               </div>
             </div>
@@ -1606,8 +1615,8 @@ export default function PortalDemoPage() {
           {/* ── Signal boxes ──────────────────────────── */}
           <div className="mb-10">
             <div className="flex items-baseline gap-3 mb-4">
-              <h2 className="text-lg font-bold text-neutral-900">Live signals</h2>
-              <span className="text-sm text-neutral-500">Dashed = gate threshold · ask the widget to learn more</span>
+              <h2 className="text-2xl font-black text-neutral-900">Live signals</h2>
+              <span className="text-sm font-medium text-neutral-500">Dashed = gate threshold · ask the widget to learn more</span>
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1675,8 +1684,8 @@ export default function PortalDemoPage() {
           {/* ── Creative Battery ─────────────────────── */}
           <div id="battery" className="mb-10">
             <div className="flex items-baseline gap-3 mb-5">
-              <h2 className="text-xl font-bold text-neutral-900">Creative Battery</h2>
-              <span className="text-sm text-neutral-500">How long can the current creative execution sustain performance?</span>
+              <h2 className="text-2xl font-black text-neutral-900">Creative Battery</h2>
+              <span className="text-sm font-medium text-neutral-500">How long can the current creative execution sustain performance?</span>
             </div>
 
             <div className="rounded-2xl border border-amber-200 bg-white shadow-sm overflow-hidden">
@@ -2363,94 +2372,73 @@ export default function PortalDemoPage() {
                 </div>
               </div>
 
-              {/* Prior predictions table */}
-              <div className="px-6 pt-5 pb-4">
-                <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Prior predictions vs what actually happened</p>
-                <div className="space-y-2">
+              {/* Horizontal scrollable prediction timeline */}
+              <div className="px-6 pt-5 pb-2">
+                <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Prediction timeline · scroll to see all weeks →</p>
+              </div>
+              <div className="overflow-x-auto pb-5 px-4" style={{ scrollbarWidth: "none" }}>
+                <div className="flex gap-3" style={{ width: "max-content" }}>
+                  {/* Verified past predictions */}
                   {[
-                    {
-                      week: "Wk 1 → 2",
-                      prediction: "Save rate will reach 4.6–4.9% as UGC seeding kicks in",
-                      actual: "4.8% ✓",
-                      delta: "Within range",
-                      verified: true,
-                    },
-                    {
-                      week: "Wk 2 → 3",
-                      prediction: "UGC authenticity ratio will lift +3–5pp if seeding is actioned",
-                      actual: "+3pp ✓",
-                      delta: "Bottom of range",
-                      verified: true,
-                    },
-                    {
-                      week: "Wk 3 → 4",
-                      prediction: "Mid-tier KOLs will underperform micro-tier on save rate (below 6%)",
-                      actual: "5.2–5.6% ✓",
-                      delta: "Confirmed",
-                      verified: true,
-                    },
-                    {
-                      week: "Wk 4 → 5",
-                      prediction: "Recipe content will outperform lifestyle at 2×+ save rate ratio",
-                      actual: "2.3× ✓",
-                      delta: "Confirmed",
-                      verified: true,
-                    },
-                    {
-                      week: "Wk 5 → 6",
-                      prediction: "Campaign health will reach 72–76 if KOL rebalancing is actioned",
-                      actual: "74 ✓",
-                      delta: "Centre of range",
-                      verified: true,
-                    },
+                    { week: "Wk 1→2", prediction: "Save rate will reach 4.6–4.9% as UGC seeding kicks in", actual: "4.8%", delta: "Within range", confidence: "—" },
+                    { week: "Wk 2→3", prediction: "UGC authenticity ratio will lift +3–5pp if seeding is actioned", actual: "+3pp", delta: "Bottom of range", confidence: "—" },
+                    { week: "Wk 3→4", prediction: "Mid-tier KOLs will underperform micro-tier on save rate (below 6%)", actual: "5.2–5.6%", delta: "Confirmed", confidence: "—" },
+                    { week: "Wk 4→5", prediction: "Recipe content will outperform lifestyle at 2×+ save rate ratio", actual: "2.3×", delta: "Confirmed", confidence: "—" },
+                    { week: "Wk 5→6", prediction: "Campaign health will reach 72–76 if KOL rebalancing is actioned", actual: "74", delta: "Centre of range", confidence: "—" },
                   ].map((p, i) => (
-                    <div key={i} className="grid grid-cols-[80px_1fr_140px_90px] gap-3 items-center py-2.5 border-b border-neutral-100 last:border-0">
-                      <span className="text-xs font-bold text-neutral-500 shrink-0">{p.week}</span>
-                      <p className="text-sm text-neutral-700">{p.prediction}</p>
-                      <div className="text-right">
-                        <span className="text-sm font-bold text-neutral-900">{p.actual}</span>
-                        <p className="text-[10px] text-neutral-500">{p.delta}</p>
-                      </div>
-                      <div className="flex justify-end">
-                        <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1">
-                          <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <div key={i} className="w-56 shrink-0 rounded-2xl border-2 border-emerald-200 bg-emerald-50 flex flex-col">
+                      <div className="px-4 pt-4 pb-3 border-b border-emerald-200">
+                        <p className="text-xs font-black text-emerald-700 uppercase tracking-widest mb-1">{p.week}</p>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 rounded-full px-2 py-0.5">
+                          <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                           Verified
                         </span>
                       </div>
+                      <div className="px-4 py-3 flex-1">
+                        <p className="text-xs text-neutral-700 leading-snug mb-3">{p.prediction}</p>
+                        <div className="mt-auto">
+                          <p className="text-[10px] text-neutral-500 uppercase tracking-wider mb-0.5">What happened</p>
+                          <p className="text-lg font-black text-neutral-900">{p.actual}</p>
+                          <p className="text-xs text-emerald-700 font-semibold">{p.delta}</p>
+                        </div>
+                      </div>
                     </div>
                   ))}
-                </div>
-              </div>
 
-              {/* Current week's locked predictions */}
-              <div className="bg-neutral-50 border-t border-neutral-200 px-6 py-5">
-                <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-                  <p className="text-xs font-bold text-neutral-700 uppercase tracking-widest">This week&apos;s predictions — locked at publication</p>
-                  <span className="text-[10px] font-bold text-neutral-500 border border-neutral-300 rounded-full px-2.5 py-1 bg-white">
-                    🔒 17 Aug 2026 · 09:00 MYT · Cannot be edited
-                  </span>
-                </div>
-                <div className="space-y-2.5">
+                  {/* Divider card */}
+                  <div className="w-12 shrink-0 flex flex-col items-center justify-center gap-2">
+                    <div className="w-px flex-1 bg-neutral-300" />
+                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider rotate-90 whitespace-nowrap">Now</span>
+                    <div className="w-px flex-1 bg-neutral-300" />
+                  </div>
+
+                  {/* Locked forward predictions */}
                   {[
-                    { label: "Save rate · Wk 7", prediction: "Will reach 7.0–7.6% if recipe brief is actioned this week", confidence: "81%", timeframe: "Week 7" },
-                    { label: "Gate 1 fire", prediction: "56% probability by Wk 7 · rises to 78% by Wk 8 if brief actioned", confidence: "78%", timeframe: "Week 7–8" },
-                    { label: "Creative battery", prediction: "Meta Feed format will fall below 20% by Week 8 without refresh", confidence: "73%", timeframe: "Week 8" },
-                    { label: "Campaign health", prediction: "Will reach 77–80 by Week 8 if KOL + creative brief both actioned", confidence: "69%", timeframe: "Week 8" },
+                    { week: "Wk 6→7", prediction: "Save rate will reach 7.0–7.6% if recipe brief is actioned this week", confidence: "81%", label: "Save rate" },
+                    { week: "Wk 6→7", prediction: "Gate 1: 56% probability by Wk 7 · rises to 78% by Wk 8 if brief actioned", confidence: "78%", label: "Gate 1 fire" },
+                    { week: "Wk 7→8", prediction: "Meta Feed format will fall below 20% by Week 8 without creative refresh", confidence: "73%", label: "Creative battery" },
+                    { week: "Wk 7→8", prediction: "Campaign health will reach 77–80 if KOL + creative brief both actioned", confidence: "69%", label: "Health score" },
                   ].map((p, i) => (
-                    <div key={i} className="flex items-start gap-3 bg-white border border-neutral-200 rounded-xl px-4 py-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-0.5">{p.label} · {p.timeframe}</p>
-                        <p className="text-sm text-neutral-800">{p.prediction}</p>
+                    <div key={i} className="w-56 shrink-0 rounded-2xl border-2 border-neutral-300 bg-white flex flex-col">
+                      <div className="px-4 pt-4 pb-3 border-b border-neutral-200">
+                        <p className="text-xs font-black text-neutral-600 uppercase tracking-widest mb-1">{p.week} · {p.label}</p>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-neutral-600 bg-neutral-100 rounded-full px-2 py-0.5">
+                          🔒 Locked at publication
+                        </span>
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-lg font-black text-neutral-900">{p.confidence}</p>
-                        <p className="text-[10px] text-neutral-400">confidence</p>
+                      <div className="px-4 py-3 flex-1">
+                        <p className="text-xs text-neutral-700 leading-snug mb-3">{p.prediction}</p>
+                        <div className="mt-auto">
+                          <p className="text-[10px] text-neutral-500 uppercase tracking-wider mb-0.5">Confidence</p>
+                          <p className="text-lg font-black text-neutral-900">{p.confidence}</p>
+                          <p className="text-xs text-neutral-500">Verified in Week 7 report</p>
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-neutral-500 mt-3 leading-snug">These predictions will be verified against actuals in the Week 7 report. Prediction accuracy is your measure of how well ShiftImpact OS understands your campaign.</p>
               </div>
+              <p className="text-xs text-neutral-500 px-6 pb-4 leading-snug">Every prediction is locked at publication and verified against actuals the following week. This is your measure of how well ShiftImpact OS reads your campaign.</p>
 
               {/* Prediction Miss Protocol */}
               <div className="border-t border-neutral-200 px-6 py-4">
