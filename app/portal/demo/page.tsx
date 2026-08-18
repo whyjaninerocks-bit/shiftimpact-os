@@ -2376,7 +2376,7 @@ export default function PortalDemoPage() {
                 <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-1">Prediction timeline · latest first · scroll to see history →</p>
                 <p className="text-xs text-neutral-500 mb-4">Every prediction locked at publication · verified against actuals the following week</p>
               </div>
-              <div className="overflow-x-auto pb-5 px-4" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
+              <div className="overflow-x-auto pb-5 px-4" style={{ scrollbarWidth: "none" } as never}>
                 <div className="flex gap-3" style={{ width: "max-content" }}>
                   {/* Locked forward predictions — FIRST (most recent/current) */}
                   {[
@@ -2406,7 +2406,7 @@ export default function PortalDemoPage() {
                   {/* Divider */}
                   <div className="w-14 shrink-0 flex flex-col items-center justify-center gap-1 py-4">
                     <div className="w-px flex-1 bg-neutral-300" />
-                    <span className="text-[9px] font-black text-neutral-500 uppercase tracking-wider whitespace-nowrap" style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}>Now · Wk 6</span>
+                    <span className="text-[9px] font-black text-neutral-500 uppercase tracking-wider whitespace-nowrap">NOW</span>
                     <div className="w-px flex-1 bg-neutral-300" />
                   </div>
 
