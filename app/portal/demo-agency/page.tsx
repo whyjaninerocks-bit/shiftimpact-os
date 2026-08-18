@@ -350,6 +350,39 @@ function AskWidget() {
   );
 }
 
+// ─── View Switcher ────────────────────────────────────────────────────────────
+function ViewSwitcher({ current }: { current: "brand" | "agency" | "partner" }) {
+  const views = [
+    { label: "Brand client",  href: "/portal/demo",         key: "brand"   as const },
+    { label: "Agency client", href: "/portal/demo-agency",  key: "agency"  as const },
+    { label: "Partner",       href: "/portal/demo-partner", key: "partner" as const },
+  ];
+  return (
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 200,
+      background: "#0a0a0a", borderBottom: "1px solid #262626",
+      display: "flex", alignItems: "center", gap: 6, padding: "0 20px", height: 40 }}>
+      <span style={{ color: "#525252", fontSize: 11, letterSpacing: "0.08em",
+        textTransform: "uppercase" as const, fontFamily: "monospace", marginRight: 8 }}>
+        Portal view
+      </span>
+      {views.map(v => (
+        <a key={v.key} href={v.href} style={{
+          padding: "3px 12px", borderRadius: 4, fontSize: 12, fontWeight: 500,
+          textDecoration: "none",
+          background: current === v.key ? "#f5f5f4" : "transparent",
+          color:      current === v.key ? "#1c1917"  : "#737373",
+          border:     `1px solid ${current === v.key ? "#e5e5e4" : "#404040"}`,
+        }}>
+          {v.label}
+        </a>
+      ))}
+      <span style={{ color: "#404040", fontSize: 11, marginLeft: "auto" }}>
+        Demo · illustrative data
+      </span>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AgencyDemoPage() {
@@ -375,10 +408,12 @@ export default function AgencyDemoPage() {
   const arcLen = (74 / 100) * circumference;
 
   return (
-    <div className="min-h-screen bg-neutral-50 text-neutral-900 lg:flex">
+    <>
+      <ViewSwitcher current="agency" />
+      <div className="min-h-screen bg-neutral-50 text-neutral-900 lg:flex" style={{ paddingTop: 40 }}>
 
       {/* ═══════════════════════════════════════ SIDEBAR ════════════════════════════════════ */}
-      <aside className="hidden lg:flex flex-col w-[380px] xl:w-[440px] shrink-0 fixed top-0 left-0 h-screen bg-neutral-900 text-white overflow-y-auto z-20">
+      <aside className="hidden lg:flex flex-col w-[380px] xl:w-[440px] shrink-0 fixed left-0 bg-neutral-900 text-white overflow-y-auto z-20" style={{ top: 40, height: "calc(100vh - 40px)" }}>
 
         <div className="px-5 pt-5 pb-3 border-b border-white/10">
           <p className="text-xs font-semibold text-blue-400 uppercase tracking-widest">Agency intelligence view</p>
@@ -1144,5 +1179,6 @@ export default function AgencyDemoPage() {
 
       <AskWidget />
     </div>
+    </>
   );
 }
