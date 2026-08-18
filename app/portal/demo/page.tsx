@@ -200,6 +200,18 @@ const TOPICS: Topic[] = [
     answer: "AI Brand Visibility tracks whether Cooks appears when someone asks an AI assistant — Google AI Overview, ChatGPT, Gemini — for a recipe or product recommendation. 23% of purchase-intent queries in the cooking category now go to AI assistants first.\n\nIf your brand is not in those answers, you are invisible to a growing high-intent segment. This is a premium signal in the Full Intelligence Suite — it activates when brand monitoring is configured for your campaign.",
   },
   {
+    id: "ai-visibility-improve",
+    triggers: [
+      "how do i improve ai visibility by 10", "how do i improve my ai visibility",
+      "how to improve ai brand visibility", "increase ai visibility by 10",
+      "improve ai visibility in 3 months", "ai visibility low how do i improve",
+      "my ai visibility is low", "ai visibility is low", "improve ai visibility",
+      "increase ai visibility", "boost ai visibility", "raise ai visibility",
+      "how to get better ai visibility", "what improves ai visibility",
+    ],
+    answer: "Three levers move AI brand visibility — two are already within your current brief.\n\n**1. UGC volume is the highest-leverage input.** AI assistants surface brands that appear consistently in authentic user-generated content. Your S3 is at 28 organic posts this week. To move AI visibility 10% in 3 months, target 55–60 organic posts per week by Week 10. The recipe-led brief directly drives this — more recipe UGC means more authentic brand mentions in content AI tools crawl and cite.\n\n**2. Brand search share is the second lever.** AI Overviews weight toward brands with growing branded search. Your S1 SoS is at 14.2%, growing. Crossing 18% by Week 8 improves AI eligibility proportionally — and the same creative brief that moves your gate signal also moves this.\n\n**3. Category listing presence is a PR play.** Get Cooks mentioned in recipe roundup articles, cooking comparison posts, and food platform listicles that AI systems treat as authoritative sources. This is content and earned media work, not paid spend.\n\nYour UGC authenticity ratio is already 72% — above the floor AI tools require. The gap is volume, not quality. If UGC doubles and SoS crosses 18% by Week 8, a 10% AI visibility improvement in 3 months is achievable. Both are byproducts of actioning the brief this week.",
+  },
+  {
     id: "compliance",
     triggers: [
       "compliance score mean", "how compliance works", "why compliance report",
@@ -214,9 +226,23 @@ const TOPICS: Topic[] = [
       "when will gate fire", "week 7 week 8 prediction", "gate timeline",
       "how long until gate", "signal horizon", "next 4 weeks",
       "horizon signal", "gate estimate", "when does phase 2 start",
+      "what happens in week 7", "week 7 or week 8",
       "horizon", "timeline",
     ],
     answer: "At current save-rate growth of +0.4pp per week, Gate 1 fires around Week 10–11 without any creative change. If this week's recipe-led brief is actioned, growth should accelerate to +0.6–0.8pp per week — Gate 1 in Week 7–8 is realistic.\n\nThe Merdeka window (31 August) creates additional tailwind specifically for recipe content this week. Acting now vs next week is the difference between a Week 7 gate and a Week 9 gate — roughly 2 weeks of Phase 2 budget locked unnecessarily.",
+  },
+  {
+    id: "week7-forecast",
+    triggers: [
+      "predict my week 7 to be based on your weekly report history",
+      "predict my week 7 based on weekly report", "how do you predict week 7",
+      "predict my week 7", "week 7 forecast", "forecast week 7",
+      "what will week 7 look like", "what will week 7 be",
+      "based on weekly report history", "based on report history",
+      "weekly report history", "predict based on history",
+      "week 7 based on history", "week 7 prediction",
+    ],
+    answer: "Based on the 6-week signal trajectory in this report, here is what Week 7 is likely to show:\n\n**Save rate:** With the recipe-led brief actioned this week, growth accelerates from +0.4pp to +0.6–0.8pp. Week 7 save rate: 6.7–6.9%. Without the brief: ~6.5%.\n\n**Health score:** The campaign has moved +3–4 points per week since launch (52 → 74). Week 7 lands at 77–78 on the current trajectory. If the brief accelerates UGC and save rate simultaneously, 79–80 is possible.\n\n**Gate probability:** Week 7 gate fires at 48% probability if the brief is actioned this week. That drops to ~22% if actioned next week — the Merdeka window does not recur.\n\n**Revenue lift:** The save→revenue lag in this campaign is 10–14 days. The Week 3–4 save rate growth should be appearing as revenue lift in Weeks 7–8. Trajectory: 13–15% if save rate continues growing.\n\nThe formal locked prediction for Week 7 is in the Full Intelligence Suite section of this report. These are trajectory extrapolations from Weeks 1–6 — not the locked prediction.",
   },
   {
     id: "market-context",
@@ -246,7 +272,7 @@ const TOPICS: Topic[] = [
       "revenue lift", "sales lift", "12.4%", "+12.4", "revenue baseline",
       "business outcome", "revenue measured", "baseline measured",
     ],
-    answer: "Revenue lift compares current weekly sales against the 4-week pre-campaign baseline — the average performance in the four weeks before the campaign launched. +12.4% means weekly sales are running 12.4% above that baseline.\n\nThe baseline is set once at campaign launch and held fixed — it does not drift as the campaign runs, so every week's lift figure is measured against the same reference point. This section shows 'Requires: sales data' because it activates when you share your weekly sales or revenue figures with your strategist. Once connected, the system tracks revenue lift weekly alongside your signal data and checks whether save rate movements are predicting sales changes 10–14 days forward — which is the closed prediction loop.",
+    answer: "Revenue lift compares current weekly sales against the 4-week pre-campaign baseline — the average performance in the four weeks before the campaign launched. +12.4% means weekly sales are running 12.4% above that baseline.\n\nThe baseline is set once at campaign launch and held fixed — it does not drift as the campaign runs, so every week's lift figure is measured against the same reference point.\n\nAt 12.4% in Week 6, you are tracking above the Phase 1 expectation of 8–10% mid-campaign lift — which means the demand signals are converting to sales faster than modelled. The next check is whether this tracks the save rate with a 10–14 day lag. Save rate has grown every week since Week 1. If the lag holds, Weeks 7–8 revenue lift should reach 13–15% without any additional intervention. If it stalls, that breaks the prediction loop and the model recalibrates.\n\nThis section shows 'Requires: sales data' because it activates when you share your weekly sales or revenue figures with your strategist.",
   },
   {
     id: "media-roi",
@@ -256,7 +282,7 @@ const TOPICS: Topic[] = [
       "media efficiency", "return on ad spend", "how is roi calculated",
       "media roi", "channel roi", "roas",
     ],
-    answer: "Media ROI by Channel measures the signal return generated per ringgit spent on each channel — specifically save-rate contribution weighted by spend share. Green bars mean the channel is generating saves above its cost-per-save benchmark. Red means it is spending more than it is producing in gate-relevant signal.\n\nMid-tier KOL is in red because ROAS is below 1.0× — it is consuming 62% of the KOL budget while producing below-gate save rates. That is the quantitative case for the Phase 2 budget reallocation in the brief. The bars update when sales data and spend data are both connected.",
+    answer: "Media ROI by Channel measures the signal return generated per ringgit spent on each channel — specifically save-rate contribution weighted by spend share. Green bars mean the channel is generating saves above its cost-per-save benchmark. Red means it is spending more than it is producing in gate-relevant signal.\n\nMid-tier KOL is in red because ROAS is below 1.0× — it is consuming 62% of the KOL budget while producing below-gate save rates.\n\nThe reallocation math: moving mid-tier KOL spend from 62% to 30% of total KOL budget and concentrating on micro-tier performers improves the blended KOL save rate from the current 6.1% to an estimated 6.8%. That 0.7pp improvement — without any additional spend — closes Gate 1 roughly 1–2 weeks earlier than the current trajectory. The Phase 2 budget that unlocks is larger than the cost of the reallocation. This is why the brief includes it as a Phase 2 action, not a Phase 3 consideration.",
   },
   {
     id: "social-currency",
