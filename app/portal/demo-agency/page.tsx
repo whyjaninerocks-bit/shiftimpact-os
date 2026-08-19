@@ -53,7 +53,7 @@ const ACTIONS = [
     title: "Hold brand search spend — do not pull",
     signal: "Search share growing 2.1× faster than category",
     direction:
-      "Branded search is earned demand — do not reduce spend here. Consumers are actively looking for Cooks, not just browsing. Pulling search at this stage would be the costliest error. Maintain current allocation through gate.",
+      "Branded search is earned demand — do not reduce spend here. Consumers are actively looking for Sedapz, not just browsing. Pulling search at this stage would be the costliest error. Maintain current allocation through gate.",
     deliverables: [
       "Confirm media plan: no search budget reduction",
       "Flag to client if platform is recommending rebalance — override it",
@@ -97,7 +97,7 @@ const COMPLIANCE_ITEMS = [
     discipline: "creative" as Discipline,
     handledBy: "This agency",
     isOwned: true,
-    item: "Activate Rendang Tok or Ayam Percik dish using Cooks paste",
+    item: "Activate Rendang Tok or Ayam Percik dish using Sedapz paste",
   },
   {
     id: "c3",
@@ -174,7 +174,7 @@ const CREATIVE_ASSETS = [
 const COMPETITORS = [
   { brand: "MAGGI",  ics: 81, rating: "CONDITIONAL", gap: "Strong reach, retention signals weak" },
   { brand: "Knorr",  ics: 68, rating: "NOT READY",   gap: "UGC authenticity below threshold"     },
-  { brand: "Cooks",  ics: 76, rating: "CONDITIONAL", gap: "Save rate 1.9pp below gate — on track" },
+  { brand: "Sedapz",  ics: 76, rating: "CONDITIONAL", gap: "Save rate 1.9pp below gate — on track" },
   { brand: "Adabi",  ics: 59, rating: "NOT READY",   gap: "Search share declining, no recovery signal" },
 ];
 
@@ -432,8 +432,8 @@ export default function AgencyDemoPage() {
             <p className="text-xs text-neutral-400 mt-0.5">Illustrative data · ShiftImpact OS</p>
           </div>
           <div className="px-5 py-4 border-b border-white/10">
-            <p className="text-xs font-medium text-neutral-400 mb-1">Cooks · FMCG · Cooking Sauces</p>
-            <p className="text-lg font-bold leading-tight text-white">Jadikan Caramu</p>
+            <p className="text-xs font-medium text-neutral-400 mb-1">Sedapz · FMCG · Cooking Sauces</p>
+            <p className="text-lg font-bold leading-tight text-white">Jadikan Sedap</p>
             <p className="text-sm text-neutral-400 mt-1">Phase 1 — Demand · Jul–Aug 2026</p>
           </div>
 
@@ -529,7 +529,7 @@ export default function AgencyDemoPage() {
               ShiftImpact OS · 17 Aug 2026 · Week 6 of 12
             </p>
             <h1 className="text-2xl font-black text-neutral-900">Agency Execution Report</h1>
-            <p className="text-base text-neutral-500 mt-1">Jadikan Caramu · Cooks · Phase 1 — Demand</p>
+            <p className="text-base text-neutral-500 mt-1">Jadikan Sedap · Sedapz · Phase 1 — Demand</p>
           </div>
 
           {/* Client report callout */}
@@ -708,7 +708,7 @@ export default function AgencyDemoPage() {
           {/* ── Q05: Competitive ICS ── */}
           <SectionQ q="Q05" label="Competitive ICS benchmark" id="q5">
             <p className="text-sm text-neutral-600 leading-relaxed">
-              Cooks at 76 is CONDITIONAL — idea quality is strong but gate conditions haven't fired. MAGGI at 81 is the primary reference to beat.
+              Sedapz at 76 is CONDITIONAL — idea quality is strong but gate conditions haven't fired. MAGGI at 81 is the primary reference to beat.
             </p>
             <div className="overflow-x-auto">
               <table className="w-full text-sm border-separate border-spacing-0">
@@ -721,9 +721,9 @@ export default function AgencyDemoPage() {
                 </thead>
                 <tbody>
                   {COMPETITORS.map((c, i) => (
-                    <tr key={i} className={c.brand === "Cooks" ? "bg-blue-50" : i % 2 === 0 ? "bg-white" : "bg-neutral-50"}>
+                    <tr key={i} className={c.brand === "Sedapz" ? "bg-blue-50" : i % 2 === 0 ? "bg-white" : "bg-neutral-50"}>
                       <td className="px-3 py-2.5 border-b border-neutral-100 font-semibold text-sm">
-                        {c.brand}{c.brand === "Cooks" && <span className="ml-1.5 text-xs text-blue-600">(your client)</span>}
+                        {c.brand}{c.brand === "Sedapz" && <span className="ml-1.5 text-xs text-blue-600">(your client)</span>}
                       </td>
                       <td className="px-3 py-2.5 border-b border-neutral-100 font-black text-base">{c.ics}</td>
                       <td className="px-3 py-2.5 border-b border-neutral-100">
@@ -793,7 +793,7 @@ export default function AgencyDemoPage() {
           </SectionQ>
 
           <div className="pt-6 border-t border-neutral-200 text-xs text-neutral-400">
-            ShiftImpact OS · Agency execution view · Illustrative data · Cooks · Jadikan Caramu · Week 6 of 12
+            ShiftImpact OS · Agency execution view · Illustrative data · Sedapz · Jadikan Sedap · Week 6 of 12
           </div>
         </main>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-// /portal/demo — Cooks · Jadikan Caramu
+// /portal/demo — Sedapz · Jadikan Sedap
 // v6: floating AI assistant widget, no inline IP-revealing rationale, improved font contrast
 
 import { useState, useRef, useEffect } from "react";
@@ -66,7 +66,7 @@ const TOPICS: Topic[] = [
       "this is my version", "creator story", "creator owns", "framing check",
       "not shortcut", "brand shortcut", "framing", "frame",
     ],
-    answer: "It checks whether the KOL content told the story from the creator's perspective, not the brand's. 'Your version of the dish' means the creator cooked it their own way and Cooks paste was part of their process — not a product ad where the brand is the hero.\n\nIn practice: personal ownership sounds like \"this is how I make rendang, I always use Cooks paste for the base.\" Brand shortcut sounds like \"Cooks paste gives you authentic rendang in 20 minutes.\" The first saves. The second doesn't.\n\nPersonal ownership framing produces 2.3× higher save rates than shortcut messaging in recipe content. When you watch the posted content, ask: does the creator own the cooking story, or does the product?",
+    answer: "It checks whether the KOL content told the story from the creator's perspective, not the brand's. 'Your version of the dish' means the creator cooked it their own way and Sedapz paste was part of their process — not a product ad where the brand is the hero.\n\nIn practice: personal ownership sounds like \"this is how I make rendang, I always use Sedapz paste for the base.\" Brand shortcut sounds like \"Sedapz paste gives you authentic rendang in 20 minutes.\" The first saves. The second doesn't.\n\nPersonal ownership framing produces 2.3× higher save rates than shortcut messaging in recipe content. When you watch the posted content, ask: does the creator own the cooking story, or does the product?",
   },
   {
     id: "dashed-line",
@@ -112,16 +112,16 @@ const TOPICS: Topic[] = [
       "why conditional", "idea quality", "campaign idea quality", "ics",
       "conditional rating", "conditional",
     ],
-    answer: "CONDITIONAL means the campaign idea — Jadikan Caramu — is structurally sound and above the category average of 67, but one dimension is flagged: executional consistency. The idea is not being expressed consistently enough across formats and channels.\n\nThis is a tactical problem, not a strategic one. The brief this week addresses it directly — tightening the mix to recipe-led content gives the idea a clearer, more consistent expression across every channel it runs on.",
+    answer: "CONDITIONAL means the campaign idea — Jadikan Sedap — is structurally sound and above the category average of 67, but one dimension is flagged: executional consistency. The idea is not being expressed consistently enough across formats and channels.\n\nThis is a tactical problem, not a strategic one. The brief this week addresses it directly — tightening the mix to recipe-led content gives the idea a clearer, more consistent expression across every channel it runs on.",
   },
   {
     id: "competitors",
     triggers: [
-      "maggi vs cooks", "how do we compare", "competitor benchmark", "knorr benchmark",
+      "maggi vs sedapz", "how do we compare", "competitor benchmark", "knorr benchmark",
       "adabi score", "maggi score", "maggi ics", "benchmark comparison",
       "maggi", "knorr", "adabi", "competitor", "benchmark",
     ],
-    answer: "Your ICS of 76 puts Cooks second in the category: MAGGI (81), Cooks (76), Knorr (74), Adabi (59). The gap to MAGGI is not budget or idea quality — it is executional consistency. MAGGI runs the same idea coherently across every format. Cooks is running two different ideas depending on the format (recipe vs lifestyle).\n\nTightening to a recipe-led mix this week closes that gap — by Week 8, the consistency score should pull the ICS to 79–81 range.",
+    answer: "Your ICS of 76 puts Sedapz second in the category: MAGGI (81), Sedapz (76), Knorr (74), Adabi (59). The gap to MAGGI is not budget or idea quality — it is executional consistency. MAGGI runs the same idea coherently across every format. Sedapz is running two different ideas depending on the format (recipe vs lifestyle).\n\nTightening to a recipe-led mix this week closes that gap — by Week 8, the consistency score should pull the ICS to 79–81 range.",
   },
   {
     id: "brand-posture",
@@ -149,7 +149,7 @@ const TOPICS: Topic[] = [
       "how many weeks remaining", "creative endurance", "battery mean", "battery low",
       "creative battery", "battery", "fatigue", "runway",
     ],
-    answer: "Creative Battery measures how many more weeks a specific format can sustain its performance before engagement drops. It is about format fatigue, not idea quality — the Jadikan Caramu idea is intact.\n\nMeta Feed lifestyle content is at 24% — roughly 2 weeks before diminishing returns set in. TikTok recipe formats are at 82% — no fatigue risk. The aggregate is 46% (~3 weeks). Actioning the recipe-led brief this week extends the Meta battery by 4–6 weeks and prevents a mid-campaign dip ahead of Merdeka.",
+    answer: "Creative Battery measures how many more weeks a specific format can sustain its performance before engagement drops. It is about format fatigue, not idea quality — the Jadikan Sedap idea is intact.\n\nMeta Feed lifestyle content is at 24% — roughly 2 weeks before diminishing returns set in. TikTok recipe formats are at 82% — no fatigue risk. The aggregate is 46% (~3 weeks). Actioning the recipe-led brief this week extends the Meta battery by 4–6 weeks and prevents a mid-campaign dip ahead of Merdeka.",
   },
   {
     id: "ugc",
@@ -159,7 +159,7 @@ const TOPICS: Topic[] = [
       "community content", "seeded content", "organic content",
       "ugc", "authenticity",
     ],
-    answer: "UGC Signal tracks content posted by real consumers who cooked with Cooks — not paid KOLs. The Authenticity Ratio (72%) measures how much of the brand-tagged content is genuine vs paid.\n\nYou crossed the 65% gate threshold at Week 5 and are holding above it. 28 organic posts were tagged this week, up from 19 at Week 4. A rising authenticity ratio is a leading indicator that the brand is building real cultural presence — it also makes your paid KOL content more credible because audiences see the brand in organic contexts too.",
+    answer: "UGC Signal tracks content posted by real consumers who cooked with Sedapz — not paid KOLs. The Authenticity Ratio (72%) measures how much of the brand-tagged content is genuine vs paid.\n\nYou crossed the 65% gate threshold at Week 5 and are holding above it. 28 organic posts were tagged this week, up from 19 at Week 4. A rising authenticity ratio is a leading indicator that the brand is building real cultural presence — it also makes your paid KOL content more credible because audiences see the brand in organic contexts too.",
   },
   {
     id: "grabads",
@@ -168,7 +168,7 @@ const TOPICS: Topic[] = [
       "what is grab", "grab super app", "purchase attribution", "grabads signal",
       "grab ads", "grabads", "grab signal",
     ],
-    answer: "Grab is the super-app Malaysians use daily — rides, GrabFood, GrabPay. Because Grab sees actual purchase transactions, GrabAds closes the loop between a TikTok recipe save and a physical Cooks paste purchase from GrabMart or a nearby store.\n\nIt is one of the only platforms in Malaysia that connects social activity to real buying behaviour. For this campaign, it answers the question keyword matching cannot: did someone who saved a Cooks recipe actually buy the product? This signal is in preview — it activates when your GrabAds account is connected.",
+    answer: "Grab is the super-app Malaysians use daily — rides, GrabFood, GrabPay. Because Grab sees actual purchase transactions, GrabAds closes the loop between a TikTok recipe save and a physical Sedapz paste purchase from GrabMart or a nearby store.\n\nIt is one of the only platforms in Malaysia that connects social activity to real buying behaviour. For this campaign, it answers the question keyword matching cannot: did someone who saved a Sedapz recipe actually buy the product? This signal is in preview — it activates when your GrabAds account is connected.",
   },
   {
     id: "prediction",
@@ -197,7 +197,7 @@ const TOPICS: Topic[] = [
       "chatgpt mention", "gemini mention", "ai generated results",
       "ai visibility", "brand in ai", "ai search",
     ],
-    answer: "AI Brand Visibility tracks whether Cooks appears when someone asks an AI assistant — Google AI Overview, ChatGPT, Gemini — for a recipe or product recommendation. 23% of purchase-intent queries in the cooking category now go to AI assistants first.\n\nIf your brand is not in those answers, you are invisible to a growing high-intent segment. This is a premium signal in the Full Intelligence Suite — it activates when brand monitoring is configured for your campaign.",
+    answer: "AI Brand Visibility tracks whether Sedapz appears when someone asks an AI assistant — Google AI Overview, ChatGPT, Gemini — for a recipe or product recommendation. 23% of purchase-intent queries in the cooking category now go to AI assistants first.\n\nIf your brand is not in those answers, you are invisible to a growing high-intent segment. This is a premium signal in the Full Intelligence Suite — it activates when brand monitoring is configured for your campaign.",
   },
   {
     id: "ai-visibility-improve",
@@ -209,7 +209,7 @@ const TOPICS: Topic[] = [
       "increase ai visibility", "boost ai visibility", "raise ai visibility",
       "how to get better ai visibility", "what improves ai visibility",
     ],
-    answer: "Three levers move AI brand visibility — two are already within your current brief.\n\n**1. UGC volume is the highest-leverage input.** AI assistants surface brands that appear consistently in authentic user-generated content. Your S3 is at 28 organic posts this week. To move AI visibility 10% in 3 months, target 55–60 organic posts per week by Week 10. The recipe-led brief directly drives this — more recipe UGC means more authentic brand mentions in content AI tools crawl and cite.\n\n**2. Brand search share is the second lever.** AI Overviews weight toward brands with growing branded search. Your S1 SoS is at 14.2%, growing. Crossing 18% by Week 8 improves AI eligibility proportionally — and the same creative brief that moves your gate signal also moves this.\n\n**3. Category listing presence is a PR play.** Get Cooks mentioned in recipe roundup articles, cooking comparison posts, and food platform listicles that AI systems treat as authoritative sources. This is content and earned media work, not paid spend.\n\nYour UGC authenticity ratio is already 72% — above the floor AI tools require. The gap is volume, not quality. If UGC doubles and SoS crosses 18% by Week 8, a 10% AI visibility improvement in 3 months is achievable. Both are byproducts of actioning the brief this week.",
+    answer: "Three levers move AI brand visibility — two are already within your current brief.\n\n**1. UGC volume is the highest-leverage input.** AI assistants surface brands that appear consistently in authentic user-generated content. Your S3 is at 28 organic posts this week. To move AI visibility 10% in 3 months, target 55–60 organic posts per week by Week 10. The recipe-led brief directly drives this — more recipe UGC means more authentic brand mentions in content AI tools crawl and cite.\n\n**2. Brand search share is the second lever.** AI Overviews weight toward brands with growing branded search. Your S1 SoS is at 14.2%, growing. Crossing 18% by Week 8 improves AI eligibility proportionally — and the same creative brief that moves your gate signal also moves this.\n\n**3. Category listing presence is a PR play.** Get Sedapz mentioned in recipe roundup articles, cooking comparison posts, and food platform listicles that AI systems treat as authoritative sources. This is content and earned media work, not paid spend.\n\nYour UGC authenticity ratio is already 72% — above the floor AI tools require. The gap is volume, not quality. If UGC doubles and SoS crosses 18% by Week 8, a 10% AI visibility improvement in 3 months is achievable. Both are byproducts of actioning the brief this week.",
   },
   {
     id: "compliance",
@@ -388,7 +388,7 @@ const QA: Array<{ keywords: string[]; answer: string }> = [
   // ── ICS / idea quality ──
   {
     keywords: ["conditional", "ics", "76", "idea certainty", "idea quality", "campaign idea"],
-    answer: "CONDITIONAL means your campaign idea — Jadikan Caramu — is structurally sound and benchmarking above the category average of 67. The flag is on executional consistency: the idea is not being expressed consistently enough across formats and channels. That is a tactical fix, not a strategic problem. The brief this week addresses it directly by tightening the mix to recipe-led content that expresses the core idea more coherently.",
+    answer: "CONDITIONAL means your campaign idea — Jadikan Sedap — is structurally sound and benchmarking above the category average of 67. The flag is on executional consistency: the idea is not being expressed consistently enough across formats and channels. That is a tactical fix, not a strategic problem. The brief this week addresses it directly by tightening the mix to recipe-led content that expresses the core idea more coherently.",
   },
   // ── Competitors / benchmark ──
   {
@@ -408,17 +408,17 @@ const QA: Array<{ keywords: string[]; answer: string }> = [
   // ── Creative battery ──
   {
     keywords: ["creative battery", "battery", "fatigue", "endurance", "weeks remaining", "creative runway"],
-    answer: "Creative Battery measures how many more weeks the current execution format can sustain its performance trajectory before audiences stop responding at the same rate. This is about format fatigue, not idea quality — the Jadikan Caramu idea is intact. At Week 6, your Meta Feed lifestyle content (60% of the mix) is showing early fatigue: save rate per impression is declining 3% week-on-week even as total impressions grow. TikTok recipe formats are not declining. The battery for Meta lifestyle is approximately 2 weeks. The recipe-led brief this week resets it.",
+    answer: "Creative Battery measures how many more weeks the current execution format can sustain its performance trajectory before audiences stop responding at the same rate. This is about format fatigue, not idea quality — the Jadikan Sedap idea is intact. At Week 6, your Meta Feed lifestyle content (60% of the mix) is showing early fatigue: save rate per impression is declining 3% week-on-week even as total impressions grow. TikTok recipe formats are not declining. The battery for Meta lifestyle is approximately 2 weeks. The recipe-led brief this week resets it.",
   },
   // ── UGC ──
   {
     keywords: ["ugc", "user generated", "organic posts", "authenticity ratio", "authenticity", "community content"],
-    answer: "UGC Signal measures organic and seeded content posted by real consumers who cooked with Cooks. The Authenticity Ratio (currently 72%) is the proportion of brand-tagged content that is genuine versus paid. You crossed the 65% threshold at Week 5 and are holding above it — this means the brand is building real cultural presence, not just buying reach. Twenty-eight organic posts were tagged this week, up from 19 at Week 4. This is a compounding signal: rising authenticity makes your paid KOL content more credible.",
+    answer: "UGC Signal measures organic and seeded content posted by real consumers who cooked with Sedapz. The Authenticity Ratio (currently 72%) is the proportion of brand-tagged content that is genuine versus paid. You crossed the 65% threshold at Week 5 and are holding above it — this means the brand is building real cultural presence, not just buying reach. Twenty-eight organic posts were tagged this week, up from 19 at Week 4. This is a compounding signal: rising authenticity makes your paid KOL content more credible.",
   },
   // ── GrabAds ──
   {
     keywords: ["grabads", "grab ads", "purchase attribution", "grabart", "grabmart", "grab signal"],
-    answer: "GrabAds is Grab's advertising platform — the super-app Malaysians use daily for rides, food, and payments. Because Grab sees actual purchase transactions, GrabAds closes the loop between your content (a TikTok recipe save) and a physical purchase (Cooks paste from GrabMart or a nearby store). It is one of the only platforms in Malaysia that connects social activity to real buying behaviour. This signal is in preview — it activates when your GrabAds account is linked to ShiftImpact OS.",
+    answer: "GrabAds is Grab's advertising platform — the super-app Malaysians use daily for rides, food, and payments. Because Grab sees actual purchase transactions, GrabAds closes the loop between your content (a TikTok recipe save) and a physical purchase (Sedapz paste from GrabMart or a nearby store). It is one of the only platforms in Malaysia that connects social activity to real buying behaviour. This signal is in preview — it activates when your GrabAds account is linked to ShiftImpact OS.",
   },
   // ── Prediction accuracy ──
   {
@@ -433,7 +433,7 @@ const QA: Array<{ keywords: string[]; answer: string }> = [
   // ── AI brand visibility ──
   {
     keywords: ["ai visibility", "ai brand", "chatgpt", "gemini", "google ai overview", "ai recommendation", "appear in ai"],
-    answer: "AI Brand Visibility tracks whether Cooks appears when someone asks an AI assistant — Google AI Overview, ChatGPT, Gemini — for a recipe or product recommendation. In FMCG and cooking categories, 23% of purchase-intent queries now go to AI assistants first. If your brand is not in those answers, you are invisible to a growing high-intent segment. This is a premium signal in the Full Intelligence Suite — it activates when your brand monitoring is configured.",
+    answer: "AI Brand Visibility tracks whether Sedapz appears when someone asks an AI assistant — Google AI Overview, ChatGPT, Gemini — for a recipe or product recommendation. In FMCG and cooking categories, 23% of purchase-intent queries now go to AI assistants first. If your brand is not in those answers, you are invisible to a growing high-intent segment. This is a premium signal in the Full Intelligence Suite — it activates when your brand monitoring is configured.",
   },
   // ── Gate timeline / horizon ──
   {
@@ -453,7 +453,7 @@ const QA: Array<{ keywords: string[]; answer: string }> = [
   // ── Brief framing — 'your version of the dish' (must come before compliance — higher specificity) ──
   {
     keywords: ["your version of the dish", "your version", "brand shortcut", "shortcut positioning", "dish framing", "personal ownership", "this is my version", "not brand shortcut", "framing", "frame"],
-    answer: "This compliance item checks whether the KOL content told the story from the creator's perspective, not the brand's. 'Your version of the dish' means the creator cooked it their own way and Cooks paste was part of their process — not a brand ad where the product is the hero. In practice: personal ownership sounds like 'this is how I make rendang — I always use Cooks paste for the base.' Brand shortcut positioning sounds like 'Cooks paste gives you authentic rendang in 20 minutes.' The first saves. The second doesn't. Personal ownership framing produces 2.3× higher save rates than shortcut messaging in recipe content, which is why it's in every KOL brief. The compliance item asks: when you watch the posted content, does the creator own the cooking story, or does the product?",
+    answer: "This compliance item checks whether the KOL content told the story from the creator's perspective, not the brand's. 'Your version of the dish' means the creator cooked it their own way and Sedapz paste was part of their process — not a brand ad where the product is the hero. In practice: personal ownership sounds like 'this is how I make rendang — I always use Sedapz paste for the base.' Brand shortcut positioning sounds like 'Sedapz paste gives you authentic rendang in 20 minutes.' The first saves. The second doesn't. Personal ownership framing produces 2.3× higher save rates than shortcut messaging in recipe content, which is why it's in every KOL brief. The compliance item asks: when you watch the posted content, does the creator own the cooking story, or does the product?",
   },
   // ── Compliance — system explanation (lower priority than specific item questions) ──
   {
@@ -468,7 +468,7 @@ const QA: Array<{ keywords: string[]; answer: string }> = [
 ];
 
 // ─── Floating assistant widget — LLM-backed (demo mode) ──────────────────────
-// Calls /api/portal-chat with demo:true — uses hardcoded Cooks context,
+// Calls /api/portal-chat with demo:true — uses hardcoded Sedapz context,
 // no DB fetch. Same 3-tier logic: defend data / caveat / escalate with confirm.
 
 type DemoEscalateMeta = { reason: string; campaign_id: string; campaign_name: string; client_name: string };
@@ -734,7 +734,7 @@ function MiniBar({ pct }: { pct: number }) {
 
 const CREATIVE_ASSETS = [
   {
-    idea: "Jadikan Caramu",
+    idea: "Jadikan Sedap",
     ics: 76,
     rating: "CONDITIONAL",
     assets: [
@@ -837,7 +837,7 @@ const WEEK_REPORTS: WeekReport[] = [
     action: "Expand micro-KOL roster — brief 2 new Klang Valley food creators matching @masakdenganaishah profile. 38% of KOL budget producing 68% of save outcomes.",
     brief: [
       "Creator profile: Klang Valley home cook, recipe-led, 10K–80K followers",
-      "Activation: Rendang Tok or Ayam Percik dish using Cooks paste",
+      "Activation: Rendang Tok or Ayam Percik dish using Sedapz paste",
       "Deliverable: 2 × TikTok process videos + 1 × Instagram Reel each",
       "Frame: 'This is my version' — personal ownership of the dish",
       "Performance gate: Save rate ≥7.0% within 5 days of posting",
@@ -865,7 +865,7 @@ const WEEK_REPORTS: WeekReport[] = [
     gateDelta: "−2.9pp", gateStatus: "2.9pp from ≥8% threshold — retargeting can accelerate",
     batteryStatus: "All formats stable — no fatigue signal detected",
     verdict: "Signals are advancing but at a slower pace than Phase 1 mid-point targets. Save rate growth is real but insufficient. The audience segment that is saving recipe content is highly intent-qualified — retargeting this group with GrabAds can compress the time to gate.",
-    action: "Launch GrabAds retargeting campaign targeting users who saved Cooks recipe content in the past 14 days. This group has demonstrated intent — GrabAds closes the loop to purchase.",
+    action: "Launch GrabAds retargeting campaign targeting users who saved Sedapz recipe content in the past 14 days. This group has demonstrated intent — GrabAds closes the loop to purchase.",
     brief: [
       "GrabAds audience: custom segment — TikTok + Instagram Reels savers (past 14 days)",
       "Creative: product-close recipe result, not process video",
@@ -881,11 +881,11 @@ const WEEK_REPORTS: WeekReport[] = [
     gateDelta: "−3.2pp", gateStatus: "3.2pp from ≥8% threshold — seeding programme needed",
     batteryStatus: "Insufficient data — week 2 baseline only · Creative format evaluation in progress",
     verdict: "Week 2 shows the strongest health improvement of the campaign so far, but from a low base. Posture is Fragile because save rate has not yet demonstrated sustained momentum. The UGC authenticity ratio is stuck — organic content is not generating without a seeding stimulus.",
-    action: "Issue UGC seeding brief to micro-KOL tier. Seed 3–5 creators with Cooks product and recipe brief. Focus on Klang Valley food content creators with audience overlap in the target save-rate demographic.",
+    action: "Issue UGC seeding brief to micro-KOL tier. Seed 3–5 creators with Sedapz product and recipe brief. Focus on Klang Valley food content creators with audience overlap in the target save-rate demographic.",
     brief: [
       "Seeding approach: product gifting + recipe brief (not paid activation)",
       "Creator profile: home cook aesthetic, recipe focus, 5K–30K followers",
-      "Content ask: one authentic recipe video using Cooks paste, any dish",
+      "Content ask: one authentic recipe video using Sedapz paste, any dish",
       "No scripted content — authenticity ratio is the metric being moved",
       "Track: organic save rate on seeded posts vs paid activation baseline",
     ],
@@ -998,7 +998,7 @@ function generateWeeklyPDF(w: WeekReport) {
   <div class="hdr">
     <div class="hdr-left">
       <div class="brand">ShiftImpact OS · Growth Intelligence Report</div>
-      <h1>Cooks · Jadikan Caramu</h1>
+      <h1>Sedapz · Jadikan Sedap</h1>
       <div class="sub">Phase 1 — Demand · Week ${w.n} of 12</div>
     </div>
     <div class="hdr-right">
@@ -1103,14 +1103,14 @@ function generateWeeklyPDF(w: WeekReport) {
   <div class="section">
     <div class="section-label">Creative battery</div>
     <div class="battery-status-box">
-      <div class="battery-label">⚡ Creative endurance — Jadikan Caramu</div>
+      <div class="battery-label">⚡ Creative endurance — Jadikan Sedap</div>
       <div class="battery-text">${w.batteryStatus}</div>
     </div>
   </div>
 
   <!-- Footer -->
   <div class="footer">
-    <div class="footer-left">ShiftImpact OS · Growth Intelligence · Cooks MY</div>
+    <div class="footer-left">ShiftImpact OS · Growth Intelligence · Sedapz MY</div>
     <div style="display:flex; align-items:center; gap:10px;">
       <span class="confidential">Confidential</span>
       <span class="footer-right">Week ${w.n} · ${w.date} · Reviewed by your strategist</span>
@@ -1150,14 +1150,14 @@ const SERIES = {
 const KOLS = [
   { handle: "@masakdenganaishah",    activation: "Ayam Percik Challenge",  tier: "Micro", saveRate: 8.4, tone: "green" as Tone, status: "At gate" },
   { handle: "@eatwithzafran",        activation: "Rendang Tok Weeknight",  tier: "Micro", saveRate: 7.1, tone: "amber" as Tone, status: "Building" },
-  { handle: "@dapurrumahkuofficial", activation: "Cooks Kitchen Series",   tier: "Micro", saveRate: 6.8, tone: "amber" as Tone, status: "Building" },
+  { handle: "@dapurrumahkuofficial", activation: "Sedapz Kitchen Series",   tier: "Micro", saveRate: 6.8, tone: "amber" as Tone, status: "Building" },
   { handle: "@chefhanamariana",      activation: "Lifestyle Recipe Reel",  tier: "Mid",   saveRate: 5.2, tone: "red"   as Tone, status: "Below gate" },
   { handle: "@rawlinsganics",        activation: "Weekend Cooking Vibes",  tier: "Mid",   saveRate: 5.6, tone: "red"   as Tone, status: "Below gate" },
 ];
 
 const COMPETITORS = [
   { brand: "MAGGI",  campaign: "Masak Sama-Sama",  ics: 81, rating: "CONDITIONAL", gap: "Strong reach, retention signals weak" },
-  { brand: "Cooks",  campaign: "Jadikan Caramu",   ics: 76, rating: "CONDITIONAL", gap: "Save rate gate not yet fired",          isSelf: true },
+  { brand: "Sedapz",  campaign: "Jadikan Sedap",   ics: 76, rating: "CONDITIONAL", gap: "Save rate gate not yet fired",          isSelf: true },
   { brand: "Knorr",  campaign: "Resepi Warisan",   ics: 74, rating: "CONDITIONAL", gap: "Generic audience tension" },
   { brand: "Adabi",  campaign: "Dapur Kita",       ics: 59, rating: "REWORK",      gap: "Scattered channel execution" },
 ];
@@ -1168,7 +1168,7 @@ const W6 = {
   actions: [
     {
       finding: "Recipe content saves at 2.3× the rate of lifestyle content",
-      implication: "Audiences are bookmarking Cooks recipes for later use — a pre-purchase signal that precedes conversion spikes by 10–14 days. The current creative mix is 60% lifestyle, 40% recipe. This is the wrong way around.",
+      implication: "Audiences are bookmarking Sedapz recipes for later use — a pre-purchase signal that precedes conversion spikes by 10–14 days. The current creative mix is 60% lifestyle, 40% recipe. This is the wrong way around.",
       brief: {
         label: "Creative brief — Week 7",
         lines: [
@@ -1182,12 +1182,12 @@ const W6 = {
     },
     {
       finding: "Brand search interest is growing 2.1× faster than the cooking category",
-      implication: "Consumers are actively looking for Cooks — not just browsing. Earned demand converts 40–60% better than paid-for reach. Pulling search spend now would be the single costliest error at this stage.",
+      implication: "Consumers are actively looking for Sedapz — not just browsing. Earned demand converts 40–60% better than paid-for reach. Pulling search spend now would be the single costliest error at this stage.",
       brief: {
         label: "Media brief — Week 7",
         lines: [
           "Protect branded search budget — no reallocation to social this week",
-          "Add keyword variants: 'Cooks sos ayam', 'Cooks rendang', 'Cooks resipi'",
+          "Add keyword variants: 'Sedapz sos ayam', 'Sedapz rendang', 'Sedapz resipi'",
           "Negative-match competitor brand terms to protect share gains",
         ],
       },
@@ -1326,7 +1326,7 @@ function ActionCard({ index, action }: { index: number; action: typeof W6.action
 
 const COMPLIANCE_ITEMS = [
   "Recruit 2 Klang Valley food creators (recipe-led, 10K–80K followers)",
-  "Activate Rendang Tok or Ayam Percik dish using Cooks paste",
+  "Activate Rendang Tok or Ayam Percik dish using Sedapz paste",
   "Deliver 2 × TikTok process videos + 1 × Instagram Reel per creator",
   "Content uses 'your version of the dish' framing — not brand shortcut positioning",
 ];
@@ -1412,8 +1412,8 @@ export default function PortalDemoPage() {
         </div>
 
         <div className="px-5 py-4 border-b border-white/10">
-          <p className="text-xs font-medium text-neutral-400 mb-1">Cooks · FMCG · Cooking Sauces</p>
-          <p className="text-lg font-bold leading-tight text-white">Jadikan Caramu</p>
+          <p className="text-xs font-medium text-neutral-400 mb-1">Sedapz · FMCG · Cooking Sauces</p>
+          <p className="text-lg font-bold leading-tight text-white">Jadikan Sedap</p>
           <p className="text-sm text-neutral-400 mt-1.5">Phase 1 — Demand · Jul–Aug 2026</p>
         </div>
 
@@ -1501,7 +1501,7 @@ export default function PortalDemoPage() {
         </div>
         <div className="px-4 pt-3 pb-2 flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm text-neutral-300">Cooks · Jadikan Caramu</p>
+            <p className="text-sm text-neutral-300">Sedapz · Jadikan Sedap</p>
             <p className="text-base font-bold text-white">Week {selectedWeek} · 17 Aug 2026</p>
           </div>
           <div className="flex items-center gap-2.5 shrink-0">
@@ -1552,7 +1552,7 @@ export default function PortalDemoPage() {
             <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
               <div className="min-w-0">
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-neutral-900 leading-tight">Growth Intelligence Report</h1>
-                <p className="text-sm sm:text-base text-neutral-500 mt-1">Jadikan Caramu · Phase 1 — Demand</p>
+                <p className="text-sm sm:text-base text-neutral-500 mt-1">Jadikan Sedap · Phase 1 — Demand</p>
               </div>
               <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border bg-emerald-50 text-emerald-800 border-emerald-300 shrink-0">
                 <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
@@ -1725,7 +1725,7 @@ export default function PortalDemoPage() {
               {/* Big idea anchor */}
               <div className="flex items-center gap-3 px-6 py-4 border-b border-neutral-100 bg-neutral-50">
                 <span className="text-xs font-bold text-neutral-400 uppercase tracking-widest">Anchored to</span>
-                <span className="text-sm font-bold text-violet-700">Jadikan Caramu</span>
+                <span className="text-sm font-bold text-violet-700">Jadikan Sedap</span>
                 <span className="text-xs text-neutral-500">·</span>
                 <span className="text-xs font-bold text-amber-700 border border-amber-200 bg-amber-50 rounded-full px-2 py-0.5">ICS 76 · CONDITIONAL</span>
                 <span className="text-xs text-neutral-400 hidden sm:block">The battery measures endurance of this specific idea's execution — not the idea itself</span>
@@ -1736,7 +1736,7 @@ export default function PortalDemoPage() {
                 <div className="px-6 py-5 space-y-4">
                   <div>
                     <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">What this measures</p>
-                    <p className="text-sm text-neutral-700 leading-relaxed">Creative Battery is how many more weeks the current execution format can sustain its engagement trajectory before audiences stop responding. It is not about your campaign idea — the idea (Jadikan Caramu) is intact. It is about whether the <em>way</em> you are expressing it is still working.</p>
+                    <p className="text-sm text-neutral-700 leading-relaxed">Creative Battery is how many more weeks the current execution format can sustain its engagement trajectory before audiences stop responding. It is not about your campaign idea — the idea (Jadikan Sedap) is intact. It is about whether the <em>way</em> you are expressing it is still working.</p>
                   </div>
                   <div>
                     <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Why it matters now</p>
@@ -2343,7 +2343,7 @@ export default function PortalDemoPage() {
                 </div>
               </Collapsible>
 
-              <Collapsible label="Idea quality score · Jadikan Caramu">
+              <Collapsible label="Idea quality score · Jadikan Sedap">
                 <div className="flex items-start gap-5">
                   <div className="text-center shrink-0">
                     <span className="text-5xl font-black text-violet-700">{week.ics.score}</span>
@@ -2568,13 +2568,13 @@ export default function PortalDemoPage() {
                   <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">AI monitoring</span>
                 </div>
                 <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">AI Brand Visibility</p>
-                <p className="text-xs text-neutral-500 mb-4">Is Cooks appearing in AI-generated answers when consumers ask about cooking sauces?</p>
+                <p className="text-xs text-neutral-500 mb-4">Is Sedapz appearing in AI-generated answers when consumers ask about cooking sauces?</p>
                 <div className="space-y-3">
                   {[
-                    { query: '"best cooking sauce Malaysia"', result: "Cooks mentioned · Position 3", tone: "amber" },
+                    { query: '"best cooking sauce Malaysia"', result: "Sedapz mentioned · Position 3", tone: "amber" },
                     { query: '"resipi ayam percik sauce"', result: "Not mentioned · Competitor gap", tone: "red" },
-                    { query: '"Cooks sos review"', result: "Brand results · Full control", tone: "green" },
-                    { query: '"halal cooking sauce brand"', result: "Cooks mentioned · Position 2", tone: "green" },
+                    { query: '"Sedapz sos review"', result: "Brand results · Full control", tone: "green" },
+                    { query: '"halal cooking sauce brand"', result: "Sedapz mentioned · Position 2", tone: "green" },
                   ].map(v => (
                     <div key={v.query} className="flex items-start gap-2">
                       <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${v.tone === "green" ? "bg-emerald-400" : v.tone === "amber" ? "bg-amber-400" : "bg-red-400"}`} />

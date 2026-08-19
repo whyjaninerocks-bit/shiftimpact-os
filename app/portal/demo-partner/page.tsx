@@ -18,8 +18,8 @@ type DeliveryStatus = "delivered" | "partial" | "pending" | null;
 // ─── Data (partner-scoped — same campaign, narrower view) ─────────────────────
 
 const CAMPAIGN = {
-  brand: "Cooks",
-  campaign: "Jadikan Caramu",
+  brand: "Sedapz",
+  campaign: "Jadikan Sedap",
   phase: "Phase 1 — Demand",
   week: 6,
   weekDate: "17 Aug 2026",
@@ -40,7 +40,7 @@ const ACTIVE_BRIEF = {
   title: "Recipe-led creative refresh — Merdeka window",
   context: "Save rate is 6.1% against a gate threshold of 8%. Recipe content is saving at 2.3× the rate of lifestyle content. The brief this week is to shift to 70% recipe-led output before the Merdeka window closes on 31 Aug.",
   deliverables: [
-    { id: 1, task: "2 × TikTok process videos — Ayam Percik or Rendang Tok using Cooks paste", format: "TikTok · 45–60 sec", due: "19 Aug" },
+    { id: 1, task: "2 × TikTok process videos — Ayam Percik or Rendang Tok using Sedapz paste", format: "TikTok · 45–60 sec", due: "19 Aug" },
     { id: 2, task: "1 × Instagram Reel — 'your version of the dish' framing, no direct product close-up", format: "Reel · 30–45 sec", due: "20 Aug" },
     { id: 3, task: "Caption copy for all 3 pieces — Malay-language primary, English subtitle", format: "Copy · 150 words max per piece", due: "20 Aug" },
     { id: 4, task: "Thumbnail stills — 3 hero frames per video for scheduler review", format: "JPEG · 1080×1920", due: "21 Aug" },
@@ -52,7 +52,7 @@ const ACTIVE_BRIEF = {
 const MY_CONTENT = [
   { week: "Wk 6", piece: "Ayam Percik Challenge · TikTok",  saveRate: 8.4, views: "48K", tone: "green" as Tone, note: "Above gate" },
   { week: "Wk 5", piece: "Rendang Tok Weeknight · TikTok",  saveRate: 7.1, views: "34K", tone: "amber" as Tone, note: "Building" },
-  { week: "Wk 5", piece: "Cooks Kitchen Series · Reel",     saveRate: 6.8, views: "22K", tone: "amber" as Tone, note: "Building" },
+  { week: "Wk 5", piece: "Sedapz Kitchen Series · Reel",     saveRate: 6.8, views: "22K", tone: "amber" as Tone, note: "Building" },
   { week: "Wk 4", piece: "Lifestyle Cooking Reel (Meta)",   saveRate: 4.2, views: "41K", tone: "red"   as Tone, note: "Below gate — format shifted" },
   { week: "Wk 3", piece: "Product Hero · TikTok",           saveRate: 3.9, views: "19K", tone: "red"   as Tone, note: "Below gate — format discontinued" },
 ];
