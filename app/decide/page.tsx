@@ -8,7 +8,7 @@ import { useState, useRef, useEffect } from "react";
 type Phase = "entry" | "fetching" | "reading" | "probing" | "synthesis" | "benchmark" | "done";
 
 interface ProbeResult { readingLines: string[]; question: string; readyForSynthesis?: boolean; }
-interface SynthesisResult { stageRead: string; signalGap: string; riskPosture: string; gateCondition: string; action: string; bridge: string; _stage?: string; _signal?: string; _gap?: string; }
+interface SynthesisResult { stageRead: string; signalGap: string; riskPosture: string; gateCondition: string; action: string; bridge: string; dataGaps?: string; _stage?: string; _signal?: string; _gap?: string; }
 
 async function callProbe(
   decision: string,
@@ -202,6 +202,7 @@ export default function DecidePage() {
           gate_condition: synthesis?.gateCondition,
           action: synthesis?.action,
           bridge: synthesis?.bridge,
+          data_gaps: synthesis?.dataGaps,
         }),
       });
       setPhase("benchmark"); // Collect benchmark context for analytics
@@ -233,6 +234,7 @@ export default function DecidePage() {
           gate_condition: synthesis?.gateCondition,
           action: synthesis?.action,
           bridge: synthesis?.bridge,
+          data_gaps: synthesis?.dataGaps,
           // Classifier metadata — for decision pattern analytics
           campaign_stage: synthesis?._stage,
           signal_gap_type: synthesis?._signal,
@@ -391,6 +393,16 @@ export default function DecidePage() {
 
             <p style={C.sLabel}>Your next move</p>
             <p style={C.body}>{synthesis.action}</p>
+
+            {synthesis.dataGaps && (
+              <div style={{ ...C.box, borderColor: "#3f2d1a", background: "#171310" }}>
+                <p style={{ ...C.sLabel, marginBottom: "0.15rem" }}>What this read could not confirm</p>
+                <p style={{ fontSize: 11, color: "#4b5563", margin: "0 0 0.5rem", letterSpacing: "0.04em" }}>What closing this would let you rule in or out</p>
+                <p style={{ margin: 0, fontSize: 14, color: "#c9a876", lineHeight: 1.75 }}>
+                  {synthesis.dataGaps}
+                </p>
+              </div>
+            )}
 
             <div style={{ ...C.box, borderColor: "#1f2937" }}>
               <p style={{ ...C.sLabel, marginBottom: "0.5rem" }}>The question</p>

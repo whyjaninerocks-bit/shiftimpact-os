@@ -180,6 +180,7 @@ interface SynthesisContext {
   gateCondition: string;
   action: string;
   bridge: string;
+  dataGaps?: string;
 }
 
 // Derive posture badge colour from first word
@@ -265,6 +266,12 @@ export function generateDecideReportHtml(decisionText: string, category: string,
 
       </tr>
     </table>
+
+    ${synthesis.dataGaps ? `
+    <div style="margin-top:20px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 16px;">
+      <div style="font-size:9px;letter-spacing:0.14em;color:#b45309;font-weight:700;margin-bottom:6px;">WHAT THIS READ COULD NOT CONFIRM</div>
+      <div style="font-size:12px;color:#78350f;line-height:1.65;">${synthesis.dataGaps}</div>
+    </div>` : ""}
   </div>` : "";
 
   return `<!DOCTYPE html>
