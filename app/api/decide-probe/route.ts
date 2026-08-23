@@ -130,13 +130,16 @@ action: One action, completable in 72 hours, that checks the specific signal ide
 
 bridge: The question they have been avoiding. Slightly uncomfortable. If answered honestly, the decision becomes clear. Second person. No hyphens.
 
+dataGaps: Name the specific data or evidence this conversation did not surface, the thing you had to reason around rather than confirm. State plainly what having it would let the user rule in or rule out. This is not a generic "gather more data" line. It must name something specific to what they described, and it must be honest that the gateCondition threshold above is a starting point calibrated to category patterns, not their own confirmed number, until this gap is closed. 2 to 3 sentences. Second person. No hyphens.
+
 FINAL CHECKS before every synthesis response:
 1. Does every field reference something specific from this conversation? If any field could apply to a completely different decision, rewrite it.
 2. Does riskPosture contain the posture name + WHY (rationale) but NOT the gate threshold?
 3. Does gateCondition begin with "Gate opens when" and contain ONLY the threshold and hold period — no rationale?
 4. Are riskPosture and gateCondition meaningfully different from each other?
 5. Is the synthesis written entirely in second person?
-6. Are there any hyphens anywhere? Remove them.`;
+6. Are there any hyphens anywhere? Remove them.
+7. Does dataGaps name something specific and missing from THIS conversation, not a generic call for "more data"?`;
 
 // ── Classify the decision context (fast, haiku) ───────────────────────────────
 async function classifyDecision(
@@ -217,13 +220,14 @@ function buildUserMessage(
     }
     lines.push("\nGENERATE THE ShiftImpact OS SYNTHESIS. This is a verdict, not a summary.");
     lines.push("Return ONLY valid JSON in this exact shape:");
-    lines.push(`{"stageRead":"string","signalGap":"string","riskPosture":"string","gateCondition":"string","action":"string","bridge":"string"}`);
+    lines.push(`{"stageRead":"string","signalGap":"string","riskPosture":"string","gateCondition":"string","action":"string","bridge":"string","dataGaps":"string"}`);
     lines.push("stageRead: which campaign stage + which gate is blocked. 1 to 2 sentences. Second person. No hyphens.");
     lines.push("signalGap: which signal (Share of Search, Save Rate, UGC, or Physical Signals) is missing and why it resolves this. Full name only — never abbreviate. 2 sentences. Second person. No hyphens.");
     lines.push("riskPosture: exactly one of Press|Hold|Pivot|Stop|Investigate. Then 1 sentence explaining WHY (the signal read, the confidence level, what makes it too early or right to act). Do NOT include the gate threshold here. No hyphens.");
     lines.push("gateCondition: 'Gate opens when [specific metric] [specific threshold] for [specific period].' The threshold only — no rationale. Calibrated to this decision. No hyphens.");
     lines.push("action: one 72-hour action. Name the platform, the metric, and what the result means for THIS decision. No hyphens.");
     lines.push("bridge: the question they have been avoiding. Slightly uncomfortable. Makes the decision clear if answered honestly. Second person. No hyphens.");
+    lines.push("dataGaps: the specific data or evidence this conversation did not confirm, and what having it would let the user rule in or out. Name it specifically, not generically. Say plainly that the gateCondition threshold is a starting point from category patterns until this is confirmed with their own numbers. 2 to 3 sentences. Second person. No hyphens.");
   }
 
   return lines.join("\n");
@@ -284,6 +288,7 @@ export async function POST(req: NextRequest) {
           gateCondition: "Gate opens when Save Rate is at or above 8 percent on hero content for 3 consecutive days.",
           action: "Pull your TikTok Save Rate for the last 14 days. Map it against the week the paid push ran. If the rate moved in that week, the spend contributed to behaviour change. If it did not, the spend is buying reach.",
           bridge: "You already know what you would do if the data confirmed your gut. What would it take to act as if it already had?",
+          dataGaps: "This read could not confirm your own Save Rate baseline from what was shared, so the threshold above is a category starting point, not your number. Pulling your last three campaigns gives you the real baseline to test this against.",
         });
       }
     }

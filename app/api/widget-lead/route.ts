@@ -158,6 +158,7 @@ export async function PATCH(req: NextRequest) {
     gate_condition,
     action,
     bridge,
+    data_gaps,
   } = body;
 
   if (!session_id) {
@@ -211,6 +212,7 @@ export async function PATCH(req: NextRequest) {
             gateCondition: sanitize(gate_condition),
             action: sanitize(action),
             bridge: sanitize(bridge),
+            dataGaps: sanitize(data_gaps),
           });
 
           const resendRes = await fetch("https://api.resend.com/emails", {
@@ -298,6 +300,7 @@ export async function PATCH(req: NextRequest) {
           gateCondition: sanitize(gate_condition),
           action: sanitize(action),
           bridge: sanitize(bridge),
+          dataGaps: sanitize(data_gaps),
         });
 
         const resendRes = await fetch("https://api.resend.com/emails", {

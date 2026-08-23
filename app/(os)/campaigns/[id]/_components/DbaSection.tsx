@@ -9,7 +9,8 @@
 //
 // ACCESS RULES:
 //   ALL FIELDS: INTERNAL ONLY — never shown in client portal
-//   consistency_score: computed in future sprint (DBAI correlation engine) — null until 2+ campaigns
+//   consistency_score: % of the client's decided campaigns that deployed this asset,
+//     recomputed live by /api/brand-assets on every set_deployed call — null until 2+ campaigns
 //   Client sees: asset_name + asset_type ONLY at onboarding orientation (not here)
 //
 // Byron Sharp / Ehrenberg-Bass framework: assets that consistently appear across

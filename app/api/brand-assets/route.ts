@@ -18,7 +18,7 @@
 //
 // ACCESS RULES:
 //   All fields: INTERNAL ONLY — never surfaced to client portal
-//   consistency_score: computed by DBAI correlation (future sprint) — null until 2+ campaigns
+//   consistency_score: real computed count (built 23 Aug 2026) — null until 2+ campaigns
 //   Client sees asset_name + asset_type ONLY at onboarding orientation (not here)
 
 import { NextRequest, NextResponse } from "next/server";
@@ -30,6 +30,54 @@ function getSupabase() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { persistSession: false } }
   );
+}
+
+// ─── Consistency score — real count, not an AI estimate ──────────────────────
+// distinctive_assets_deployed is a comma-joined list of real brand_asset UUIDs
+// (or 'NONE_CONFIRMED', or '' for not-yet-decided) set via the checkbox UI in
+// DbaSection.tsx. This walks every campaign for a client that has an actual
+// decision recorded (checked assets, or explicitly NONE_CONFIRMED — both
+// count as a decision; '' does not) and computes, per asset, the % of those
+// decided campaigns it appeared in. Requires 2+ decided campaigns per the
+// product copy ("Consistency scores compute automatically after 2+
+// campaigns") — below that, every asset's score is left null rather than
+// showing a misleadingly precise 100%/0% off a single data point.
+async function recomputeConsistencyScores(supabase: ReturnType<typeof getSupabase>, clientId: string) {
+  const { data: campaigns } = await supabase
+    .from("campaigns")
+    .select("id, frame_briefs(distinctive_assets_deployed)")
+    .eq("client_id", clientId);
+
+  const decided = (campaigns ?? [])
+    .map((c) => {
+      const frames = c.frame_briefs as { distinctive_assets_deployed?: string }[] | { distinctive_assets_deployed?: string } | null;
+      const frame = Array.isArray(frames) ? frames[0] : frames;
+      return frame?.distinctive_assets_deployed ?? "";
+    })
+    .filter((v) => v !== "" && v != null);
+
+  const { data: assets } = await supabase
+    .from("brand_assets")
+    .select("id")
+    .eq("client_id", clientId);
+
+  if (!assets || assets.length === 0) return;
+
+  if (decided.length < 2) {
+    // Not enough decided campaigns yet — leave/reset every score to null.
+    await supabase.from("brand_assets").update({ consistency_score: null }).eq("client_id", clientId);
+    return;
+  }
+
+  const deployedIdSets = decided.map((v) =>
+    v === "NONE_CONFIRMED" ? new Set<string>() : new Set(v.split(",").map((s) => s.trim()).filter(Boolean))
+  );
+
+  for (const asset of assets) {
+    const appearances = deployedIdSets.filter((set) => set.has(asset.id)).length;
+    const score = Math.round((appearances / decided.length) * 100);
+    await supabase.from("brand_assets").update({ consistency_score: score }).eq("id", asset.id);
+  }
 }
 
 // ─── GET — list assets for a client ──────────────────────────────────────────
@@ -202,14 +250,29 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const { error: briefErr } = await supabase
+      const { data: updatedBrief, error: briefErr } = await supabase
         .from("frame_briefs")
         .update({ distinctive_assets_deployed: distinctive_assets_deployed ?? "" })
-        .eq("id", frame_brief_id);
+        .eq("id", frame_brief_id)
+        .select("campaign_id")
+        .single();
 
       if (briefErr) {
         console.error("/api/brand-assets set_deployed error:", briefErr);
         return NextResponse.json({ error: briefErr.message }, { status: 500 });
+      }
+
+      // Recompute every one of this client's asset consistency scores —
+      // one checkbox change on one campaign can shift every asset's %.
+      if (updatedBrief?.campaign_id) {
+        const { data: campaign } = await supabase
+          .from("campaigns")
+          .select("client_id")
+          .eq("id", updatedBrief.campaign_id)
+          .single();
+        if (campaign?.client_id) {
+          await recomputeConsistencyScores(supabase, campaign.client_id);
+        }
       }
 
       return NextResponse.json({ ok: true, distinctive_assets_deployed });

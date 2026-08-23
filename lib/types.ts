@@ -311,6 +311,14 @@ export function computeGate1Status(frame: FrameBrief): Gate1Status {
 
 export type KillSwitchPriority = "High" | "Medium" | "Low";
 export type KillSwitchStatus = "Inactive" | "Monitoring" | "Triggered";
+export type KillSwitchMetric =
+  | "signal_1_actual_pct"
+  | "signal_2_actual_pct"
+  | "signal_3_actual_count"
+  | "signal_2b_actual_pct"
+  | "signal_3b_actual_pct"
+  | "signal_4_actual_pct";
+export type KillSwitchComparator = "below" | "above";
 
 export type KillSwitch = {
   id: string;
@@ -319,6 +327,24 @@ export type KillSwitch = {
   trigger_status: KillSwitchStatus;
   priority: KillSwitchPriority;
   created_at: string;
+  // Structured auto-evaluation — all null/default until a strategist opts a
+  // switch into automation. See migration 0069.
+  metric_type: KillSwitchMetric | null;
+  comparator: KillSwitchComparator | null;
+  threshold_value: number | null;
+  consecutive_periods: number;
+  auto_enabled: boolean;
+  last_evaluated_at: string | null;
+  last_evaluation_note: string | null;
+};
+
+export const KILL_SWITCH_METRIC_LABELS: Record<KillSwitchMetric, string> = {
+  signal_1_actual_pct: "Signal 1 — Share of Search (%)",
+  signal_2_actual_pct: "Signal 2 — Save Rate (%)",
+  signal_3_actual_count: "Signal 3 — UGC Volume (count)",
+  signal_2b_actual_pct: "Signal 2B — Share Rate (%)",
+  signal_3b_actual_pct: "Signal 3B (%)",
+  signal_4_actual_pct: "Signal 4 (%)",
 };
 
 // ─── Stage Briefs ─────────────────────────────────────────────────────────────
