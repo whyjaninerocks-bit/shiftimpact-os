@@ -150,12 +150,18 @@ async function assembleSignalContext(campaign_id: string) {
 
   ctx.thresholds = thresholds;
 
-  // S2 — Kill switches (breached or at-risk)
+  // S2 — Kill switches (Triggered or Monitoring)
+  // NOTE: fixed 23 Aug 2026 — this previously queried columns
+  // (kill_switch_name, threshold_value, unit, breach_status, triggered_at)
+  // that don't exist on kill_switches, so this section silently returned
+  // nothing on every run. Real columns: condition, trigger_status, priority,
+  // plus the auto-evaluation fields from migration 0069.
   const { data: killSwitches } = await supabase
     .from("kill_switches")
-    .select("kill_switch_name, threshold_value, unit, breach_status, triggered_at")
+    .select("condition, priority, trigger_status, last_evaluation_note")
     .eq("frame_brief_id", frame?.id ?? "00000000-0000-0000-0000-000000000000")
-    .order("breach_status", { ascending: false })
+    .in("trigger_status", ["Triggered", "Monitoring"])
+    .order("trigger_status", { ascending: false })
     .limit(10);
 
   if (killSwitches?.length) {
@@ -391,12 +397,12 @@ function buildDigestPrompt(ctx: Record<string, unknown>): string {
 
   if (ctx.kill_switches) {
     const ks = ctx.kill_switches as Array<Record<string, unknown>>;
-    const breached = ks.filter(k => k.breach_status === "Breached");
-    const atRisk = ks.filter(k => k.breach_status === "At Risk");
-    if (breached.length || atRisk.length) {
+    const triggeredSwitches = ks.filter(k => k.trigger_status === "Triggered");
+    const monitoringSwitches = ks.filter(k => k.trigger_status === "Monitoring");
+    if (triggeredSwitches.length || monitoringSwitches.length) {
       contextLines.push(`\nKILL SWITCHES:`);
-      breached.forEach(k => contextLines.push(`  BREACHED: ${k.kill_switch_name} (triggered ${k.triggered_at ?? "?"})`));
-      atRisk.forEach(k => contextLines.push(`  AT RISK: ${k.kill_switch_name}`));
+      triggeredSwitches.forEach(k => contextLines.push(`  TRIGGERED (${k.priority}): ${k.condition}${k.last_evaluation_note ? ` — ${k.last_evaluation_note}` : ""}`));
+      monitoringSwitches.forEach(k => contextLines.push(`  MONITORING (${k.priority}): ${k.condition}`));
     }
   }
 

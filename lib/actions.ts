@@ -349,11 +349,19 @@ export async function setFrameLockStatus(campaignId: string, frameBriefId: strin
 
 export async function createKillSwitch(campaignId: string, frameBriefId: string, formData: FormData) {
   const supabase = createAdminClient();
+  const metricType = str(formData, "metric_type");
   const { error } = await supabase.from("kill_switches").insert({
     frame_brief_id: frameBriefId,
     condition: str(formData, "condition"),
     trigger_status: str(formData, "trigger_status") || "Inactive",
     priority: str(formData, "priority") || "Medium",
+    // Structured auto-evaluation fields — all left null/default unless a
+    // metric_type is actually chosen, so a switch stays manual by default.
+    metric_type: metricType || null,
+    comparator: metricType ? (str(formData, "comparator") || "below") : null,
+    threshold_value: metricType ? numOrNull(formData, "threshold_value") : null,
+    consecutive_periods: metricType ? (numOrNull(formData, "consecutive_periods") ?? 1) : 1,
+    auto_enabled: true,
   });
 
   if (error) {
@@ -369,10 +377,21 @@ export async function updateKillSwitch(campaignId: string, killSwitchId: string,
   const newStatus   = str(formData, "trigger_status");
   const condition   = str(formData, "condition");
   const priority    = str(formData, "priority");
+  const metricType  = str(formData, "metric_type");
+  const autoEnabled = formData.get("auto_enabled") !== null; // checkbox present = checked
 
   const { error } = await supabase
     .from("kill_switches")
-    .update({ condition, trigger_status: newStatus, priority })
+    .update({
+      condition,
+      trigger_status: newStatus,
+      priority,
+      metric_type: metricType || null,
+      comparator: metricType ? (str(formData, "comparator") || "below") : null,
+      threshold_value: metricType ? numOrNull(formData, "threshold_value") : null,
+      consecutive_periods: metricType ? (numOrNull(formData, "consecutive_periods") ?? 1) : 1,
+      auto_enabled: metricType ? autoEnabled : true,
+    })
     .eq("id", killSwitchId);
 
   if (error) {
