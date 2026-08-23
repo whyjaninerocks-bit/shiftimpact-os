@@ -1,13 +1,19 @@
 // app/api/cron/signal-s3-scan/route.ts
-// Weekly automated S3 UGC Volume scan via TikTok hashtag counting.
+// Weekly automated S3 UGC Volume + S2 Save Rate scan via TikTok hashtag counting.
 // Runs every Tuesday 3am UTC (11am MYT) — one hour after cultural-scan.
 //
 // WHAT IT DOES:
 //   For every client that has a primary_hashtag set, fetches recent TikTok posts
-//   for that hashtag and writes the weekly count to signal_weekly_reports.
-//   Only updates weeks that already exist (i.e. the strategy lead has started
-//   weekly reporting for that campaign) and where signal_3_auto = false or
-//   the value is null (does not overwrite manual entries).
+//   for that hashtag in one Apify call and writes two signals from it:
+//     - S3 UGC Volume: post count for the hashtag (signal_3_actual_count)
+//     - S2 Save Rate: sum(collectCount) / sum(playCount) * 100 across the same
+//       posts (signal_2_actual_pct) — added 23 Aug 2026, verified live that
+//       clockworks/free-tiktok-scraper returns both collectCount and playCount
+//       per video, so this needed no new actor or credential.
+//   Each signal is only written if that field is null or was itself last
+//   written by this cron (signal_2_auto / signal_3_auto) — a manual entry by
+//   the strategy lead is never overwritten. Only skips the Apify call entirely
+//   if BOTH signals are manually locked for the current week.
 //
 // ACTOR: clockworks~free-tiktok-scraper (already used in audit-fetch)
 //
@@ -29,12 +35,19 @@ function isAuthorised(req: NextRequest): boolean {
 }
 
 // ─── Apify TikTok hashtag scrape ─────────────────────────────────────────────
-// Returns the count of posts found for the hashtag in the current week window.
-// We request 50 results to get a meaningful sample — the raw count is what we
-// store, not a reach-normalised rate. The strategy lead can see the absolute
-// weekly volume and judge directional change.
+// Returns the post count (S3) and the aggregate Save Rate (S2) for the hashtag
+// in the current week window, from a single Apify call. We request 50 results
+// to get a meaningful sample. Save Rate = sum(collectCount) / sum(playCount) * 100
+// across the sampled posts — collectCount is TikTok's bookmark/save count,
+// confirmed present on this actor's output (verified via a live test call,
+// 23 Aug 2026, alongside playCount, diggCount, shareCount, commentCount).
 
-async function fetchHashtagCount(hashtag: string): Promise<number> {
+type HashtagScanResult = {
+  count: number;
+  saveRatePct: number | null; // null if no plays in the sample — can't compute a rate
+};
+
+async function fetchHashtagData(hashtag: string): Promise<HashtagScanResult> {
   if (!APIFY_TOKEN) throw new Error("APIFY_API_TOKEN not configured");
 
   const clean = hashtag.replace(/^#/, "").trim();
@@ -56,8 +69,21 @@ async function fetchHashtagCount(hashtag: string): Promise<number> {
     throw new Error(`TikTok scraper failed: ${res.status} — ${body.slice(0, 200)}`);
   }
 
-  const items = await res.json() as unknown[];
-  return Array.isArray(items) ? items.length : 0;
+  const items = await res.json() as Array<{ playCount?: number; collectCount?: number }>;
+  if (!Array.isArray(items)) return { count: 0, saveRatePct: null };
+
+  let totalPlays = 0;
+  let totalCollects = 0;
+  for (const item of items) {
+    totalPlays += typeof item.playCount === "number" ? item.playCount : 0;
+    totalCollects += typeof item.collectCount === "number" ? item.collectCount : 0;
+  }
+
+  const saveRatePct = totalPlays > 0
+    ? Number(((totalCollects / totalPlays) * 100).toFixed(2))
+    : null;
+
+  return { count: items.length, saveRatePct };
 }
 
 // ─── Get active campaigns with signal reporting underway ─────────────────────
@@ -74,6 +100,8 @@ type CampaignRow = {
   primary_hashtag: string;
   week_number: number;
   report_id: string | null;
+  signal_2_actual_pct: number | null;
+  signal_2_auto: boolean;
   signal_3_actual_count: number | null;
   signal_3_auto: boolean;
 };
@@ -109,7 +137,7 @@ async function getActiveCampaigns(
     // Get the most recent signal_weekly_reports row for this campaign
     const { data: latestReport } = await supabase
       .from("signal_weekly_reports")
-      .select("id, week_number, signal_3_actual_count, signal_3_auto")
+      .select("id, week_number, signal_2_actual_pct, signal_2_auto, signal_3_actual_count, signal_3_auto")
       .eq("campaign_id", c.id)
       .order("week_number", { ascending: false })
       .limit(1)
@@ -117,10 +145,11 @@ async function getActiveCampaigns(
 
     if (!latestReport) continue; // No reporting started — skip
 
-    // Skip if this week already has a manual entry
-    if (latestReport.signal_3_actual_count !== null && !latestReport.signal_3_auto) {
-      continue;
-    }
+    // Skip the Apify call entirely only if BOTH S2 and S3 are manually locked
+    // for this week — otherwise at least one signal can still be auto-written.
+    const s3Locked = latestReport.signal_3_actual_count !== null && !latestReport.signal_3_auto;
+    const s2Locked = latestReport.signal_2_actual_pct !== null && !latestReport.signal_2_auto;
+    if (s3Locked && s2Locked) continue;
 
     results.push({
       campaign_id: c.id,
@@ -129,6 +158,8 @@ async function getActiveCampaigns(
       primary_hashtag: c.clients.primary_hashtag,
       week_number: latestReport.week_number,
       report_id: latestReport.id,
+      signal_2_actual_pct: latestReport.signal_2_actual_pct,
+      signal_2_auto: latestReport.signal_2_auto ?? false,
       signal_3_actual_count: latestReport.signal_3_actual_count,
       signal_3_auto: latestReport.signal_3_auto ?? false,
     });
@@ -223,6 +254,8 @@ export async function GET(req: NextRequest) {
   const log: string[] = [];
   let updated = 0;
   let echoEvents = 0;
+  let s2Written = 0;
+  let s3Written = 0;
 
   try {
     const campaigns = await getActiveCampaigns(supabase);
@@ -232,8 +265,8 @@ export async function GET(req: NextRequest) {
       try {
         log.push(`Scanning #${campaign.primary_hashtag} for ${campaign.client_name} — campaign: ${campaign.campaign_name}`);
 
-        const count = await fetchHashtagCount(campaign.primary_hashtag);
-        log.push(`  → ${count} posts found`);
+        const { count, saveRatePct } = await fetchHashtagData(campaign.primary_hashtag);
+        log.push(`  → ${count} posts found, Save Rate ${saveRatePct !== null ? saveRatePct + "%" : "unavailable (no plays in sample)"}`);
 
         // Detect WA Echo Event before writing (uses prior signal_3 for comparison)
         const isEcho = await detectWaEchoEvent(
@@ -248,20 +281,37 @@ export async function GET(req: NextRequest) {
           log.push(`  → WA Echo Event detected (S2+S3 convergence)`);
         }
 
-        // Write to signal_weekly_reports
+        // Only write each field if it isn't manually locked for this week
+        const s3Locked = campaign.signal_3_actual_count !== null && !campaign.signal_3_auto;
+        const s2Locked = campaign.signal_2_actual_pct !== null && !campaign.signal_2_auto;
+
+        const updatePayload: Record<string, unknown> = {};
+        if (!s3Locked) {
+          updatePayload.signal_3_actual_count = count;
+          updatePayload.signal_3_auto = true;
+        }
+        if (!s2Locked && saveRatePct !== null) {
+          updatePayload.signal_2_actual_pct = saveRatePct;
+          updatePayload.signal_2_auto = true;
+        }
+        if (isEcho) updatePayload.wa_echo_event = true;
+
+        if (Object.keys(updatePayload).length === 0) {
+          log.push(`  — both signals manually locked, nothing to write`);
+          continue;
+        }
+
         const { error } = await supabase
           .from("signal_weekly_reports")
-          .update({
-            signal_3_actual_count: count,
-            signal_3_auto: true,
-            ...(isEcho ? { wa_echo_event: true } : {}),
-          })
+          .update(updatePayload)
           .eq("id", campaign.report_id);
 
         if (error) {
           log.push(`  ERROR: ${error.message}`);
         } else {
           updated++;
+          if ("signal_3_actual_count" in updatePayload) s3Written++;
+          if ("signal_2_actual_pct" in updatePayload) s2Written++;
           log.push(`  ✓ Written to week ${campaign.week_number}`);
         }
 
@@ -273,12 +323,14 @@ export async function GET(req: NextRequest) {
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
-    log.push(`Done. ${updated} campaigns updated, ${echoEvents} WA Echo Events detected.`);
+    log.push(`Done. ${updated} campaigns updated (S3: ${s3Written}, S2: ${s2Written}), ${echoEvents} WA Echo Events detected.`);
 
     return NextResponse.json({
       ok: true,
       campaigns_scanned: campaigns.length,
       campaigns_updated: updated,
+      s3_written: s3Written,
+      s2_written: s2Written,
       echo_events: echoEvents,
       log,
     });
