@@ -3,11 +3,15 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireSession } from "@/lib/auth/require-session";
 
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authError = await requireSession();
+  if (authError) return authError;
+
   try {
     const { id } = await params;
     const supabase = createAdminClient();

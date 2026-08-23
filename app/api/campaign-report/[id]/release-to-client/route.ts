@@ -7,6 +7,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireSession } from "@/lib/auth/require-session";
+import { mintPortalToken } from "@/lib/portal/access-token";
 
 function buildClientReleaseEmail(params: {
   clientName: string;
@@ -83,6 +85,9 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authError = await requireSession();
+  if (authError) return authError;
+
   try {
     const { id: reportId } = await params;
     const body = await req.json().catch(() => ({}));
@@ -175,7 +180,8 @@ export async function POST(
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.shift-impact.com";
 
     if (resendKey && fromEmail && allRecipients.length > 0) {
-      const portalUrl = `${appUrl}/portal/${report.campaign_id}`;
+      const portalToken = await mintPortalToken(report.campaign_id);
+      const portalUrl = `${appUrl}/portal/${report.campaign_id}?t=${portalToken}`;
       const html = buildClientReleaseEmail({
         clientName,
         campaignName: campaign?.name ?? "your campaign",

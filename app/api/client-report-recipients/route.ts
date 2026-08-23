@@ -3,8 +3,12 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireSession } from "@/lib/auth/require-session";
 
 export async function POST(req: NextRequest) {
+  const authError = await requireSession();
+  if (authError) return authError;
+
   try {
     const { client_id, name, email, recipient_type } = await req.json();
 

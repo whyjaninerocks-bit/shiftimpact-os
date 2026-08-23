@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPortalEscalation } from "@/lib/email";
+import { verifyPortalToken } from "@/lib/portal/access-token";
 
 export const runtime = "nodejs";
 
@@ -22,6 +23,8 @@ export async function POST(req: NextRequest) {
       widget_response,
       escalation_reason,
       portal_url,
+      token,
+      demo,
     } = body as {
       campaign_id: string;
       campaign_name: string;
@@ -30,10 +33,21 @@ export async function POST(req: NextRequest) {
       widget_response: string;
       escalation_reason: string;
       portal_url: string;
+      token?: string;
+      demo?: boolean;
     };
 
     if (!campaign_id || !client_question) {
       return NextResponse.json({ error: "campaign_id and client_question required" }, { status: 400 });
+    }
+
+    // Demo mode (the /portal/demo walkthrough) never has a real campaign_id
+    // or minted token — leave it untouched, same as portal-chat.
+    if (!demo) {
+      const tokenValid = await verifyPortalToken(campaign_id, token);
+      if (!tokenValid) {
+        return NextResponse.json({ error: "Invalid or expired access token" }, { status: 401 });
+      }
     }
 
     // Look up strategist server-side — never expose email to client

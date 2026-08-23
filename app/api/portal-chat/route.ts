@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getModel } from "@/lib/ai-model";
+import { verifyPortalToken } from "@/lib/portal/access-token";
 
 export const runtime = "nodejs";
 
@@ -361,17 +362,18 @@ Assigned: Janine Wai — ShiftImpact OS Lead Strategist`;
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { campaign_id, question, demo } = body as {
+    const { campaign_id, question, demo, token } = body as {
       campaign_id?: string;
       question: string;
       demo?: boolean;
+      token?: string;
     };
 
     if (!question?.trim()) {
       return NextResponse.json({ error: "question required" }, { status: 400 });
     }
 
-    // Demo mode — uses hardcoded Cooks context, no DB fetch
+    // Demo mode — uses hardcoded Cooks context, no DB fetch, no token required
     if (demo) {
       const contextBlock = buildDemoContextBlock();
       const model = await getModel("model_portal_chat", "claude-haiku-4-5-20251001");
@@ -381,6 +383,11 @@ export async function POST(req: NextRequest) {
 
     if (!campaign_id) {
       return NextResponse.json({ error: "campaign_id required" }, { status: 400 });
+    }
+
+    const tokenValid = await verifyPortalToken(campaign_id, token);
+    if (!tokenValid) {
+      return NextResponse.json({ error: "Invalid or expired access token" }, { status: 401 });
     }
 
     const [ctx, model] = await Promise.all([

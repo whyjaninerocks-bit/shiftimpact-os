@@ -5,11 +5,15 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireSession } from "@/lib/auth/require-session";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authError = await requireSession();
+  if (authError) return authError;
+
   const { id } = await params;
 
   let note: string;

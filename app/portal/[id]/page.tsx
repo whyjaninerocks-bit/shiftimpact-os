@@ -70,10 +70,10 @@ export default async function ClientPortalPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ view?: string }>;
+  searchParams: Promise<{ view?: string; t?: string }>;
 }) {
   const { id } = await params;
-  const { view: viewParam } = await searchParams;
+  const { view: viewParam, t: portalToken } = await searchParams;
   const view: PortalView =
     viewParam === "agency" ? "agency" : viewParam === "partner" ? "partner" : "brand";
 
@@ -453,7 +453,7 @@ export default async function ClientPortalPage({
       </main>
 
       {/* LLM-backed Q&A widget — pulls live signal data, streams from Claude */}
-      <PortalChatWidget campaignId={id} />
+      <PortalChatWidget campaignId={id} portalToken={portalToken} />
     </div>
   );
 }

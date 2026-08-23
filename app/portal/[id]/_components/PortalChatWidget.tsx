@@ -52,7 +52,13 @@ const SUGGESTIONS = [
   "Why hasn't the gate fired yet?",
 ];
 
-export function PortalChatWidget({ campaignId }: { campaignId: string }) {
+export function PortalChatWidget({
+  campaignId,
+  portalToken,
+}: {
+  campaignId: string;
+  portalToken?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -85,7 +91,7 @@ export function PortalChatWidget({ campaignId }: { campaignId: string }) {
       const res = await fetch("/api/portal-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campaign_id: campaignId, question }),
+        body: JSON.stringify({ campaign_id: campaignId, question, token: portalToken }),
       });
 
       if (!res.ok || !res.body) {
@@ -178,6 +184,7 @@ export function PortalChatWidget({ campaignId }: { campaignId: string }) {
           widget_response: msg.text,
           escalation_reason: msg.escalateMeta.reason,
           portal_url: window.location.href,
+          token: portalToken,
         }),
       });
     } catch {
