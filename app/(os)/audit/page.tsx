@@ -71,6 +71,17 @@ const FETCH_PLATFORMS = [
   { value: "press",            label: "Google News",          hint: "Mainstream news index — limited trade press coverage", field: "none", placeholder: "" },
 ];
 
+// Maps an "Active Campaign Channel" selection to the matching auto-fetch platform,
+// so selecting a channel can drive a batch fetch instead of one-at-a-time manual fetches.
+const CHANNEL_TO_PLATFORM: Record<string, string> = {
+  "Facebook":           "facebook_ads",
+  "Instagram":          "instagram",
+  "TikTok":             "tiktok",
+  "YouTube":            "youtube",
+  "KOL / Influencer":   "kol_hashtag",
+  "PR / Earned Media":  "press",
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function SignalBadge({ signal }: { signal: FetchedSignal }) {
@@ -105,6 +116,11 @@ export default function QuickAuditPage() {
   const [kolPlatform, setKolPlatform] = useState<"instagram" | "tiktok">("instagram");
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+
+  // Batch fetch — one input per matched channel, fired together
+  const [batchValues, setBatchValues] = useState<Record<string, string>>({});
+  const [fetchAllLoading, setFetchAllLoading] = useState(false);
+  const [fetchAllErrors, setFetchAllErrors] = useState<string[]>([]);
 
   const [country, setCountry] = useState("Malaysia");
   // Carries forward the Signal's AI intelligence so Snapshot can extend rather than re-derive
@@ -152,6 +168,13 @@ export default function QuickAuditPage() {
 
   const cfg = FETCH_PLATFORMS.find(p => p.value === platform)!;
 
+  // Which auto-fetchable platforms are implied by the selected channels, minus
+  // whatever has already been fetched (single or batch) this session.
+  const alreadyFetchedPlatforms = new Set(fetchedSignals.map(s => s.platform));
+  const pendingPlatforms = Array.from(new Set(
+    selectedChannels.map(c => CHANNEL_TO_PLATFORM[c]).filter((p): p is string => Boolean(p))
+  )).filter(p => !alreadyFetchedPlatforms.has(p));
+
   function toggleChannel(v: string) {
     setSelectedChannels(prev =>
       prev.includes(v) ? prev.filter(c => c !== v) : [...prev, v]
@@ -191,6 +214,44 @@ export default function QuickAuditPage() {
     } finally {
       setFetching(false);
     }
+  }
+
+  async function handleFetchAll() {
+    setFetchAllLoading(true);
+    const errors: string[] = [];
+    for (const p of pendingPlatforms) {
+      const c = FETCH_PLATFORMS.find(f => f.value === p)!;
+      const val = (batchValues[p] ?? "").trim();
+      if (c.field !== "none" && !val) {
+        errors.push(`${c.label}: skipped — no handle/URL entered`);
+        continue;
+      }
+      try {
+        const res = await fetch("/api/audit-fetch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            platform: p,
+            handle: c.field === "handle" ? val : "",
+            hashtag: c.field === "hashtag" ? val : "",
+            page_url: c.field === "page_url" ? val : "",
+            website_url: c.field === "website_url" ? val : "",
+            brand_name: brandRef.current?.value ?? "",
+            campaign_name: campaignRef.current?.value ?? "",
+            kol_platform: kolPlatform,
+          }),
+        });
+        const data = await res.json();
+        if (data.setup_required) { errors.push(`${c.label}: Apify not configured`); continue; }
+        if (!res.ok || data.error) { errors.push(`${c.label}: ${data.error ?? "fetch failed"}`); continue; }
+        setContextText(prev => prev ? `${prev}\n\n${data.content}` : data.content);
+        setFetchedSignals(prev => [...prev, { label: c.label, count: data.count ?? 0, platform: p }]);
+      } catch {
+        errors.push(`${c.label}: network error`);
+      }
+    }
+    setFetchAllErrors(errors);
+    setFetchAllLoading(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -324,6 +385,51 @@ export default function QuickAuditPage() {
             ))}
           </div>
         </div>
+
+        {/* ── Batch Fetch Selected Channels ── */}
+        {pendingPlatforms.length > 0 && (
+          <div className={sectionCls}>
+            <div>
+              <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest">Fetch All Selected Channels</p>
+              <p className="text-xs text-neutral-500 mt-0.5">
+                Enter a handle or URL for each matched channel below, then fetch them all in one go. Leave a field blank to skip that channel.
+              </p>
+            </div>
+            <div className="space-y-2">
+              {pendingPlatforms.map(p => {
+                const c = FETCH_PLATFORMS.find(f => f.value === p)!;
+                return (
+                  <div key={p} className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-neutral-600 w-28 shrink-0">{c.label}</span>
+                    {c.field === "none" ? (
+                      <span className="text-xs text-neutral-400">Uses brand name above — no input needed.</span>
+                    ) : (
+                      <input
+                        className={`${inputCls} flex-1`}
+                        value={batchValues[p] ?? ""}
+                        onChange={e => setBatchValues(prev => ({ ...prev, [p]: e.target.value }))}
+                        placeholder={c.placeholder}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {fetchAllErrors.length > 0 && (
+              <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 space-y-0.5">
+                {fetchAllErrors.map((e, i) => <p key={i}>{e}</p>)}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handleFetchAll}
+              disabled={fetchAllLoading}
+              className="text-sm font-medium px-3 py-1.5 bg-neutral-900 text-white rounded-lg hover:bg-neutral-700 disabled:opacity-50"
+            >
+              {fetchAllLoading ? "Fetching all…" : `Fetch All (${pendingPlatforms.length}) →`}
+            </button>
+          </div>
+        )}
 
         {/* ── Signal Context ── */}
         <div className={sectionCls}>

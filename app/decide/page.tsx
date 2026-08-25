@@ -10,6 +10,54 @@ type Phase = "entry" | "fetching" | "reading" | "probing" | "synthesis" | "bench
 interface ProbeResult { readingLines: string[]; question: string; readyForSynthesis?: boolean; }
 interface SynthesisResult { stageRead: string; signalGap: string; riskPosture: string; gateCondition: string; action: string; bridge: string; dataGaps?: string; _stage?: string; _signal?: string; _gap?: string; }
 
+// Category example prompts shown on entry. Sharp and specific to a category, naming
+// real signal types the read would look at, never the conclusion. Swap or extend this
+// list per category rather than writing one generic prompt for everyone.
+const EXAMPLE_PROMPTS: { category: string; question: string; signals: string[] }[] = [
+  {
+    category: "Property launch",
+    question: "Is the excitement fading before it shows up in the numbers?",
+    signals: ["refresh cadence on the listing page", "early access uptake", "show unit to reservation conversion"],
+  },
+  {
+    category: "Hospitality amenity",
+    question: "Is this the reason people stay the extra day, or just a convenience nearby?",
+    signals: ["length of stay delta", "repeat visits tied to the amenity", "review mentions naming it specifically"],
+  },
+  {
+    category: "Retail concession",
+    question: "Is this the concession, or already the bigger profit centre and nobody has said so?",
+    signals: ["revenue share trend by category", "dwell time by zone", "basket attachment rate"],
+  },
+  {
+    category: "FMCG campaign",
+    question: "Is demand moving because of the campaign, or because the category always moves this way in this quarter?",
+    signals: ["share of search against the seasonal baseline", "save rate on hero content", "sell through velocity by outlet tier"],
+  },
+  {
+    category: "B2B pipeline",
+    question: "Is this a stalled deal, or a decision waiting on someone who is not in the room?",
+    signals: ["engagement recency by stakeholder", "proposal reopen rate", "response time after pricing was shared"],
+  },
+];
+
+// What to bring, matched to the signal the read identified as missing. Deterministic
+// rather than AI generated so the closing CTA never overclaims or drifts session to session.
+function dataToBringCopy(signal?: string): string {
+  switch (signal) {
+    case "S1-Share of Search":
+      return "search and demand data such as branded search volume, category keyword movement, or trend exports";
+    case "S2-Save Rate":
+      return "engagement behaviour data such as save rate, share rate, or completion rate on your hero content";
+    case "S3-UGC":
+      return "organic mention data such as creator posts, hashtag volume, or comment sentiment";
+    case "S4-OOH":
+      return "footfall and physical response data such as store visits, dwell time, or in store movement";
+    default:
+      return "whatever you are already tracking, spend and sales data, booking numbers, sentiment, behavioural data, anything that exists today";
+  }
+}
+
 async function callProbe(
   decision: string,
   conversation: Array<{ role: string; content: string }>,
@@ -313,6 +361,26 @@ export default function DecidePage() {
             <button onClick={submitDecision} disabled={!decision.trim()} style={C.btn(!!decision.trim())}>
               Read the decision →
             </button>
+
+            <div style={{ marginTop: "2.5rem" }}>
+              <p style={{ fontSize: 11, color: "#374151", letterSpacing: "0.08em", margin: "0 0 1rem" }}>NOT SURE WHERE TO START</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {EXAMPLE_PROMPTS.map((p, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setDecision(p.question)}
+                    style={{ textAlign: "left", background: "#13151e", border: "0.5px solid #2d3148", borderRadius: 8, padding: "12px 14px", cursor: "pointer", fontFamily: "inherit" }}
+                  >
+                    <p style={{ fontSize: 10, color: "#4b5563", letterSpacing: "0.08em", margin: "0 0 0.35rem", textTransform: "uppercase" }}>{p.category}</p>
+                    <p style={{ fontSize: 14, color: "#e5e7eb", margin: "0 0 0.4rem", lineHeight: 1.55 }}>{p.question}</p>
+                    <p style={{ fontSize: 12, color: "#6b7280", margin: 0, lineHeight: 1.5, fontStyle: "italic" }}>
+                      Not generic dashboards. Signals like {p.signals.join(", ")}.
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
@@ -411,12 +479,39 @@ export default function DecidePage() {
               </p>
             </div>
 
+            <div style={{ ...C.box, borderColor: "#1f2937", marginTop: "0.5rem" }}>
+              <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 1.1rem", lineHeight: 1.65 }}>
+                This is not the product. It is a way to feel how the thinking works, before deciding whether it is worth going further.
+              </p>
+
+              <p style={{ ...C.sLabel, marginBottom: "0.3rem" }}>1. Bring what you are already seeing</p>
+              <p style={{ fontSize: 14, color: "#9ca3af", margin: "0 0 1rem", lineHeight: 1.7 }}>
+                {dataToBringCopy(synthesis._signal)}. It does not need to be clean or complete.
+              </p>
+
+              <p style={{ ...C.sLabel, marginBottom: "0.3rem" }}>2. Book a working session</p>
+              <p style={{ fontSize: 14, color: "#9ca3af", margin: "0 0 1rem", lineHeight: 1.7 }}>
+                One focused hour. Bring one real decision. We work through it live.
+              </p>
+
+              <p style={{ ...C.sLabel, marginBottom: "0.3rem" }}>3. Leave with a decision, not a deck</p>
+              <p style={{ fontSize: 14, color: "#9ca3af", margin: "0 0 1.25rem", lineHeight: 1.7 }}>
+                A structured decision read built around what is actually happening in your business. Not a slide deck. Not a generic report.
+              </p>
+
+              <a
+                href={`https://wa.me/60122147085?text=${encodeURIComponent(`Hi Janine, I just ran a decision diagnostic on ShiftImpact Decide about: "${displayDecision}". I would like to book a working session.`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: "inline-block", background: "#2563eb", color: "white", fontSize: 14, padding: "10px 20px", borderRadius: 8, textDecoration: "none", fontWeight: 600 }}
+              >
+                Book your working session →
+              </a>
+            </div>
+
             <div style={C.divider} />
-            <p style={{ fontSize: 14, color: "#6b7280", margin: "0 0 1rem", lineHeight: 1.65 }}>
-              A Growth Intelligence diagnostic session answers that question precisely and surfaces the two or three signals you have not reached yet.
-            </p>
             <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 0.75rem" }}>
-              Where should we send your diagnostic summary?
+              Want a written copy of this read sent to you as well? Leave your email below.
             </p>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <input
@@ -509,25 +604,34 @@ export default function DecidePage() {
                 Check your inbox at <span style={{ color: "#9ca3af" }}>{email}</span>
               </p>
             )}
+            <p style={{ fontSize: 14, color: "#9ca3af", margin: "0 0 2rem", lineHeight: 1.65 }}>
+              Your decision analysis is in your inbox. Read it, sit with the question at the end. That question is the brief for the session.
+            </p>
             <div style={{ background: "#0d1117", border: "1px solid #1f2937", borderRadius: 10, padding: "1.25rem 1.5rem", textAlign: "left", marginBottom: "2rem" }}>
-              <p style={{ fontSize: 11, color: "#4b5563", letterSpacing: "0.1em", margin: "0 0 0.75rem", fontWeight: 600 }}>WHAT HAPPENS NEXT</p>
-              <p style={{ fontSize: 14, color: "#9ca3af", margin: "0 0 0.6rem", lineHeight: 1.6 }}>
-                Your decision analysis is in your inbox. It includes your specific gate condition and the signal you are missing.
+              <p style={{ fontSize: 11, color: "#4b5563", letterSpacing: "0.1em", margin: "0 0 1rem", fontWeight: 600 }}>WHAT HAPPENS NEXT</p>
+
+              <p style={{ ...C.sLabel, marginBottom: "0.3rem" }}>1. Bring what you are already seeing</p>
+              <p style={{ fontSize: 14, color: "#9ca3af", margin: "0 0 1rem", lineHeight: 1.7 }}>
+                {dataToBringCopy(synthesis?._signal)}. It does not need to be clean or complete.
               </p>
-              <p style={{ fontSize: 14, color: "#9ca3af", margin: "0 0 0.6rem", lineHeight: 1.6 }}>
-                Read it, sit with the question at the end. That question is the brief for the session.
+
+              <p style={{ ...C.sLabel, marginBottom: "0.3rem" }}>2. Book a working session</p>
+              <p style={{ fontSize: 14, color: "#9ca3af", margin: "0 0 1rem", lineHeight: 1.7 }}>
+                One focused hour. Bring one real decision. We work through it live.
               </p>
-              <p style={{ fontSize: 14, color: "#9ca3af", margin: 0, lineHeight: 1.6 }}>
-                If you want a clearer read on your specific situation, book a 90 minute session below.
+
+              <p style={{ ...C.sLabel, marginBottom: "0.3rem" }}>3. Leave with a decision, not a deck</p>
+              <p style={{ fontSize: 14, color: "#9ca3af", margin: 0, lineHeight: 1.7 }}>
+                A structured decision read built around what is actually happening in your business. Not a slide deck. Not a generic report.
               </p>
             </div>
             <a
-              href="https://wa.me/60122147085?text=Hi%20Janine%2C%20I%20just%20completed%20the%20decision%20diagnostic%20on%20ShiftImpact%20OS.%20I%27d%20like%20to%20book%20a%2090%20minute%20session."
+              href={`https://wa.me/60122147085?text=${encodeURIComponent("Hi Janine, I just completed the decision diagnostic on ShiftImpact Decide. I would like to book a working session.")}`}
               target="_blank"
               rel="noopener noreferrer"
               style={{ display: "inline-block", background: "#2563eb", color: "white", fontSize: 14, padding: "12px 24px", borderRadius: 8, textDecoration: "none", fontWeight: 600, marginBottom: "1rem" }}
             >
-              Book your 90 minute session →
+              Book your working session →
             </a>
             <div>
               <button onClick={restart} style={C.ghost}>← Try a different decision</button>

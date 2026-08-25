@@ -20,8 +20,16 @@ async function runApifyActor(actorId: string, input: Record<string, unknown>, ti
 
 // ── Facebook Ad Library ───────────────────────────────────────────────────────
 async function fetchFacebookAds(brandName: string, pageUrl?: string) {
-  const input = pageUrl
-    ? { startUrls: [{ url: pageUrl }], adType: "ALL", maxResults: 20 }
+  // Apify's Facebook Ads Scraper requires a fully-qualified URL in startUrls.
+  // Normalize bare handles/domains (e.g. "facebook.com/YeosMY") the same way
+  // fetchBrandWebsite()/fetchArticleUrl() already do, so a missing "https://"
+  // doesn't fail the run with an invalid-input error.
+  let normalizedUrl = pageUrl?.trim();
+  if (normalizedUrl && !/^https?:\/\//i.test(normalizedUrl)) {
+    normalizedUrl = `https://${normalizedUrl}`;
+  }
+  const input = normalizedUrl
+    ? { startUrls: [{ url: normalizedUrl }], adType: "ALL", maxResults: 20 }
     : { searchTerms: [brandName], adType: "ALL", maxResults: 20 };
 
   const items = await runApifyActor("apify~facebook-ads-scraper", input);
