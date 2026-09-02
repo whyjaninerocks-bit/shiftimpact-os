@@ -23,6 +23,7 @@ const INDUSTRY_OPTIONS: IndustryCategory[] = [
   "B2B",
   "Financial Services",
   "Telco",
+  "Hospitality",
   "Other",
 ];
 

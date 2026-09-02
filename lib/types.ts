@@ -147,6 +147,7 @@ export type IndustryCategory =
   | "B2B"
   | "Financial Services"
   | "Telco"
+  | "Hospitality"
   | "Other";
 
 // Campaign Pathway — drives Business Ambition dimension in IQ Evaluate (Sprint 2-3)
@@ -818,6 +819,71 @@ export type CategoryAttribute = {
   active: boolean;
   created_at: string;
   updated_at: string;
+
+  // ── Outcome-Led Signal Mapping (migration 0073) ──
+  // Nullable — only populated for categories with a built signal template
+  // (QSR, FMCG — Food & Beverage, FMCG — Personal Care, Hospitality — Leisure
+  // & Wellness as of Sept 2026). All signal arrays store signal_vocabulary
+  // keys, not free text.
+  behaviour_chain: string[] | null;
+  common_business_outcome_labels: string[] | null;
+  default_leading_signals: string[] | null;
+  default_conversion_signals: string[] | null;
+  default_lagging_signals: string[] | null;
+  default_signal_weights: Record<string, string> | null; // key -> weight tier label
+  required_data_types: string[] | null; // free text on purpose — describes data sources, not signals
+};
+
+// ── Signal Vocabulary (migration 0073) ──────────────────────────────────────
+// Controlled internal vocabulary. All signal arrays across category_attributes
+// and campaign_signal_maps store `key` values from this table, never free text.
+export type SignalVocabulary = {
+  key: string;
+  label: string;
+  created_at: string;
+};
+
+// ── Campaign Signal Maps (migration 0073 + is_active in 0074) ──────────────
+// Internal only. Strategist-curated mapping of what signals are actually
+// available for a given campaign, and the resulting honesty-first confidence
+// label. Never surfaced client-facing as of Sept 2026.
+
+export type ConfidenceLabel =
+  | "Conversion Measured"
+  | "Conversion Partially Supported"
+  | "Conversion Likelihood Only";
+
+export type MapStatus = "draft" | "reviewed" | "used_in_report";
+
+export type CampaignSignalMap = {
+  id: string;
+  campaign_id: string;
+  category_attribute_id: string;
+  business_outcome_label: string; // denormalized snapshot from clients.business_outcome_label at save time
+  signal_map_profile_name: string | null;
+  behaviour_chain_used: string[];
+  leading_signals: string[];
+  conversion_signals: string[];
+  lagging_signals: string[];
+  signal_weights: Record<string, string>;
+  available_data: string[];       // signal_vocabulary keys the strategist confirmed are actually available
+  available_data_notes: string | null;
+  missing_data: string[];         // manually curated — NOT the auto-complement of available_data
+  confidence_label: ConfidenceLabel | null;
+  confidence_reason: string | null;
+  confidence_matched_data: string[]; // which available_data keys triggered the confidence_label
+  map_status: MapStatus;
+  post_hoc_predictive_signal: string | null;
+  post_hoc_outcome_notes: string | null;
+  is_active: boolean;              // only one active map per campaign_id (partial unique index)
+  generated_at: string;
+  updated_at: string;
+};
+
+// CampaignSignalMap with joined display fields, for the admin view
+export type CampaignSignalMapWithContext = CampaignSignalMap & {
+  category_name: string;
+  category_slug: string;
 };
 
 // ── F17F — Market Parameter Architecture ──────────────────────────────────────

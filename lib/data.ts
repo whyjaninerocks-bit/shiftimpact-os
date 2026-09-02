@@ -41,6 +41,9 @@ import type {
   ConsumerStateReading,
   // Sprint 22 — F29
   BrandAsset,
+  // Outcome-Led Signal Mapping (migration 0073/0074) — internal only
+  SignalVocabulary,
+  CampaignSignalMapWithContext,
 } from "@/lib/types";
 
 export async function getClients(): Promise<ClientWithRollups[]> {
@@ -1050,4 +1053,96 @@ export async function getClientCompetitiveIntel(clientId: string): Promise<Compe
     oieCompanyName: (companyRes.data as { name?: string } | null)?.name ?? null,
     signals: (signalsRes.data ?? []) as CompetitiveIntelData["signals"],
   };
+}
+
+// ─── Outcome-Led Signal Mapping (migration 0073/0074) ────────────────────────
+// Internal only — never surfaced client-facing. See project memory:
+// Outcome-Led Signal Mapping — APPLIED. RLS on these tables has zero
+// permissive policies, so the admin client is required for every read here;
+// access is controlled at the server-action/page layer via
+// assertInternalSession(), not by RLS row-scoping.
+
+export async function getSignalVocabulary(): Promise<SignalVocabulary[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("signal_vocabulary")
+    .select("*")
+    .order("label");
+  if (error) throw error;
+  return data as SignalVocabulary[];
+}
+
+// The currently active signal map for a campaign (is_active = true), joined
+// with its category name/slug for display. null if no map has been generated yet.
+export async function getActiveCampaignSignalMap(
+  campaignId: string
+): Promise<CampaignSignalMapWithContext | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("campaign_signal_maps")
+    .select("*, category_attributes(category_name, category_slug)")
+    .eq("campaign_id", campaignId)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const row = data as Record<string, unknown>;
+  const cat = row.category_attributes as { category_name: string; category_slug: string } | null;
+  delete row.category_attributes;
+  return {
+    ...(row as unknown as CampaignSignalMapWithContext),
+    category_name: cat?.category_name ?? "",
+    category_slug: cat?.category_slug ?? "",
+  };
+}
+
+// Full history for a campaign (all maps, active and superseded), most recent first.
+export async function getCampaignSignalMapHistory(
+  campaignId: string
+): Promise<CampaignSignalMapWithContext[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("campaign_signal_maps")
+    .select("*, category_attributes(category_name, category_slug)")
+    .eq("campaign_id", campaignId)
+    .order("generated_at", { ascending: false });
+  if (error) throw error;
+  return (data as Record<string, unknown>[]).map((row) => {
+    const cat = row.category_attributes as { category_name: string; category_slug: string } | null;
+    const clean = { ...row };
+    delete clean.category_attributes;
+    return {
+      ...(clean as unknown as CampaignSignalMapWithContext),
+      category_name: cat?.category_name ?? "",
+      category_slug: cat?.category_slug ?? "",
+    };
+  });
+}
+
+// Lightweight summary of every campaign's active signal map, keyed by
+// campaign_id — used to decorate the /signal-maps picker list without an
+// N+1 query per campaign.
+export type SignalMapPickerSummary = {
+  confidence_label: string | null;
+  map_status: string;
+  category_name: string;
+};
+
+export async function getActiveSignalMapSummaries(): Promise<Record<string, SignalMapPickerSummary>> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("campaign_signal_maps")
+    .select("campaign_id, confidence_label, map_status, category_attributes(category_name)")
+    .eq("is_active", true);
+  if (error) throw error;
+  const out: Record<string, SignalMapPickerSummary> = {};
+  for (const row of data as Record<string, unknown>[]) {
+    const cat = row.category_attributes as { category_name: string } | null;
+    out[row.campaign_id as string] = {
+      confidence_label: (row.confidence_label as string | null) ?? null,
+      map_status: row.map_status as string,
+      category_name: cat?.category_name ?? "",
+    };
+  }
+  return out;
 }

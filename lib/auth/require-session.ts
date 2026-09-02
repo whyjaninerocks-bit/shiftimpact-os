@@ -40,3 +40,31 @@ export async function requireSession(): Promise<NextResponse | null> {
 
   return null;
 }
+
+/**
+ * Throwing variant of requireSession(), for use inside Server Actions
+ * (lib/actions.ts style) rather than route handlers. Server Actions can't
+ * return a NextResponse — they should throw, and the caller/UI handles the
+ * rejected promise. Call at the top of any server action that reads or
+ * writes data meant to stay internal-only (e.g. campaign_signal_maps).
+ *
+ * This does NOT rely on route-group placement or sidebar visibility to
+ * keep a page or action internal — those are UX conveniences, not access
+ * control. This is the actual check.
+ *
+ * Usage:
+ *   export async function saveCampaignSignalMap(...) {
+ *     await assertInternalSession();
+ *     ...
+ *   }
+ */
+export async function assertInternalSession(): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("Unauthorized — internal session required.");
+  }
+}

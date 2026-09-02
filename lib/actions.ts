@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendBriefNotification } from "@/lib/email";
+import { assertInternalSession } from "@/lib/auth/require-session";
+import { computeConfidenceLabel, validateSignalMapKeys } from "@/lib/signal-maps";
+import type { CategoryAttribute, MapStatus } from "@/lib/types";
 
 function str(formData: FormData, key: string): string {
   return (formData.get(key) as string | null) ?? "";
@@ -2074,5 +2077,140 @@ export async function saveAudienceReplenishment(campaignId: string, formData: Fo
     .upsert(payload, { onConflict: "campaign_id,week_number" });
 
   revalidatePath(`/campaigns/${campaignId}`);
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Outcome-Led Signal Mapping (migration 0073/0074) — internal only.
+// Reads live in lib/data.ts (getSignalVocabulary, getActiveCampaignSignalMap,
+// getCampaignSignalMapHistory, getActiveSignalMapSummaries); this is the one
+// mutation. Never surfaced client-facing. See project memory: Outcome-Led
+// Signal Mapping — APPLIED.
+// ───────────────────────────────────────────────────────────────────────
+
+export type SaveCampaignSignalMapInput = {
+  campaign_id: string;
+  category_attribute_id: string;
+  signal_map_profile_name: string | null;
+  behaviour_chain_used: string[];
+  leading_signals: string[];
+  conversion_signals: string[];
+  lagging_signals: string[];
+  signal_weights: Record<string, string>;
+  available_data: string[];
+  available_data_notes: string | null;
+  // Manually curated by the strategist — never auto-derived as the
+  // complement of available_data. missing_data means "would improve
+  // confidence for this campaign," not "everything not selected."
+  missing_data: string[];
+};
+
+export async function saveCampaignSignalMap(input: SaveCampaignSignalMapInput) {
+  await assertInternalSession();
+
+  const supabase = createAdminClient();
+
+  // 1. Validate every signal key against the live vocabulary, fetched fresh
+  //    (not cached) — this is the guardrail that replaced free-text
+  //    matching. Any key not in signal_vocabulary is rejected outright.
+  const { data: vocabRows, error: vocabError } = await supabase
+    .from("signal_vocabulary")
+    .select("key");
+  if (vocabError) throw new Error(vocabError.message);
+  const validKeys = new Set((vocabRows as { key: string }[]).map((r) => r.key));
+
+  const keyErrors = validateSignalMapKeys(
+    {
+      leading_signals: input.leading_signals,
+      conversion_signals: input.conversion_signals,
+      lagging_signals: input.lagging_signals,
+      available_data: input.available_data,
+      missing_data: input.missing_data,
+    },
+    validKeys
+  );
+  if (Object.keys(keyErrors).length > 0) {
+    const detail = Object.entries(keyErrors)
+      .map(([field, keys]) => `${field}: ${keys.join(", ")}`)
+      .join(" | ");
+    throw new Error(`Unknown signal key(s) — not in signal_vocabulary: ${detail}`);
+  }
+
+  // 2. Look up the category (for confidence-label defaults) and the
+  //    campaign's client business_outcome_label — fetched server-side as the
+  //    denormalized snapshot, not trusted from the client payload.
+  const { data: category, error: categoryError } = await supabase
+    .from("category_attributes")
+    .select("*")
+    .eq("id", input.category_attribute_id)
+    .single();
+  if (categoryError) throw new Error(categoryError.message);
+
+  const { data: campaignRow, error: campaignError } = await supabase
+    .from("campaigns")
+    .select("client_id, clients(business_outcome_label)")
+    .eq("id", input.campaign_id)
+    .single();
+  if (campaignError) throw new Error(campaignError.message);
+  const businessOutcomeLabel =
+    (campaignRow as unknown as { clients: { business_outcome_label: string } | null }).clients
+      ?.business_outcome_label ?? "Business Outcome";
+
+  // 3. Deterministic confidence label — no AI, no free-text matching.
+  const confidence = computeConfidenceLabel(input.available_data, category as CategoryAttribute);
+
+  // 4. Deactivate any current active map for this campaign, then insert the
+  //    new one as active. idx_campaign_signal_maps_one_active (partial
+  //    unique index on campaign_id WHERE is_active) is the DB-level
+  //    backstop if this sequence is ever interrupted mid-way.
+  const { error: deactivateError } = await supabase
+    .from("campaign_signal_maps")
+    .update({ is_active: false })
+    .eq("campaign_id", input.campaign_id)
+    .eq("is_active", true);
+  if (deactivateError) throw new Error(deactivateError.message);
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("campaign_signal_maps")
+    .insert({
+      campaign_id: input.campaign_id,
+      category_attribute_id: input.category_attribute_id,
+      business_outcome_label: businessOutcomeLabel,
+      signal_map_profile_name: input.signal_map_profile_name,
+      behaviour_chain_used: input.behaviour_chain_used,
+      leading_signals: input.leading_signals,
+      conversion_signals: input.conversion_signals,
+      lagging_signals: input.lagging_signals,
+      signal_weights: input.signal_weights,
+      available_data: input.available_data,
+      available_data_notes: input.available_data_notes,
+      missing_data: input.missing_data,
+      confidence_label: confidence.label,
+      confidence_reason: confidence.reason,
+      confidence_matched_data: confidence.matched,
+      map_status: "draft",
+      is_active: true,
+    })
+    .select()
+    .single();
+  if (insertError) throw new Error(insertError.message);
+
+  revalidatePath(`/signal-maps/${input.campaign_id}`);
+  revalidatePath("/signal-maps");
+
+  return inserted;
+}
+
+export async function updateSignalMapStatus(mapId: string, campaignId: string, status: MapStatus) {
+  await assertInternalSession();
+  const supabase = createAdminClient();
+
+  const { error } = await supabase
+    .from("campaign_signal_maps")
+    .update({ map_status: status })
+    .eq("id", mapId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/signal-maps/${campaignId}`);
+  revalidatePath("/signal-maps");
 }
 
