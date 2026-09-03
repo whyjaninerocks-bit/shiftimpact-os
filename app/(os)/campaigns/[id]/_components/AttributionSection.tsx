@@ -204,7 +204,7 @@ function RecordsTable({ campaignId, records }: RecordsTableProps) {
                   const ttm = TEST_TYPE_META[r.test_type] ?? TEST_TYPE_META.MMM;
                   return (
                     <tr key={r.id} className="border-b border-neutral-100 last:border-0">
-                      <td className="py-1.5 pr-3 font-medium text-neutral-800 whitespace-nowrap">{r.channel_name}</td>
+                      <td className="py-1.5 pr-3 font-medium text-neutral-800 max-w-[200px] truncate" title={r.channel_name}>{r.channel_name}</td>
                       <td className="py-1.5 pr-3 whitespace-nowrap">
                         <Badge tone={ttm.tone}>{ttm.label}</Badge>
                       </td>

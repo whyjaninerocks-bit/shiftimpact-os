@@ -349,7 +349,15 @@ function HistoryCard({ score }: { score: BrandMomentumScore }) {
   return (
     <Card>
       <div className="flex items-center justify-between mb-2">
-        <p className="text-xs font-semibold text-neutral-600">{score.period_label || score.period_start}</p>
+        <div>
+          <p className="text-xs font-semibold text-neutral-600">{score.period_label || score.period_start}</p>
+          {score.period_start && (
+            <p className="text-[11px] text-neutral-400">
+              {score.period_start}
+              {score.period_end ? ` – ${score.period_end}` : score.period_label ? " (open period)" : ""}
+            </p>
+          )}
+        </div>
         {score.dimension_conflict_flag && <Badge tone="amber">⚠ Conflict</Badge>}
       </div>
       {scored ? (

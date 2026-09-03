@@ -1096,14 +1096,19 @@ week_number: 5, test_type: MMM, spend_rm: 10000`,
       "Supabase throws an unhandled column-length error",
     ],
     check: async () => {
-      // Static check: confirm AttributionSection has 'truncate' class on channel_name display
+      // Static check: confirm the channel_name table cell specifically (not just
+      // any 'truncate' occurrence elsewhere in the file, e.g. on the notes cell)
+      // has a truncate class applied. Anchors on the <td> whose content is
+      // literally {r.channel_name} immediately followed by </td>, so it can't
+      // be fooled by 'truncate' appearing on an unrelated cell.
       const content = readFile("app/(os)/campaigns/[id]/_components/AttributionSection.tsx");
-      const hasTruncate = content.includes("truncate");
+      const tdMatch = content.match(/<td className="([^"]*)"[^>]*>\{r\.channel_name\}<\/td>/);
+      const hasTruncateOnChannelName = !!tdMatch && tdMatch[1].includes("truncate");
       return {
-        pass: hasTruncate,
-        detail: hasTruncate
-          ? "AttributionSection uses truncate class — long channel names rendered safely"
-          : "No truncate class found — long channel names may overflow UI",
+        pass: hasTruncateOnChannelName,
+        detail: hasTruncateOnChannelName
+          ? "AttributionSection applies truncate specifically to the channel_name cell — long channel names rendered safely"
+          : "truncate class not found on the channel_name <td> specifically — long channel names may overflow UI even if 'truncate' appears elsewhere in the file",
       };
     },
   },
