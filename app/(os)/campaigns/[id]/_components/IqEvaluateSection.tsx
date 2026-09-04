@@ -21,6 +21,34 @@ interface IqDimension {
   elevation_move: string;
 }
 
+// Stage 1 — SEA Marketing Effectiveness Intelligence KB groundwork (3 Sept 2026).
+// Rubric-only fields. claim_type tags how certain each value is; confidence_model
+// stays at its lowest tier until a verified case corpus is actually connected.
+type ClaimType = "source_supported" | "inference" | "hypothesis" | "recommendation" | "not_claimable_yet";
+
+interface DecisionReadinessField {
+  value: string;
+  claim_type: ClaimType;
+}
+
+interface ExtendedEvaluation {
+  business_challenge_clarity: DecisionReadinessField;
+  behaviour_to_move: DecisionReadinessField;
+  market_category_tension: DecisionReadinessField;
+  proof_logic: DecisionReadinessField;
+  signal_plan: DecisionReadinessField;
+  execution_risk: DecisionReadinessField;
+  decision_recommendation: DecisionReadinessField;
+}
+
+interface ConfidenceModel {
+  evidence_confidence: string;
+  result_confidence: string;
+  causal_confidence: string;
+  market_confidence: string;
+  transferability_score: string;
+}
+
 interface IqEvaluationResult {
   id: string;
   campaign_id: string;
@@ -30,6 +58,10 @@ interface IqEvaluationResult {
   overall_assessment: string;
   iq_score_pct: number | null;
   created_at: string;
+  extended_evaluation?: ExtendedEvaluation;
+  confidence_model?: ConfidenceModel;
+  kb_grounded?: boolean;
+  schema_version?: number;
 }
 
 interface IqEvaluateSectionProps {
@@ -58,6 +90,46 @@ function scorePctTone(pct: number): string {
   if (pct >= 60) return "text-amber-700";
   return "text-neutral-500";
 }
+
+const DECISION_READINESS_FIELDS: { key: keyof ExtendedEvaluation; label: string }[] = [
+  { key: "business_challenge_clarity", label: "Business Challenge Clarity" },
+  { key: "behaviour_to_move", label: "Behaviour to Move" },
+  { key: "market_category_tension", label: "Market / Category Tension" },
+  { key: "proof_logic", label: "Proof Logic" },
+  { key: "signal_plan", label: "Signal Plan" },
+  { key: "execution_risk", label: "Execution Risk" },
+  { key: "decision_recommendation", label: "Decision Recommendation" },
+];
+
+function claimTypeLabel(claimType: ClaimType): string {
+  switch (claimType) {
+    case "source_supported": return "Source-supported";
+    case "inference": return "Inference";
+    case "hypothesis": return "Hypothesis";
+    case "recommendation": return "Recommendation";
+    case "not_claimable_yet": return "Not claimable yet";
+  }
+}
+
+function claimTypeTone(claimType: ClaimType): "green" | "amber" | "red" | "neutral" {
+  if (claimType === "source_supported") return "green";
+  if (claimType === "hypothesis" || claimType === "not_claimable_yet") return "amber";
+  return "neutral";
+}
+
+function confidenceTone(value: string): "green" | "amber" | "red" | "neutral" {
+  if (value === "High") return "green";
+  if (value === "Medium") return "amber";
+  return "neutral"; // Low / Not Stated / Not Claimable / Not Tested
+}
+
+const CONFIDENCE_MODEL_FIELDS: { key: keyof ConfidenceModel; label: string }[] = [
+  { key: "evidence_confidence", label: "Evidence Confidence" },
+  { key: "result_confidence", label: "Result Confidence" },
+  { key: "causal_confidence", label: "Causal Confidence" },
+  { key: "market_confidence", label: "Market Confidence" },
+  { key: "transferability_score", label: "Transferability Score" },
+];
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -110,7 +182,7 @@ export function IqEvaluateSection({
         </div>
 
         <p className="text-xs text-neutral-500 mb-4">
-          8-dimension creative quality evaluation calibrated to Cannes Lions 2026 Grand Prix standard.
+          8-dimension creative quality evaluation using ShiftImpact&apos;s strategic evaluation rubric.
           Run after BIP is sufficiently developed. Results guide elevation, not gate governance.
         </p>
 
@@ -185,6 +257,51 @@ export function IqEvaluateSection({
                     </li>
                   ))}
                 </ul>
+              </div>
+            )}
+
+            {/* Decision Readiness — Stage 1 SEA Marketing Effectiveness Intelligence KB groundwork */}
+            {evaluation.extended_evaluation && evaluation.confidence_model && (
+              <div className="rounded-lg border border-neutral-200 px-4 py-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-neutral-400 uppercase tracking-wide">Decision Readiness</p>
+                  <Badge tone="neutral">{evaluation.kb_grounded ? "KB-grounded" : "Rubric-only"}</Badge>
+                </div>
+                <p className="text-xs text-neutral-500 leading-relaxed">
+                  Rubric-only evaluation. Not grounded in the SEA Marketing Effectiveness KB yet.
+                </p>
+
+                <div className="space-y-2">
+                  {DECISION_READINESS_FIELDS.map(({ key, label }) => {
+                    const field = evaluation.extended_evaluation?.[key];
+                    if (!field) return null;
+                    return (
+                      <div key={key} className="border border-neutral-100 rounded-md p-2.5">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <p className="text-xs font-medium text-neutral-700">{label}</p>
+                          <Badge tone={claimTypeTone(field.claim_type)}>{claimTypeLabel(field.claim_type)}</Badge>
+                        </div>
+                        <p className="text-sm text-neutral-700 leading-relaxed">{field.value || "—"}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div>
+                  <p className="text-xs font-medium text-neutral-400 uppercase tracking-wide mb-1.5">Confidence Model</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {CONFIDENCE_MODEL_FIELDS.map(({ key, label }) => {
+                      const value = evaluation.confidence_model?.[key];
+                      if (!value) return null;
+                      return (
+                        <span key={key} className="inline-flex items-center gap-1 rounded-full border border-neutral-200 px-2 py-0.5 text-xs text-neutral-600">
+                          {label}
+                          <Badge tone={confidenceTone(value)}>{value}</Badge>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             )}
 
