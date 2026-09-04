@@ -93,8 +93,9 @@ Keep the total brief under 600 words. Write as a peer handing over intelligence 
 
   let handoffBrief: string;
   try {
+    const model = await getModel("model_cultural_signals_handoff", "claude-sonnet-4-6");
     const message = await client.messages.create({
-      model: getModel("sonnet"),
+      model,
       max_tokens: 1200,
       messages: [{ role: "user", content: prompt }],
     });

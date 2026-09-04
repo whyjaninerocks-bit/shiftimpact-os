@@ -319,7 +319,7 @@ export async function POST(req: NextRequest) {
   // 1. Load company
   const { data: company, error: compErr } = await supabase
     .from("companies")
-    .select("id,name,industry,market_code,size_band,business_model,growth_stage,company_profile_summary,is_suppressed")
+    .select("id,name,industry,market_code,size_band,business_model,growth_stage,company_profile_summary,is_suppressed,status")
     .eq("id", company_id)
     .single();
 

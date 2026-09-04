@@ -362,11 +362,23 @@ export default async function CampaignDetailPage({
               threshold_value: l.threshold_value ?? null,
               unit: l.unit ?? null,
             })),
-          nextGateName: phaseGates.find((g) => g.gate_outcome !== "Passed")?.gate_name ?? null,
+          // gate_decision !== "Open" means the gate hasn't been passed through yet — see
+          // the same pattern in app/portal/[id]/page.tsx. gate_type is the best available
+          // label (phase_gates has no human-readable name column, no join to gate_templates).
+          nextGateName: phaseGates.find((g) => g.gate_decision !== "Open")?.gate_type ?? null,
           pendingPredictionCount: predictionRecords.filter((r) => r.verdict === "Pending").length,
+          // budget_movements has no movement_type column — compute an overspend flag
+          // from planned vs actual instead (movement_type never existed; this field was
+          // always undefined before this fix).
           recentBudgetFlags: budgetMovements
             .slice(0, 5)
-            .map((b) => ({ channel: b.channel, movement_type: b.movement_type })),
+            .map((b) => ({
+              channel: b.channel,
+              movement_type:
+                b.actual_spend != null && b.planned_spend != null && b.actual_spend > b.planned_spend
+                  ? "overspend"
+                  : "on_plan",
+            })),
         } satisfies WeeklyDataContext}
       />
       <SignalMovementSection
