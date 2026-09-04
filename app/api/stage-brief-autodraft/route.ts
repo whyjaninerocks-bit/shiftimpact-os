@@ -119,7 +119,7 @@ FRAME BRIEF (locked):
   Industry: ${frame.industry_category ?? campaign?.industry_profile ?? "FMCG"}
 
 CAMPAIGN: ${campaign?.name ?? "Unknown"}
-CLIENT: ${(campaign?.clients as Record<string, unknown> | null)?.name ?? "Unknown"}
+CLIENT: ${(campaign?.clients as unknown as Record<string, unknown> | null)?.name ?? "Unknown"}
 ${learningNote}
 ${existingBriefsNote}
 

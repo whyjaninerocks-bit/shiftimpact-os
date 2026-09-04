@@ -273,7 +273,7 @@ const FINDING_TOOL = {
     },
     required: ["headline", "context", "implication", "recommendation"],
   },
-} as const;
+};
 
 async function generateFinding(
   query_text: string,

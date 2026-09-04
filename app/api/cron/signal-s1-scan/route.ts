@@ -147,7 +147,7 @@ async function getActiveCampaigns(
 
   const results: CampaignS1Row[] = [];
 
-  for (const c of campaigns as Array<{
+  for (const c of campaigns as unknown as Array<{
     id: string;
     name: string;
     clients: { name: string; brand_search_term: string; market_code?: string } | null;

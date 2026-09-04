@@ -237,7 +237,7 @@ export default function DiagnosticSessionDetailPage() {
               >
                 Copy to clipboard
               </button>
-              {session.brief_json && (session.brief_json as Record<string, unknown>).word_count && (
+              {session.brief_json && Boolean((session.brief_json as Record<string, unknown>).word_count) && (
                 <span className="text-xs text-neutral-400">
                   {String((session.brief_json as Record<string, unknown>).word_count)} words
                 </span>

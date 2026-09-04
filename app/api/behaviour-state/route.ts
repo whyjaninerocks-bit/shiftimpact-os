@@ -140,7 +140,7 @@ const CSTR_NARRATIVE_TOOL = {
     },
     required: ["ai_narrative"],
   },
-} as const;
+};
 
 // ─── Tool schema ──────────────────────────────────────────────────────────────
 
@@ -187,7 +187,7 @@ const BEHAVIOUR_STATE_TOOL = {
       "confidence_level",
     ],
   },
-} as const;
+};
 
 // ─── System prompt ────────────────────────────────────────────────────────────
 
@@ -319,7 +319,7 @@ export async function POST(req: NextRequest) {
       .single();
     const campaignName = campaign?.name ?? "Campaign";
     const industryProfile = campaign?.industry_profile ?? "";
-    const clientName = (campaign?.clients as { name: string } | null)?.name ?? "Unknown Brand";
+    const clientName = (campaign?.clients as unknown as { name: string } | null)?.name ?? "Unknown Brand";
 
     // 2. Load signal threshold
     const { data: threshold } = await supabase
@@ -498,7 +498,7 @@ export async function POST(req: NextRequest) {
         5: "Intent-Active",
         6: "Post-Purchase",
       };
-      stateName = STATE_NAMES[diagnosedState] ?? stateName;
+      stateName = (diagnosedState !== null ? STATE_NAMES[diagnosedState] : undefined) ?? stateName;
       signalPatternRead =
         `[Server safeguard: capped from an AI-proposed state of ${rawDiagnosedState} because current signal health does not support it.] ` +
         signalPatternRead;

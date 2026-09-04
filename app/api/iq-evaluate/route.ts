@@ -248,7 +248,7 @@ const IQ_TOOL = {
     },
     required: ["dimensions", "red_flags", "elevation_brief", "overall_assessment", "extended_evaluation", "confidence_model"],
   },
-} as const;
+};
 
 // ─── User Prompt Builder ──────────────────────────────────────────────────────
 
@@ -309,7 +309,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
     }
 
-    const clientName = (campaign.clients as { name: string } | null)?.name ?? "Unknown Brand";
+    const clientName = (campaign.clients as unknown as { name: string } | null)?.name ?? "Unknown Brand";
 
     // 2. Load FRAME Brief
     const { data: frame, error: fErr } = await supabase

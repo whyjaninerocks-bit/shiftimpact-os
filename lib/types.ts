@@ -163,6 +163,9 @@ export type Client = {
   business_outcome_label: string;
   retention_metric_label: string;
   created_at: string;
+  // Brief notification recipient (migration 0079)
+  contact_name: string | null;
+  contact_email: string | null;
 };
 
 export type ClientWithRollups = Client & {
@@ -440,6 +443,8 @@ export type TeamMember = {
   role: string;
   urgent_count: number;
   created_at: string;
+  // Notification email (migration 0079)
+  email: string | null;
 };
 
 export type TeamMemberWithRollups = TeamMember & {
@@ -1211,6 +1216,19 @@ export type MediaDeliveryRecord = {
   strategy_notes: string;
   created_at: string;
   updated_at: string;
+  // F25 — Attention Quality Score columns (migration 0035). These have lived in the
+  // signal_media_delivery table and been fetched via select("*") since Sprint 5, but were
+  // missing from this type — added 4 Sept 2026 (type-error cleanup) so callers like
+  // CreativeFatigueSection can consume them without an unsafe cast.
+  view_rate_3s_pct: number | null;
+  view_rate_10s_pct: number | null;
+  completion_rate_pct: number | null;
+  aqs_score: number | null;
+  aqs_band: "Attention Strong" | "Attention Adequate" | "Attention Weak" | "Attention Gap" | null;
+  attention_gap_flag: boolean;
+  attention_gap_action: string;
+  aqs_benchmark_delta: number | null;
+  aqs_prev_week_delta: number | null;
 };
 
 // ─── F23 — AI Brand Visibility Score (Sprint 19) ─────────────────────────────

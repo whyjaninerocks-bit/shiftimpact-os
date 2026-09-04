@@ -64,8 +64,8 @@ export async function GET() {
 
   // ── Sort + group windows by company ──────────────────────────────────────
   const sorted = (openWindows ?? []).sort((a, b) => {
-    const wa = a.opportunity_windows as { window_type: string };
-    const wb = b.opportunity_windows as { window_type: string };
+    const wa = a.opportunity_windows as unknown as { window_type: string };
+    const wb = b.opportunity_windows as unknown as { window_type: string };
     return (WINDOW_PRIORITY[wa.window_type] ?? 9) - (WINDOW_PRIORITY[wb.window_type] ?? 9);
   });
 
@@ -76,8 +76,8 @@ export async function GET() {
   };
   const groupMap = new Map<string, WinGroup>();
   for (const alert of sorted) {
-    const co = alert.companies as { id: string; name: string; industry: string | null; market_code: string | null; business_model: string | null };
-    const win = alert.opportunity_windows as { window_type: string };
+    const co = alert.companies as unknown as { id: string; name: string; industry: string | null; market_code: string | null; business_model: string | null };
+    const win = alert.opportunity_windows as unknown as { window_type: string };
     const p = WINDOW_PRIORITY[win.window_type] ?? 9;
     if (!groupMap.has(co.id)) groupMap.set(co.id, { company: co, alerts: [], topPriority: p });
     const g = groupMap.get(co.id)!;
@@ -239,16 +239,16 @@ export async function GET() {
     lines.push(`━━ OPEN OPPORTUNITY WINDOWS ━━`);
     lines.push(``);
     for (const { company: co, alerts } of groups) {
-      const windowTypes = alerts.map(a => (a.opportunity_windows as { window_type: string }).window_type);
-      const leadWin = alerts[0]?.opportunity_windows as { label: string };
+      const windowTypes = alerts.map(a => (a.opportunity_windows as unknown as { window_type: string }).window_type);
+      const leadWin = alerts[0]?.opportunity_windows as unknown as { label: string };
       const leadLabel = leadWin?.label ?? windowTypes[0];
       const { narrative } = synthesizePitchAngle(windowTypes, leadLabel, alerts.map(a => a.trigger_reason));
-      const isB2B = alerts.some(a => (a.opportunity_windows as { engagement_model: string }).engagement_model === "B2B");
+      const isB2B = alerts.some(a => (a.opportunity_windows as unknown as { engagement_model: string }).engagement_model === "B2B");
 
       lines.push(`${co.name}${isB2B ? " [B2B]" : ""} — ${[co.industry, co.market_code].filter(Boolean).join(", ")}`);
       lines.push(`  Lead with: ${leadLabel}`);
       if (alerts.length > 1) {
-        const supporting = alerts.slice(1).map(a => (a.opportunity_windows as { label: string }).label).join(", ");
+        const supporting = alerts.slice(1).map(a => (a.opportunity_windows as unknown as { label: string }).label).join(", ");
         lines.push(`  Context windows: ${supporting}`);
       }
       lines.push(`  Engagement angle: ${narrative}`);
@@ -261,7 +261,7 @@ export async function GET() {
     lines.push(`━━ CALL THIS WEEK ━━`);
     lines.push(``);
     for (const r of topPursue) {
-      const co = r.companies as { id: string; name: string; industry: string | null; market_code: string | null };
+      const co = r.companies as unknown as { id: string; name: string; industry: string | null; market_code: string | null };
       const ri = r as Record<string, unknown>;
       lines.push(`${co.name} — ${[co.industry, co.market_code].filter(Boolean).join(", ")}`);
       if (ri.best_entry_angle) lines.push(`  Entry angle: "${ri.best_entry_angle}"`);
@@ -327,18 +327,18 @@ export async function GET() {
       company: co.name,
       industry: co.industry,
       market: co.market_code,
-      is_b2b: alerts.some(a => (a.opportunity_windows as { engagement_model: string }).engagement_model === "B2B"),
-      lead_window: (alerts[0]?.opportunity_windows as { label: string })?.label,
-      all_windows: alerts.map(a => (a.opportunity_windows as { label: string }).label),
+      is_b2b: alerts.some(a => (a.opportunity_windows as unknown as { engagement_model: string }).engagement_model === "B2B"),
+      lead_window: (alerts[0]?.opportunity_windows as unknown as { label: string })?.label,
+      all_windows: alerts.map(a => (a.opportunity_windows as unknown as { label: string }).label),
       pitch_angle: synthesizePitchAngle(
-        alerts.map(a => (a.opportunity_windows as { window_type: string }).window_type),
-        (alerts[0]?.opportunity_windows as { label: string })?.label ?? "",
+        alerts.map(a => (a.opportunity_windows as unknown as { window_type: string }).window_type),
+        (alerts[0]?.opportunity_windows as unknown as { label: string })?.label ?? "",
         alerts.map(a => a.trigger_reason)
       ).narrative,
       signals: alerts.map(a => a.trigger_reason),
     })),
     pursue: topPursue.map(r => {
-      const co = r.companies as { name: string; industry: string | null; market_code: string | null };
+      const co = r.companies as unknown as { name: string; industry: string | null; market_code: string | null };
       const ri = r as Record<string, unknown>;
       return {
         company: co.name,

@@ -273,12 +273,12 @@ export default async function ProspectDetailPage({
               {/* ── Row: Recommendation + Decision Window + Spend Signal ── */}
               <div className="flex items-center gap-3 flex-wrap">
                 <Badge tone={recTone(toplineInsight.recommendation)}>{toplineInsight.recommendation ?? "—"}</Badge>
-                {(toplineInsight as Record<string,unknown>).decision_window_weeks && (
+                {Boolean((toplineInsight as Record<string,unknown>).decision_window_weeks) && (
                   <span className="px-2 py-0.5 rounded-md border border-neutral-200 bg-neutral-50 text-xs font-medium text-neutral-600">
                     ⏱ {(toplineInsight as Record<string,unknown>).decision_window_weeks as number}w window
                   </span>
                 )}
-                {(toplineInsight as Record<string,unknown>).spend_signal && (
+                {Boolean((toplineInsight as Record<string,unknown>).spend_signal) && (
                   <span className={`px-2 py-0.5 rounded-md border text-xs font-medium ${
                     (toplineInsight as Record<string,unknown>).spend_signal === "Budget likely available"
                       ? "bg-green-50 border-green-200 text-green-700"
@@ -591,7 +591,7 @@ export default async function ProspectDetailPage({
         <div className="space-y-2">
           <SectionTitle>Outreach</SectionTitle>
           {outreachList?.map(o => {
-            const person = o.people as { name: string; role: string } | null;
+            const person = o.people as unknown as { name: string; role: string } | null;
             return (
               <Link key={o.id} href={`/prospects/${id}/outreach/${o.id}`} className="block group">
                 <Card className="group-hover:border-neutral-300 transition-colors">

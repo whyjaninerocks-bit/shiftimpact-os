@@ -67,7 +67,7 @@ export default async function DigestPage() {
   const groupedMap = new Map<string, CompanySignalGroup>();
 
   for (const s of newSignals ?? []) {
-    const co = s.companies as { id: string; name: string; industry: string | null; market_code: string | null; status: string | null; prospect_tier: string | null; partner_tag: string | null };
+    const co = s.companies as unknown as { id: string; name: string; industry: string | null; market_code: string | null; status: string | null; prospect_tier: string | null; partner_tag: string | null };
     if (!groupedMap.has(co.id)) {
       groupedMap.set(co.id, { company: co, signals: [] });
     }
@@ -143,8 +143,8 @@ export default async function DigestPage() {
   };
 
   const sortedWindows = (openWindows ?? []).sort((a, b) => {
-    const wa = a.opportunity_windows as { window_type: string };
-    const wb = b.opportunity_windows as { window_type: string };
+    const wa = a.opportunity_windows as unknown as { window_type: string };
+    const wb = b.opportunity_windows as unknown as { window_type: string };
     return (WINDOW_PRIORITY[wa.window_type] ?? 9) - (WINDOW_PRIORITY[wb.window_type] ?? 9);
   });
 
@@ -157,8 +157,8 @@ export default async function DigestPage() {
   };
   const windowsByCompanyMap = new Map<string, CompanyWindowGroup>();
   for (const alert of sortedWindows) {
-    const co = alert.companies as { id: string; name: string; industry: string | null; market_code: string | null; status: string | null; business_model: string | null; partner_tag: string | null };
-    const win = alert.opportunity_windows as { window_type: string };
+    const co = alert.companies as unknown as { id: string; name: string; industry: string | null; market_code: string | null; status: string | null; business_model: string | null; partner_tag: string | null };
+    const win = alert.opportunity_windows as unknown as { window_type: string };
     const priority = WINDOW_PRIORITY[win.window_type] ?? 9;
     if (!windowsByCompanyMap.has(co.id)) {
       windowsByCompanyMap.set(co.id, { company: co, alerts: [], topPriority: priority });
@@ -192,7 +192,7 @@ export default async function DigestPage() {
   // Build map: company_id → latest activity date (sent_at ?? drafted_at)
   const lastOutreachByCompany = new Map<string, string>();
   for (const row of recentOutreach ?? []) {
-    const companyId = (row.people as { company_id: string } | null)?.company_id;
+    const companyId = (row.people as unknown as { company_id: string } | null)?.company_id;
     if (!companyId) continue;
     const date = row.sent_at ?? row.drafted_at;
     if (!date) continue;
@@ -622,14 +622,14 @@ export default async function DigestPage() {
             {regularWindows.map(({ company: co, alerts, topPriority }) => {
               const hasHighPriority = topPriority <= 2;
               const hasB2B = alerts.some(a => {
-                const w = a.opportunity_windows as { engagement_model: string };
+                const w = a.opportunity_windows as unknown as { engagement_model: string };
                 return w.engagement_model === "B2B";
               });
 
               // Derive ordered window types + labels for synthesis
-              const orderedWindowTypes = alerts.map(a => (a.opportunity_windows as { window_type: string }).window_type);
+              const orderedWindowTypes = alerts.map(a => (a.opportunity_windows as unknown as { window_type: string }).window_type);
               const triggerReasons    = alerts.map(a => a.trigger_reason);
-              const leadAlertWin = alerts[0]?.opportunity_windows as { window_type: string; label: string };
+              const leadAlertWin = alerts[0]?.opportunity_windows as unknown as { window_type: string; label: string };
               const leadLabel = leadAlertWin?.label ?? "";
               const synthesis = synthesizePitchAngle(orderedWindowTypes, leadLabel, triggerReasons);
 
@@ -686,9 +686,9 @@ export default async function DigestPage() {
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mr-0.5">Lead with</span>
                         {alerts.map((alert, idx) => {
-                          const win = alert.opportunity_windows as { window_type: string; label: string };
+                          const win = alert.opportunity_windows as unknown as { window_type: string; label: string };
                           const isLead = win.window_type === synthesis.leadWindowType && idx === alerts.findIndex(
-                            a => (a.opportunity_windows as { window_type: string }).window_type === synthesis.leadWindowType
+                            a => (a.opportunity_windows as unknown as { window_type: string }).window_type === synthesis.leadWindowType
                           );
                           return isLead ? (
                             <span key={alert.id} className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-neutral-900 text-white uppercase tracking-wide">
@@ -701,9 +701,9 @@ export default async function DigestPage() {
                             <span className="text-[10px] text-neutral-300 mx-0.5">·</span>
                             <span className="text-[10px] text-neutral-400 uppercase tracking-wider mr-0.5">Context</span>
                             {alerts.map((alert, idx) => {
-                              const win = alert.opportunity_windows as { window_type: string; label: string };
+                              const win = alert.opportunity_windows as unknown as { window_type: string; label: string };
                               const isLead = win.window_type === synthesis.leadWindowType && idx === alerts.findIndex(
-                                a => (a.opportunity_windows as { window_type: string }).window_type === synthesis.leadWindowType
+                                a => (a.opportunity_windows as unknown as { window_type: string }).window_type === synthesis.leadWindowType
                               );
                               return !isLead ? (
                                 <span key={alert.id} className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-neutral-200 bg-neutral-50 text-neutral-500 uppercase tracking-wide">
@@ -869,7 +869,7 @@ export default async function DigestPage() {
           <Card><p className="text-sm text-neutral-500">No Pursue recommendations yet. Run assessments on your top signals.</p></Card>
         )}
         {topPursue.map(r => {
-          const co = r.companies as { id: string; name: string; industry: string | null; market_code: string | null };
+          const co = r.companies as unknown as { id: string; name: string; industry: string | null; market_code: string | null };
           const ri = r as Record<string, unknown>;
           return (
             <Link key={r.company_id} href={`/prospects/${co.id}`} className="block group">
@@ -880,7 +880,7 @@ export default async function DigestPage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold text-neutral-900 group-hover:text-neutral-700">{co.name}</p>
                         <Badge tone="green">Pursue</Badge>
-                        {ri.partner_lens && (ri.partner_lens as string) !== "ShiftImpact" && (
+                        {Boolean(ri.partner_lens) && (ri.partner_lens as string) !== "ShiftImpact" && (
                           <Badge tone={(ri.partner_lens as string) === "Both" ? "purple" : "green"}>
                             {ri.partner_lens as string}
                           </Badge>
@@ -889,12 +889,12 @@ export default async function DigestPage() {
                       <p className="text-xs text-neutral-400 mt-0.5">{[co.industry, co.market_code].filter(Boolean).join(" · ")}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {ri.decision_window_weeks && (
+                      {Boolean(ri.decision_window_weeks) && (
                         <span className="px-2 py-0.5 rounded-md border border-neutral-200 bg-neutral-50 text-xs text-neutral-600 font-medium">
                           ⏱ {ri.decision_window_weeks as number}w
                         </span>
                       )}
-                      {ri.spend_signal && (
+                      {Boolean(ri.spend_signal) && (
                         <span className={`px-2 py-0.5 rounded-md border text-xs font-medium ${spendTone(ri.spend_signal as string)}`}>
                           {ri.spend_signal as string}
                         </span>
@@ -974,7 +974,7 @@ export default async function DigestPage() {
         <div className="space-y-2">
           <SectionTitle>Keep Warm ({topWatch.length})</SectionTitle>
           {topWatch.map(r => {
-            const co = r.companies as { id: string; name: string; industry: string | null; market_code: string | null };
+            const co = r.companies as unknown as { id: string; name: string; industry: string | null; market_code: string | null };
             const ri = r as Record<string, unknown>;
             return (
               <Link key={r.company_id} href={`/prospects/${co.id}`} className="block group">
@@ -984,7 +984,7 @@ export default async function DigestPage() {
                       <div className="flex items-center gap-2 flex-wrap mb-1">
                         <p className="font-semibold text-neutral-900 group-hover:text-neutral-700">{co.name}</p>
                         <Badge tone="amber">Watch</Badge>
-                        {ri.decision_window_weeks && (
+                        {Boolean(ri.decision_window_weeks) && (
                           <span className="text-xs text-neutral-500">⏱ {ri.decision_window_weeks as number}w window</span>
                         )}
                       </div>

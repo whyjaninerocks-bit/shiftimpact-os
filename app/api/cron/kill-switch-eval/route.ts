@@ -147,7 +147,7 @@ export async function GET(req: NextRequest) {
           .order("week_number", { ascending: false })
           .limit(ks.consecutive_periods);
 
-        const rows = (weeks ?? []) as Array<Record<string, number | null>>;
+        const rows = (weeks ?? []) as unknown as Array<Record<string, number | null>>;
         evaluated++;
 
         if (rows.length < ks.consecutive_periods) {

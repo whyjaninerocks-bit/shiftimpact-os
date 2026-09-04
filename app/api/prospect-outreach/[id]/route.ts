@@ -76,7 +76,7 @@ export async function PATCH(
   // Load existing record first — we need current state to validate transitions
   const { data: existing, error: fetchErr } = await supabase
     .from("outreach")
-    .select("id, status, approved_at, message_sent, person_id")
+    .select("id, status, approved_at, message_sent, message_draft, person_id")
     .eq("id", id)
     .single();
 

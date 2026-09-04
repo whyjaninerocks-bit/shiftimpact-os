@@ -94,7 +94,7 @@ const CROSS_CHANNEL_TOOL = {
     },
     required: ["narrative", "recommended_actions", "idea_integrity_score", "dominant_funnel_gap"],
   },
-} as const;
+};
 
 // ─── System prompt ────────────────────────────────────────────────────────────
 
@@ -322,7 +322,7 @@ export async function POST(req: NextRequest) {
           content: buildUserPrompt(
             campaignName,
             week_number,
-            channels as ChannelWithProfile[],
+            channels as unknown as ChannelWithProfile[],
             metricsByChannelId,
             budgetAllocated,
             budgetDeployed,

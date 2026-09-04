@@ -360,7 +360,7 @@ export async function POST(req: NextRequest) {
 
   // Use Haiku for all assessments — Sonnet exceeds Vercel 60s budget with rich signal context.
   // Upgrade path: move to background queue (Sprint 5+) when async assess is needed.
-  const modelTier = "haiku" as const;
+  const modelTier: string = "haiku"; // only tier used today; typed loosely since the cost-ternary below compares against "sonnet"
   const model     = await getModel("model_prospect_scan", "claude-haiku-4-5-20251001");
 
   // Enqueue job

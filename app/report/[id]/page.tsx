@@ -629,7 +629,7 @@ export default async function ClientReportPage({
                   </span>
                 )}
                 <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/10 text-white border border-white/20">
-                  {campaign.phase ?? "Active"}
+                  {campaign.current_phase ?? "Active"}
                 </span>
               </div>
             </div>

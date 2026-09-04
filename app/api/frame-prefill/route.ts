@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
 
     // Build context block
     const lines: string[] = [];
-    lines.push(`CLIENT: ${(campaign.clients as Record<string, unknown> | null)?.name ?? "Unknown"}`);
+    lines.push(`CLIENT: ${(campaign.clients as unknown as Record<string, unknown> | null)?.name ?? "Unknown"}`);
     lines.push(`CAMPAIGN: ${campaign.name} | Phase: ${campaign.current_phase}`);
     lines.push(`Industry: ${campaign.industry_profile}`);
 

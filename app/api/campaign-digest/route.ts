@@ -106,7 +106,12 @@ async function assembleSignalContext(campaign_id: string) {
 
   const { data: frame } = await supabase
     .from("frame_briefs")
-    .select("anchor, mood, clarity_statement, lock_status, demand_investment_pct, active_channels, industry_category")
+    // NOTE (found during type-error cleanup, 4 Sept 2026): id was missing from this
+    // select, so the kill_switches lookup below (`frame?.id`) always fell through to
+    // the dummy UUID fallback and never matched a real frame_brief_id — the
+    // kill-switches section of this digest has never actually returned anything, even
+    // after the 23 Aug 2026 column-name fix noted below.
+    .select("id, anchor, mood, clarity_statement, lock_status, demand_investment_pct, active_channels, industry_category")
     .eq("campaign_id", campaign_id)
     .maybeSingle();
 

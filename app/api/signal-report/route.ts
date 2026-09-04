@@ -273,7 +273,7 @@ const SIGNAL_REPORT_TOOL = {
     },
     required: ["gate_status_label", "narrative", "recommended_actions", "phase_context"],
   },
-} as const;
+};
 
 // ─── System prompt ────────────────────────────────────────────────────────────
 

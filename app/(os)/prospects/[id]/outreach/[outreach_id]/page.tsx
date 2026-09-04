@@ -42,7 +42,7 @@ export default async function OutreachReviewPage({
 
   if (error || !outreach) notFound();
 
-  const person  = outreach.people as { id: string; name: string; role: string } | null;
+  const person  = outreach.people as unknown as { id: string; name: string; role: string } | null;
   const company = (outreach.people as { companies?: { name: string } } | null)?.companies;
 
   return (

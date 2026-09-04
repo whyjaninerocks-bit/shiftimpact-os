@@ -99,7 +99,7 @@ const DBA_CORRELATION_TOOL = {
       "correlation_summary",
     ],
   },
-} as const;
+};
 
 // ─── Route Handler ────────────────────────────────────────────────────────────
 
@@ -126,7 +126,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
     }
 
-    const clientName = (campaign.clients as { name: string } | null)?.name ?? "Unknown";
+    const clientName = (campaign.clients as unknown as { name: string } | null)?.name ?? "Unknown";
     const frames = campaign.frame_briefs as { distinctive_assets_deployed?: string }[] | null;
     const deployedStr = frames?.[0]?.distinctive_assets_deployed ?? "";
 

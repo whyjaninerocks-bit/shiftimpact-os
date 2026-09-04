@@ -59,7 +59,7 @@ const BMS_TOOL = {
     },
     required: ["bms_direction", "bms_velocity", "bms_confidence", "dimension_conflict_flag", "ai_read"],
   },
-} as const;
+};
 
 // ─── Prompt builder ───────────────────────────────────────────────────────────
 

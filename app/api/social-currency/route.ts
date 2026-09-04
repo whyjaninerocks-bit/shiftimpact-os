@@ -119,7 +119,7 @@ const SCI_TOOL = {
     },
     required: ["ai_narrative", "build_action"],
   },
-} as const;
+};
 
 // ─── Route handler ────────────────────────────────────────────────────────────
 
@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
       .eq("id", campaign_id)
       .single();
 
-    const clientName = (campaign?.clients as { name: string } | null)?.name ?? "Brand";
+    const clientName = (campaign?.clients as unknown as { name: string } | null)?.name ?? "Brand";
 
     // 2. Load Signal 2 + Signal 3 data (last 2 weeks for trend)
     const { data: signalRows } = await supabase

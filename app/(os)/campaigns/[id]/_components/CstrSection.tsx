@@ -77,7 +77,7 @@ function cstrDeltaStyle(delta: number): string {
   return "text-neutral-400";
 }
 
-function cstrSignalLabel(delta: number): JSX.Element {
+function cstrSignalLabel(delta: number): import("react").ReactElement {
   if (delta > 0.3)  return <span className="text-emerald-500">↑ Forward</span>;
   if (delta < -0.3) return <span className="text-red-400">↓ Regressing</span>;
   return <span className="text-neutral-300">— Flat</span>;

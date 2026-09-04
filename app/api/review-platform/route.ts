@@ -141,7 +141,7 @@ const REVIEW_TOOL = {
     },
     required: ["ai_narrative", "action_recommendation"],
   },
-} as const;
+};
 
 // ─── Route handler ────────────────────────────────────────────────────────────
 
@@ -184,7 +184,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     const clientName =
-      (campaign?.clients as { name: string } | null)?.name ?? "Brand";
+      (campaign?.clients as unknown as { name: string } | null)?.name ?? "Brand";
     const industryProfile = campaign?.industry_profile ?? "General";
 
     // 2. Score each dimension

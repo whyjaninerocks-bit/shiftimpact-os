@@ -200,7 +200,7 @@ export default async function ClientPortalPage({
           {latest ? (
             <Card className="space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">Week {latest.week_number} — {latest.week_of}</p>
+                <p className="text-sm font-medium">Week of {latest.week_of}</p>
                 <div className="flex gap-1">
                   <Badge tone={ragTone(latest.funnel_health_demand)}>Demand</Badge>
                   <Badge tone={ragTone(latest.funnel_health_conversion)}>Conv.</Badge>
@@ -283,40 +283,26 @@ export default async function ClientPortalPage({
         {(() => {
           if (!report) return null;
 
-          // Determine if this viewer can see the report
-          const hasAgencyPreview = !!report.agency_preview_at;
+          // Determine if this viewer can see the report.
+          // Note: view === "agency" is handled entirely by the early return at
+          // the top of this component (AgencyPortalView) — it can never reach
+          // here, so this only ever serves the "brand" / "partner" views, both
+          // of which gate on the same client-release condition.
           const hasClientRelease = !!report.client_released_at;
           // Legacy: portal_published_at used before two-stage system
           const legacyPublished = !!report.portal_published_at;
 
-          const canSeeReport =
-            view === "agency"
-              ? hasAgencyPreview || legacyPublished
-              : view === "partner"
-              ? hasClientRelease || legacyPublished
-              : hasClientRelease || legacyPublished; // brand default
+          const canSeeReport = hasClientRelease || legacyPublished;
 
           if (!canSeeReport) return null;
 
-          const isAgencyPreviewOnly = view === "agency" && hasAgencyPreview && !hasClientRelease;
           const releasedAt = report.client_released_at ?? report.portal_published_at;
 
           return (
             <PortalSection title="Weekly intelligence report">
-              {/* Agency preview banner */}
-              {isAgencyPreviewOnly && (
-                <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 flex items-start gap-2">
-                  <span className="text-amber-600 text-sm shrink-0">⏳</span>
-                  <div>
-                    <p className="text-xs font-semibold text-amber-800">Agency preview — not yet released to the brand client</p>
-                    <p className="text-xs text-amber-700 mt-0.5">You are viewing this report before it has been shared with the brand. Add your narrative note in the OS and release when ready.</p>
-                  </div>
-                </div>
-              )}
-
               <Card className="space-y-4">
                 {/* Agency note — shown to brand client after release */}
-                {report.agency_note && view !== "agency" && (
+                {report.agency_note && (
                   <div className="bg-blue-50 border-l-4 border-blue-400 rounded-r-lg px-4 py-3">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600 mb-1.5">A note from your agency</p>
                     <p className="text-sm text-blue-900 leading-relaxed">{report.agency_note}</p>

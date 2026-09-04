@@ -116,7 +116,7 @@ const CLASSIFY_TOOL = {
     },
     required: ["signals"],
   },
-} as const;
+};
 
 // ─── Scan one company ─────────────────────────────────────────────────────────
 
@@ -282,7 +282,7 @@ export async function GET(req: NextRequest) {
   const summary = results.map(r =>
     r.status === "fulfilled"
       ? r.value
-      : { company_id: "?", name: "?", signals_new: 0, signals_dup: 0, error: String(r.reason) }
+      : { company_id: "?", name: "?", signals_new: 0, signals_dup: 0, windows_triggered: 0, error: String(r.reason) }
   );
 
   const totalNew     = summary.reduce((s, r) => s + r.signals_new, 0);

@@ -279,7 +279,7 @@ async function synthesiseReport(
         "activation_summary", "attribution_summary", "executive_summary",
       ],
     },
-  } as const;
+  };
 
   const systemPrompt = `You are synthesising a Campaign Intelligence Report for a strategy lead.
 

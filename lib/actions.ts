@@ -292,6 +292,12 @@ export async function setFrameLockStatus(campaignId: string, frameBriefId: strin
     // Sprint 31: fire email notifications to team member + client contact (non-blocking)
     void (async () => {
       try {
+        // FIXED 4 Sept 2026 (type-error cleanup): this query selected
+        // clients(name, contact_name, contact_email) and team_members(name, email) but
+        // none of those columns existed on clients/team_members — every FRAME lock has
+        // been silently failing to send this notification since it shipped. Migration
+        // 0079 added the missing columns; this query is back to its original intended
+        // shape now that they're real.
         const [campaignRes, frameRes] = await Promise.all([
           supabase
             .from("campaigns")
@@ -315,10 +321,10 @@ export async function setFrameLockStatus(campaignId: string, frameBriefId: strin
         // Build recipient list — only include entries with an email address
         const recipients: { name: string; email: string; role: "agency" | "client" }[] = [];
 
-        const tm = campaign.team_members as { name: string; email: string | null } | null;
+        const tm = campaign.team_members as unknown as { name: string; email: string | null } | null;
         if (tm?.email) recipients.push({ name: tm.name, email: tm.email, role: "agency" });
 
-        const cl = campaign.clients as { name: string; contact_name: string | null; contact_email: string | null } | null;
+        const cl = campaign.clients as unknown as { name: string; contact_name: string | null; contact_email: string | null } | null;
         if (cl?.contact_email) {
           recipients.push({
             name: cl.contact_name ?? cl.name,

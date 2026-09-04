@@ -158,7 +158,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 2. Suppression check — gate before ANY draft generation
-  const company = person.companies as Record<string, unknown> | null;
+  const company = person.companies as unknown as Record<string, unknown> | null;
 
   if (person.is_suppressed) {
     return NextResponse.json(
@@ -321,7 +321,12 @@ export async function POST(req: NextRequest) {
 
   const queue_id = queueJob?.id ?? null;
 
-  let draftResult: { message_draft: string; subject_line: string; voice_check: Record<string, unknown> } | null = null;
+  // Named alias (not `typeof draftResult`) — TS narrows `draftResult` to `null` right after its
+  // `= null` initializer, so casting via `as typeof draftResult` was casting to `null`, which
+  // permanently collapsed the variable's tracked type and made every later `.message_draft` etc.
+  // access resolve to `never`. Using an explicit alias avoids the self-referential narrowing.
+  type DraftResult = { message_draft: string; subject_line: string; voice_check: Record<string, unknown> };
+  let draftResult: DraftResult | null = null;
   let tokensUsed = 0;
 
   try {
@@ -359,7 +364,7 @@ Write the message entirely in Janine's voice. Reference the business signals nat
 
     const toolUse = aiResp.content.find((b) => b.type === "tool_use");
     if (toolUse && toolUse.type === "tool_use") {
-      draftResult = toolUse.input as typeof draftResult;
+      draftResult = toolUse.input as DraftResult;
     }
   } catch (aiErr) {
     if (queue_id) {

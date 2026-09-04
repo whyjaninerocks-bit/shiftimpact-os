@@ -1,6 +1,6 @@
-export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+export function Card({ children, className = "", id }: { children: React.ReactNode; className?: string; id?: string }) {
   return (
-    <div className={`bg-white border border-neutral-200 rounded-lg p-4 sm:p-5 ${className}`}>
+    <div id={id} className={`bg-white border border-neutral-200 rounded-lg p-4 sm:p-5 ${className}`}>
       {children}
     </div>
   );
@@ -23,9 +23,9 @@ const toneClasses: Record<string, string> = {
   purple: "bg-purple-100 text-purple-800",
 };
 
-export function Badge({ tone = "neutral", children }: { tone?: keyof typeof toneClasses; children: React.ReactNode }) {
+export function Badge({ tone = "neutral", children, className = "" }: { tone?: keyof typeof toneClasses; children: React.ReactNode; className?: string }) {
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${toneClasses[tone]}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${toneClasses[tone]} ${className}`}>
       {children}
     </span>
   );

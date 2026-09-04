@@ -130,7 +130,7 @@ function Gate1Guard({ frame }: { frame: FrameBrief }) {
       <div className="mt-3 grid sm:grid-cols-2 gap-2 text-xs">
         {[
           { label: "FRAME Brief locked", done: frame.lock_status === "Locked" },
-          { label: "Industry / Category", done: !!frame.industry_category && frame.industry_category !== "" },
+          { label: "Industry / Category", done: !!frame.industry_category },
           { label: "Campaign Pathway", done: !!frame.campaign_pathway },
           { label: "Force", done: frame.force.trim().length > 0 },
           { label: "Role", done: frame.role.trim().length > 0 },

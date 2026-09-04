@@ -95,7 +95,7 @@ const ENRICH_TOOL = {
     },
     required: ["company_profile_summary", "confidence", "enrichment_notes"],
   },
-} as const;
+};
 
 // ─── Main handler ─────────────────────────────────────────────────────────────
 

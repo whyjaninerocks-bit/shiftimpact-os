@@ -29,7 +29,7 @@ export default async function AccountPage() {
     .single();
 
   const orgName =
-    (profile?.organisations as { name: string } | null)?.name ?? "ShiftImpact";
+    (profile?.organisations as unknown as { name: string } | null)?.name ?? "ShiftImpact";
   const orgType = profile?.org_type ?? "ShiftImpact";
   const role = profile?.role ?? "Admin";
 

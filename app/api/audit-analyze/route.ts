@@ -292,6 +292,16 @@ export async function POST(req: NextRequest) {
       brand_name: string;
       campaign_name: string;
       industry: string;
+      country?: string;
+      signal_intelligence?: {
+        decision_status: string;
+        decision_status_reason: string;
+        executive_observation: string;
+        top_signals: unknown;
+        biggest_opportunity: string;
+        biggest_risk: string;
+        questions_worth_asking?: string[];
+      } | null;
       campaign_phase?: string;
       business_objective?: string;
       channels?: string[];

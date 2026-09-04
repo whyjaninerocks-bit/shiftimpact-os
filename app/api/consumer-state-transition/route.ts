@@ -154,7 +154,7 @@ const CSTR_TOOL = {
     },
     required: ["ai_narrative"],
   },
-} as const;
+};
 
 // ─── System prompt ────────────────────────────────────────────────────────────
 
@@ -206,7 +206,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
     }
 
-    const clientName = (campaign.clients as { name: string } | null)?.name ?? "Unknown Brand";
+    const clientName = (campaign.clients as unknown as { name: string } | null)?.name ?? "Unknown Brand";
 
     // 2. Load prior reading
     const { data: priorReadings } = await supabase

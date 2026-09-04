@@ -91,7 +91,11 @@ function validateSequence(briefs: StageBrief[]): SequenceCheck {
       "No Nurture/Consideration stage found between Demand and Conversion. " +
       "Audience moves from awareness directly to purchase — consider adding a proof/differentiation message."
     );
-    status = status === "Invalid" ? "Invalid" : "Warning";
+    // NOTE: "Invalid" is declared in SequenceCheck.status but this validator never
+    // actually assigns it anywhere — worth a product decision on whether a truly
+    // broken sequence (e.g. Conversion with no recovery path) should hard-fail as
+    // "Invalid" rather than "Warning". Left as "Warning" for now (no behavior change).
+    status = "Warning";
   }
 
   // Build summary
