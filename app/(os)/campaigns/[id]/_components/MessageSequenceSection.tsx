@@ -20,7 +20,7 @@ import { Badge, Card, SectionTitle } from "@/app/_components/ui";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type StageType = "Demand" | "Conversion" | "Retention";
+type StageType = "Demand" | "Nurture" | "Conversion" | "Retention";
 
 interface StageBrief {
   id: string;
@@ -32,7 +32,7 @@ interface StageBrief {
 
 interface SequenceCheck {
   hasDemand: boolean;
-  hasNurture: boolean;  // Retention stage used as Nurture/Consideration
+  hasNurture: boolean;
   hasConversion: boolean;
   stageOrder: StageType[];
   flags: string[];
@@ -54,7 +54,7 @@ function validateSequence(briefs: StageBrief[]): SequenceCheck {
   const uniqueStages = Array.from(new Set(stages));
 
   const hasDemand     = uniqueStages.includes("Demand");
-  const hasNurture    = uniqueStages.includes("Retention"); // Retention = Nurture/Consideration
+  const hasNurture    = uniqueStages.includes("Nurture");
   const hasConversion = uniqueStages.includes("Conversion");
 
   const flags: string[] = [];
@@ -88,7 +88,7 @@ function validateSequence(briefs: StageBrief[]): SequenceCheck {
   // Check for correct progression (Demand → Nurture → Conversion)
   if (hasDemand && hasConversion && !hasNurture) {
     flags.push(
-      "No Nurture/Consideration stage found between Demand and Conversion. " +
+      "No Nurture stage brief found between Demand and Conversion. " +
       "Audience moves from awareness directly to purchase — consider adding a proof/differentiation message."
     );
     // NOTE: "Invalid" is declared in SequenceCheck.status but this validator never
@@ -101,7 +101,7 @@ function validateSequence(briefs: StageBrief[]): SequenceCheck {
   // Build summary
   const stageOrder: StageType[] = [];
   if (hasDemand)     stageOrder.push("Demand");
-  if (hasNurture)    stageOrder.push("Retention");
+  if (hasNurture)    stageOrder.push("Nurture");
   if (hasConversion) stageOrder.push("Conversion");
 
   if (flags.length === 0) {
@@ -161,7 +161,7 @@ export function MessageSequenceSection({ stageBriefs, frameLocked }: Props) {
   const check = useMemo(() => validateSequence(stageBriefs), [stageBriefs]);
 
   const demandCount     = stageBriefs.filter((b) => b.stage === "Demand").length;
-  const nurturingCount  = stageBriefs.filter((b) => b.stage === "Retention").length;
+  const nurturingCount  = stageBriefs.filter((b) => b.stage === "Nurture").length;
   const conversionCount = stageBriefs.filter((b) => b.stage === "Conversion").length;
 
   return (

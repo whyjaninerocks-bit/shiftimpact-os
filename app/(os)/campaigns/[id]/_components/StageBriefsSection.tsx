@@ -20,7 +20,7 @@ import {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const STAGE_ORDER: Stage[] = ["Demand", "Conversion", "Retention"];
+const STAGE_ORDER: Stage[] = ["Demand", "Nurture", "Conversion", "Retention"];
 
 const DEPARTMENTS = ["ERA FM / Radio", "KOL / Influencer", "Retail / In-Store", "Digital / Social", "PR"] as const;
 type Department = (typeof DEPARTMENTS)[number];
@@ -36,11 +36,14 @@ const STATUS_TONE: Record<string, "neutral" | "blue" | "green" | "amber" | "red"
 
 // ─── Stage gate guard helper ──────────────────────────────────────────────────
 
-// Returns true if the "Live" status is allowed for this stage given current gate states
+// Returns true if the "Live" status is allowed for this stage given current gate states.
+// Gate sequence (4 Sept 2026 — Nurture inserted, gates 2-4 renumbered to 3-5):
+//   Gate 1: Demand -> Gate 2: Nurture -> Gate 3: Conversion -> Gate 4: Retention -> Gate 5: Scale
 function canGoLive(stage: Stage, openGateTypes: Set<string>): boolean {
   if (stage === "Demand") return true; // first stage — no prior gate required
-  if (stage === "Conversion") return openGateTypes.has("Gate 1: Demand");
-  if (stage === "Retention") return openGateTypes.has("Gate 2: Conversion");
+  if (stage === "Nurture") return openGateTypes.has("Gate 1: Demand");
+  if (stage === "Conversion") return openGateTypes.has("Gate 2: Nurture");
+  if (stage === "Retention") return openGateTypes.has("Gate 3: Conversion");
   return true;
 }
 
@@ -458,7 +461,7 @@ export function StageBriefsSection({
           acc[stage] = filteredBriefs.filter((b) => b.stage === stage);
           return acc;
         },
-        { Demand: [], Conversion: [], Retention: [] }
+        { Demand: [], Nurture: [], Conversion: [], Retention: [] }
       ),
     [filteredBriefs]
   );
@@ -577,7 +580,9 @@ export function StageBriefsSection({
                 <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">{stage} Stage</p>
                 {!liveAllowed && (
                   <span className="text-[10px] text-amber-500 font-medium">
-                    {stage === "Conversion" ? "Gate 1: Demand" : "Gate 2: Conversion"} not Open
+                    {stage === "Nurture" ? "Gate 1: Demand" :
+                     stage === "Conversion" ? "Gate 2: Nurture" :
+                     "Gate 3: Conversion"} not Open
                   </span>
                 )}
               </div>

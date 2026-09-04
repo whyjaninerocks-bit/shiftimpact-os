@@ -174,7 +174,7 @@ export type ClientWithRollups = Client & {
 
 // ─── Campaign ─────────────────────────────────────────────────────────────────
 
-export type CampaignPhase = "Demand" | "Conversion" | "Retention" | "Complete";
+export type CampaignPhase = "Demand" | "Nurture" | "Conversion" | "Retention" | "Complete";
 export type GateSignalStatus = "Pending" | "On Track" | "At Risk" | "Blocked";
 export type CampaignStatus = "Active" | "Paused" | "Complete";
 
@@ -353,7 +353,11 @@ export const KILL_SWITCH_METRIC_LABELS: Record<KillSwitchMetric, string> = {
 
 // ─── Stage Briefs ─────────────────────────────────────────────────────────────
 
-export type Stage = "Demand" | "Conversion" | "Retention";
+// 4 Sept 2026: "Nurture" added as a real, distinct stage (differentiation/proof content,
+// between Demand and Conversion) — previously a component (MessageSequenceSection) was
+// misusing "Retention" to mean this, which collided with Retention's real meaning
+// (post-purchase loyalty, gated after Conversion) everywhere else in the app.
+export type Stage = "Demand" | "Nurture" | "Conversion" | "Retention";
 export type StageBriefStatus = "Draft" | "Ready" | "Live" | "Paused" | "Complete";
 export type IdeaOrSpend = "Idea-Led" | "Spend-Led" | "Mixed";
 

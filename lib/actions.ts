@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendBriefNotification } from "@/lib/email";
 import { assertInternalSession } from "@/lib/auth/require-session";
 import { computeConfidenceLabel, validateSignalMapKeys } from "@/lib/signal-maps";
-import type { CategoryAttribute, MapStatus } from "@/lib/types";
+import type { CategoryAttribute, CampaignPhase, MapStatus } from "@/lib/types";
 
 function str(formData: FormData, key: string): string {
   return (formData.get(key) as string | null) ?? "";
@@ -156,7 +156,7 @@ export async function createCampaign(formData: FormData) {
     redirect(`/campaigns/${campaign.id}?error=${encodeURIComponent(frameError.message)}`);
   }
 
-  // Instantiate the 4 Phase Gates from Gate Templates
+  // Instantiate the Phase Gates from Gate Templates (5 as of 4 Sept 2026 — Nurture added)
   const { data: templates, error: templatesError } = await supabase
     .from("gate_templates")
     .select("id, gate_type, sequence_order, required_signal_template")
@@ -1063,7 +1063,7 @@ export async function createQuickAudit(formData: FormData) {
     .insert({
       client_id: client.id,
       name: str(formData, "campaign_name") || "Campaign Audit",
-      current_phase: (str(formData, "current_phase") || "Demand") as "Demand" | "Conversion" | "Retention" | "Complete",
+      current_phase: (str(formData, "current_phase") || "Demand") as CampaignPhase,
     })
     .select("id")
     .single();

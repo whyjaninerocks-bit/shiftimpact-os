@@ -24,24 +24,28 @@ export const dynamic = "force-dynamic";
 const PHASE_LABELS: Partial<Record<IndustryProfile, Record<CampaignPhase, string>>> = {
   QSR: {
     Demand: "Getting Noticed",
+    Nurture: "Winning Them Over",
     Conversion: "Earning the Order",
     Retention: "Keeping Them Coming Back",
     Complete: "Complete",
   },
   B2B: {
     Demand: "Building Awareness",
+    Nurture: "Building the Case",
     Conversion: "Winning the Deal",
     Retention: "Growing the Account",
     Complete: "Complete",
   },
   Retail: {
     Demand: "Sparking Interest",
+    Nurture: "Building Desire",
     Conversion: "Driving the Sale",
     Retention: "Earning Repeat Purchases",
     Complete: "Complete",
   },
   Other: {
     Demand: "Building Awareness",
+    Nurture: "Building Trust",
     Conversion: "Driving Conversion",
     Retention: "Building Loyalty",
     Complete: "Complete",

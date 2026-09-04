@@ -1,4 +1,4 @@
-const PHASES = ["Demand", "Conversion", "Retention", "Complete"] as const;
+const PHASES = ["Demand", "Nurture", "Conversion", "Retention", "Complete"] as const;
 const GATE_SIGNAL_STATUSES = ["Pending", "On Track", "At Risk", "Blocked"] as const;
 
 // The 5 fields a Claude weekly review is allowed to write — see the

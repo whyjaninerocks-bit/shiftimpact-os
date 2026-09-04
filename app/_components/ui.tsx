@@ -42,6 +42,8 @@ export function phaseTone(phase: string): keyof typeof toneClasses {
   switch (phase) {
     case "Demand":
       return "blue";
+    case "Nurture":
+      return "amber";
     case "Conversion":
       return "purple";
     case "Retention":

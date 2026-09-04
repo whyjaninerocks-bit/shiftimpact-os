@@ -81,6 +81,7 @@ export function CampaignInfoSection({ campaign, teamMembers }: CampaignInfoSecti
               <label className={labelClass}>Phase</label>
               <select name="current_phase" defaultValue={campaign.current_phase} className={inputClass}>
                 <option value="Demand">Demand</option>
+                <option value="Nurture">Nurture</option>
                 <option value="Conversion">Conversion</option>
                 <option value="Retention">Retention</option>
                 <option value="Complete">Complete</option>
