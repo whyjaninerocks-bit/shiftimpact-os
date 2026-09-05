@@ -156,6 +156,21 @@ export async function createCampaign(formData: FormData) {
     redirect(`/campaigns/${campaign.id}?error=${encodeURIComponent(frameError.message)}`);
   }
 
+  // One Big Idea Platform per campaign (Draft, defaults) — FIXED 4 Sept 2026: this insert
+  // was missing entirely, so every campaign created since migration 0005's one-time backfill
+  // had no big_idea_platforms row. The campaign page only renders BigIdeaPlatformSection and
+  // IqEvaluateSection when `bip` is non-null (`{bip && <BigIdeaPlatformSection .../>}`), so for
+  // every affected campaign those two sections silently never appeared — no error, just an
+  // invisible "Big Idea Platform" nav link that scrolled to nothing. Mirrors the frame_briefs
+  // insert above.
+  const { error: bipError } = await supabase
+    .from("big_idea_platforms")
+    .insert({ campaign_id: campaign.id });
+
+  if (bipError) {
+    redirect(`/campaigns/${campaign.id}?error=${encodeURIComponent(bipError.message)}`);
+  }
+
   // Instantiate the Phase Gates from Gate Templates (5 as of 4 Sept 2026 — Nurture added)
   const { data: templates, error: templatesError } = await supabase
     .from("gate_templates")
@@ -1086,6 +1101,14 @@ export async function createQuickAudit(formData: FormData) {
     });
 
   if (frameError) redirect(`/audit?error=${encodeURIComponent(frameError.message)}`);
+
+  // 3b. Create Big Idea Platform row — FIXED 4 Sept 2026 (same missing-insert bug as
+  // createCampaign(); see that function's comment for why this matters).
+  const { error: bipError } = await supabase
+    .from("big_idea_platforms")
+    .insert({ campaign_id: campaign.id });
+
+  if (bipError) redirect(`/audit?error=${encodeURIComponent(bipError.message)}`);
 
   // 4. Seed phase gates from templates
   const { data: templates } = await supabase
