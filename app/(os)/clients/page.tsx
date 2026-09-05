@@ -10,13 +10,19 @@ import {
   buttonClass,
   inputClass,
   labelClass,
+  ErrorBanner,
 } from "@/app/_components/ui";
 import { DeleteClientButton } from "@/app/_components/DeleteClientButton";
 import { ClaritySignalsReveal } from "./_components/ClaritySignalsReveal";
 
 export const dynamic = "force-dynamic";
 
-export default async function ClientsPage() {
+export default async function ClientsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
   const [clients, claritySignals] = await Promise.all([
     getClients(),
     getRecentClaritySignals(8),
@@ -24,6 +30,8 @@ export default async function ClientsPage() {
 
   return (
     <div className="space-y-8">
+
+      <ErrorBanner message={error} />
 
       {/* ── Tagline bar ─────────────────────────────────────────────────── */}
       <div className="rounded-xl border border-neutral-200 bg-white px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
