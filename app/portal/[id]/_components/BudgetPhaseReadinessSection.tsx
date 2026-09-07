@@ -38,10 +38,12 @@ export function BudgetPhaseReadinessSection({
   budgetTotal,
   gateSignalStatus,
   nextGateType,
+  nextGateSignal,
 }: {
   budgetTotal: number | null;
   gateSignalStatus: GateSignalStatus;
   nextGateType: string | null;
+  nextGateSignal?: string | null;
 }) {
   if (budgetTotal == null) return null;
 
@@ -57,6 +59,9 @@ export function BudgetPhaseReadinessSection({
         <p className="text-3xl font-black mt-1">{budgetTotal.toLocaleString()}</p>
         {nextGateType && (
           <p className="text-xs text-neutral-400 mt-1.5">Next milestone: {nextGateType}</p>
+        )}
+        {nextGateSignal && (
+          <p className="text-[11px] text-neutral-500 mt-1 leading-relaxed">What clears it: {nextGateSignal}</p>
         )}
       </div>
       <div className={`px-4 py-3 rounded-xl border text-xs leading-relaxed ${readiness.tone}`}>

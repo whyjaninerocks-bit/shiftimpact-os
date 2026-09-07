@@ -895,6 +895,58 @@ export async function getComplianceRecordClientSafe(
   };
 }
 
+// ─── Category Benchmark Reference — client-facing, read-only ────────────────
+// Distinct from the GA5 min-N cross-client aggregate gate above (which stays
+// locked until 5+ clients share a category, since that's ShiftImpact's own
+// client data). This instead surfaces signal_benchmarks — externally sourced
+// industry norms (Nielsen, Kantar, CRM platforms, retailer POS data) that
+// exist today regardless of client count. Framed as reference context for how
+// ambitious the campaign's own gate thresholds are — NOT an auto-matched
+// comparison against a specific signal_thresholds row, since signal naming
+// between the two tables doesn't line up 1:1 and claiming a precise match
+// would overstate what the data supports.
+export type CategoryBenchmarkClientSafe = {
+  category: string;
+  gateType: string;
+  signalName: string;
+  benchmarkMin: string;
+  source: string;
+}[];
+
+export async function getCategoryBenchmarksClientSafe(
+  campaignId: string
+): Promise<{ category: string; benchmarks: CategoryBenchmarkClientSafe } | null> {
+  const supabase = createAdminClient();
+
+  const { data: brief } = await supabase
+    .from("frame_briefs")
+    .select("industry_category")
+    .eq("campaign_id", campaignId)
+    .maybeSingle();
+
+  const category = brief?.industry_category as string | undefined;
+  if (!category) return null;
+
+  const { data, error } = await supabase
+    .from("signal_benchmarks")
+    .select("category, gate_type, signal_name, benchmark_min, source")
+    .eq("category", category)
+    .order("gate_type", { ascending: true });
+
+  if (error || !data || data.length === 0) return null;
+
+  return {
+    category,
+    benchmarks: data.map((row: any) => ({
+      category: row.category,
+      gateType: row.gate_type,
+      signalName: row.signal_name,
+      benchmarkMin: row.benchmark_min,
+      source: row.source,
+    })),
+  };
+}
+
 // ─── F28 — Social Proof Cascade Detection (Sprint 5) ─────────────────────────
 // All cascade readings for a campaign, newest first.
 // amplification_window: INTERNAL ONLY — no client export.

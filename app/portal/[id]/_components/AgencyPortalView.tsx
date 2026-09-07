@@ -219,6 +219,9 @@ export function AgencyPortalView({
   const searchValues = signalAsc
     .map((r) => r.signal_1_actual_pct)
     .filter((v): v is number => v !== null);
+  const ugcValues = signalAsc
+    .map((r) => r.signal_3_actual_count)
+    .filter((v): v is number => v !== null);
 
   // Health score — use confidence_score as the composite proxy
   const healthScore = Math.round(campaign.confidence_score ?? 0);
@@ -385,50 +388,51 @@ export function AgencyPortalView({
           </div>
         )}
 
-        {/* Signal mini-cards */}
+        {/* Signal snapshot — numbers only. The trend charts for these same
+             three signals live in the main content column (Signal readings)
+             so the visual weight sits there, not duplicated in the sidebar. */}
         <div className="px-4 py-4 space-y-3">
-          {saveValues.length >= 2 && (
-            <div className="bg-white/5 rounded-2xl px-4 py-3">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest">
-                  Save Rate
-                </p>
-                <div className="text-right">
-                  <span className="text-xl font-black text-amber-400">
-                    {saveValues[saveValues.length - 1].toFixed(1)}%
-                  </span>
-                  {saveValues.length >= 2 && (
-                    <span className="text-xs text-neutral-500 ml-1">
-                      {(saveValues[saveValues.length - 1] - saveValues[saveValues.length - 2]) >= 0 ? "+" : ""}
-                      {(saveValues[saveValues.length - 1] - saveValues[saveValues.length - 2]).toFixed(1)}%
-                    </span>
-                  )}
-                </div>
-              </div>
-              <Sparkline values={saveValues} gate={8} color="#f59e0b" height={56} />
-              <p className="text-[10px] text-neutral-500 mt-1">Gate ≥8%</p>
-            </div>
-          )}
-
-          {searchValues.length >= 2 && (
-            <div className="bg-white/5 rounded-2xl px-4 py-3">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest">
-                  Brand Search
-                </p>
-                <div className="text-right">
-                  <span className="text-xl font-black text-indigo-400">
+          {(saveValues.length >= 2 || searchValues.length >= 2 || ugcValues.length >= 2) && (
+            <div className="bg-white/5 rounded-2xl px-4 py-3 space-y-2.5">
+              <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest">
+                Signal snapshot
+              </p>
+              {searchValues.length >= 2 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-neutral-400">Brand Search</span>
+                  <span className="text-sm font-bold text-indigo-400">
                     {searchValues[searchValues.length - 1].toFixed(1)}%
-                  </span>
-                  {searchValues.length >= 2 && (
-                    <span className="text-xs text-neutral-500 ml-1">
+                    <span className="text-neutral-500 font-normal ml-1">
                       {(searchValues[searchValues.length - 1] - searchValues[searchValues.length - 2]) >= 0 ? "+" : ""}
                       {(searchValues[searchValues.length - 1] - searchValues[searchValues.length - 2]).toFixed(1)}%
                     </span>
-                  )}
+                  </span>
                 </div>
-              </div>
-              <Sparkline values={searchValues} color="#818cf8" height={56} />
+              )}
+              {saveValues.length >= 2 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-neutral-400">Save Rate</span>
+                  <span className="text-sm font-bold text-amber-400">
+                    {saveValues[saveValues.length - 1].toFixed(1)}%
+                    <span className="text-neutral-500 font-normal ml-1">
+                      {(saveValues[saveValues.length - 1] - saveValues[saveValues.length - 2]) >= 0 ? "+" : ""}
+                      {(saveValues[saveValues.length - 1] - saveValues[saveValues.length - 2]).toFixed(1)}%
+                    </span>
+                  </span>
+                </div>
+              )}
+              {ugcValues.length >= 2 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-neutral-400">UGC Volume</span>
+                  <span className="text-sm font-bold text-emerald-400">
+                    {ugcValues[ugcValues.length - 1]} pcs
+                    <span className="text-neutral-500 font-normal ml-1">
+                      {(ugcValues[ugcValues.length - 1] - ugcValues[ugcValues.length - 2]) >= 0 ? "+" : ""}
+                      {ugcValues[ugcValues.length - 1] - ugcValues[ugcValues.length - 2]}
+                    </span>
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
@@ -546,51 +550,81 @@ export function AgencyPortalView({
                   </div>
                 </div>
 
-                {/* Signal readings */}
+                {/* Signal readings — the trend, not just the latest number.
+                     Each signal gets its own sparkline (same series that used
+                     to live in the sidebar) so the main column carries the
+                     visual weight of the report. */}
                 {(latest.signal_1_actual_pct !== null || latest.signal_2_actual_pct !== null || latest.signal_3_actual_count !== null) && (
                   <div className="rounded-2xl border bg-white shadow-sm px-6 py-5">
                     <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-4">Signal readings — week {latest.week_number}</p>
-                    <div className="space-y-3">
+                    <div className="grid sm:grid-cols-3 gap-4">
                       {latest.signal_1_actual_pct !== null && (
-                        <div className="flex items-center justify-between py-2 border-b border-neutral-100 last:border-0">
-                          <div>
-                            <p className="text-sm font-semibold text-neutral-800">Brand Search Share (S1)</p>
-                            <p className="text-xs text-neutral-400">Share of search — demand creation signal</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-lg font-black text-neutral-900">{latest.signal_1_actual_pct.toFixed(1)}%</p>
+                        <div className="rounded-xl bg-neutral-50 border border-neutral-100 px-4 py-4">
+                          <p className="text-xs font-semibold text-neutral-700">Brand Search Share (S1)</p>
+                          <p className="text-[10px] text-neutral-400 mb-2 leading-snug">Share of search — demand signal</p>
+                          <div className="flex items-baseline justify-between mb-2">
+                            <span className="text-2xl font-black text-neutral-900">{latest.signal_1_actual_pct.toFixed(1)}%</span>
                             <span className={`text-[10px] font-bold uppercase tracking-wider ${
                               latest.conversion_health === "Green" ? "text-emerald-600" : latest.conversion_health === "Amber" ? "text-amber-600" : "text-red-600"
                             }`}>{latest.conversion_health}</span>
                           </div>
+                          {searchValues.length >= 2 ? (
+                            <>
+                              <Sparkline values={searchValues} color="#6366f1" height={48} />
+                              <p className="text-[10px] text-neutral-500 mt-1">
+                                {(searchValues[searchValues.length - 1] - searchValues[searchValues.length - 2]) >= 0 ? "▲ +" : "▼ "}
+                                {(searchValues[searchValues.length - 1] - searchValues[searchValues.length - 2]).toFixed(1)}% vs last week
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-[10px] text-neutral-400">Not enough weeks yet for a trend line</p>
+                          )}
                         </div>
                       )}
                       {latest.signal_2_actual_pct !== null && (
-                        <div className="flex items-center justify-between py-2 border-b border-neutral-100 last:border-0">
-                          <div>
-                            <p className="text-sm font-semibold text-neutral-800">Content Save Rate (S2)</p>
-                            <p className="text-xs text-neutral-400">Purchase intent proxy — nurture signal</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-lg font-black text-neutral-900">{latest.signal_2_actual_pct.toFixed(1)}%</p>
+                        <div className="rounded-xl bg-neutral-50 border border-neutral-100 px-4 py-4">
+                          <p className="text-xs font-semibold text-neutral-700">Content Save Rate (S2)</p>
+                          <p className="text-[10px] text-neutral-400 mb-2 leading-snug">Purchase intent — nurture signal</p>
+                          <div className="flex items-baseline justify-between mb-2">
+                            <span className="text-2xl font-black text-neutral-900">{latest.signal_2_actual_pct.toFixed(1)}%</span>
                             <span className={`text-[10px] font-bold uppercase tracking-wider ${
                               latest.nurture_health === "Green" ? "text-emerald-600" : latest.nurture_health === "Amber" ? "text-amber-600" : "text-red-600"
                             }`}>{latest.nurture_health}</span>
                           </div>
+                          {saveValues.length >= 2 ? (
+                            <>
+                              <Sparkline values={saveValues} gate={8} color="#d97706" height={48} />
+                              <p className="text-[10px] text-neutral-500 mt-1">
+                                {(saveValues[saveValues.length - 1] - saveValues[saveValues.length - 2]) >= 0 ? "▲ +" : "▼ "}
+                                {(saveValues[saveValues.length - 1] - saveValues[saveValues.length - 2]).toFixed(1)}% vs last week · Gate ≥8%
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-[10px] text-neutral-400">Not enough weeks yet for a trend line</p>
+                          )}
                         </div>
                       )}
                       {latest.signal_3_actual_count !== null && (
-                        <div className="flex items-center justify-between py-2">
-                          <div>
-                            <p className="text-sm font-semibold text-neutral-800">UGC Volume (S3)</p>
-                            <p className="text-xs text-neutral-400">Organic amplification — demand signal</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-lg font-black text-neutral-900">{latest.signal_3_actual_count} pcs</p>
+                        <div className="rounded-xl bg-neutral-50 border border-neutral-100 px-4 py-4">
+                          <p className="text-xs font-semibold text-neutral-700">UGC Volume (S3)</p>
+                          <p className="text-[10px] text-neutral-400 mb-2 leading-snug">Organic amplification — demand signal</p>
+                          <div className="flex items-baseline justify-between mb-2">
+                            <span className="text-2xl font-black text-neutral-900">{latest.signal_3_actual_count} pcs</span>
                             <span className={`text-[10px] font-bold uppercase tracking-wider ${
                               latest.demand_health === "Green" ? "text-emerald-600" : latest.demand_health === "Amber" ? "text-amber-600" : "text-red-600"
                             }`}>{latest.demand_health}</span>
                           </div>
+                          {ugcValues.length >= 2 ? (
+                            <>
+                              <Sparkline values={ugcValues} gate={100} color="#059669" height={48} />
+                              <p className="text-[10px] text-neutral-500 mt-1">
+                                {(ugcValues[ugcValues.length - 1] - ugcValues[ugcValues.length - 2]) >= 0 ? "▲ +" : "▼ "}
+                                {ugcValues[ugcValues.length - 1] - ugcValues[ugcValues.length - 2]} vs last week · Gate ≥100 pcs
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-[10px] text-neutral-400">Not enough weeks yet for a trend line</p>
+                          )}
                         </div>
                       )}
                     </div>

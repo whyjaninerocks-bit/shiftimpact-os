@@ -19,6 +19,7 @@ import {
   ensureComplianceItems,
   getComplianceItems,
   getComplianceRecordClientSafe,
+  getCategoryBenchmarksClientSafe,
 } from "@/lib/data";
 import { Badge, Card, ragTone } from "@/app/_components/ui";
 import type { CampaignPhase, IndustryProfile } from "@/lib/types";
@@ -33,6 +34,7 @@ import { ReportHistorySection } from "./_components/ReportHistorySection";
 import { ChannelHealthSection } from "./_components/ChannelHealthSection";
 import { BudgetPhaseReadinessSection } from "./_components/BudgetPhaseReadinessSection";
 import { ComplianceSection } from "./_components/ComplianceSection";
+import { CategoryBenchmarkSection } from "./_components/CategoryBenchmarkSection";
 import { SectionHeading, ReportHero, CampaignHealthCard, POSTURE_DOT } from "./_components/reportUi";
 import { PortalNav, type NavSection, type NavWeek } from "./_components/PortalNav";
 import { Collapse } from "../_components/Collapse";
@@ -121,7 +123,7 @@ export default async function ClientPortalPage({
   const campaign = await getCampaign(id);
   if (!campaign) notFound();
 
-  const [frame, dashboards, extensions, report, signalReports, phaseGates, predictionRecords, signalFramework, brandMomentum, signalThresholds, reportHistory, channelHealth, complianceRecord] =
+  const [frame, dashboards, extensions, report, signalReports, phaseGates, predictionRecords, signalFramework, brandMomentum, signalThresholds, reportHistory, channelHealth, complianceRecord, categoryBenchmarks] =
     await Promise.all([
       getFrameBrief(id).catch(() => null),
       getDashboards(id),
@@ -136,6 +138,7 @@ export default async function ClientPortalPage({
       getCampaignReportHistoryClientSafe(id),
       getChannelHealthClientSafe(id),
       getComplianceRecordClientSafe(id),
+      getCategoryBenchmarksClientSafe(id),
     ]);
 
   // Guardrails are keyed off the FRAME brief, which just resolved above.
@@ -205,6 +208,7 @@ export default async function ClientPortalPage({
   const navSections: NavSection[] = [
     { id: "campaign-health", label: "Campaign health" },
     ...(signalFramework ? [{ id: "measuring-success", label: "How we measure success" }] : []),
+    ...(categoryBenchmarks ? [{ id: "benchmarks", label: "Category benchmarks" }] : []),
     ...(brandMomentum ? [{ id: "brand-momentum", label: "Brand momentum" }] : []),
     ...(showChannels ? [{ id: "channels", label: "Channels" }] : []),
     { id: "weekly-update", label: "Latest update" },
@@ -299,6 +303,11 @@ export default async function ClientPortalPage({
           <div id="measuring-success" className="scroll-mt-20">
             <CategorySignalSection framework={signalFramework} />
           </div>
+
+          {/* ── Category benchmark reference — externally sourced industry
+               norms, shown as context for how ambitious this campaign's own
+               targets are (see getCategoryBenchmarksClientSafe). ── */}
+          <CategoryBenchmarkSection data={categoryBenchmarks} />
 
           {/* ── Brand momentum ── */}
           <div id="brand-momentum" className="scroll-mt-20">
@@ -571,6 +580,7 @@ export default async function ClientPortalPage({
             budgetTotal={frame?.budget_total ?? null}
             gateSignalStatus={campaign.gate_signal_status}
             nextGateType={nextGate?.gate_type ?? null}
+            nextGateSignal={nextGate?.required_signal ?? null}
           />
         </div>
 

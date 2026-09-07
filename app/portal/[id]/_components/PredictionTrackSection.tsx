@@ -1,6 +1,7 @@
 import type { PredictionAccuracyClientSafe } from "@/lib/data";
 import { Card } from "@/app/_components/ui";
 import { SectionHeading } from "./reportUi";
+import { Collapse } from "@/app/portal/_components/Collapse";
 
 // ─── Client-facing Prediction Track Record ───────────────────────────────────
 // Read-only. No add/edit/delete controls — those stay in the internal
@@ -151,6 +152,31 @@ function PredictionRow({ record }: { record: PredictionAccuracyClientSafe }) {
   );
 }
 
+// ─── Methodology explainer — how a miss gets handled ─────────────────────────
+// Static trust copy, not campaign data. Answers the natural next question a
+// client asks the first time they see "Off" or "Close" on this list: does a
+// miss mean we were wrong and did nothing? No — every miss follows the same
+// four-step check. Collapsed by default so it doesn't compete with the
+// records themselves; only worth reading once, not on every visit.
+function MissMethodology() {
+  return (
+    <Collapse label="What happens when a prediction misses" variant="inline">
+      <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3.5 py-3 space-y-2">
+        <p className="text-[11px] text-neutral-500 leading-relaxed">
+          A miss isn&apos;t hidden or re-scored after the fact. Every "Off" or "Close" verdict above
+          goes through the same check before the next report:
+        </p>
+        <ol className="text-[11px] text-neutral-500 leading-relaxed space-y-1 list-decimal list-inside">
+          <li>How far the actual result sat from the predicted target, and since when.</li>
+          <li>Whether an external factor (seasonality, a platform change, a competitor move) explains the gap.</li>
+          <li>Whether the target itself needs recalibrating, or the plan does.</li>
+          <li>A revised outlook, logged before the next result comes in — not adjusted after.</li>
+        </ol>
+      </div>
+    </Collapse>
+  );
+}
+
 export function PredictionTrackSection({
   records,
   frameLocked,
@@ -172,6 +198,7 @@ export function PredictionTrackSection({
             <PredictionRow key={r.id} record={r} />
           ))}
         </div>
+        <MissMethodology />
       </Card>
     </div>
   );
