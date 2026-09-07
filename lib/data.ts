@@ -918,6 +918,86 @@ export type PredictionAccuracyClientSafe = {
   created_at: string;
 };
 
+// ─── Client-facing subset — Category Signal Framework (portal) ──────────────
+// ACCESS RULES (same convention as everywhere else): client sees
+// business_outcome_label, the leading/conversion/lagging signal LABELS
+// (translated from signal_vocabulary keys into plain language, not raw
+// keys), confidence_label, and missing_data — honest disclosure, not a
+// weakness to hide, per the same reasoning already applied to this table in
+// docs/client-portal-v2-report-audit.md.
+// Internal only, never selected here: signal_weights (methodology),
+// confidence_reason/confidence_matched_data (internal reasoning trail),
+// post_hoc_predictive_signal/post_hoc_outcome_notes (retrospective tuning
+// notes), map_status (internal workflow state), category_attribute_id (raw
+// FK — resolved to a display name server-side instead).
+//
+// Only reads the row where is_active = true — a campaign can have draft/
+// superseded rows (see Smashburger Tuesdays Launch in prod, 3 rows, 1
+// active) and those must never reach a client.
+export type CategorySignalFramework = {
+  business_outcome_label: string;
+  category_name: string | null;
+  leading_signals: { key: string; label: string }[];
+  conversion_signals: { key: string; label: string }[];
+  lagging_signals: { key: string; label: string }[];
+  confidence_label: string;
+  missing_data: { key: string; label: string }[];
+  available_data: string[];
+};
+
+export async function getCategorySignalFramework(
+  campaignId: string
+): Promise<CategorySignalFramework | null> {
+  const supabase = createAdminClient();
+  const { data: map, error } = await supabase
+    .from("campaign_signal_maps")
+    .select(
+      "business_outcome_label, leading_signals, conversion_signals, lagging_signals, confidence_label, missing_data, available_data, category_attribute_id"
+    )
+    .eq("campaign_id", campaignId)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (error || !map) return null;
+
+  let categoryName: string | null = null;
+  if (map.category_attribute_id) {
+    const { data: cat } = await supabase
+      .from("category_attributes")
+      .select("category_name")
+      .eq("id", map.category_attribute_id)
+      .maybeSingle();
+    categoryName = cat?.category_name ?? null;
+  }
+
+  const allKeys = Array.from(
+    new Set([
+      ...(map.leading_signals ?? []),
+      ...(map.conversion_signals ?? []),
+      ...(map.lagging_signals ?? []),
+      ...(map.missing_data ?? []),
+    ])
+  ) as string[];
+
+  const vocab = allKeys.length
+    ? (await supabase.from("signal_vocabulary").select("key, label").in("key", allKeys)).data ?? []
+    : [];
+  const labelFor = (key: string) => vocab.find((v) => v.key === key)?.label ?? key;
+  const toDisplay = (keys: string[] | null) =>
+    (keys ?? []).map((k) => ({ key: k, label: labelFor(k) }));
+
+  return {
+    business_outcome_label: map.business_outcome_label,
+    category_name: categoryName,
+    leading_signals: toDisplay(map.leading_signals),
+    conversion_signals: toDisplay(map.conversion_signals),
+    lagging_signals: toDisplay(map.lagging_signals),
+    confidence_label: map.confidence_label,
+    missing_data: toDisplay(map.missing_data),
+    available_data: (map.available_data ?? []) as string[],
+  };
+}
+
 export async function getPredictionAccuracyClientSafe(
   campaignId: string
 ): Promise<PredictionAccuracyClientSafe[]> {

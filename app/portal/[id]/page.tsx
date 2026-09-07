@@ -9,12 +9,14 @@ import {
   getSignalWeeklyReports,
   getPhaseGates,
   getPredictionAccuracyClientSafe,
+  getCategorySignalFramework,
 } from "@/lib/data";
 import { Badge, Card, ragTone } from "@/app/_components/ui";
 import type { CampaignPhase, IndustryProfile } from "@/lib/types";
 import { PortalChatWidget } from "./_components/PortalChatWidget";
 import { AgencyPortalView } from "./_components/AgencyPortalView";
 import { PredictionTrackSection } from "./_components/PredictionTrackSection";
+import { CategorySignalSection } from "./_components/CategorySignalSection";
 import { Collapse } from "../_components/Collapse";
 
 type PortalView = "brand" | "agency" | "partner";
@@ -88,7 +90,7 @@ export default async function ClientPortalPage({
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!UUID_RE.test(id)) notFound();
 
-  const [campaign, frame, dashboards, extensions, report, signalReports, phaseGates, predictionRecords] =
+  const [campaign, frame, dashboards, extensions, report, signalReports, phaseGates, predictionRecords, signalFramework] =
     await Promise.all([
       getCampaign(id),
       getFrameBrief(id).catch(() => null),
@@ -98,6 +100,7 @@ export default async function ClientPortalPage({
       getSignalWeeklyReports(id),
       getPhaseGates(id),
       getPredictionAccuracyClientSafe(id),
+      getCategorySignalFramework(id),
     ]);
 
   if (!campaign) notFound();
@@ -183,6 +186,12 @@ export default async function ClientPortalPage({
             </div>
           </Card>
         </PortalSection>
+
+        {/* ── Category signal framework — replaces generic Demand/Nurture/Conversion
+             framing with this campaign's actual category-appropriate signals,
+             when one has been built for it (see CategorySignalSection for why
+             this doesn't try to merge in real weekly numbers yet). ── */}
+        <CategorySignalSection framework={signalFramework} />
 
         {/* ── Active channels ── */}
         {activeChannels.length > 0 && (
