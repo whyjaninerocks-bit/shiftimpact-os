@@ -31,9 +31,13 @@ async function fetchCampaignContext(campaignId: string) {
     frameBriefRes,
     teamMemberRes,
   ] = await Promise.all([
-    // Campaign overview
+    // Campaign overview — campaigns_overview is the real view name; there is
+    // no "campaigns_with_overview" anywhere in this schema (that was the bug:
+    // every query below silently returned null against a relation that
+    // doesn't exist, so ctx.campaign was always null and the route 404'd
+    // before ever reaching the model).
     supabase
-      .from("campaigns_with_overview")
+      .from("campaigns_overview")
       .select("*")
       .eq("id", campaignId)
       .maybeSingle(),
@@ -46,12 +50,13 @@ async function fetchCampaignContext(campaignId: string) {
       .order("week_number", { ascending: false })
       .limit(12),
 
-    // Phase gates
+    // Phase gates — real table is "phase_gates", ordered by sequence_order
+    // (there is no gate_number column).
     supabase
-      .from("campaign_phase_gates")
+      .from("phase_gates")
       .select("*")
       .eq("campaign_id", campaignId)
-      .order("gate_number", { ascending: true }),
+      .order("sequence_order", { ascending: true }),
 
     // KOL trackers
     supabase
@@ -60,26 +65,29 @@ async function fetchCampaignContext(campaignId: string) {
       .eq("campaign_id", campaignId)
       .order("created_at", { ascending: true }),
 
-    // Latest published report
+    // Latest client-visible report — real status values are "ready"/
+    // "exported", never "published" (see lib/data.ts getLatestCampaignReport
+    // for the canonical filter).
     supabase
       .from("campaign_reports")
       .select("*")
       .eq("campaign_id", campaignId)
-      .eq("status", "published")
+      .in("status", ["ready", "exported"])
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
 
-    // FRAME brief
+    // FRAME brief — real columns are "anchor" and "lock_status", not
+    // "frame_anchor" / "frame_lock_status".
     supabase
       .from("frame_briefs")
-      .select("frame_anchor, clarity_statement, active_channels, ics_weighted_total, ics_threshold, frame_lock_status")
+      .select("anchor, clarity_statement, active_channels, ics_weighted_total, ics_threshold, lock_status")
       .eq("campaign_id", campaignId)
       .maybeSingle(),
 
     // Assigned team member (for escalation email)
     supabase
-      .from("campaigns_with_overview")
+      .from("campaigns_overview")
       .select("team_member_id, team_member_name")
       .eq("id", campaignId)
       .maybeSingle(),
@@ -140,23 +148,23 @@ function buildContextBlock(ctx: Awaited<ReturnType<typeof fetchCampaignContext>>
   // FRAME brief
   lines.push("\n=== FRAME BRIEF ===");
   if (frame) {
-    lines.push(`Anchor (The One Idea): ${frame.frame_anchor ?? "—"}`);
+    lines.push(`Anchor (The One Idea): ${frame.anchor ?? "—"}`);
     lines.push(`Clarity statement: ${frame.clarity_statement ?? "—"}`);
     lines.push(`Active channels: ${(frame.active_channels ?? []).join(", ") || "—"}`);
     lines.push(`ICS score: ${frame.ics_weighted_total ?? "—"} (threshold: ${frame.ics_threshold ?? "—"})`);
-    lines.push(`Brief status: ${frame.frame_lock_status ?? "—"}`);
+    lines.push(`Brief status: ${frame.lock_status ?? "—"}`);
   } else {
     lines.push("No FRAME brief found.");
   }
 
   // Signal weekly history
   lines.push("\n=== SIGNAL WEEKLY HISTORY (newest first) ===");
-  lines.push("Columns: Week | S1 SoS% | S2 Save% | S2B Share% | S3 UGC count | S3B VCR% | Health | Gate status | WA Echo | Auto-sourced");
+  lines.push("Columns: Week | S1 SoS% | S2 Save% | S2B Share% | S3 UGC count | S3B % | Demand/Nurture/Conversion health | Gate status | WA Echo | Auto-sourced");
   if (signals.length === 0) {
     lines.push("No signal data recorded yet.");
   } else {
     for (const s of signals) {
-      const auto = [s.signal_1_auto && "S1", s.signal_3_auto && "S3"].filter(Boolean).join(",") || "manual";
+      const auto = [s.signal_1_auto && "S1", s.signal_2_auto && "S2", s.signal_3_auto && "S3"].filter(Boolean).join(",") || "manual";
       lines.push(
         `Week ${s.week_number}: ` +
         `S1=${s.signal_1_actual_pct ?? "—"}% | ` +
@@ -164,27 +172,27 @@ function buildContextBlock(ctx: Awaited<ReturnType<typeof fetchCampaignContext>>
         `S2B=${s.signal_2b_actual_pct ?? "—"}% | ` +
         `S3=${s.signal_3_actual_count ?? "—"} posts | ` +
         `S3B=${s.signal_3b_actual_pct ?? "—"}% | ` +
-        `Health=${s.health_score ?? "—"} | ` +
-        `Gate=${s.gate_signal_status ?? "—"} | ` +
+        `Health=Demand:${s.demand_health ?? "—"}/Nurture:${s.nurture_health ?? "—"}/Conversion:${s.conversion_health ?? "—"} | ` +
+        `Gate=${s.gate_status ?? "—"} | ` +
         `WA Echo=${s.wa_echo_event ? "YES" : "no"} | ` +
         `Source=${auto}`
       );
     }
   }
 
-  // Gate thresholds
+  // Phase gates — real schema has no separate numeric threshold/current
+  // columns; required_signal is the free-text description of what clears
+  // the gate (e.g. "Retail sales lift >= 15% by week 8").
   lines.push("\n=== PHASE GATES ===");
   if (gates.length === 0) {
     lines.push("No phase gates configured.");
   } else {
     for (const g of gates) {
       lines.push(
-        `Gate ${g.gate_number} (${g.gate_name ?? "—"}): ` +
+        `Gate ${g.sequence_order} (${g.gate_type ?? "—"}): ` +
         `status=${g.gate_decision ?? "Pending"} | ` +
-        `signal=${g.primary_signal ?? "—"} | ` +
-        `threshold=${g.threshold_value ?? "—"} | ` +
-        `current=${g.current_value ?? "—"} | ` +
-        `hold_days=${g.hold_days_required ?? "—"}`
+        `required=${g.required_signal ?? "—"} | ` +
+        `decided_at=${g.decided_at ?? "not yet"}`
       );
     }
   }
@@ -204,19 +212,25 @@ function buildContextBlock(ctx: Awaited<ReturnType<typeof fetchCampaignContext>>
     }
   }
 
-  // Latest report predictions
+  // Latest client-visible report — real campaign_reports columns are
+  // report_week/report_label/executive_summary/findings/risk_posture/
+  // portal_published_at/client_released_at; there is no week_number,
+  // published_at, predictions_locked, verified_predictions, or
+  // compliance_score column on this table.
   lines.push("\n=== LATEST REPORT ===");
   if (report) {
-    lines.push(`Week: ${report.week_number ?? "—"}`);
-    lines.push(`Published: ${report.published_at ?? report.created_at}`);
-    if (report.predictions_locked) {
-      lines.push(`Locked predictions: ${JSON.stringify(report.predictions_locked)}`);
+    lines.push(`Week: ${report.report_week ?? "—"} — ${report.report_label ?? "—"}`);
+    lines.push(`Published: ${report.client_released_at ?? report.portal_published_at ?? report.created_at}`);
+    lines.push(`Brand posture: ${report.risk_posture ?? "—"}`);
+    if (report.executive_summary) {
+      lines.push(`Executive summary: ${report.executive_summary}`);
     }
-    if (report.verified_predictions) {
-      lines.push(`Verified predictions: ${JSON.stringify(report.verified_predictions)}`);
-    }
-    if (report.compliance_score != null) {
-      lines.push(`Brief compliance score: ${report.compliance_score}%`);
+    const findings = Array.isArray(report.findings) ? report.findings : [];
+    if (findings.length > 0) {
+      lines.push("Findings:");
+      for (const f of findings as Record<string, unknown>[]) {
+        lines.push(`- ${f.headline ?? "—"}: ${f.implication ?? "—"}${f.recommendation ? ` → ${f.recommendation}` : ""}`);
+      }
     }
   } else {
     lines.push("No published report yet.");
