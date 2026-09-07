@@ -10,6 +10,8 @@ import {
   getPhaseGates,
   getPredictionAccuracyClientSafe,
   getCategorySignalFramework,
+  getBrandMomentumClientSafe,
+  getGuardrailsClientSafe,
 } from "@/lib/data";
 import { Badge, Card, ragTone } from "@/app/_components/ui";
 import type { CampaignPhase, IndustryProfile } from "@/lib/types";
@@ -17,6 +19,8 @@ import { PortalChatWidget } from "./_components/PortalChatWidget";
 import { AgencyPortalView } from "./_components/AgencyPortalView";
 import { PredictionTrackSection } from "./_components/PredictionTrackSection";
 import { CategorySignalSection } from "./_components/CategorySignalSection";
+import { BrandMomentumSection } from "./_components/BrandMomentumSection";
+import { GuardrailsSection } from "./_components/GuardrailsSection";
 import { Collapse } from "../_components/Collapse";
 
 type PortalView = "brand" | "agency" | "partner";
@@ -90,9 +94,11 @@ export default async function ClientPortalPage({
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!UUID_RE.test(id)) notFound();
 
-  const [campaign, frame, dashboards, extensions, report, signalReports, phaseGates, predictionRecords, signalFramework] =
+  const campaign = await getCampaign(id);
+  if (!campaign) notFound();
+
+  const [frame, dashboards, extensions, report, signalReports, phaseGates, predictionRecords, signalFramework, brandMomentum] =
     await Promise.all([
-      getCampaign(id),
       getFrameBrief(id).catch(() => null),
       getDashboards(id),
       getIdeaExtensions(id),
@@ -101,9 +107,11 @@ export default async function ClientPortalPage({
       getPhaseGates(id),
       getPredictionAccuracyClientSafe(id),
       getCategorySignalFramework(id),
+      getBrandMomentumClientSafe(campaign.client_id),
     ]);
 
-  if (!campaign) notFound();
+  // Guardrails are keyed off the FRAME brief, which just resolved above.
+  const guardrails = frame?.id ? await getGuardrailsClientSafe(frame.id) : [];
 
   // ── Agency view — full intelligence dashboard ─────────────────────────────
   if (view === "agency") {
@@ -192,6 +200,9 @@ export default async function ClientPortalPage({
              when one has been built for it (see CategorySignalSection for why
              this doesn't try to merge in real weekly numbers yet). ── */}
         <CategorySignalSection framework={signalFramework} />
+
+        {/* ── Brand momentum ── */}
+        <BrandMomentumSection momentum={brandMomentum} />
 
         {/* ── Active channels ── */}
         {activeChannels.length > 0 && (
@@ -447,6 +458,9 @@ export default async function ClientPortalPage({
             )}
           </PortalSection>
         )}
+
+        {/* ── Guardrails reviewed this week ── */}
+        <GuardrailsSection guardrails={guardrails} />
 
         {/* ── Prediction track record ── */}
         <PredictionTrackSection records={predictionRecords} frameLocked={!!frame} />

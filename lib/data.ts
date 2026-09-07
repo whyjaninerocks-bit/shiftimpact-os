@@ -998,6 +998,59 @@ export async function getCategorySignalFramework(
   };
 }
 
+// ─── Client-facing subset — Brand Momentum (portal) ──────────────────────────
+// ACCESS RULES (verbatim from app/api/brand-momentum/route.ts): "Client sees:
+// bms_direction + bms_velocity + bms_confidence only (headline composite).
+// ai_read + conflict_flag: NEVER." Never selected here for that reason.
+export type BrandMomentumClientSafe = {
+  bms_direction: "Positive" | "Neutral" | "Negative";
+  bms_velocity: "Accelerating" | "Stable" | "Decelerating";
+  bms_confidence: number;
+  period_label: string | null;
+};
+
+export async function getBrandMomentumClientSafe(
+  clientId: string
+): Promise<BrandMomentumClientSafe | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("brand_momentum_scores")
+    .select("bms_direction, bms_velocity, bms_confidence, period_label")
+    .eq("client_id", clientId)
+    .not("bms_direction", "is", null)
+    .order("period_start", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data || !data.bms_direction) return null;
+  return data as BrandMomentumClientSafe;
+}
+
+// ─── Client-facing subset — Guardrails (portal) ──────────────────────────────
+// ACCESS RULES: client sees the plain-language condition and whether it held
+// or triggered this campaign — never threshold_value/comparator/metric_type
+// (the raw threshold math), per docs/client-portal-v2-report-audit.md item 6.
+export type GuardrailClientSafe = {
+  id: string;
+  condition: string;
+  held: boolean;
+};
+
+export async function getGuardrailsClientSafe(
+  frameBriefId: string
+): Promise<GuardrailClientSafe[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("kill_switches")
+    .select("id, condition, trigger_status")
+    .eq("frame_brief_id", frameBriefId);
+  if (error) return [];
+  return (data ?? []).map((k) => ({
+    id: k.id as string,
+    condition: k.condition as string,
+    held: k.trigger_status !== "Triggered",
+  }));
+}
+
 export async function getPredictionAccuracyClientSafe(
   campaignId: string
 ): Promise<PredictionAccuracyClientSafe[]> {
