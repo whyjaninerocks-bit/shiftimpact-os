@@ -23,6 +23,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "campaign_id, category, prediction_text required" }, { status: 400 });
   }
   const supabase = createAdminClient();
+  // Locked at creation — a manually-logged prediction is just as immutable as
+  // an auto-snapshotted one. See migration 0081 and PATCH .../[id] for enforcement.
   const { data, error } = await supabase
     .from("prediction_accuracy_log")
     .insert({
@@ -33,6 +35,7 @@ export async function POST(req: NextRequest) {
       unit: unit ?? null,
       prediction_week: prediction_week ?? null,
       verdict: "Pending",
+      locked_at: new Date().toISOString(),
     })
     .select("*")
     .single();

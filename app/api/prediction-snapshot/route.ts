@@ -31,7 +31,18 @@ interface PredictionRow {
   unit: string | null;
   prediction_week: number | null;
   verdict: "Pending";
+  locked_at: string;
+  source_table: string | null;
+  source_id: string | null;
+  source_signal_key: string | null;
 }
+
+// Predictions are locked the moment they're created — the point of a prediction
+// is that it can't be changed once made. See migration 0081: prediction_text,
+// predicted_value, unit, category, and prediction_week become immutable once
+// locked_at is set; only outcome fields (actual_value, verdict, accuracy_pct,
+// outcome_note, outcome_week) may ever be written after this.
+const nowIso = () => new Date().toISOString();
 
 export async function POST(req: NextRequest) {
   try {
@@ -60,7 +71,7 @@ export async function POST(req: NextRequest) {
 
     const { data: thresholds } = await supabase
       .from("signal_thresholds")
-      .select("signal_1_label, signal_1_threshold_pct, signal_2_label, signal_2_threshold_pct, signal_3_label, signal_3_threshold_count, campaign_duration_weeks")
+      .select("id, signal_1_label, signal_1_threshold_pct, signal_2_label, signal_2_threshold_pct, signal_3_label, signal_3_threshold_count, campaign_duration_weeks")
       .eq("campaign_id", campaign_id)
       .maybeSingle();
 
@@ -76,6 +87,10 @@ export async function POST(req: NextRequest) {
           unit: "%",
           prediction_week: 1,
           verdict: "Pending",
+          locked_at: nowIso(),
+          source_table: "signal_thresholds",
+          source_id: thresholds.id,
+          source_signal_key: "signal_1",
         });
       }
 
@@ -88,6 +103,10 @@ export async function POST(req: NextRequest) {
           unit: "%",
           prediction_week: 1,
           verdict: "Pending",
+          locked_at: nowIso(),
+          source_table: "signal_thresholds",
+          source_id: thresholds.id,
+          source_signal_key: "signal_2",
         });
       }
 
@@ -100,6 +119,10 @@ export async function POST(req: NextRequest) {
           unit: "per week",
           prediction_week: 1,
           verdict: "Pending",
+          locked_at: nowIso(),
+          source_table: "signal_thresholds",
+          source_id: thresholds.id,
+          source_signal_key: "signal_3",
         });
       }
     }
@@ -108,7 +131,7 @@ export async function POST(req: NextRequest) {
 
     const { data: outcomes } = await supabase
       .from("business_outcomes")
-      .select("outcome_type, target_value, unit, timeframe")
+      .select("id, outcome_type, target_value, unit, timeframe")
       .eq("campaign_id", campaign_id)
       .limit(5);
 
@@ -122,6 +145,10 @@ export async function POST(req: NextRequest) {
         unit: o.unit ?? null,
         prediction_week: null,
         verdict: "Pending",
+        locked_at: nowIso(),
+        source_table: "business_outcomes",
+        source_id: o.id,
+        source_signal_key: null,
       });
     }
 
@@ -129,7 +156,7 @@ export async function POST(req: NextRequest) {
 
     const { data: phaseGates } = await supabase
       .from("phase_gates")
-      .select("gate_name, gate_type")
+      .select("id, gate_name, gate_type")
       .eq("campaign_id", campaign_id)
       .neq("gate_outcome", "Passed")
       .limit(3);
@@ -143,27 +170,45 @@ export async function POST(req: NextRequest) {
         unit: null,
         prediction_week: null,
         verdict: "Pending",
+        locked_at: nowIso(),
+        source_table: "phase_gates",
+        source_id: g.id,
+        source_signal_key: null,
       });
     }
 
     // ─── S4: Kill switches → Behaviour predictions ───────────────────────────
+    // NOTE (fixed while wiring source refs): this block previously selected
+    // kill_switch_name/breach_status/unit, none of which exist on kill_switches
+    // (see migration 0069 — the real columns are condition/trigger_status/
+    // threshold_value/comparator/metric_type). That mismatch meant this query
+    // silently returned no rows, so Behaviour predictions were never actually
+    // created despite the code looking like it handled them. Corrected to the
+    // real schema below.
 
     const { data: killSwitches } = await supabase
       .from("kill_switches")
-      .select("kill_switch_name, threshold_value, unit")
+      .select("id, condition, threshold_value, comparator, metric_type")
       .eq("frame_brief_id", frame_brief_id)
-      .neq("breach_status", "Breached")
+      .neq("trigger_status", "Triggered")
       .limit(3);
 
     for (const k of (killSwitches ?? [])) {
+      const thresholdPhrase = k.threshold_value != null && k.comparator
+        ? ` (stay ${k.comparator === "below" ? "below" : "above"} ${k.threshold_value})`
+        : "";
       predictions.push({
         campaign_id,
         category: "Behaviour",
-        prediction_text: `${k.kill_switch_name} will remain within threshold (${k.threshold_value} ${k.unit ?? ""}) throughout the campaign`,
+        prediction_text: `Guardrail will hold: ${k.condition}${thresholdPhrase} throughout the campaign`,
         predicted_value: k.threshold_value ?? null,
-        unit: k.unit ?? null,
+        unit: null,
         prediction_week: null,
         verdict: "Pending",
+        locked_at: nowIso(),
+        source_table: "kill_switches",
+        source_id: k.id,
+        source_signal_key: null,
       });
     }
 
