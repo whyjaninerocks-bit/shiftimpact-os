@@ -19,6 +19,20 @@ const VERDICT_STYLES: Record<string, string> = {
   Pending: "bg-neutral-100 text-neutral-500 border-neutral-200",
 };
 
+const VERDICT_ICON: Record<string, string> = {
+  Accurate: "✓",
+  Close: "≈",
+  Off: "✗",
+  Pending: "⏳",
+};
+
+const VERDICT_ICON_TONE: Record<string, string> = {
+  Accurate: "bg-emerald-500 text-white",
+  Close: "bg-amber-400 text-white",
+  Off: "bg-red-500 text-white",
+  Pending: "bg-neutral-300 text-white",
+};
+
 function VerdictBadge({ verdict }: { verdict: string }) {
   return (
     <span
@@ -101,30 +115,31 @@ function AccuracySummary({ records }: { records: PredictionAccuracyClientSafe[] 
 function PredictionRow({ record }: { record: PredictionAccuracyClientSafe }) {
   return (
     <div className="rounded-lg border border-neutral-200 bg-white px-3.5 py-2.5">
-      <div className="flex items-start gap-2.5">
-        <span className="shrink-0 mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-neutral-100 text-neutral-500 border border-neutral-200">
-          {record.category}
+      <div className="flex items-start gap-3">
+        <span
+          className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+            VERDICT_ICON_TONE[record.verdict] ?? VERDICT_ICON_TONE.Pending
+          }`}
+        >
+          {VERDICT_ICON[record.verdict] ?? "?"}
         </span>
         <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <span className="text-[9px] font-semibold uppercase tracking-wider text-neutral-400">
+              {record.category}
+            </span>
+          </div>
           <p className="text-xs text-neutral-800 leading-snug">{record.prediction_text}</p>
           {(record.predicted_value != null || record.actual_value != null) && (
             <div className="flex items-center gap-3 mt-1">
               {record.predicted_value != null && (
                 <span className="text-[10px] text-neutral-500">
-                  Predicted:{" "}
-                  <strong className="text-neutral-700">
-                    {record.predicted_value}
-                    {record.unit ?? ""}
-                  </strong>
+                  Predicted <strong className="text-neutral-700">{record.predicted_value}{record.unit ?? ""}</strong>
                 </span>
               )}
               {record.actual_value != null && (
                 <span className="text-[10px] text-neutral-500">
-                  Actual:{" "}
-                  <strong className="text-neutral-700">
-                    {record.actual_value}
-                    {record.unit ?? ""}
-                  </strong>
+                  Actual <strong className="text-neutral-700">{record.actual_value}{record.unit ?? ""}</strong>
                 </span>
               )}
             </div>

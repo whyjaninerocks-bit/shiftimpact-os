@@ -1,5 +1,5 @@
 import type { ChannelHealthClientSafe } from "@/lib/data";
-import { SectionHeading, StatusPill } from "./reportUi";
+import { SectionHeading, StatusPill, DeltaTag } from "./reportUi";
 
 // ─── Channel Health — client-facing ──────────────────────────────────────────
 // Per-channel RAG status + the one signal each channel is judged on, latest
@@ -23,10 +23,13 @@ export function ChannelHealthSection({ channels }: { channels: ChannelHealthClie
             </div>
             <div className="text-right shrink-0">
               {c.signal_proxy_value != null && (
-                <p className="text-xs text-neutral-500 mb-1">
+                <p className="text-xs text-neutral-500 mb-0.5">
                   {c.signal_proxy_label}: <span className="font-semibold text-neutral-700">{c.signal_proxy_value}</span>
                 </p>
               )}
+              <div className="mb-1">
+                <DeltaTag current={c.signal_proxy_value} previous={c.previous_value} />
+              </div>
               <StatusPill status={c.channel_health} />
             </div>
           </div>

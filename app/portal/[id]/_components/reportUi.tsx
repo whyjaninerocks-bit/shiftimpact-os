@@ -125,6 +125,104 @@ export function CampaignHealthCard({
   );
 }
 
+// ─── Health ring — circular progress gauge ───────────────────────────────────
+const RING_TONE: Record<GateSignalStatus, string> = {
+  "On Track": "#34d399", // emerald-400
+  "At Risk": "#fbbf24", // amber-400
+  Blocked: "#f87171", // red-400
+  Pending: "#a3a3a3", // neutral-400
+};
+
+export function HealthRing({
+  value,
+  gateSignalStatus,
+  size = 64,
+}: {
+  value: number;
+  gateSignalStatus: GateSignalStatus;
+  size?: number;
+}) {
+  const stroke = size * 0.11;
+  const r = size / 2 - stroke;
+  const c = 2 * Math.PI * r;
+  const pct = Math.max(0, Math.min(100, value));
+  const offset = c * (1 - pct / 100);
+  const color = RING_TONE[gateSignalStatus];
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0">
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke="rgba(255,255,255,0.12)"
+        strokeWidth={stroke}
+      />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth={stroke}
+        strokeLinecap="round"
+        strokeDasharray={c}
+        strokeDashoffset={offset}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+      />
+      <text
+        x="50%"
+        y="50%"
+        dominantBaseline="central"
+        textAnchor="middle"
+        fill="white"
+        fontSize={size * 0.28}
+        fontWeight={800}
+      >
+        {Math.round(pct)}
+      </text>
+    </svg>
+  );
+}
+
+// ─── Week-over-week delta tag ────────────────────────────────────────────────
+// Small "▲ +2.3 vs last week" / "▼ -1.2" / "— flat" indicator, used anywhere
+// a client-safe weekly number is compared against the prior week.
+export function DeltaTag({
+  current,
+  previous,
+  suffix = "",
+}: {
+  current: number | null;
+  previous: number | null;
+  suffix?: string;
+}) {
+  if (current == null || previous == null) return null;
+  const diff = Math.round((current - previous) * 10) / 10;
+  if (diff === 0) {
+    return <span className="text-[10px] text-neutral-400">— flat vs last week</span>;
+  }
+  const up = diff > 0;
+  return (
+    <span className={`text-[10px] font-semibold ${up ? "text-emerald-600" : "text-red-500"}`}>
+      {up ? "▲" : "▼"} {up ? "+" : ""}
+      {diff}
+      {suffix} vs last week
+    </span>
+  );
+}
+
+// ─── Posture dot — small colored dot for Gaining/Plateauing/etc, used in the
+// nav week-picker and anywhere a compact posture indicator is needed. ────────
+export const POSTURE_DOT: Record<string, string> = {
+  Gaining: "bg-emerald-400",
+  Plateauing: "bg-amber-400",
+  "Under Threat": "bg-red-400",
+  Fragile: "bg-red-400",
+  "Eroding Slowly": "bg-red-400",
+};
+
 // ─── Editorial hero — identity strip + report title + clarity blockquote ────
 export function ReportHero({
   clientName,

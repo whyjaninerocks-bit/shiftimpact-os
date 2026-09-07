@@ -416,6 +416,7 @@ export type ChannelHealthClientSafe = {
   channel_health: string; // Green / Amber / Red
   signal_proxy_label: string;
   signal_proxy_value: number | null;
+  previous_value: number | null; // prior week's signal_proxy_value, for week-over-week delta
   week_number: number;
 };
 
@@ -448,23 +449,29 @@ export async function getChannelHealthClientSafe(
     .order("week_number", { ascending: false });
   if (mErr) throw mErr;
 
-  const latestByChannel = new Map<string, (typeof metrics)[number]>();
+  // metrics is already ordered week_number desc — first match per channel is
+  // the latest week, second match is the prior week (for the delta).
+  const byChannel = new Map<string, (typeof metrics)[number][]>();
   for (const m of metrics ?? []) {
-    if (!latestByChannel.has(m.campaign_channel_id)) latestByChannel.set(m.campaign_channel_id, m);
+    const arr = byChannel.get(m.campaign_channel_id) ?? [];
+    arr.push(m);
+    byChannel.set(m.campaign_channel_id, arr);
   }
 
   return (channels as any[])
     .map((c) => {
-      const m = latestByChannel.get(c.id);
-      if (!m) return null;
+      const weeks = byChannel.get(c.id);
+      if (!weeks || weeks.length === 0) return null;
+      const [latest, previous] = weeks;
       return {
         campaign_channel_id: c.id as string,
         channel_name: c.channel_profiles?.channel_name ?? "—",
         channel_role: c.channel_role as string,
-        channel_health: m.channel_health as string,
-        signal_proxy_label: m.signal_proxy_label as string,
-        signal_proxy_value: m.signal_proxy_value as number | null,
-        week_number: m.week_number as number,
+        channel_health: latest.channel_health as string,
+        signal_proxy_label: latest.signal_proxy_label as string,
+        signal_proxy_value: latest.signal_proxy_value as number | null,
+        previous_value: (previous?.signal_proxy_value as number | null) ?? null,
+        week_number: latest.week_number as number,
       } as ChannelHealthClientSafe;
     })
     .filter((x): x is ChannelHealthClientSafe => x !== null);

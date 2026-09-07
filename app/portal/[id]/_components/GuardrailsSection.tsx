@@ -17,14 +17,17 @@ export function GuardrailsSection({ guardrails }: { guardrails: GuardrailClientS
       <SectionHeading title="Guardrails reviewed" />
       <Card className="space-y-2">
         <p className="text-xs text-neutral-500">
-          Every campaign runs with limits we watch automatically — if one is crossed, we act before
-          it becomes a bigger problem.
+          Limits we watch automatically — if one is crossed, we act before it grows.
         </p>
         <div className="space-y-1.5 pt-1">
           {guardrails.map((g) => (
-            <div key={g.id} className="flex items-start gap-2 text-xs">
-              <span className={g.held ? "text-emerald-500" : "text-red-500"}>
-                {g.held ? "✓" : "⚠"}
+            <div key={g.id} className="flex items-center gap-2.5 text-xs">
+              <span
+                className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                  g.held ? "bg-emerald-500 text-white" : "bg-red-500 text-white"
+                }`}
+              >
+                {g.held ? "✓" : "!"}
               </span>
               <span className="text-neutral-700 flex-1">{g.condition}</span>
               <span className={`text-[10px] font-semibold ${g.held ? "text-emerald-600" : "text-red-600"}`}>

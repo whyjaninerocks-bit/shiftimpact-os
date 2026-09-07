@@ -1,6 +1,7 @@
 import type { SignalWeeklyReport } from "@/lib/types";
 import type { SignalThresholdsClientSafe } from "@/lib/data";
 import { SignalSparkline } from "./SignalSparkline";
+import { DeltaTag } from "./reportUi";
 
 // ─── Signal Trajectory — client-facing ───────────────────────────────────────
 // Week-over-week view instead of a single-week snapshot: a gate-status dot
@@ -27,6 +28,7 @@ export function SignalTrajectorySection({
 
   const chronological = [...reports].sort((a, b) => a.week_number - b.week_number);
   const latest = chronological[chronological.length - 1];
+  const previous = chronological.length > 1 ? chronological[chronological.length - 2] : null;
 
   return (
     <div className="space-y-4 pt-3 border-t border-neutral-100">
@@ -62,6 +64,9 @@ export function SignalTrajectorySection({
                 <span className="text-neutral-400 font-normal"> / {thresholds.signal_1_threshold_pct}% gate</span>
               )}
             </p>
+            {previous && (
+              <DeltaTag current={latest.signal_1_actual_pct} previous={previous.signal_1_actual_pct} suffix="%" />
+            )}
           </div>
         )}
         {thresholds?.signal_2_label && (
@@ -78,6 +83,9 @@ export function SignalTrajectorySection({
                 <span className="text-neutral-400 font-normal"> / {thresholds.signal_2_threshold_pct}% gate</span>
               )}
             </p>
+            {previous && (
+              <DeltaTag current={latest.signal_2_actual_pct} previous={previous.signal_2_actual_pct} suffix="%" />
+            )}
           </div>
         )}
         {thresholds?.signal_3_label && (
@@ -94,6 +102,9 @@ export function SignalTrajectorySection({
                 <span className="text-neutral-400 font-normal"> / {thresholds.signal_3_threshold_count} gate</span>
               )}
             </p>
+            {previous && (
+              <DeltaTag current={latest.signal_3_actual_count} previous={previous.signal_3_actual_count} />
+            )}
           </div>
         )}
       </div>

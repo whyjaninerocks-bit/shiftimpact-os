@@ -28,7 +28,8 @@ import { SignalTrajectorySection } from "./_components/SignalTrajectorySection";
 import { ReportHistorySection } from "./_components/ReportHistorySection";
 import { ChannelHealthSection } from "./_components/ChannelHealthSection";
 import { BudgetPhaseReadinessSection } from "./_components/BudgetPhaseReadinessSection";
-import { SectionHeading, ReportHero, CampaignHealthCard } from "./_components/reportUi";
+import { SectionHeading, ReportHero, CampaignHealthCard, POSTURE_DOT } from "./_components/reportUi";
+import { PortalNav, type NavSection, type NavWeek } from "./_components/PortalNav";
 import { Collapse } from "../_components/Collapse";
 
 type PortalView = "brand" | "agency" | "partner";
@@ -75,16 +76,18 @@ function getPhaseLabel(profile: IndustryProfile, phase: CampaignPhase): string {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function PortalSection({
+  id,
   title,
   subtitle,
   children,
 }: {
+  id?: string;
   title: string;
   subtitle?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="space-y-3">
+    <section id={id} className="space-y-3 scroll-mt-20">
       <SectionHeading title={title} subtitle={subtitle} />
       {children}
     </section>
@@ -163,78 +166,131 @@ export default async function ClientPortalPage({
     latestSignalWeek ? ` · Week ${latestSignalWeek}` : ""
   }`;
 
+  // Weekly report visibility — computed once, used by both the nav section
+  // list and the section render below.
+  const reportVisible = !!report && (!!report.client_released_at || !!report.portal_published_at);
+  const releasedAt = report ? report.client_released_at ?? report.portal_published_at : null;
+
+  const showChannels = channelHealth.length > 0 || activeChannels.length > 0;
+  const showSignalHealth = signalReports.length > 0 && !signalReports[0].flags_suppressed;
+  const showReportHistory = reportHistory.length >= 2;
+  const latestPosture = reportHistory.length > 0
+    ? [...reportHistory].sort((a, b) => b.report_week - a.report_week)[0].risk_posture
+    : report?.risk_posture ?? null;
+
+  const navSections: NavSection[] = [
+    { id: "campaign-health", label: "Campaign health" },
+    ...(signalFramework ? [{ id: "measuring-success", label: "How we measure success" }] : []),
+    ...(brandMomentum ? [{ id: "brand-momentum", label: "Brand momentum" }] : []),
+    ...(showChannels ? [{ id: "channels", label: "Channels" }] : []),
+    { id: "weekly-update", label: "Latest update" },
+    ...(showSignalHealth ? [{ id: "signal-health", label: "Signal health" }] : []),
+    ...(showReportHistory ? [{ id: "report-history", label: "Report history" }] : []),
+    ...(reportVisible ? [{ id: "weekly-report", label: "Weekly report" }] : []),
+    ...(readyBriefs.length > 0 ? [{ id: "channel-briefs", label: "Channel briefs" }] : []),
+    ...(phaseGates.length > 0 ? [{ id: "milestones", label: "Milestones" }] : []),
+    ...(frame?.budget_total != null ? [{ id: "budget", label: "Budget & readiness" }] : []),
+    ...(guardrails.length > 0 ? [{ id: "guardrails", label: "Guardrails" }] : []),
+    { id: "predictions", label: "Predictions" },
+  ];
+
+  const navWeeks: NavWeek[] = reportHistory.map((r) => ({
+    week_number: r.report_week,
+    risk_posture: r.risk_posture,
+  }));
+
   return (
-    <div className="min-h-screen bg-neutral-50">
-      {/* Header */}
-      <header className="border-b border-neutral-200 bg-white px-6 py-4 flex items-center justify-between">
-        <span className="font-bold tracking-tight">
-          ShiftImpact <span className="text-neutral-400 font-normal text-sm">OS</span>
-        </span>
-        <span className="text-xs text-neutral-400">{campaign.client_name}</span>
-      </header>
+    <div className="min-h-screen bg-neutral-50 lg:flex">
+      <PortalNav
+        campaignId={id}
+        currentView={view}
+        portalToken={portalToken}
+        clientName={campaign.client_name}
+        campaignName={campaign.name}
+        healthScore={campaign.confidence_score}
+        gateSignalStatus={campaign.gate_signal_status}
+        posture={latestPosture}
+        sections={navSections}
+        weeks={navWeeks}
+      />
 
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-10 space-y-8">
+      <div className="flex-1 min-w-0">
+        {/* Mobile-only compact header (desktop shows identity in the sidebar) */}
+        <header className="lg:hidden border-b border-neutral-200 bg-white px-6 py-4 flex items-center justify-between">
+          <span className="font-bold tracking-tight">
+            ShiftImpact <span className="text-neutral-400 font-normal text-sm">OS</span>
+          </span>
+          <span className="text-xs text-neutral-400">{campaign.client_name}</span>
+        </header>
 
-        {/* ── Hero ── */}
-        <ReportHero
-          clientName={campaign.client_name}
-          campaignName={campaign.name}
-          phaseLabel={label}
-          kicker={kicker}
-          clarityStatement={clarityStatement}
-          strategistReviewed={!!report}
-        />
+        <main className="max-w-2xl mx-auto px-4 sm:px-6 py-10 space-y-8">
 
-        {/* ── Campaign health ── */}
-        <section className="space-y-3">
-          <SectionHeading title="Campaign health" />
-          <CampaignHealthCard
-            confidenceScore={campaign.confidence_score}
-            gateSignalStatus={campaign.gate_signal_status}
-            businessOutcomeLabel={campaign.business_outcome_label}
-            businessOutcomeActual={campaign.business_outcome_actual}
-            businessOutcomeTarget={campaign.business_outcome_target}
-            retentionMetricLabel={campaign.retention_metric_label}
-            retentionMetricActual={campaign.retention_metric_actual}
-            retentionMetricTarget={campaign.retention_metric_target}
+          {/* ── Hero ── */}
+          <ReportHero
+            clientName={campaign.client_name}
+            campaignName={campaign.name}
+            phaseLabel={label}
+            kicker={kicker}
+            clarityStatement={clarityStatement}
+            strategistReviewed={!!report}
           />
-        </section>
 
-        {/* ── Category signal framework — replaces generic Demand/Nurture/Conversion
-             framing with this campaign's actual category-appropriate signals,
-             when one has been built for it (see CategorySignalSection for why
-             this doesn't try to merge in real weekly numbers yet). ── */}
-        <CategorySignalSection framework={signalFramework} />
+          {/* ── Campaign health ── */}
+          <section id="campaign-health" className="space-y-3 scroll-mt-20">
+            <SectionHeading title="Campaign health" />
+            <CampaignHealthCard
+              confidenceScore={campaign.confidence_score}
+              gateSignalStatus={campaign.gate_signal_status}
+              businessOutcomeLabel={campaign.business_outcome_label}
+              businessOutcomeActual={campaign.business_outcome_actual}
+              businessOutcomeTarget={campaign.business_outcome_target}
+              retentionMetricLabel={campaign.retention_metric_label}
+              retentionMetricActual={campaign.retention_metric_actual}
+              retentionMetricTarget={campaign.retention_metric_target}
+            />
+          </section>
 
-        {/* ── Brand momentum ── */}
-        <BrandMomentumSection momentum={brandMomentum} />
+          {/* ── Category signal framework — replaces generic Demand/Nurture/Conversion
+               framing with this campaign's actual category-appropriate signals,
+               when one has been built for it (see CategorySignalSection for why
+               this doesn't try to merge in real weekly numbers yet). ── */}
+          <div id="measuring-success" className="scroll-mt-20">
+            <CategorySignalSection framework={signalFramework} />
+          </div>
+
+          {/* ── Brand momentum ── */}
+          <div id="brand-momentum" className="scroll-mt-20">
+            <BrandMomentumSection momentum={brandMomentum} />
+          </div>
 
         {/* ── Channel health — falls back to a plain list of channel names
              when weekly channel metrics haven't started yet for this
              campaign (see getChannelHealthClientSafe). ── */}
-        {channelHealth.length > 0 ? (
-          <ChannelHealthSection channels={channelHealth} />
-        ) : (
-          activeChannels.length > 0 && (
-            <PortalSection title="Active channels">
-              <Card>
-                <div className="flex flex-wrap gap-2">
-                  {activeChannels.map((ch) => (
-                    <span
-                      key={ch}
-                      className="px-2.5 py-1 rounded-full bg-neutral-100 text-neutral-700 text-xs font-medium"
-                    >
-                      {ch}
-                    </span>
-                  ))}
-                </div>
-              </Card>
-            </PortalSection>
-          )
+        {showChannels && (
+          <div id="channels" className="scroll-mt-20">
+            {channelHealth.length > 0 ? (
+              <ChannelHealthSection channels={channelHealth} />
+            ) : (
+              <PortalSection title="Active channels">
+                <Card>
+                  <div className="flex flex-wrap gap-2">
+                    {activeChannels.map((ch) => (
+                      <span
+                        key={ch}
+                        className="px-2.5 py-1 rounded-full bg-neutral-100 text-neutral-700 text-xs font-medium"
+                      >
+                        {ch}
+                      </span>
+                    ))}
+                  </div>
+                </Card>
+              </PortalSection>
+            )}
+          </div>
         )}
 
         {/* ── Weekly dashboard ── */}
-        <PortalSection title="Latest weekly update">
+        <PortalSection id="weekly-update" title="Latest weekly update">
           {latest ? (
             <Card className="space-y-3">
               <div className="flex items-center justify-between">
@@ -275,8 +331,8 @@ export default async function ClientPortalPage({
         </PortalSection>
 
         {/* ── Signal Health ── */}
-        {signalReports.length > 0 && !signalReports[0].flags_suppressed && (
-          <PortalSection title="Signal health">
+        {showSignalHealth && (
+          <PortalSection id="signal-health" title="Signal health">
             {/* Topline — always visible */}
             <Card>
               <div className="flex items-center justify-between">
@@ -319,27 +375,22 @@ export default async function ClientPortalPage({
           </PortalSection>
         )}
 
+        {/* ── Report history — every past week, browsable at a glance ── */}
+        {showReportHistory && (
+          <div id="report-history" className="scroll-mt-20">
+            <ReportHistorySection reports={reportHistory} />
+          </div>
+        )}
+
         {/* ── Weekly Intelligence Report — staged visibility ── */}
         {(() => {
-          if (!report) return null;
-
-          // Determine if this viewer can see the report.
-          // Note: view === "agency" is handled entirely by the early return at
-          // the top of this component (AgencyPortalView) — it can never reach
-          // here, so this only ever serves the "brand" / "partner" views, both
-          // of which gate on the same client-release condition.
-          const hasClientRelease = !!report.client_released_at;
-          // Legacy: portal_published_at used before two-stage system
-          const legacyPublished = !!report.portal_published_at;
-
-          const canSeeReport = hasClientRelease || legacyPublished;
-
-          if (!canSeeReport) return null;
-
-          const releasedAt = report.client_released_at ?? report.portal_published_at;
+          // reportVisible/releasedAt computed above (shared with nav section
+          // list). view === "agency" never reaches here — it's handled by
+          // the early return at the top of this component.
+          if (!reportVisible || !report) return null;
 
           return (
-            <PortalSection title="Weekly intelligence report">
+            <PortalSection id="weekly-report" title="Weekly intelligence report">
               <Card className="space-y-4">
                 {/* Agency note — shown to brand client after release */}
                 {report.agency_note && (
@@ -349,41 +400,37 @@ export default async function ClientPortalPage({
                   </div>
                 )}
 
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-neutral-900">{report.report_label}</p>
+                {/* Header — posture badge sits right up top, visible without scrolling in */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-neutral-900 truncate">{report.report_label}</p>
                     <p className="text-xs text-neutral-400 mt-0.5">
                       Week {report.report_week} · Reviewed by your strategist
                     </p>
                   </div>
-                  <Badge tone="green">Ready</Badge>
-                </div>
-
-                {/* Executive summary */}
-                {report.executive_summary && (
-                  <div className="bg-neutral-50 rounded-lg p-3.5">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Summary</p>
-                    <p className="text-sm text-neutral-700 leading-relaxed">{report.executive_summary}</p>
-                  </div>
-                )}
-
-                {/* Risk posture */}
-                {report.risk_posture && (
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1.5">Brand posture this week</p>
-                    <span className={`inline-block text-xs font-semibold px-3 py-1 rounded-full border ${
-                      report.risk_posture === "Gaining"
-                        ? "bg-green-50 text-green-800 border-green-200"
-                        : report.risk_posture === "Plateauing"
-                        ? "bg-amber-50 text-amber-800 border-amber-200"
-                        : report.risk_posture === "Under Threat" || report.risk_posture === "Fragile" || report.risk_posture === "Eroding Slowly"
-                        ? "bg-red-50 text-red-800 border-red-200"
-                        : "bg-neutral-100 text-neutral-700 border-neutral-200"
-                    }`}>
+                  {report.risk_posture ? (
+                    <span
+                      className={`shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border ${
+                        report.risk_posture === "Gaining"
+                          ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                          : report.risk_posture === "Plateauing"
+                          ? "bg-amber-50 text-amber-800 border-amber-200"
+                          : "bg-red-50 text-red-800 border-red-200"
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${POSTURE_DOT[report.risk_posture] ?? "bg-neutral-400"}`} />
                       {report.risk_posture}
                     </span>
-                  </div>
+                  ) : (
+                    <Badge tone="green">Ready</Badge>
+                  )}
+                </div>
+
+                {/* Executive summary — editorial blockquote, matches hero tone */}
+                {report.executive_summary && (
+                  <blockquote className="border-l-4 border-neutral-900 pl-4 text-sm text-neutral-700 leading-relaxed">
+                    {report.executive_summary}
+                  </blockquote>
                 )}
 
                 {/* Intelligence findings — collapsed by default to reduce scroll */}
@@ -420,7 +467,7 @@ export default async function ClientPortalPage({
 
         {/* ── Discipline briefs ready ── */}
         {readyBriefs.length > 0 && (
-          <PortalSection title="Channel briefs">
+          <PortalSection id="channel-briefs" title="Channel briefs">
             <Card className="divide-y divide-neutral-100">
               {readyBriefs.map((ext) => (
                 <div key={ext.id} className="py-2.5 flex items-center justify-between">
@@ -440,7 +487,7 @@ export default async function ClientPortalPage({
 
         {/* ── Phase gates ── */}
         {phaseGates.length > 0 && (
-          <PortalSection title="Campaign milestones">
+          <PortalSection id="milestones" title="Campaign milestones">
             {/* Next gate — always visible */}
             {nextGate && (
               <Card>
@@ -474,26 +521,30 @@ export default async function ClientPortalPage({
 
         {/* ── Budget & phase readiness — strategic funding case only,
              never weekly spend (see BudgetPhaseReadinessSection). ── */}
-        <BudgetPhaseReadinessSection
-          budgetTotal={frame?.budget_total ?? null}
-          gateSignalStatus={campaign.gate_signal_status}
-          nextGateType={nextGate?.gate_type ?? null}
-        />
+        <div id="budget" className="scroll-mt-20">
+          <BudgetPhaseReadinessSection
+            budgetTotal={frame?.budget_total ?? null}
+            gateSignalStatus={campaign.gate_signal_status}
+            nextGateType={nextGate?.gate_type ?? null}
+          />
+        </div>
 
         {/* ── Guardrails reviewed this week ── */}
-        <GuardrailsSection guardrails={guardrails} />
-
-        {/* ── Report history — every past week, browsable ── */}
-        <ReportHistorySection reports={reportHistory} />
+        <div id="guardrails" className="scroll-mt-20">
+          <GuardrailsSection guardrails={guardrails} />
+        </div>
 
         {/* ── Prediction track record ── */}
-        <PredictionTrackSection records={predictionRecords} frameLocked={!!frame} />
-
-        {/* Footer */}
-        <div className="pt-4 border-t border-neutral-200 text-xs text-neutral-400">
-          <span>ShiftImpact OS</span>
+        <div id="predictions" className="scroll-mt-20">
+          <PredictionTrackSection records={predictionRecords} frameLocked={!!frame} />
         </div>
-      </main>
+
+          {/* Footer */}
+          <div className="pt-4 border-t border-neutral-200 text-xs text-neutral-400">
+            <span>ShiftImpact OS</span>
+          </div>
+        </main>
+      </div>
 
       {/* LLM-backed Q&A widget — pulls live signal data, streams from Claude */}
       <PortalChatWidget campaignId={id} portalToken={portalToken} />

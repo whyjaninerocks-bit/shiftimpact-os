@@ -90,11 +90,13 @@ export function CategorySignalSection({ framework }: { framework: CategorySignal
     <section className="space-y-3">
       <SectionHeading title="How we're measuring success" />
       <div className="rounded-2xl border border-neutral-200 bg-white p-4 space-y-4">
-        <div>
-          <p className="text-xs text-neutral-400">
-            {framework.category_name ? `${framework.category_name} framework` : "What this campaign is built to move"}
-          </p>
+        <div className="flex items-baseline justify-between gap-3">
           <p className="text-base font-semibold text-neutral-900">{framework.business_outcome_label}</p>
+          {framework.category_name && (
+            <span className="shrink-0 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide">
+              {framework.category_name}
+            </span>
+          )}
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">

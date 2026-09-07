@@ -1,6 +1,6 @@
 import type { CampaignReportHistoryItem } from "@/lib/data";
 import { Collapse } from "../../_components/Collapse";
-import { SectionHeading } from "./reportUi";
+import { SectionHeading, POSTURE_DOT } from "./reportUi";
 
 // ─── Report History — client-facing ──────────────────────────────────────────
 // Matches the demo portal's "Report History" idea (every past week, browsable)
@@ -47,37 +47,55 @@ export function ReportHistorySection({ reports }: { reports: CampaignReportHisto
         subtitle="Every weekly report published for this campaign, oldest to newest."
       />
       <div className="space-y-2">
-        {chronological.map((r) => (
-          <Collapse
-            key={r.id}
-            label={`Week ${r.report_week} — ${r.report_label}`}
-            sublabel={
-              r.released_at
-                ? new Date(r.released_at).toLocaleDateString("en-MY", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })
-                : undefined
-            }
-          >
-            <div className="space-y-3">
-              {r.risk_posture && <PostureBadge posture={r.risk_posture} />}
-              <p className="text-xs text-neutral-600 leading-relaxed">{r.executive_summary}</p>
-              {r.findings.length > 0 && (
-                <div className="space-y-2 pt-1">
-                  {r.findings.map((f, i) => (
-                    <div key={i} className="border-l-2 border-neutral-200 pl-3">
-                      <p className="text-xs font-semibold text-neutral-800">{f.headline}</p>
-                      {f.recommendation && (
-                        <p className="text-xs text-emerald-700 mt-0.5">→ {f.recommendation}</p>
-                      )}
-                    </div>
-                  ))}
+        {[...chronological].reverse().map((r) => (
+          <div key={r.id} className="rounded-2xl border border-neutral-200 bg-white overflow-hidden">
+            {/* Always visible — the actual "history" scan, no expand needed */}
+            <div className="flex items-center justify-between gap-3 px-5 py-4">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span
+                  className={`w-2 h-2 rounded-full shrink-0 ${
+                    r.risk_posture ? POSTURE_DOT[r.risk_posture] ?? "bg-neutral-300" : "bg-neutral-300"
+                  }`}
+                />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-neutral-800 truncate">
+                    Week {r.report_week} — {r.report_label}
+                  </p>
+                  <p className="text-xs text-neutral-400">
+                    {r.released_at
+                      ? new Date(r.released_at).toLocaleDateString("en-MY", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : ""}
+                  </p>
                 </div>
-              )}
+              </div>
+              {r.risk_posture && <PostureBadge posture={r.risk_posture} />}
             </div>
-          </Collapse>
+
+            {/* Detail — collapsed by default, keeps the list scannable */}
+            <div className="border-t border-neutral-100 px-5">
+              <Collapse label="View findings" variant="inline">
+                <div className="space-y-3 pb-4">
+                  <p className="text-xs text-neutral-600 leading-relaxed">{r.executive_summary}</p>
+                  {r.findings.length > 0 && (
+                    <div className="space-y-2 pt-1">
+                      {r.findings.map((f, i) => (
+                        <div key={i} className="border-l-2 border-neutral-200 pl-3">
+                          <p className="text-xs font-semibold text-neutral-800">{f.headline}</p>
+                          {f.recommendation && (
+                            <p className="text-xs text-emerald-700 mt-0.5">→ {f.recommendation}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </Collapse>
+            </div>
+          </div>
         ))}
       </div>
     </section>
