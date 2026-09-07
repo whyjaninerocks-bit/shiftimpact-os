@@ -769,6 +769,132 @@ export async function getLatestCampaignReport(
   };
 }
 
+// ─── Brief / Recommendation Compliance ───────────────────────────────────────
+// Closes the "did it actually happen" loop: every recommendation surface in
+// this app (decision_snapshot, finding.recommendation, prediction_accuracy_log)
+// is one-directional — it records what was recommended, never whether it was
+// executed. This tracks one row per recommendation extracted from a report's
+// findings[], with a status the agency logs the following week.
+
+export type ComplianceStatus = "Pending" | "Done in full" | "Done partially" | "Not done";
+
+export interface ComplianceItem {
+  id: string;
+  campaign_id: string;
+  campaign_report_id: string;
+  finding_index: number;
+  recommendation_text: string;
+  status: ComplianceStatus;
+  reason: string | null;
+  acknowledged_by: string | null;
+  acknowledged_at: string | null;
+}
+
+// Latest two released reports for a campaign, report_week desc — used only to
+// resolve "the report before this one" for compliance wiring. Deliberately
+// separate from getLatestCampaignReport (which orders by created_at) so the
+// "previous week" resolution is always chronological by report_week.
+export async function getRecentReportsForCompliance(
+  campaignId: string
+): Promise<{ id: string; report_week: number }[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("campaign_reports")
+    .select("id, report_week")
+    .eq("campaign_id", campaignId)
+    .in("status", ["ready", "exported"])
+    .order("report_week", { ascending: false })
+    .limit(2);
+  if (error) return [];
+  return (data ?? []) as { id: string; report_week: number }[];
+}
+
+// Lazily generates one compliance row per recommendation-bearing finding on a
+// report, the first time the agency opens the checklist for it. Upserts on
+// (campaign_report_id, finding_index) so re-running never clobbers a status
+// that's already been logged.
+export async function ensureComplianceItems(campaignReportId: string): Promise<void> {
+  const supabase = createAdminClient();
+  const { data: report, error } = await supabase
+    .from("campaign_reports")
+    .select("id, campaign_id, findings")
+    .eq("id", campaignReportId)
+    .maybeSingle();
+  if (error || !report) return;
+
+  const findings = Array.isArray(report.findings) ? report.findings : [];
+  const rows = findings
+    .map((f: any, i: number) => ({ i, recommendation: String(f?.recommendation ?? "").trim() }))
+    .filter((f) => f.recommendation.length > 0)
+    .map((f) => ({
+      campaign_id: report.campaign_id,
+      campaign_report_id: report.id,
+      finding_index: f.i,
+      recommendation_text: f.recommendation,
+    }));
+
+  if (rows.length === 0) return;
+
+  await supabase
+    .from("report_recommendation_compliance")
+    .upsert(rows, { onConflict: "campaign_report_id,finding_index", ignoreDuplicates: true });
+}
+
+// Internal/agency view — full fields including reason + acknowledgement.
+export async function getComplianceItems(campaignReportId: string): Promise<ComplianceItem[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("report_recommendation_compliance")
+    .select("*")
+    .eq("campaign_report_id", campaignReportId)
+    .order("finding_index", { ascending: true });
+  if (error) return [];
+  return (data ?? []) as ComplianceItem[];
+}
+
+export type ComplianceRecordClientSafe = {
+  sourceReportWeek: number;
+  targetReportWeek: number;
+  items: {
+    id: string;
+    recommendation_text: string;
+    status: ComplianceStatus;
+    reason: string | null;
+    acknowledged_by: string | null;
+    acknowledged_at: string | null;
+  }[];
+};
+
+// Client-facing (brand portal) — read-only. Shows compliance for the report
+// immediately BEFORE the one currently visible to the client, framed as
+// "here's what we said we'd do last week, and whether we did it." Returns
+// null if the agency hasn't logged a checklist yet (graceful — same pattern
+// as every other not-yet-active section in this portal) rather than showing
+// an empty state.
+export async function getComplianceRecordClientSafe(
+  campaignId: string
+): Promise<ComplianceRecordClientSafe | null> {
+  const recent = await getRecentReportsForCompliance(campaignId);
+  if (recent.length < 2) return null; // no "previous week" to check compliance against yet
+
+  const [current, previous] = recent; // report_week desc, so [0]=current, [1]=previous
+  const items = await getComplianceItems(previous.id);
+  if (items.length === 0) return null;
+
+  return {
+    sourceReportWeek: previous.report_week,
+    targetReportWeek: current.report_week,
+    items: items.map((it) => ({
+      id: it.id,
+      recommendation_text: it.recommendation_text,
+      status: it.status,
+      reason: it.reason,
+      acknowledged_by: it.acknowledged_by,
+      acknowledged_at: it.acknowledged_at,
+    })),
+  };
+}
+
 // ─── F28 — Social Proof Cascade Detection (Sprint 5) ─────────────────────────
 // All cascade readings for a campaign, newest first.
 // amplification_window: INTERNAL ONLY — no client export.

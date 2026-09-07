@@ -7,7 +7,8 @@
 
 import { useState, useCallback } from "react";
 import type { CampaignOverview, SignalWeeklyReport, PhaseGate, SignalHealth, FrameBrief } from "@/lib/types";
-import type { CampaignReportClientView, CampaignReportClientFinding } from "@/lib/data";
+import type { CampaignReportClientView, CampaignReportClientFinding, ComplianceItem } from "@/lib/data";
+import { AgencyComplianceChecklist } from "./AgencyComplianceChecklist";
 
 // ─── Sparkline ────────────────────────────────────────────────────────────────
 
@@ -190,6 +191,9 @@ interface AgencyPortalViewProps {
   signalReports: SignalWeeklyReport[];
   phaseGates: PhaseGate[];
   frame: FrameBrief | null;
+  complianceItems?: ComplianceItem[];
+  complianceSourceWeek?: number | null;
+  complianceTargetWeek?: number | null;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -200,6 +204,9 @@ export function AgencyPortalView({
   signalReports,
   phaseGates,
   frame,
+  complianceItems = [],
+  complianceSourceWeek = null,
+  complianceTargetWeek = null,
 }: AgencyPortalViewProps) {
   // signalReports comes in desc order (newest first) — reverse for sparkline
   const signalAsc = [...signalReports].reverse();
@@ -634,9 +641,23 @@ export function AgencyPortalView({
             </SectionQ>
           )}
 
-          {/* ── Q3: Where is the gate? ── */}
+          {/* ── Q3: Did we do what we said last week? ──
+               Only renders once there's a prior week's report to check
+               compliance against — see getRecentReportsForCompliance. ── */}
+          {complianceItems.length > 0 && complianceSourceWeek != null && complianceTargetWeek != null && (
+            <SectionQ q="03" label="Did we do what we said last week?">
+              <AgencyComplianceChecklist
+                campaignId={campaign.id}
+                sourceReportWeek={complianceSourceWeek}
+                targetReportWeek={complianceTargetWeek}
+                items={complianceItems}
+              />
+            </SectionQ>
+          )}
+
+          {/* ── Q4: Where is the gate? ── */}
           {phaseGates.length > 0 && (
-            <SectionQ q="03" label="Where is the gate?">
+            <SectionQ q="04" label="Where is the gate?">
               <div className="space-y-3">
                 {nextGate && (
                   <div className="rounded-2xl border bg-white shadow-sm px-6 py-5">
@@ -692,7 +713,7 @@ export function AgencyPortalView({
 
           {/* ── Agency note editor ── */}
           {hasAgencyPreview && !released && report && (
-            <SectionQ q="04" label="Add your narrative note">
+            <SectionQ q="05" label="Add your narrative note">
               <div className="rounded-2xl border bg-white shadow-sm px-6 py-5">
                 <p className="text-xs text-neutral-500 leading-relaxed mb-4">
                   Write a note to accompany this report for the brand client. This appears as a highlighted callout at the top of their portal view.

@@ -15,6 +15,10 @@ import {
   getSignalThresholdsClientSafe,
   getCampaignReportHistoryClientSafe,
   getChannelHealthClientSafe,
+  getRecentReportsForCompliance,
+  ensureComplianceItems,
+  getComplianceItems,
+  getComplianceRecordClientSafe,
 } from "@/lib/data";
 import { Badge, Card, ragTone } from "@/app/_components/ui";
 import type { CampaignPhase, IndustryProfile } from "@/lib/types";
@@ -28,6 +32,7 @@ import { SignalTrajectorySection } from "./_components/SignalTrajectorySection";
 import { ReportHistorySection } from "./_components/ReportHistorySection";
 import { ChannelHealthSection } from "./_components/ChannelHealthSection";
 import { BudgetPhaseReadinessSection } from "./_components/BudgetPhaseReadinessSection";
+import { ComplianceSection } from "./_components/ComplianceSection";
 import { SectionHeading, ReportHero, CampaignHealthCard, POSTURE_DOT } from "./_components/reportUi";
 import { PortalNav, type NavSection, type NavWeek } from "./_components/PortalNav";
 import { Collapse } from "../_components/Collapse";
@@ -116,7 +121,7 @@ export default async function ClientPortalPage({
   const campaign = await getCampaign(id);
   if (!campaign) notFound();
 
-  const [frame, dashboards, extensions, report, signalReports, phaseGates, predictionRecords, signalFramework, brandMomentum, signalThresholds, reportHistory, channelHealth] =
+  const [frame, dashboards, extensions, report, signalReports, phaseGates, predictionRecords, signalFramework, brandMomentum, signalThresholds, reportHistory, channelHealth, complianceRecord] =
     await Promise.all([
       getFrameBrief(id).catch(() => null),
       getDashboards(id),
@@ -130,6 +135,7 @@ export default async function ClientPortalPage({
       getSignalThresholdsClientSafe(id),
       getCampaignReportHistoryClientSafe(id),
       getChannelHealthClientSafe(id),
+      getComplianceRecordClientSafe(id),
     ]);
 
   // Guardrails are keyed off the FRAME brief, which just resolved above.
@@ -137,6 +143,21 @@ export default async function ClientPortalPage({
 
   // ── Agency view — full intelligence dashboard ─────────────────────────────
   if (view === "agency") {
+    // Compliance checklist for the report BEFORE the current one — recent[0]
+    // is the latest report (the one about to be reviewed/released), recent[1]
+    // is the prior week whose recommendations should now be checked off.
+    const recentForCompliance = await getRecentReportsForCompliance(id);
+    let complianceItems: Awaited<ReturnType<typeof getComplianceItems>> = [];
+    let complianceSourceWeek: number | null = null;
+    let complianceTargetWeek: number | null = null;
+    if (recentForCompliance.length >= 2) {
+      const [current, previous] = recentForCompliance;
+      await ensureComplianceItems(previous.id);
+      complianceItems = await getComplianceItems(previous.id);
+      complianceSourceWeek = previous.report_week;
+      complianceTargetWeek = current.report_week;
+    }
+
     return (
       <AgencyPortalView
         campaign={campaign}
@@ -144,6 +165,9 @@ export default async function ClientPortalPage({
         signalReports={signalReports}
         phaseGates={phaseGates}
         frame={frame}
+        complianceItems={complianceItems}
+        complianceSourceWeek={complianceSourceWeek}
+        complianceTargetWeek={complianceTargetWeek}
       />
     );
   }
@@ -185,6 +209,7 @@ export default async function ClientPortalPage({
     ...(showChannels ? [{ id: "channels", label: "Channels" }] : []),
     { id: "weekly-update", label: "Latest update" },
     ...(showSignalHealth ? [{ id: "signal-health", label: "Signal health" }] : []),
+    ...(complianceRecord ? [{ id: "compliance", label: "Brief compliance" }] : []),
     ...(showReportHistory ? [{ id: "report-history", label: "Report history" }] : []),
     ...(reportVisible ? [{ id: "weekly-report", label: "Weekly report" }] : []),
     ...(readyBriefs.length > 0 ? [{ id: "channel-briefs", label: "Channel briefs" }] : []),
@@ -391,6 +416,9 @@ export default async function ClientPortalPage({
             </Collapse>
           </PortalSection>
         )}
+
+        {/* ── Brief compliance — did we do what we said last week ── */}
+        <ComplianceSection record={complianceRecord} />
 
         {/* ── Report history — every past week, browsable at a glance ── */}
         {showReportHistory && (

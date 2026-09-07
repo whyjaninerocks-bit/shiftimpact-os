@@ -7,6 +7,7 @@ import { sendBriefNotification } from "@/lib/email";
 import { assertInternalSession } from "@/lib/auth/require-session";
 import { computeConfidenceLabel, validateSignalMapKeys } from "@/lib/signal-maps";
 import type { CategoryAttribute, CampaignPhase, MapStatus } from "@/lib/types";
+import type { ComplianceStatus } from "@/lib/data";
 
 function str(formData: FormData, key: string): string {
   return (formData.get(key) as string | null) ?? "";
@@ -2241,5 +2242,42 @@ export async function updateSignalMapStatus(mapId: string, campaignId: string, s
 
   revalidatePath(`/signal-maps/${campaignId}`);
   revalidatePath("/signal-maps");
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Brief / Recommendation Compliance
+// ───────────────────────────────────────────────────────────────────────
+// One form submits every checklist item at once (matches the "Submit
+// compliance report" pattern) — fields are named `status__<itemId>` and
+// `reason__<itemId>` per row, plus a single shared `submitted_by`.
+
+export async function submitComplianceReport(campaignId: string, formData: FormData) {
+  const supabase = createAdminClient();
+  const submittedBy = str(formData, "submitted_by") || "ShiftImpact strategist";
+  const now = new Date().toISOString();
+
+  const itemIds = new Set<string>();
+  for (const key of formData.keys()) {
+    if (key.startsWith("status__")) itemIds.add(key.slice("status__".length));
+  }
+
+  for (const itemId of itemIds) {
+    const status = str(formData, `status__${itemId}`) as ComplianceStatus;
+    if (!status || status === "Pending") continue; // untouched row — leave as-is
+    const reason = str(formData, `reason__${itemId}`) || null;
+
+    await supabase
+      .from("report_recommendation_compliance")
+      .update({
+        status,
+        reason: status === "Done in full" ? null : reason,
+        acknowledged_by: submittedBy,
+        acknowledged_at: now,
+      })
+      .eq("id", itemId);
+  }
+
+  revalidatePath(`/portal/${campaignId}`);
+  redirect(`/portal/${campaignId}?view=agency#compliance`);
 }
 
