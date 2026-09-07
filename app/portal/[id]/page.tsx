@@ -13,6 +13,7 @@ import {
   getBrandMomentumClientSafe,
   getGuardrailsClientSafe,
   getSignalThresholdsClientSafe,
+  getCampaignReportHistoryClientSafe,
 } from "@/lib/data";
 import { Badge, Card, ragTone } from "@/app/_components/ui";
 import type { CampaignPhase, IndustryProfile } from "@/lib/types";
@@ -23,6 +24,7 @@ import { CategorySignalSection } from "./_components/CategorySignalSection";
 import { BrandMomentumSection } from "./_components/BrandMomentumSection";
 import { GuardrailsSection } from "./_components/GuardrailsSection";
 import { SignalTrajectorySection } from "./_components/SignalTrajectorySection";
+import { ReportHistorySection } from "./_components/ReportHistorySection";
 import { Collapse } from "../_components/Collapse";
 
 type PortalView = "brand" | "agency" | "partner";
@@ -99,7 +101,7 @@ export default async function ClientPortalPage({
   const campaign = await getCampaign(id);
   if (!campaign) notFound();
 
-  const [frame, dashboards, extensions, report, signalReports, phaseGates, predictionRecords, signalFramework, brandMomentum, signalThresholds] =
+  const [frame, dashboards, extensions, report, signalReports, phaseGates, predictionRecords, signalFramework, brandMomentum, signalThresholds, reportHistory] =
     await Promise.all([
       getFrameBrief(id).catch(() => null),
       getDashboards(id),
@@ -111,6 +113,7 @@ export default async function ClientPortalPage({
       getCategorySignalFramework(id),
       getBrandMomentumClientSafe(campaign.client_id),
       getSignalThresholdsClientSafe(id),
+      getCampaignReportHistoryClientSafe(id),
     ]);
 
   // Guardrails are keyed off the FRAME brief, which just resolved above.
@@ -466,6 +469,9 @@ export default async function ClientPortalPage({
 
         {/* ── Guardrails reviewed this week ── */}
         <GuardrailsSection guardrails={guardrails} />
+
+        {/* ── Report history — every past week, browsable ── */}
+        <ReportHistorySection reports={reportHistory} />
 
         {/* ── Prediction track record ── */}
         <PredictionTrackSection records={predictionRecords} frameLocked={!!frame} />

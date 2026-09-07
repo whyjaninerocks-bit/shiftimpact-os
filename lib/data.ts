@@ -1081,6 +1081,55 @@ export async function getSignalThresholdsClientSafe(
   return data as SignalThresholdsClientSafe;
 }
 
+// ─── Client-facing subset — Report history (portal) ──────────────────────────
+// ACCESS RULES: same fields already deemed client-safe for the single latest
+// report (getLatestCampaignReport) — report_label, executive_summary,
+// findings, risk_posture — just returned for every released week instead of
+// only the most recent one. Same release gate too: a report only counts once
+// client_released_at (or the legacy portal_published_at) is set — an
+// internal draft/preview report must never appear here even historically.
+//
+// NOTE: there is no PDF export for campaign_reports anywhere in this codebase
+// today (checked — only unrelated upload/brief-extract routes mention "pdf",
+// for reading uploaded files, not generating one). The demo portal shows a
+// "PDF" link per week; that is aspirational, not real. This history is
+// rendered as expandable in-page detail instead of a fake download link.
+export type CampaignReportHistoryItem = {
+  id: string;
+  report_week: number;
+  report_label: string;
+  executive_summary: string;
+  findings: { headline: string; implication: string; recommendation?: string }[];
+  risk_posture: string | null;
+  released_at: string | null;
+};
+
+export async function getCampaignReportHistoryClientSafe(
+  campaignId: string
+): Promise<CampaignReportHistoryItem[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("campaign_reports")
+    .select(
+      "id, report_week, report_label, executive_summary, findings, risk_posture, client_released_at, portal_published_at"
+    )
+    .eq("campaign_id", campaignId)
+    .in("status", ["ready", "exported"])
+    .order("report_week", { ascending: true });
+  if (error) return [];
+  return (data ?? [])
+    .filter((r) => r.client_released_at || r.portal_published_at)
+    .map((r) => ({
+      id: r.id as string,
+      report_week: r.report_week as number,
+      report_label: r.report_label as string,
+      executive_summary: r.executive_summary as string,
+      findings: Array.isArray(r.findings) ? r.findings : [],
+      risk_posture: (r.risk_posture as string | null) ?? null,
+      released_at: (r.client_released_at ?? r.portal_published_at) as string | null,
+    }));
+}
+
 export async function getPredictionAccuracyClientSafe(
   campaignId: string
 ): Promise<PredictionAccuracyClientSafe[]> {
