@@ -1051,6 +1051,36 @@ export async function getGuardrailsClientSafe(
   }));
 }
 
+// ─── Client-facing subset — Signal thresholds (portal) ───────────────────────
+// ACCESS RULES: labels + threshold/gate values only — these are the campaign's
+// own agreed targets, already shared with the client at kickoff (same
+// reasoning as showing predicted_value on a prediction). Excludes locked/
+// lock_notes (internal workflow state) and amber/red band values (internal
+// tuning detail not needed for the client-facing trajectory chart).
+export type SignalThresholdsClientSafe = {
+  signal_1_label: string | null;
+  signal_1_threshold_pct: number | null;
+  signal_2_label: string | null;
+  signal_2_threshold_pct: number | null;
+  signal_3_label: string | null;
+  signal_3_threshold_count: number | null;
+};
+
+export async function getSignalThresholdsClientSafe(
+  campaignId: string
+): Promise<SignalThresholdsClientSafe | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("signal_thresholds")
+    .select(
+      "signal_1_label, signal_1_threshold_pct, signal_2_label, signal_2_threshold_pct, signal_3_label, signal_3_threshold_count"
+    )
+    .eq("campaign_id", campaignId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as SignalThresholdsClientSafe;
+}
+
 export async function getPredictionAccuracyClientSafe(
   campaignId: string
 ): Promise<PredictionAccuracyClientSafe[]> {

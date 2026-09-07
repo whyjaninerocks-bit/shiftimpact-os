@@ -12,6 +12,7 @@ import {
   getCategorySignalFramework,
   getBrandMomentumClientSafe,
   getGuardrailsClientSafe,
+  getSignalThresholdsClientSafe,
 } from "@/lib/data";
 import { Badge, Card, ragTone } from "@/app/_components/ui";
 import type { CampaignPhase, IndustryProfile } from "@/lib/types";
@@ -21,6 +22,7 @@ import { PredictionTrackSection } from "./_components/PredictionTrackSection";
 import { CategorySignalSection } from "./_components/CategorySignalSection";
 import { BrandMomentumSection } from "./_components/BrandMomentumSection";
 import { GuardrailsSection } from "./_components/GuardrailsSection";
+import { SignalTrajectorySection } from "./_components/SignalTrajectorySection";
 import { Collapse } from "../_components/Collapse";
 
 type PortalView = "brand" | "agency" | "partner";
@@ -97,7 +99,7 @@ export default async function ClientPortalPage({
   const campaign = await getCampaign(id);
   if (!campaign) notFound();
 
-  const [frame, dashboards, extensions, report, signalReports, phaseGates, predictionRecords, signalFramework, brandMomentum] =
+  const [frame, dashboards, extensions, report, signalReports, phaseGates, predictionRecords, signalFramework, brandMomentum, signalThresholds] =
     await Promise.all([
       getFrameBrief(id).catch(() => null),
       getDashboards(id),
@@ -108,6 +110,7 @@ export default async function ClientPortalPage({
       getPredictionAccuracyClientSafe(id),
       getCategorySignalFramework(id),
       getBrandMomentumClientSafe(campaign.client_id),
+      getSignalThresholdsClientSafe(id),
     ]);
 
   // Guardrails are keyed off the FRAME brief, which just resolved above.
@@ -274,6 +277,8 @@ export default async function ClientPortalPage({
                   Gate: {signalReports[0].gate_status ?? "—"}
                 </Badge>
               </div>
+              {/* Week-over-week trend — only renders once there are 2+ weeks */}
+              <SignalTrajectorySection reports={signalReports} thresholds={signalThresholds} />
             </Card>
             {/* Signal breakdown — collapsed by default */}
             <Collapse label="Signal breakdown" sublabel="Demand · Nurture · Conversion">
