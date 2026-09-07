@@ -812,6 +812,12 @@ export function AgencyPortalView({
                   <p className="text-xs text-neutral-500 mb-4">
                     This will email the brand client and give them portal access. You cannot un-release.
                   </p>
+                  {!report.agency_note && (
+                    <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4 text-left">
+                      No narrative note saved. The brand client will see this report with no context
+                      from you — go back and add one first if you want to shape how it lands.
+                    </p>
+                  )}
                   {releaseError && (
                     <p className="text-xs text-red-600 mb-3">{releaseError}</p>
                   )}

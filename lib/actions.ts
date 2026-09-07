@@ -2281,3 +2281,64 @@ export async function submitComplianceReport(campaignId: string, formData: FormD
   redirect(`/portal/${campaignId}?view=agency#compliance`);
 }
 
+// ─── Compliance PIC reassignment ─────────────────────────────────────────
+// Not every logged recommendation is the agency's to execute — some are the
+// client's own internal work (IT, ops, a specific department). This lets the
+// client hand a single compliance item to the right person in charge on
+// their side. See migration 0083 for the owner_scope/assigned_pic columns.
+export async function reassignComplianceItem(campaignId: string, formData: FormData) {
+  const supabase = createAdminClient();
+  const itemId = str(formData, "item_id");
+  const assignedPic = str(formData, "assigned_pic").trim();
+  const reassignedBy = str(formData, "reassigned_by").trim() || "Client";
+  if (!itemId || !assignedPic) return;
+
+  await supabase
+    .from("report_recommendation_compliance")
+    .update({
+      owner_scope: "client",
+      assigned_pic: assignedPic,
+      reassigned_by: reassignedBy,
+      reassigned_at: new Date().toISOString(),
+    })
+    .eq("id", itemId);
+
+  revalidatePath(`/portal/${campaignId}`);
+  redirect(`/portal/${campaignId}#compliance`);
+}
+
+// Client-side counterpart to submitComplianceReport — same update logic
+// (reused verbatim), but only ever touches items already reassigned to the
+// client (owner_scope = 'client'), and redirects back to the brand view
+// instead of the agency view.
+export async function submitClientComplianceStatus(campaignId: string, formData: FormData) {
+  const supabase = createAdminClient();
+  const submittedBy = str(formData, "submitted_by") || "Client";
+  const now = new Date().toISOString();
+
+  const itemIds = new Set<string>();
+  for (const key of formData.keys()) {
+    if (key.startsWith("status__")) itemIds.add(key.slice("status__".length));
+  }
+
+  for (const itemId of itemIds) {
+    const status = str(formData, `status__${itemId}`) as ComplianceStatus;
+    if (!status || status === "Pending") continue;
+    const reason = str(formData, `reason__${itemId}`) || null;
+
+    await supabase
+      .from("report_recommendation_compliance")
+      .update({
+        status,
+        reason: status === "Done in full" ? null : reason,
+        acknowledged_by: submittedBy,
+        acknowledged_at: now,
+      })
+      .eq("id", itemId)
+      .eq("owner_scope", "client"); // guard — only items actually handed to the client
+  }
+
+  revalidatePath(`/portal/${campaignId}`);
+  redirect(`/portal/${campaignId}#compliance`);
+}
+

@@ -1,5 +1,6 @@
 import type { CategorySignalFramework } from "@/lib/data";
 import { SectionHeading } from "./reportUi";
+import { Collapse } from "@/app/portal/_components/Collapse";
 
 // ─── Category Signal Framework — client-facing ───────────────────────────────
 // Replaces the fixed, FMCG-shaped "Demand/Nurture/Conversion" framing with
@@ -99,27 +100,31 @@ export function CategorySignalSection({ framework }: { framework: CategorySignal
           )}
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          <SignalGroup title="Early signals" signals={framework.leading_signals} availableData={framework.available_data} />
-          <SignalGroup title="Conversion signals" signals={framework.conversion_signals} availableData={framework.available_data} />
-          <SignalGroup title="Downstream signals" signals={framework.lagging_signals} availableData={framework.available_data} />
-        </div>
-
         <div className={`px-3 py-2 rounded-lg border text-[11px] leading-relaxed ${confidence.tone}`}>
           <span className="font-semibold">{framework.confidence_label}.</span> {confidence.line}
         </div>
 
-        {framework.missing_data.length > 0 && (
-          <div className="pt-2 border-t border-neutral-100">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1">
-              Not yet available
-            </p>
-            <p className="text-[11px] text-neutral-500 leading-relaxed">
-              {framework.missing_data.map((m) => m.label).join(", ")} — sharing this data would move
-              the confidence rating above.
-            </p>
+        <Collapse label="Show signal breakdown" variant="inline">
+          <div className="space-y-4 pt-1">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <SignalGroup title="Early signals" signals={framework.leading_signals} availableData={framework.available_data} />
+              <SignalGroup title="Conversion signals" signals={framework.conversion_signals} availableData={framework.available_data} />
+              <SignalGroup title="Downstream signals" signals={framework.lagging_signals} availableData={framework.available_data} />
+            </div>
+
+            {framework.missing_data.length > 0 && (
+              <div className="pt-2 border-t border-neutral-100">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1">
+                  Not yet available
+                </p>
+                <p className="text-[11px] text-neutral-500 leading-relaxed">
+                  {framework.missing_data.map((m) => m.label).join(", ")} — sharing this data would move
+                  the confidence rating above.
+                </p>
+              </div>
+            )}
           </div>
-        )}
+        </Collapse>
       </div>
     </section>
   );

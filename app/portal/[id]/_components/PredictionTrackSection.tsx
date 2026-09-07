@@ -193,11 +193,13 @@ export function PredictionTrackSection({
       <SectionHeader />
       <Card className="space-y-3">
         <AccuracySummary records={records} />
-        <div className="space-y-2">
-          {records.map((r) => (
-            <PredictionRow key={r.id} record={r} />
-          ))}
-        </div>
+        <Collapse label={`Show all ${records.length} predictions`} variant="inline">
+          <div className="space-y-2 pt-1">
+            {records.map((r) => (
+              <PredictionRow key={r.id} record={r} />
+            ))}
+          </div>
+        </Collapse>
         <MissMethodology />
       </Card>
     </div>

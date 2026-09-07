@@ -26,6 +26,27 @@ function ChecklistItem({ item }: { item: ComplianceItem }) {
   const [status, setStatus] = useState<ComplianceStatus>(item.status);
   const needsReason = status === "Done partially" || status === "Not done";
 
+  // Reassigned out of agency scope — the client's internal PIC now owns
+  // this, so show it as read-only rather than letting the agency also
+  // touch it (avoids two people racing to log the same item).
+  if (item.owner_scope === "client") {
+    return (
+      <div className="rounded-2xl border border-dashed border-blue-200 bg-blue-50/40 px-5 py-4">
+        <p className="text-sm text-neutral-800 leading-relaxed mb-2">{item.recommendation_text}</p>
+        <p className="text-xs font-semibold text-blue-700">
+          Reassigned to {item.assigned_pic} by the client — not on your plate.
+        </p>
+        {item.status !== "Pending" ? (
+          <span className={`inline-block mt-2 text-xs font-semibold px-3 py-1.5 rounded-full border ${STATUS_STYLES[item.status]}`}>
+            {item.status}
+          </span>
+        ) : (
+          <p className="text-[11px] text-neutral-400 mt-1">Awaiting their update.</p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-2xl border border-neutral-200 bg-white px-5 py-4">
       <p className="text-sm text-neutral-800 leading-relaxed mb-3">{item.recommendation_text}</p>

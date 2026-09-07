@@ -20,6 +20,8 @@ import {
   getComplianceItems,
   getComplianceRecordClientSafe,
   getCategoryBenchmarksClientSafe,
+  getSocialCurrencyScore,
+  getAiBrandVisibilityScore,
 } from "@/lib/data";
 import { Badge, Card, ragTone } from "@/app/_components/ui";
 import type { CampaignPhase, IndustryProfile } from "@/lib/types";
@@ -35,6 +37,8 @@ import { ChannelHealthSection } from "./_components/ChannelHealthSection";
 import { BudgetPhaseReadinessSection } from "./_components/BudgetPhaseReadinessSection";
 import { ComplianceSection } from "./_components/ComplianceSection";
 import { CategoryBenchmarkSection } from "./_components/CategoryBenchmarkSection";
+import { NeedsAttentionStrip } from "./_components/NeedsAttentionStrip";
+import { ComingSoonSection } from "./_components/ComingSoonSection";
 import { SectionHeading, ReportHero, CampaignHealthCard, POSTURE_DOT } from "./_components/reportUi";
 import { PortalNav, type NavSection, type NavWeek } from "./_components/PortalNav";
 import { Collapse } from "../_components/Collapse";
@@ -123,7 +127,7 @@ export default async function ClientPortalPage({
   const campaign = await getCampaign(id);
   if (!campaign) notFound();
 
-  const [frame, dashboards, extensions, report, signalReports, phaseGates, predictionRecords, signalFramework, brandMomentum, signalThresholds, reportHistory, channelHealth, complianceRecord, categoryBenchmarks] =
+  const [frame, dashboards, extensions, report, signalReports, phaseGates, predictionRecords, signalFramework, brandMomentum, signalThresholds, reportHistory, channelHealth, complianceRecord, categoryBenchmarks, socialCurrencyScore, aiVisibilityScore] =
     await Promise.all([
       getFrameBrief(id).catch(() => null),
       getDashboards(id),
@@ -139,6 +143,8 @@ export default async function ClientPortalPage({
       getChannelHealthClientSafe(id),
       getComplianceRecordClientSafe(id),
       getCategoryBenchmarksClientSafe(id),
+      getSocialCurrencyScore(id),
+      getAiBrandVisibilityScore(id),
     ]);
 
   // Guardrails are keyed off the FRAME brief, which just resolved above.
@@ -205,28 +211,63 @@ export default async function ClientPortalPage({
     ? [...reportHistory].sort((a, b) => b.report_week - a.report_week)[0].risk_posture
     : report?.risk_posture ?? null;
 
+  // Grouped so the sidebar reads as three clusters instead of one flat list
+  // of 15 links: what to check this week, the record of what's already
+  // happened, and reference material that doesn't change week to week.
   const navSections: NavSection[] = [
-    { id: "campaign-health", label: "Campaign health" },
-    ...(signalFramework ? [{ id: "measuring-success", label: "How we measure success" }] : []),
-    ...(categoryBenchmarks ? [{ id: "benchmarks", label: "Category benchmarks" }] : []),
-    ...(brandMomentum ? [{ id: "brand-momentum", label: "Brand momentum" }] : []),
-    ...(showChannels ? [{ id: "channels", label: "Channels" }] : []),
-    { id: "weekly-update", label: "Latest update" },
-    ...(showSignalHealth ? [{ id: "signal-health", label: "Signal health" }] : []),
-    ...(complianceRecord ? [{ id: "compliance", label: "Brief compliance" }] : []),
-    ...(showReportHistory ? [{ id: "report-history", label: "Report history" }] : []),
-    ...(reportVisible ? [{ id: "weekly-report", label: "Weekly report" }] : []),
-    ...(readyBriefs.length > 0 ? [{ id: "channel-briefs", label: "Channel briefs" }] : []),
-    ...(phaseGates.length > 0 ? [{ id: "milestones", label: "Milestones" }] : []),
-    ...(frame?.budget_total != null ? [{ id: "budget", label: "Budget & readiness" }] : []),
-    ...(guardrails.length > 0 ? [{ id: "guardrails", label: "Guardrails" }] : []),
-    { id: "predictions", label: "Predictions" },
+    { id: "campaign-health", label: "Campaign health", group: "This week" },
+    { id: "weekly-update", label: "Latest update", group: "This week" },
+    ...(showSignalHealth ? [{ id: "signal-health", label: "Signal health", group: "This week" }] : []),
+    ...(showChannels ? [{ id: "channels", label: "Channels", group: "This week" }] : []),
+    ...(brandMomentum ? [{ id: "brand-momentum", label: "Brand momentum", group: "This week" }] : []),
+    ...(complianceRecord ? [{ id: "compliance", label: "Brief compliance", group: "This week" }] : []),
+    ...(showReportHistory ? [{ id: "report-history", label: "Report history", group: "History & trust" }] : []),
+    ...(reportVisible ? [{ id: "weekly-report", label: "Weekly report", group: "History & trust" }] : []),
+    { id: "predictions", label: "Predictions", group: "History & trust" },
+    ...(signalFramework ? [{ id: "measuring-success", label: "How we measure success", group: "Reference" }] : []),
+    ...(categoryBenchmarks ? [{ id: "benchmarks", label: "Category benchmarks", group: "Reference" }] : []),
+    ...(readyBriefs.length > 0 ? [{ id: "channel-briefs", label: "Channel briefs", group: "Reference" }] : []),
+    ...(phaseGates.length > 0 ? [{ id: "milestones", label: "Milestones", group: "Reference" }] : []),
+    ...(frame?.budget_total != null ? [{ id: "budget", label: "Budget & readiness", group: "Reference" }] : []),
+    ...(guardrails.length > 0 ? [{ id: "guardrails", label: "Guardrails", group: "Reference" }] : []),
+    ...(!socialCurrencyScore || !aiVisibilityScore
+      ? [{ id: "coming-soon", label: "What's coming next", group: "Reference" }]
+      : []),
   ];
 
   const navWeeks: NavWeek[] = reportHistory.map((r) => ({
     week_number: r.report_week,
     risk_posture: r.risk_posture,
   }));
+
+  // ── Needs-attention flags — pure aggregation of state computed elsewhere
+  //    on this page, not a new data source. Points at the section that
+  //    already holds the detail rather than duplicating it here. ──
+  const triggeredGuardrails = guardrails.filter((g) => !g.held);
+  const notDoneCompliance = (complianceRecord?.items ?? []).filter((it) => it.status === "Not done");
+  const attentionFlags = [
+    ...(campaign.gate_signal_status === "Blocked" || campaign.gate_signal_status === "At Risk"
+      ? [{
+          href: "#campaign-health",
+          label: campaign.gate_signal_status === "Blocked" ? "Campaign blocked" : "Campaign at risk",
+          detail: "— see Campaign health below",
+        }]
+      : []),
+    ...(triggeredGuardrails.length > 0
+      ? [{
+          href: "#guardrails",
+          label: `${triggeredGuardrails.length} guardrail${triggeredGuardrails.length !== 1 ? "s" : ""} triggered`,
+          detail: "— your strategist has already reviewed this",
+        }]
+      : []),
+    ...(notDoneCompliance.length > 0
+      ? [{
+          href: "#compliance",
+          label: `${notDoneCompliance.length} recommendation${notDoneCompliance.length !== 1 ? "s" : ""} not actioned`,
+          detail: "— reassign if it isn't on the agency",
+        }]
+      : []),
+  ];
 
   return (
     <div className="min-h-screen bg-neutral-50 lg:flex">
@@ -263,6 +304,8 @@ export default async function ClientPortalPage({
             clarityStatement={clarityStatement}
             strategistReviewed={!!report}
           />
+
+          <NeedsAttentionStrip flags={attentionFlags} />
 
           {/* ── Campaign health — the main visual anchor of the report, so it
                carries more than the score: a real week-over-week posture
@@ -427,7 +470,7 @@ export default async function ClientPortalPage({
         )}
 
         {/* ── Brief compliance — did we do what we said last week ── */}
-        <ComplianceSection record={complianceRecord} />
+        <ComplianceSection campaignId={id} record={complianceRecord} />
 
         {/* ── Report history — every past week, browsable at a glance ── */}
         {showReportHistory && (
@@ -507,13 +550,22 @@ export default async function ClientPortalPage({
                   </Collapse>
                 )}
 
-                <p className="text-[10px] text-neutral-400 pt-1 border-t border-neutral-100">
-                  {releasedAt
-                    ? `Published ${new Date(releasedAt).toLocaleDateString("en-MY", {
-                        day: "numeric", month: "long", year: "numeric",
-                      })} · Questions? Reply to the notification email.`
-                    : "Prepared by your ShiftImpact strategist."}
-                </p>
+                <div className="flex items-center justify-between gap-3 pt-1 border-t border-neutral-100">
+                  <p className="text-[10px] text-neutral-400">
+                    {releasedAt
+                      ? `Published ${new Date(releasedAt).toLocaleDateString("en-MY", {
+                          day: "numeric", month: "long", year: "numeric",
+                        })} · Questions? Reply to the notification email.`
+                      : "Prepared by your ShiftImpact strategist."}
+                  </p>
+                  <Link
+                    href={`/portal/${id}/print`}
+                    target="_blank"
+                    className="shrink-0 text-[10px] font-semibold text-neutral-500 hover:text-neutral-800 underline decoration-neutral-300"
+                  >
+                    Print / Save as PDF ↗
+                  </Link>
+                </div>
               </Card>
             </PortalSection>
           );
@@ -588,6 +640,8 @@ export default async function ClientPortalPage({
         <div id="guardrails" className="scroll-mt-20">
           <GuardrailsSection guardrails={guardrails} />
         </div>
+
+        <ComingSoonSection showSocialCurrency={!socialCurrencyScore} showAiVisibility={!aiVisibilityScore} />
 
         {/* ── Prediction track record ── */}
         <div id="predictions" className="scroll-mt-20">

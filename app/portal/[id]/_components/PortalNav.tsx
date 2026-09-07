@@ -16,7 +16,7 @@ import { HealthRing, StatusPill, POSTURE_DOT } from "./reportUi";
 
 type PortalView = "brand" | "agency" | "partner";
 
-export type NavSection = { id: string; label: string };
+export type NavSection = { id: string; label: string; group?: string };
 export type NavWeek = { week_number: number; risk_posture: string | null };
 
 const VIEWS: { key: PortalView; label: string }[] = [
@@ -24,6 +24,24 @@ const VIEWS: { key: PortalView; label: string }[] = [
   { key: "agency", label: "Agency" },
   { key: "partner", label: "Partner" },
 ];
+
+// Buckets sections by their `group` field, preserving first-seen order —
+// ungrouped sections (no `group` set) fall into their own unlabeled bucket
+// rather than being dropped, so this degrades gracefully for any caller that
+// doesn't pass groups (e.g. if PortalNav is ever reused elsewhere).
+function groupSections(sections: NavSection[]): { group: string | null; items: NavSection[] }[] {
+  const order: (string | null)[] = [];
+  const buckets = new Map<string | null, NavSection[]>();
+  for (const s of sections) {
+    const key = s.group ?? null;
+    if (!buckets.has(key)) {
+      buckets.set(key, []);
+      order.push(key);
+    }
+    buckets.get(key)!.push(s);
+  }
+  return order.map((group) => ({ group, items: buckets.get(group)! }));
+}
 
 function viewHref(campaignId: string, view: PortalView, portalToken?: string) {
   const params = new URLSearchParams();
@@ -120,18 +138,27 @@ export function PortalNav({
         </div>
 
         <nav className="p-3 flex-1 overflow-y-auto">
-          {sections.map((s) => (
-            <a
-              key={s.id}
-              href={`#${s.id}`}
-              className={`block text-sm px-3 py-2 rounded-lg transition-colors ${
-                activeId === s.id
-                  ? "bg-white/10 text-white font-semibold"
-                  : "text-neutral-400 hover:text-white hover:bg-white/5"
-              }`}
-            >
-              {s.label}
-            </a>
+          {groupSections(sections).map(({ group, items }) => (
+            <div key={group} className="mb-3 last:mb-0">
+              {group && (
+                <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-widest text-neutral-600">
+                  {group}
+                </p>
+              )}
+              {items.map((s) => (
+                <a
+                  key={s.id}
+                  href={`#${s.id}`}
+                  className={`block text-sm px-3 py-2 rounded-lg transition-colors ${
+                    activeId === s.id
+                      ? "bg-white/10 text-white font-semibold"
+                      : "text-neutral-400 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  {s.label}
+                </a>
+              ))}
+            </div>
           ))}
         </nav>
 

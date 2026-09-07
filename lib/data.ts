@@ -777,6 +777,7 @@ export async function getLatestCampaignReport(
 // findings[], with a status the agency logs the following week.
 
 export type ComplianceStatus = "Pending" | "Done in full" | "Done partially" | "Not done";
+export type ComplianceOwnerScope = "agency" | "client";
 
 export interface ComplianceItem {
   id: string;
@@ -788,6 +789,10 @@ export interface ComplianceItem {
   reason: string | null;
   acknowledged_by: string | null;
   acknowledged_at: string | null;
+  owner_scope: ComplianceOwnerScope;
+  assigned_pic: string | null;
+  reassigned_by: string | null;
+  reassigned_at: string | null;
 }
 
 // Latest two released reports for a campaign, report_week desc — used only to
@@ -862,6 +867,8 @@ export type ComplianceRecordClientSafe = {
     reason: string | null;
     acknowledged_by: string | null;
     acknowledged_at: string | null;
+    owner_scope: ComplianceOwnerScope;
+    assigned_pic: string | null;
   }[];
 };
 
@@ -891,6 +898,8 @@ export async function getComplianceRecordClientSafe(
       reason: it.reason,
       acknowledged_by: it.acknowledged_by,
       acknowledged_at: it.acknowledged_at,
+      owner_scope: it.owner_scope,
+      assigned_pic: it.assigned_pic,
     })),
   };
 }
