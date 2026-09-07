@@ -14,6 +14,7 @@ import {
   getGuardrailsClientSafe,
   getSignalThresholdsClientSafe,
   getCampaignReportHistoryClientSafe,
+  getChannelHealthClientSafe,
 } from "@/lib/data";
 import { Badge, Card, ragTone } from "@/app/_components/ui";
 import type { CampaignPhase, IndustryProfile } from "@/lib/types";
@@ -25,6 +26,9 @@ import { BrandMomentumSection } from "./_components/BrandMomentumSection";
 import { GuardrailsSection } from "./_components/GuardrailsSection";
 import { SignalTrajectorySection } from "./_components/SignalTrajectorySection";
 import { ReportHistorySection } from "./_components/ReportHistorySection";
+import { ChannelHealthSection } from "./_components/ChannelHealthSection";
+import { BudgetPhaseReadinessSection } from "./_components/BudgetPhaseReadinessSection";
+import { SectionHeading, ReportHero, CampaignHealthCard } from "./_components/reportUi";
 import { Collapse } from "../_components/Collapse";
 
 type PortalView = "brand" | "agency" | "partner";
@@ -70,10 +74,18 @@ function getPhaseLabel(profile: IndustryProfile, phase: CampaignPhase): string {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function PortalSection({ title, children }: { title: string; children: React.ReactNode }) {
+function PortalSection({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="space-y-3">
-      <h2 className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">{title}</h2>
+      <SectionHeading title={title} subtitle={subtitle} />
       {children}
     </section>
   );
@@ -101,7 +113,7 @@ export default async function ClientPortalPage({
   const campaign = await getCampaign(id);
   if (!campaign) notFound();
 
-  const [frame, dashboards, extensions, report, signalReports, phaseGates, predictionRecords, signalFramework, brandMomentum, signalThresholds, reportHistory] =
+  const [frame, dashboards, extensions, report, signalReports, phaseGates, predictionRecords, signalFramework, brandMomentum, signalThresholds, reportHistory, channelHealth] =
     await Promise.all([
       getFrameBrief(id).catch(() => null),
       getDashboards(id),
@@ -114,6 +126,7 @@ export default async function ClientPortalPage({
       getBrandMomentumClientSafe(campaign.client_id),
       getSignalThresholdsClientSafe(id),
       getCampaignReportHistoryClientSafe(id),
+      getChannelHealthClientSafe(id),
     ]);
 
   // Guardrails are keyed off the FRAME brief, which just resolved above.
@@ -141,6 +154,15 @@ export default async function ClientPortalPage({
   const nextGate = phaseGates.find((g) => g.gate_decision !== "Open");
   const clarityStatement = frame?.clarity_statement ?? null;
 
+  const reportDate = new Date().toLocaleDateString("en-MY", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const kicker = `ShiftImpact · Decision Intelligence · ${reportDate}${
+    latestSignalWeek ? ` · Week ${latestSignalWeek}` : ""
+  }`;
+
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* Header */}
@@ -153,53 +175,30 @@ export default async function ClientPortalPage({
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6 py-10 space-y-8">
 
-        {/* Title */}
-        <div>
-          <p className="text-xs text-neutral-400 mb-0.5">{campaign.client_name}</p>
-          <h1 className="text-2xl font-bold tracking-tight">{campaign.name}</h1>
-        </div>
+        {/* ── Hero ── */}
+        <ReportHero
+          clientName={campaign.client_name}
+          campaignName={campaign.name}
+          phaseLabel={label}
+          kicker={kicker}
+          clarityStatement={clarityStatement}
+          strategistReviewed={!!report}
+        />
 
-        {/* ── Status ── */}
-        <PortalSection title="Where things stand">
-          {clarityStatement && (
-            <div className="px-4 py-3 rounded-xl bg-neutral-900 text-white">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1">What we&apos;re here to do</p>
-              <p className="text-sm leading-relaxed">{clarityStatement}</p>
-            </div>
-          )}
-          <Card>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-xs text-neutral-400">Current phase</p>
-                <p className="text-lg font-semibold">{label}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-neutral-400">Signal confidence</p>
-                <p className="text-2xl font-bold">{Math.round(campaign.confidence_score)}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-neutral-50 rounded-md p-3">
-                <p className="text-xs text-neutral-400">{campaign.business_outcome_label}</p>
-                <p className="text-base font-semibold">
-                  {campaign.business_outcome_actual ?? "—"}
-                  <span className="text-sm font-normal text-neutral-400">
-                    {" "}/{" "}{campaign.business_outcome_target ?? "—"} target
-                  </span>
-                </p>
-              </div>
-              <div className="bg-neutral-50 rounded-md p-3">
-                <p className="text-xs text-neutral-400">{campaign.retention_metric_label}</p>
-                <p className="text-base font-semibold">
-                  {campaign.retention_metric_actual ?? "—"}
-                  <span className="text-sm font-normal text-neutral-400">
-                    {" "}/{" "}{campaign.retention_metric_target ?? "—"} target
-                  </span>
-                </p>
-              </div>
-            </div>
-          </Card>
-        </PortalSection>
+        {/* ── Campaign health ── */}
+        <section className="space-y-3">
+          <SectionHeading title="Campaign health" />
+          <CampaignHealthCard
+            confidenceScore={campaign.confidence_score}
+            gateSignalStatus={campaign.gate_signal_status}
+            businessOutcomeLabel={campaign.business_outcome_label}
+            businessOutcomeActual={campaign.business_outcome_actual}
+            businessOutcomeTarget={campaign.business_outcome_target}
+            retentionMetricLabel={campaign.retention_metric_label}
+            retentionMetricActual={campaign.retention_metric_actual}
+            retentionMetricTarget={campaign.retention_metric_target}
+          />
+        </section>
 
         {/* ── Category signal framework — replaces generic Demand/Nurture/Conversion
              framing with this campaign's actual category-appropriate signals,
@@ -210,22 +209,28 @@ export default async function ClientPortalPage({
         {/* ── Brand momentum ── */}
         <BrandMomentumSection momentum={brandMomentum} />
 
-        {/* ── Active channels ── */}
-        {activeChannels.length > 0 && (
-          <PortalSection title="Active channels">
-            <Card>
-              <div className="flex flex-wrap gap-2">
-                {activeChannels.map((ch) => (
-                  <span
-                    key={ch}
-                    className="px-2.5 py-1 rounded-full bg-neutral-100 text-neutral-700 text-xs font-medium"
-                  >
-                    {ch}
-                  </span>
-                ))}
-              </div>
-            </Card>
-          </PortalSection>
+        {/* ── Channel health — falls back to a plain list of channel names
+             when weekly channel metrics haven't started yet for this
+             campaign (see getChannelHealthClientSafe). ── */}
+        {channelHealth.length > 0 ? (
+          <ChannelHealthSection channels={channelHealth} />
+        ) : (
+          activeChannels.length > 0 && (
+            <PortalSection title="Active channels">
+              <Card>
+                <div className="flex flex-wrap gap-2">
+                  {activeChannels.map((ch) => (
+                    <span
+                      key={ch}
+                      className="px-2.5 py-1 rounded-full bg-neutral-100 text-neutral-700 text-xs font-medium"
+                    >
+                      {ch}
+                    </span>
+                  ))}
+                </div>
+              </Card>
+            </PortalSection>
+          )
         )}
 
         {/* ── Weekly dashboard ── */}
@@ -466,6 +471,14 @@ export default async function ClientPortalPage({
             )}
           </PortalSection>
         )}
+
+        {/* ── Budget & phase readiness — strategic funding case only,
+             never weekly spend (see BudgetPhaseReadinessSection). ── */}
+        <BudgetPhaseReadinessSection
+          budgetTotal={frame?.budget_total ?? null}
+          gateSignalStatus={campaign.gate_signal_status}
+          nextGateType={nextGate?.gate_type ?? null}
+        />
 
         {/* ── Guardrails reviewed this week ── */}
         <GuardrailsSection guardrails={guardrails} />

@@ -1,4 +1,5 @@
 import type { CategorySignalFramework } from "@/lib/data";
+import { SectionHeading } from "./reportUi";
 
 // ─── Category Signal Framework — client-facing ───────────────────────────────
 // Replaces the fixed, FMCG-shaped "Demand/Nurture/Conversion" framing with
@@ -87,9 +88,7 @@ export function CategorySignalSection({ framework }: { framework: CategorySignal
 
   return (
     <section className="space-y-3">
-      <h2 className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-        How we&apos;re measuring success
-      </h2>
+      <SectionHeading title="How we're measuring success" />
       <div className="rounded-2xl border border-neutral-200 bg-white p-4 space-y-4">
         <div>
           <p className="text-xs text-neutral-400">

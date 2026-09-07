@@ -409,6 +409,67 @@ export async function getChannelWeeklyMetrics(
   return data as ChannelWeeklyMetric[];
 }
 
+export type ChannelHealthClientSafe = {
+  campaign_channel_id: string;
+  channel_name: string;
+  channel_role: string;
+  channel_health: string; // Green / Amber / Red
+  signal_proxy_label: string;
+  signal_proxy_value: number | null;
+  week_number: number;
+};
+
+// ─── Channel Health — client-facing ──────────────────────────────────────────
+// Latest week's health per active channel, a client-safe subset of
+// campaign_channels + channel_weekly_metrics. ACCESS RULES: channel_health
+// (RAG) and the single signal_proxy_value/label are shareable — the same
+// composite/trend shape already used elsewhere in this portal. Excluded:
+// budget_allocation_pct (spend split — kept internal, see Budget & Phase
+// Readiness for why), impressions/reach/engagement_rate_pct/click_rate_pct
+// (raw delivery numbers not part of this portal's existing disclosure
+// pattern), and notes (freeform strategist commentary).
+export async function getChannelHealthClientSafe(
+  campaignId: string
+): Promise<ChannelHealthClientSafe[]> {
+  const supabase = createAdminClient();
+
+  const { data: channels, error: chErr } = await supabase
+    .from("campaign_channels")
+    .select("id, channel_role, channel_profiles ( channel_name )")
+    .eq("campaign_id", campaignId)
+    .eq("active", true);
+  if (chErr) throw chErr;
+  if (!channels || channels.length === 0) return [];
+
+  const { data: metrics, error: mErr } = await supabase
+    .from("channel_weekly_metrics")
+    .select("campaign_channel_id, week_number, channel_health, signal_proxy_label, signal_proxy_value")
+    .eq("campaign_id", campaignId)
+    .order("week_number", { ascending: false });
+  if (mErr) throw mErr;
+
+  const latestByChannel = new Map<string, (typeof metrics)[number]>();
+  for (const m of metrics ?? []) {
+    if (!latestByChannel.has(m.campaign_channel_id)) latestByChannel.set(m.campaign_channel_id, m);
+  }
+
+  return (channels as any[])
+    .map((c) => {
+      const m = latestByChannel.get(c.id);
+      if (!m) return null;
+      return {
+        campaign_channel_id: c.id as string,
+        channel_name: c.channel_profiles?.channel_name ?? "—",
+        channel_role: c.channel_role as string,
+        channel_health: m.channel_health as string,
+        signal_proxy_label: m.signal_proxy_label as string,
+        signal_proxy_value: m.signal_proxy_value as number | null,
+        week_number: m.week_number as number,
+      } as ChannelHealthClientSafe;
+    })
+    .filter((x): x is ChannelHealthClientSafe => x !== null);
+}
+
 // All cross-channel reports for a campaign (most recent first)
 export async function getCrossChannelReports(
   campaignId: string

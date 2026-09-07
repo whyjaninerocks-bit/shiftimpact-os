@@ -1,5 +1,6 @@
 import type { CampaignReportHistoryItem } from "@/lib/data";
 import { Collapse } from "../../_components/Collapse";
+import { SectionHeading } from "./reportUi";
 
 // ─── Report History — client-facing ──────────────────────────────────────────
 // Matches the demo portal's "Report History" idea (every past week, browsable)
@@ -41,12 +42,10 @@ export function ReportHistorySection({ reports }: { reports: CampaignReportHisto
 
   return (
     <section className="space-y-3">
-      <h2 className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-        Report history
-      </h2>
-      <p className="text-xs text-neutral-500">
-        Every weekly report published for this campaign, oldest to newest.
-      </p>
+      <SectionHeading
+        title="Report history"
+        subtitle="Every weekly report published for this campaign, oldest to newest."
+      />
       <div className="space-y-2">
         {chronological.map((r) => (
           <Collapse

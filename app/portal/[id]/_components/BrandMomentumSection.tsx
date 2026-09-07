@@ -1,4 +1,5 @@
 import type { BrandMomentumClientSafe } from "@/lib/data";
+import { SectionHeading } from "./reportUi";
 
 // ─── Brand Momentum — client-facing ──────────────────────────────────────────
 // ACCESS RULES: composite only (direction/velocity/confidence). The AI's
@@ -25,9 +26,7 @@ export function BrandMomentumSection({ momentum }: { momentum: BrandMomentumClie
 
   return (
     <section className="space-y-3">
-      <h2 className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-        Brand momentum
-      </h2>
+      <SectionHeading title="Brand momentum" />
       <div className={`rounded-2xl border p-4 ${tone}`}>
         <div className="flex items-center justify-between">
           <div>

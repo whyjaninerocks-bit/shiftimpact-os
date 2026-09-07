@@ -1,5 +1,6 @@
 import type { PredictionAccuracyClientSafe } from "@/lib/data";
 import { Card } from "@/app/_components/ui";
+import { SectionHeading } from "./reportUi";
 
 // ─── Client-facing Prediction Track Record ───────────────────────────────────
 // Read-only. No add/edit/delete controls — those stay in the internal
@@ -31,13 +32,10 @@ function VerdictBadge({ verdict }: { verdict: string }) {
 function SectionHeader() {
   return (
     <div className="mb-3">
-      <h2 className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-        Prediction track record
-      </h2>
-      <p className="text-xs text-neutral-500 mt-1">
-        Every target below was predicted and locked before we knew the outcome, then checked
-        automatically against real results. Nothing is edited after the fact.
-      </p>
+      <SectionHeading
+        title="Prediction track record"
+        subtitle="Every target below was predicted and locked before we knew the outcome, then checked automatically against real results. Nothing is edited after the fact."
+      />
     </div>
   );
 }

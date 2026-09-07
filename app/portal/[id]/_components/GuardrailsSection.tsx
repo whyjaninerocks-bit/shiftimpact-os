@@ -1,5 +1,6 @@
 import type { GuardrailClientSafe } from "@/lib/data";
 import { Card } from "@/app/_components/ui";
+import { SectionHeading } from "./reportUi";
 
 // ─── Guardrails — client-facing ──────────────────────────────────────────────
 // Plain-language only: the condition text and whether it held. The raw
@@ -13,9 +14,7 @@ export function GuardrailsSection({ guardrails }: { guardrails: GuardrailClientS
 
   return (
     <section className="space-y-3">
-      <h2 className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-        Guardrails reviewed
-      </h2>
+      <SectionHeading title="Guardrails reviewed" />
       <Card className="space-y-2">
         <p className="text-xs text-neutral-500">
           Every campaign runs with limits we watch automatically — if one is crossed, we act before
