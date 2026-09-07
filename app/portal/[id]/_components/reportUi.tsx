@@ -69,6 +69,72 @@ const CONFIDENCE_TONE: Record<GateSignalStatus, string> = {
   Pending: "text-neutral-400",
 };
 
+// Small week-over-week posture trajectory — dots colored by risk_posture,
+// oldest to newest, real data from campaign_reports (via reportHistory).
+// This is the "health trajectory" storytelling from the sales demo, built
+// from posture words instead of a fabricated numeric history (there is no
+// tracked confidence_score-per-week in the schema, only the current value).
+export function PostureTrajectory({
+  weeks,
+}: {
+  weeks: { week_number: number; risk_posture: string | null }[];
+}) {
+  if (weeks.length === 0) return null;
+  return (
+    <div className="flex items-center gap-1.5">
+      {weeks.map((w) => (
+        <div key={w.week_number} className="flex flex-col items-center gap-1">
+          <span
+            className={`w-2 h-2 rounded-full ${
+              w.risk_posture ? POSTURE_DOT[w.risk_posture] ?? "bg-white/20" : "bg-white/20"
+            }`}
+            title={`Week ${w.week_number}: ${w.risk_posture ?? "—"}`}
+          />
+          <span className="text-[8px] text-neutral-500">W{w.week_number}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Gate progress bar — a single primary signal vs its threshold, real data
+// from signal_thresholds + the latest signal_weekly_reports row.
+export function GateProgressBar({
+  label,
+  current,
+  target,
+  unit = "%",
+}: {
+  label: string;
+  current: number;
+  target: number;
+  unit?: string;
+}) {
+  const pct = Math.max(0, Math.min(100, (current / target) * 100));
+  const cleared = current >= target;
+  const remaining = Math.round((target - current) * 10) / 10;
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <p className="text-[10px] text-neutral-400 uppercase tracking-widest">{label}</p>
+        <p className="text-[10px] font-semibold text-neutral-300">
+          {cleared ? "Gate cleared" : `${remaining}${unit} to gate`}
+        </p>
+      </div>
+      <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+        <div
+          className={`h-full rounded-full ${cleared ? "bg-emerald-400" : "bg-amber-400"}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <p className="text-xs text-neutral-300 mt-1">
+        {current}
+        {unit} <span className="text-neutral-500">/ {target}{unit} gate</span>
+      </p>
+    </div>
+  );
+}
+
 export function CampaignHealthCard({
   confidenceScore,
   gateSignalStatus,
@@ -78,6 +144,9 @@ export function CampaignHealthCard({
   retentionMetricLabel,
   retentionMetricActual,
   retentionMetricTarget,
+  postureWeeks,
+  strategistVerdict,
+  primaryGate,
 }: {
   confidenceScore: number;
   gateSignalStatus: GateSignalStatus;
@@ -87,20 +156,54 @@ export function CampaignHealthCard({
   retentionMetricLabel: string;
   retentionMetricActual: number | null;
   retentionMetricTarget: number | null;
+  postureWeeks?: { week_number: number; risk_posture: string | null }[];
+  strategistVerdict?: string | null;
+  primaryGate?: { label: string; current: number; target: number; unit?: string } | null;
 }) {
   return (
     <div className="rounded-3xl bg-neutral-900 text-white p-5 sm:p-6">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-        Signal confidence
-      </p>
-      <div className="flex items-end gap-3 mt-1.5">
-        <p className={`text-5xl font-black leading-none ${CONFIDENCE_TONE[gateSignalStatus]}`}>
-          {Math.round(confidenceScore)}
-        </p>
-        <div className="pb-1">
-          <StatusPill status={gateSignalStatus} />
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+            Signal confidence
+          </p>
+          <div className="flex items-end gap-3 mt-1.5">
+            <p className={`text-5xl font-black leading-none ${CONFIDENCE_TONE[gateSignalStatus]}`}>
+              {Math.round(confidenceScore)}
+            </p>
+            <div className="pb-1">
+              <StatusPill status={gateSignalStatus} />
+            </div>
+          </div>
         </div>
+        {postureWeeks && postureWeeks.length > 0 && (
+          <div className="text-right shrink-0">
+            <p className="text-[10px] text-neutral-500 uppercase tracking-widest mb-1.5">Trajectory</p>
+            <PostureTrajectory weeks={postureWeeks} />
+          </div>
+        )}
       </div>
+
+      {strategistVerdict && (
+        <div className="mt-5 pt-5 border-t border-white/10">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1.5">
+            Strategist verdict
+          </p>
+          <p className="text-sm text-neutral-200 leading-relaxed">{strategistVerdict}</p>
+        </div>
+      )}
+
+      {primaryGate && (
+        <div className="mt-5 pt-5 border-t border-white/10">
+          <GateProgressBar
+            label={primaryGate.label}
+            current={primaryGate.current}
+            target={primaryGate.target}
+            unit={primaryGate.unit}
+          />
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3 mt-5 pt-5 border-t border-white/10">
         <div>
           <p className="text-[10px] text-neutral-400 uppercase tracking-widest truncate">

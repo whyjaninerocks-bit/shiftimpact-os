@@ -235,7 +235,10 @@ export default async function ClientPortalPage({
             strategistReviewed={!!report}
           />
 
-          {/* ── Campaign health ── */}
+          {/* ── Campaign health — the main visual anchor of the report, so it
+               carries more than the score: a real week-over-week posture
+               trajectory, the latest strategist verdict, and the primary
+               gate's progress bar, all from data already fetched above. ── */}
           <section id="campaign-health" className="space-y-3 scroll-mt-20">
             <SectionHeading title="Campaign health" />
             <CampaignHealthCard
@@ -247,6 +250,20 @@ export default async function ClientPortalPage({
               retentionMetricLabel={campaign.retention_metric_label}
               retentionMetricActual={campaign.retention_metric_actual}
               retentionMetricTarget={campaign.retention_metric_target}
+              postureWeeks={navWeeks.length > 0 ? navWeeks : undefined}
+              strategistVerdict={report?.executive_summary ?? null}
+              primaryGate={
+                signalThresholds?.signal_1_label != null &&
+                signalThresholds.signal_1_threshold_pct != null &&
+                signalReports[0]?.signal_1_actual_pct != null
+                  ? {
+                      label: signalThresholds.signal_1_label,
+                      current: signalReports[0].signal_1_actual_pct,
+                      target: signalThresholds.signal_1_threshold_pct,
+                      unit: "%",
+                    }
+                  : null
+              }
             />
           </section>
 
