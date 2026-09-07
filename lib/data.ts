@@ -894,6 +894,45 @@ export async function getPredictionAccuracyRecords(
   return (data ?? []) as PredictionAccuracy[];
 }
 
+// ─── Client-facing subset — Prediction Track Record (portal) ────────────────
+// ACCESS RULES (same convention as brand-momentum, social-currency, etc.):
+// Client sees: category, prediction_text, predicted_value, unit, actual_value,
+//   verdict, accuracy_pct, prediction_week, outcome_week, created_at — enough
+//   to show the Blind Mirror Test (predicted before the outcome was known,
+//   then checked against real results) without exposing internals.
+// Internal only, never selected here: outcome_note (may contain strategist
+//   shorthand not written for a client read), correction_log (audit trail —
+//   internal by design), source_table/source_id/source_signal_key (DB wiring),
+//   locked_at (internal audit field, not client-meaningful).
+export type PredictionAccuracyClientSafe = {
+  id: string;
+  category: "Signal" | "Outcome" | "Gate" | "Behaviour";
+  prediction_text: string;
+  predicted_value: number | null;
+  unit: string | null;
+  actual_value: number | null;
+  verdict: "Accurate" | "Close" | "Off" | "Pending";
+  accuracy_pct: number | null;
+  prediction_week: number | null;
+  outcome_week: number | null;
+  created_at: string;
+};
+
+export async function getPredictionAccuracyClientSafe(
+  campaignId: string
+): Promise<PredictionAccuracyClientSafe[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("prediction_accuracy_log")
+    .select(
+      "id, category, prediction_text, predicted_value, unit, actual_value, verdict, accuracy_pct, prediction_week, outcome_week, created_at"
+    )
+    .eq("campaign_id", campaignId)
+    .order("created_at", { ascending: false });
+  if (error) return [];
+  return (data ?? []) as PredictionAccuracyClientSafe[];
+}
+
 // ─── F34 — Data Source Preferences (Sprint 31) ───────────────────────────────
 // Returns the data source preference configuration for a campaign, or null
 // if the strategy lead has not yet completed setup.
