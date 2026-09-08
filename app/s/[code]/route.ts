@@ -1,6 +1,12 @@
 // app/s/[code]/route.ts
 // ShiftImpact OS — branded short link resolver
-// /s/[first-8-chars-of-uuid] → 301 server-side redirect to full Signal or Snapshot URL
+// /s/[code] → server-side redirect, resolved in this order:
+//   1. short_links table — exact code match, arbitrary destination_url
+//      (added for links that must carry a secret, like a client portal's
+//      plaintext access token — see migration 0085 for why this can't
+//      reuse the scheme below, since only the token's hash is ever stored)
+//   2. legacy quick_audits ID-prefix scheme — [first-8-chars-of-uuid] →
+//      derived Signal or Snapshot URL, no extra table needed
 // One hop, branded domain, no external service, no interstitial.
 
 import { NextRequest, NextResponse } from "next/server";
@@ -20,6 +26,17 @@ export async function GET(
   }
 
   const supabase = createAdminClient();
+
+  // 1. short_links — exact code match, arbitrary full-URL destination
+  const { data: shortLink } = await supabase
+    .from("short_links")
+    .select("destination_url, expires_at")
+    .eq("code", code)
+    .maybeSingle();
+
+  if (shortLink && (!shortLink.expires_at || new Date(shortLink.expires_at).getTime() > Date.now())) {
+    return NextResponse.redirect(shortLink.destination_url, { status: 302 });
+  }
 
   // UUID columns can't use ILIKE directly in PostgREST.
   // Use a range query: any UUID whose first segment matches `code`
