@@ -43,7 +43,12 @@ type AuditResult = {
   consumer_state_diagnosis: string;
   consumer_state_recommendation: string;
   state_transition_risk: string;
-  signals: {
+  // Legacy fixed signal set — present when no category_attributes row was
+  // resolved for the intake industry (industry = "Other", or an as-yet-
+  // unmapped value). Optional because category-mode audits (below) carry
+  // category_signals instead and never populate this key. See
+  // buildSignalsInstructions() in app/api/audit-analyze/route.ts.
+  signals?: {
     sov: SignalItem;
     save_rate: SignalItem;
     share_rate: SignalItem;
@@ -54,6 +59,26 @@ type AuditResult = {
     review_platform: SignalItem & { include: boolean; score_proxy: number | null };
     retail_signal: SignalItem & { include: boolean };
   };
+  // Category mode — present when the intake industry (+ sub-category)
+  // resolved to a real category_attributes row. Same behaviour-chain model
+  // the client portal's Category Signal journey card uses, scored fresh
+  // per audit against this prospect's public signals.
+  category_framework?: {
+    category_name: string;
+    behaviour_chain: string[];
+    business_outcome_label: string;
+    behaviour_chain_read: string;
+  } | null;
+  category_signals?: {
+    key: string;
+    label: string;
+    tier: "Leading" | "Conversion" | "Lagging";
+    status: string;
+    direction: "up" | "flat" | "down" | "unknown";
+    value_label: string;
+    benchmark_context: string;
+    efficiency_read: string;
+  }[] | null;
   audience_intent: string;
   audience_acquisition_pct: number;
   audience_retention_pct: number;
@@ -329,28 +354,56 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
     day: "numeric", month: "long", year: "numeric",
   });
 
-  const CORE_SIGNALS: { key: keyof typeof r.signals; label: string; always: boolean }[] = [
-    { key: "sov",             label: "Share of Voice",        always: true },
-    { key: "save_rate",       label: "Save Rate",             always: true },
-    { key: "share_rate",      label: "Share Rate",            always: true },
-    { key: "branded_search",  label: "Branded Search Lift",   always: true },
-    { key: "kol_earned",      label: "KOL Earned Media",      always: true },
-    { key: "vcr",             label: "Video Completion Rate", always: false },
-    { key: "pr_earned",       label: "PR Coverage",           always: false },
-    { key: "review_platform", label: "Review Platform",       always: false },
-    { key: "retail_signal",   label: "Retail and E-commerce", always: false },
-  ];
+  // Signal Diagnostic — sourced from category_signals (real behaviour-chain
+  // model from category_attributes) when the intake industry resolved to a
+  // category, otherwise the legacy fixed 9-signal set. Normalised into one
+  // shape here so every render below (mini glass card, main Signal
+  // Intelligence panel, Efficiency Summary) reads from a single array
+  // regardless of which mode produced it — see AuditResult.category_signals
+  // vs .signals above for why both can't be assumed present.
+  type DisplaySignal = { key: string; label: string; tier?: "Leading" | "Conversion" | "Lagging"; sig: SignalItem };
 
-  const visibleSignals = CORE_SIGNALS.filter(s => {
-    if (s.always) return true;
-    const sig = r.signals[s.key] as SignalItem & { include?: boolean };
-    return sig?.include === true;
-  });
+  const categoryMode = Boolean(r.category_framework && r.category_signals && r.category_signals.length > 0);
+
+  let displaySignals: DisplaySignal[];
+  if (categoryMode) {
+    displaySignals = r.category_signals!.map(cs => ({
+      key: cs.key,
+      label: cs.label,
+      tier: cs.tier,
+      sig: {
+        status: cs.status,
+        direction: cs.direction,
+        value_label: cs.value_label,
+        benchmark_context: cs.benchmark_context,
+        efficiency_read: cs.efficiency_read,
+      },
+    }));
+  } else {
+    const CORE_SIGNALS: { key: keyof NonNullable<typeof r.signals>; label: string; always: boolean }[] = [
+      { key: "sov",             label: "Share of Voice",        always: true },
+      { key: "save_rate",       label: "Save Rate",             always: true },
+      { key: "share_rate",      label: "Share Rate",            always: true },
+      { key: "branded_search",  label: "Branded Search Lift",   always: true },
+      { key: "kol_earned",      label: "KOL Earned Media",      always: true },
+      { key: "vcr",             label: "Video Completion Rate", always: false },
+      { key: "pr_earned",       label: "PR Coverage",           always: false },
+      { key: "review_platform", label: "Review Platform",       always: false },
+      { key: "retail_signal",   label: "Retail and E-commerce", always: false },
+    ];
+    const signals = r.signals ?? ({} as NonNullable<typeof r.signals>);
+    const visibleSignals = CORE_SIGNALS.filter(s => {
+      if (s.always) return true;
+      const sig = signals[s.key] as SignalItem & { include?: boolean };
+      return sig?.include === true;
+    });
+    displaySignals = visibleSignals.map(s => ({ key: s.key, label: s.label, sig: signals[s.key] as SignalItem }));
+  }
 
   const GREEN_ST = ["Strong", "Lifting", "Active", "Above Benchmark", "Above Floor", "Elevated"];
   const RED_ST   = ["Below Category", "Below Floor", "Passive", "Minimal", "Needs Attention", "Weak", "Declining", "Risk"];
-  const strongCount = visibleSignals.filter(s => GREEN_ST.includes((r.signals[s.key] as SignalItem).status)).length;
-  const watchCount  = visibleSignals.filter(s => RED_ST.includes((r.signals[s.key] as SignalItem).status)).length;
+  const strongCount = displaySignals.filter(s => GREEN_ST.includes(s.sig.status)).length;
+  const watchCount  = displaySignals.filter(s => RED_ST.includes(s.sig.status)).length;
   const aiVisLabel  = r.ai_visibility_label.replace(/^AI-/, "");
 
   return (
@@ -422,19 +475,15 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
 
             <div className="px-4 py-3.5 rounded-xl"
               style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}>
-              <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wide mb-2.5">Signal Diagnostic</p>
+              <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wide mb-2.5">
+                {categoryMode ? `${r.category_framework!.category_name} Signals` : "Signal Diagnostic"}
+              </p>
               <div className="space-y-1.5">
-                {([
-                  { label: "SoV",    sig: r.signals.sov },
-                  { label: "Search", sig: r.signals.branded_search },
-                  { label: "Save",   sig: r.signals.save_rate },
-                  { label: "KOL",    sig: r.signals.kol_earned },
-                  { label: "Share",  sig: r.signals.share_rate },
-                ] as { label: string; sig: SignalItem }[]).map(({ label, sig }) => {
+                {displaySignals.slice(0, 5).map(({ key, label, sig }) => {
                   const col = signalStatusColor(sig.status);
                   return (
-                    <div key={label} className="flex items-center gap-2">
-                      <span className="text-[9px] text-slate-500 w-10 shrink-0">{label}</span>
+                    <div key={key} className="flex items-center gap-2">
+                      <span className="text-[9px] text-slate-500 w-14 shrink-0 truncate" title={label}>{label}</span>
                       <div className="flex-1 h-1.5 rounded-full overflow-hidden"
                         style={{ background: "rgba(255,255,255,0.1)" }}>
                         <div className={`${col.bar} h-1.5 rounded-full`}
@@ -562,14 +611,41 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
           </div>
         </div>
 
-        {/* Signal Intelligence */}
+        {/* Signal Intelligence — category behaviour journey when the intake
+            industry resolved to a category_attributes row, otherwise the
+            legacy fixed signal set. Same underlying displaySignals array
+            drives both this panel, the header glass card above, and the
+            Efficiency Summary below — see the categoryMode block near the
+            top of this component. */}
         <div data-pdf-break="before" className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-6 pt-5 pb-4 border-b border-slate-100 flex items-start justify-between">
             <div>
-              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Signal Intelligence</p>
+              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">
+                {categoryMode ? `${r.category_framework!.category_name} Signal Journey` : "Signal Intelligence"}
+              </p>
               <p className="text-xs text-slate-400 mt-1">{strongCount} strong · {watchCount} need attention · public proxy reads</p>
             </div>
           </div>
+
+          {categoryMode && (
+            <div className="px-6 pt-4 pb-5 border-b border-slate-100 bg-slate-50">
+              <div className="flex items-center flex-wrap gap-1.5 mb-3">
+                {r.category_framework!.behaviour_chain.map((stage, i) => (
+                  <div key={stage} className="flex items-center gap-1.5">
+                    <span className="text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-full px-3 py-1">
+                      {stage}
+                    </span>
+                    {i < r.category_framework!.behaviour_chain.length - 1 && (
+                      <span className="text-slate-300 text-xs">→</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">{r.category_framework!.behaviour_chain_read}</p>
+              <p className="text-[10px] text-slate-400 mt-2">Business outcome tracked: {r.category_framework!.business_outcome_label}</p>
+            </div>
+          )}
+
           <div className="px-6 pt-5 pb-2">
             <StrategicPOV
               header={`${strongCount} Strong · ${watchCount} Need Attention`}
@@ -577,9 +653,8 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
             />
           </div>
           <div className="divide-y divide-slate-100">
-            {visibleSignals.map(s => {
-              const sig = r.signals[s.key] as SignalItem;
-              if (!sig) return null;
+            {displaySignals.map(s => {
+              const sig = s.sig;
               const sc = signalStatusColor(sig.status);
               return (
                 <div key={s.key} data-pdf-break="before" className="px-6 py-5">
@@ -589,9 +664,14 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
                         <span className={`w-3 h-3 rounded-full ${sc.dot}`} />
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center">
+                        <div className="flex items-center gap-1.5">
                           <p className="text-sm font-semibold text-slate-800">{s.label}</p>
                           {directionIcon(sig.direction)}
+                          {s.tier && (
+                            <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide border border-slate-200 rounded-full px-1.5 py-0.5">
+                              {s.tier}
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-slate-400 mt-0.5">{sig.value_label}</p>
                       </div>
@@ -793,9 +873,7 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
         </div>
 
         {/* Efficiency Summary */}
-        <EfficiencyImpact
-          items={visibleSignals.map(s => ({ label: s.label, sig: r.signals[s.key] as SignalItem }))}
-        />
+        <EfficiencyImpact items={displaySignals} />
 
         {/* CTA */}
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm px-6 py-7 text-center">

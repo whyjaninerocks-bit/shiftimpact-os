@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getCategoryFrameworkByIndustry, type AuditCategoryFramework } from "@/lib/data";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -80,46 +81,22 @@ const MARKET_PROFILES: Record<string, string> = {
 - Youth digital culture is very forward-leaning — Gen Z Vietnamese consumers are among the most digitally active in SEA; short video and live commerce adoption is accelerating rapidly`,
 };
 
-function getSystemPrompt(country: string): string {
-  const profile = MARKET_PROFILES[country] ?? `You are deeply fluent in ${country} market dynamics and consumer behaviour patterns, including the dominant digital platforms, key festive and cultural calendar windows, local e-commerce infrastructure, price sensitivity dynamics, and influencer and KOL ecosystem specific to ${country}.`;
-
-  return `You are the Chief Marketing Business Analyst at ShiftImpact OS — a seasoned intelligence practitioner with 30 years of strategic experience across global FMCG, QSR, Retail, Hospitality, Financial Services, and Telco sectors. Your career spans tenures with world-renowned organisations including Unilever, Nestlé, McDonald's, Marriott International, and regional powerhouses across Asia-Pacific.
-
-${profile}
-
-Your analysis is delivered exclusively at decision-maker level. You connect every observation to budget efficiency, consumer behaviour change, and business outcome progression. You never treat engagement rates, follower counts, or reach as outcomes. These are inputs. What matters is whether consumer behaviour is changing and whether media budget is working efficiently.
-
-You are delivering a Campaign Intelligence Preview to a prospective brand partner. Your role: demonstrate what ShiftImpact OS sees in their live campaign using only public signals — and illuminate the intelligence blind spots they are currently operating without.
-
-CRITICAL OUTPUT RULES:
-1. Every recommendation must be actionable at leadership level — a budget decision, a phase call, a creative pivot directive, or a channel reallocation
-2. Market-specific context for the campaign's country must be visible in your reasoning — reference local consumer behaviour, cultural calendar sensitivity, platform dynamics, and market-specific benchmarks. Never default to a different country's context.
-3. Never use social media vanity metric language ("engagement", "likes", "followers") as a measure of success — always connect to business outcomes
-4. The intelligence gaps section is the most important commercial asset — it must clearly articulate what ShiftImpact OS clients see weekly that this preview cannot surface
-5. Recommendations must be sharp, specific, and confident — not hedged. A seasoned CMBA does not say "consider possibly reviewing" — they say "before releasing the next tranche, you need X"
-
-Return ONLY valid JSON. No prose, no markdown, no explanation outside the JSON block.
-
-JSON STRUCTURE:
-{
-  "effectiveness_score": <integer 0-100>,
-  "effectiveness_rating": <"Strong" | "On Track" | "At Risk" | "Stalled">,
-  "effectiveness_headline": "<one sentence — the single most important read on this campaign's effectiveness right now>",
-  "effectiveness_diagnosis": "<2-3 sentences at decision-maker level — what is working, what is not, framed in business outcome and consumer behaviour terms. No vanity metrics.>",
-
-  "engine_type": <"Idea-Driven" | "Hybrid" | "Media-Compensated">,
-  "engine_media_pct": <integer 0-100>,
-  "engine_idea_pct": <integer 0-100>,
-  "engine_diagnosis": "<2 sentences — is the idea earning its media budget or is media compensating for a weak idea? What is the cost implication?>",
-  "engine_recommendation": "<1 sharp strategic action at decision-maker level — budget or creative pivot directive>",
-
-  "consumer_state": <integer 1-6>,
-  "consumer_state_name": <"Unaware" | "Aware but Passive" | "Aware but Unconvinced" | "In Consideration" | "Intent-Active" | "Post-Purchase">,
-  "consumer_state_diagnosis": "<2 sentences — where is the target audience now in the decision cycle, and is the campaign accelerating or stalling their progression?>",
-  "consumer_state_recommendation": "<1 strategic action — what needs to change to advance the consumer state>",
-  "state_transition_risk": <"Low" | "Medium" | "High">,
-
-  "signals": {
+// Builds the "signals" portion of the JSON schema. When a category
+// framework was resolved from the intake industry (+ sub-category), the
+// fixed generic 9-signal block is replaced with a "category_signals" array
+// scored against that category's real leading/conversion/lagging signal set
+// from category_attributes — the same behaviour-chain model the client
+// portal's Category Signal journey card uses (lib/data.ts
+// getCategorySignalFramework), so a prospect sees the same signal language
+// a real client eventually would, not a generic vanity-metric list.
+// Falls back to the original fixed block verbatim when no category is
+// resolved (industry = "Other", or an as-yet-unmapped value) — zero change
+// in behaviour for that path, and for every audit generated before this.
+function buildSignalsInstructions(framework: AuditCategoryFramework | null): { instructions: string; schemaBlock: string } {
+  if (!framework) {
+    return {
+      instructions: "",
+      schemaBlock: `  "signals": {
     "sov": {
       "status": <"Strong" | "Elevated" | "On Par" | "Below Category" | "Weak" | "Not Detected">,
       "direction": <"up" | "flat" | "down" | "unknown">,
@@ -188,7 +165,82 @@ JSON STRUCTURE:
       "efficiency_read": "<1 sentence on last-mile conversion signal relative to campaign investment>",
       "include": <true | false>
     }
+  },`,
+    };
+  }
+
+  const allSignals = [
+    ...framework.leading_signals.map((s) => ({ ...s, tier: "Leading" as const })),
+    ...framework.conversion_signals.map((s) => ({ ...s, tier: "Conversion" as const })),
+    ...framework.lagging_signals.map((s) => ({ ...s, tier: "Lagging" as const })),
+  ];
+
+  const signalList = allSignals
+    .map((s, i) => `${i + 1}. key: "${s.key}" — label: "${s.label}" — tier: ${s.tier}`)
+    .join("\n");
+
+  const instructions = `
+CATEGORY SIGNAL MODEL:
+This campaign's industry (${framework.category_name}) has a defined behaviour chain and signal set in ShiftImpact OS: ${framework.behaviour_chain.join(" → ")}.
+Score EXACTLY these ${allSignals.length} signals, in this exact order, for the "category_signals" array below — do not add, remove, rename, or reorder them, and do not fall back to generic social metrics (sov/save_rate/etc.) for this campaign:
+${signalList}
+`;
+
+  const schemaBlock = `  "category_framework": {
+    "category_name": "${framework.category_name}",
+    "behaviour_chain": ${JSON.stringify(framework.behaviour_chain)},
+    "business_outcome_label": "${framework.business_outcome_label}",
+    "behaviour_chain_read": "<2 sentences — of the ${framework.behaviour_chain.join(" → ")} journey, where is this campaign's public signal evidence strongest, and where is it weakest or entirely unobservable right now?>"
   },
+  "category_signals": [
+    // one object per signal listed in CATEGORY SIGNAL MODEL above, in that exact order
+    { "key": "<key from the list>", "label": "<label from the list>", "tier": "<Leading|Conversion|Lagging from the list>", "status": <"Strong" | "Active" | "Moderate" | "Weak" | "Not Detected">, "direction": <"up" | "flat" | "down" | "unknown">, "value_label": "<observed pattern in plain business language>", "benchmark_context": "<local market category benchmark for this signal in the campaign country>", "efficiency_read": "<1 sentence connecting this signal to media spend efficiency>" }
+  ],`;
+
+  return { instructions, schemaBlock };
+}
+
+function getSystemPrompt(country: string, framework: AuditCategoryFramework | null): string {
+  const { instructions: signalInstructions, schemaBlock: signalsSchemaBlock } = buildSignalsInstructions(framework);
+  const profile = MARKET_PROFILES[country] ?? `You are deeply fluent in ${country} market dynamics and consumer behaviour patterns, including the dominant digital platforms, key festive and cultural calendar windows, local e-commerce infrastructure, price sensitivity dynamics, and influencer and KOL ecosystem specific to ${country}.`;
+
+  return `You are the Chief Marketing Business Analyst at ShiftImpact OS — a seasoned intelligence practitioner with 30 years of strategic experience across global FMCG, QSR, Retail, Hospitality, Financial Services, and Telco sectors. Your career spans tenures with world-renowned organisations including Unilever, Nestlé, McDonald's, Marriott International, and regional powerhouses across Asia-Pacific.
+
+${profile}
+
+Your analysis is delivered exclusively at decision-maker level. You connect every observation to budget efficiency, consumer behaviour change, and business outcome progression. You never treat engagement rates, follower counts, or reach as outcomes. These are inputs. What matters is whether consumer behaviour is changing and whether media budget is working efficiently.
+
+You are delivering a Campaign Intelligence Preview to a prospective brand partner. Your role: demonstrate what ShiftImpact OS sees in their live campaign using only public signals — and illuminate the intelligence blind spots they are currently operating without.
+
+CRITICAL OUTPUT RULES:
+1. Every recommendation must be actionable at leadership level — a budget decision, a phase call, a creative pivot directive, or a channel reallocation
+2. Market-specific context for the campaign's country must be visible in your reasoning — reference local consumer behaviour, cultural calendar sensitivity, platform dynamics, and market-specific benchmarks. Never default to a different country's context.
+3. Never use social media vanity metric language ("engagement", "likes", "followers") as a measure of success — always connect to business outcomes
+4. The intelligence gaps section is the most important commercial asset — it must clearly articulate what ShiftImpact OS clients see weekly that this preview cannot surface
+5. Recommendations must be sharp, specific, and confident — not hedged. A seasoned CMBA does not say "consider possibly reviewing" — they say "before releasing the next tranche, you need X"
+${signalInstructions}
+Return ONLY valid JSON. No prose, no markdown, no explanation outside the JSON block.
+
+JSON STRUCTURE:
+{
+  "effectiveness_score": <integer 0-100>,
+  "effectiveness_rating": <"Strong" | "On Track" | "At Risk" | "Stalled">,
+  "effectiveness_headline": "<one sentence — the single most important read on this campaign's effectiveness right now>",
+  "effectiveness_diagnosis": "<2-3 sentences at decision-maker level — what is working, what is not, framed in business outcome and consumer behaviour terms. No vanity metrics.>",
+
+  "engine_type": <"Idea-Driven" | "Hybrid" | "Media-Compensated">,
+  "engine_media_pct": <integer 0-100>,
+  "engine_idea_pct": <integer 0-100>,
+  "engine_diagnosis": "<2 sentences — is the idea earning its media budget or is media compensating for a weak idea? What is the cost implication?>",
+  "engine_recommendation": "<1 sharp strategic action at decision-maker level — budget or creative pivot directive>",
+
+  "consumer_state": <integer 1-6>,
+  "consumer_state_name": <"Unaware" | "Aware but Passive" | "Aware but Unconvinced" | "In Consideration" | "Intent-Active" | "Post-Purchase">,
+  "consumer_state_diagnosis": "<2 sentences — where is the target audience now in the decision cycle, and is the campaign accelerating or stalling their progression?>",
+  "consumer_state_recommendation": "<1 strategic action — what needs to change to advance the consumer state>",
+  "state_transition_risk": <"Low" | "Medium" | "High">,
+
+${signalsSchemaBlock}
 
   "audience_intent": <"Acquisition-Heavy" | "Retention-Heavy" | "Balanced">,
   "audience_acquisition_pct": <integer 0-100>,
@@ -292,6 +344,7 @@ export async function POST(req: NextRequest) {
       brand_name: string;
       campaign_name: string;
       industry: string;
+      industry_subcategory?: string;
       country?: string;
       signal_intelligence?: {
         decision_status: string;
@@ -313,6 +366,7 @@ export async function POST(req: NextRequest) {
       brand_name,
       campaign_name,
       industry,
+      industry_subcategory,
       country = "Malaysia",
       signal_intelligence,
       campaign_phase = "Demand",
@@ -330,6 +384,13 @@ export async function POST(req: NextRequest) {
     }
 
     // ── AI Analysis ───────────────────────────────────────────────────────────
+
+    // Resolve the category behaviour-chain framework from the intake industry
+    // (+ sub-category for FMCG/Retail/E-commerce). Null for unmapped
+    // industries ("Other" or anything not yet in category_attributes) — the
+    // prompt falls back to the generic fixed signal set in that case, so
+    // this never blocks an audit from running.
+    const categoryFramework = await getCategoryFrameworkByIndustry(industry, industry_subcategory);
 
     // If this Snapshot was promoted from a Clarity Signal, carry forward the Signal's
     // pre-established intelligence so the AI extends rather than re-derives from scratch.
@@ -371,12 +432,16 @@ ${signalBlock}
 PUBLIC SIGNAL DATA COLLECTED:
 ${context_text.slice(0, signal_intelligence ? 5000 : 8000)}
 
-Analyse this campaign across all intelligence dimensions. Apply ${country} market benchmarks, platform dynamics, and consumer behaviour context throughout — every insight must be grounded in ${country} market reality. Determine which optional signals (review_platform, retail_signal, vcr, pr_earned) are relevant based on industry and available data — set include: true only where signal evidence exists or where the industry makes it directly relevant (Hospitality/F&B → review_platform; Retail/FMCG → retail_signal; video channels → vcr). Deliver strategic recommendations in the voice of a 30-year seasoned Chief Marketing Business Analyst. Return JSON only.`;
+Analyse this campaign across all intelligence dimensions. Apply ${country} market benchmarks, platform dynamics, and consumer behaviour context throughout — every insight must be grounded in ${country} market reality. ${
+  categoryFramework
+    ? `Score the "category_signals" array exactly as instructed in CATEGORY SIGNAL MODEL above — do not substitute generic social metrics.`
+    : `Determine which optional signals (review_platform, retail_signal, vcr, pr_earned) are relevant based on industry and available data — set include: true only where signal evidence exists or where the industry makes it directly relevant (Hospitality/F&B → review_platform; Retail/FMCG → retail_signal; video channels → vcr).`
+} Deliver strategic recommendations in the voice of a 30-year seasoned Chief Marketing Business Analyst. Return JSON only.`;
 
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 8000,
-      system: getSystemPrompt(country),
+      system: getSystemPrompt(country, categoryFramework),
       messages: [{ role: "user", content: userPrompt }],
     });
 
@@ -399,6 +464,7 @@ Analyse this campaign across all intelligence dimensions. Apply ${country} marke
         brand_name,
         campaign_name,
         industry,
+        industry_subcategory: industry_subcategory || null,
         campaign_phase,
         business_objective: business_objective || null,
         channels: channels.length > 0 ? channels : null,

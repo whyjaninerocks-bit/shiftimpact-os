@@ -24,6 +24,28 @@ const INDUSTRIES = [
   { value: "Other",               label: "Other" },
 ];
 
+// Industries whose Signal Diagnostic depends on a sub-category we can't
+// infer from the top-level value alone (e.g. "FMCG" could be Food &
+// Beverage or Personal Care, each with a different behaviour chain and
+// signal set in category_attributes). Shown as a follow-up picker only when
+// the selected industry is one of these keys — every other industry either
+// maps 1:1 to a category or falls back to the generic panel.
+// See lib/data.ts resolveCategorySlug / SUBCATEGORY_TO_SLUG (must match).
+const INDUSTRY_SUBCATEGORIES: Record<string, { value: string; label: string }[]> = {
+  FMCG: [
+    { value: "Food & Beverage", label: "Food & Beverage" },
+    { value: "Personal Care",   label: "Personal Care" },
+  ],
+  Retail: [
+    { value: "Electronics", label: "Electronics" },
+    { value: "Fashion",     label: "Fashion" },
+  ],
+  "E-commerce": [
+    { value: "Electronics", label: "Electronics" },
+    { value: "Fashion",     label: "Fashion" },
+  ],
+};
+
 const PHASES = [
   { value: "Demand",     label: "Demand — Building awareness and reach" },
   { value: "Conversion", label: "Conversion — Driving purchase intent" },
@@ -123,6 +145,10 @@ export default function QuickAuditPage() {
   const [fetchAllErrors, setFetchAllErrors] = useState<string[]>([]);
 
   const [country, setCountry] = useState("Malaysia");
+  // Tracked in state (alongside the uncontrolled industryRef) purely so the
+  // sub-category picker can show/hide reactively. See INDUSTRY_SUBCATEGORIES.
+  const [industry, setIndustry] = useState("FMCG");
+  const [subcategory, setSubcategory] = useState("");
   // Carries forward the Signal's AI intelligence so Snapshot can extend rather than re-derive
   const [signalIntelligence, setSignalIntelligence] = useState<Record<string, unknown> | null>(null);
 
@@ -146,7 +172,7 @@ export default function QuickAuditPage() {
         .then(data => {
           if (data.brand_name && brandRef.current) brandRef.current.value = data.brand_name;
           if (data.campaign_name && campaignRef.current) campaignRef.current.value = data.campaign_name;
-          if (data.industry && industryRef.current) industryRef.current.value = data.industry;
+          if (data.industry && industryRef.current) { industryRef.current.value = data.industry; setIndustry(data.industry); }
           if (data.country) setCountry(data.country);
           if (data.context_text) setContextText(data.context_text);
           if (data.signal_intelligence) setSignalIntelligence(data.signal_intelligence);
@@ -163,7 +189,7 @@ export default function QuickAuditPage() {
     const ind = params.get("industry");
     if (b && brandRef.current) brandRef.current.value = b;
     if (c && campaignRef.current) campaignRef.current.value = c;
-    if (ind && industryRef.current) industryRef.current.value = ind;
+    if (ind && industryRef.current) { industryRef.current.value = ind; setIndustry(ind); }
   }, []);
 
   const cfg = FETCH_PLATFORMS.find(p => p.value === platform)!;
@@ -266,6 +292,7 @@ export default function QuickAuditPage() {
           brand_name: brandRef.current?.value,
           campaign_name: campaignRef.current?.value,
           industry: industryRef.current?.value,
+          industry_subcategory: subcategory || undefined,
           country,
           signal_intelligence: signalIntelligence ?? undefined,
           campaign_phase: phaseRef.current?.value,
@@ -326,7 +353,12 @@ export default function QuickAuditPage() {
           <div className="grid sm:grid-cols-3 gap-3">
             <div>
               <label className={labelCls}>Industry *</label>
-              <select ref={industryRef} className={inputCls} defaultValue="FMCG">
+              <select
+                ref={industryRef}
+                className={inputCls}
+                defaultValue="FMCG"
+                onChange={e => { setIndustry(e.target.value); setSubcategory(""); }}
+              >
                 {INDUSTRIES.map(i => <option key={i.value} value={i.value}>{i.label}</option>)}
               </select>
             </div>
@@ -349,6 +381,18 @@ export default function QuickAuditPage() {
               </select>
             </div>
           </div>
+
+          {INDUSTRY_SUBCATEGORIES[industry] && (
+            <div>
+              <label className={labelCls}>
+                {industry} Sub-category * <span className="font-normal text-neutral-400 normal-case">(determines which signal model the diagnostic uses)</span>
+              </label>
+              <select className={inputCls} value={subcategory} onChange={e => setSubcategory(e.target.value)} required>
+                <option value="" disabled>Select a sub-category…</option>
+                {INDUSTRY_SUBCATEGORIES[industry].map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+            </div>
+          )}
 
           <div className="grid sm:grid-cols-2 gap-3">
             <div>

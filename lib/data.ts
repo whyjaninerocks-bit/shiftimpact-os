@@ -1293,6 +1293,108 @@ export async function getCategorySignalFramework(
   };
 }
 
+// ─── Category framework by industry — pre-sales audit tool ──────────────────
+// The Quick Audit / Campaign Intelligence Preview tool (app/(os)/audit) has
+// no campaign_id — it runs on a prospect's public signals before any
+// campaign exists — so getCategorySignalFramework (which requires an active
+// campaign_signal_maps row) can never apply to it. This is the audit-tool
+// equivalent: resolves straight from the intake form's industry (+ optional
+// sub-category for ambiguous top-level values) to a category_attributes
+// template, so the "Signal Diagnostic" panel can show the same real
+// behaviour-chain/signal model the client portal uses, instead of a fixed
+// generic 9-signal list. Falls back to null (caller renders the legacy
+// generic panel) when the industry has no mapped category yet.
+//
+// Direct 1:1 mappings — the intake form's industry value maps to exactly
+// one category_attributes row.
+const INDUSTRY_TO_CATEGORY_SLUG: Record<string, string> = {
+  "F&B": "fmcg-food-beverage",
+  QSR: "qsr",
+  Hospitality: "hospitality-leisure-wellness",
+  Telco: "telco",
+  "Financial Services": "financial-services",
+  Healthcare: "healthcare",
+  Automotive: "automotive",
+  "B2B SaaS": "b2b-saas",
+};
+
+// Ambiguous top-level industries — the intake form shows a sub-category
+// picker for these (see app/(os)/audit/page.tsx INDUSTRY_SUBCATEGORIES) and
+// the answer is stored in quick_audits.industry_subcategory (migration
+// 0084). Until answered, resolveCategorySlug returns null and the caller
+// falls back to the generic panel rather than guessing.
+const SUBCATEGORY_TO_SLUG: Record<string, Record<string, string>> = {
+  FMCG: { "Food & Beverage": "fmcg-food-beverage", "Personal Care": "fmcg-personal-care" },
+  Retail: { Electronics: "retail-electronics", Fashion: "retail-fashion" },
+  "E-commerce": { Electronics: "retail-electronics", Fashion: "retail-fashion" },
+};
+
+export function resolveCategorySlug(
+  industry: string | null | undefined,
+  subcategory?: string | null
+): string | null {
+  if (!industry) return null;
+  const subMap = SUBCATEGORY_TO_SLUG[industry];
+  if (subMap) return (subcategory && subMap[subcategory]) ?? null;
+  return INDUSTRY_TO_CATEGORY_SLUG[industry] ?? null;
+}
+
+export type AuditCategoryFramework = {
+  category_name: string;
+  category_slug: string;
+  business_outcome_label: string;
+  behaviour_chain: string[];
+  leading_signals: { key: string; label: string }[];
+  conversion_signals: { key: string; label: string }[];
+  lagging_signals: { key: string; label: string }[];
+  confidence_label: string;
+};
+
+export async function getCategoryFrameworkByIndustry(
+  industry: string | null | undefined,
+  subcategory?: string | null
+): Promise<AuditCategoryFramework | null> {
+  const slug = resolveCategorySlug(industry, subcategory);
+  if (!slug) return null;
+
+  const supabase = createAdminClient();
+  const { data: cat, error } = await supabase
+    .from("category_attributes")
+    .select(
+      "category_name, category_slug, behaviour_chain, default_leading_signals, default_conversion_signals, default_lagging_signals, common_business_outcome_labels, confidence_level, active"
+    )
+    .eq("category_slug", slug)
+    .eq("active", true)
+    .maybeSingle();
+
+  if (error || !cat) return null;
+
+  const allKeys = Array.from(
+    new Set([
+      ...((cat.default_leading_signals as string[] | null) ?? []),
+      ...((cat.default_conversion_signals as string[] | null) ?? []),
+      ...((cat.default_lagging_signals as string[] | null) ?? []),
+    ])
+  );
+
+  const vocab = allKeys.length
+    ? (await supabase.from("signal_vocabulary").select("key, label").in("key", allKeys)).data ?? []
+    : [];
+  const labelFor = (key: string) => vocab.find((v) => v.key === key)?.label ?? key;
+  const toDisplay = (keys: string[] | null) => (keys ?? []).map((k) => ({ key: k, label: labelFor(k) }));
+
+  return {
+    category_name: cat.category_name,
+    category_slug: cat.category_slug,
+    business_outcome_label: ((cat.common_business_outcome_labels as string[] | null) ?? [])[0] ?? "Business outcome",
+    behaviour_chain: (cat.behaviour_chain as string[] | null) ?? [],
+    leading_signals: toDisplay(cat.default_leading_signals as string[] | null),
+    conversion_signals: toDisplay(cat.default_conversion_signals as string[] | null),
+    lagging_signals: toDisplay(cat.default_lagging_signals as string[] | null),
+    confidence_label: (cat.confidence_level as string) ?? "Low",
+  };
+}
+
 // ─── Client-facing subset — Brand Momentum (portal) ──────────────────────────
 // ACCESS RULES (verbatim from app/api/brand-momentum/route.ts): "Client sees:
 // bms_direction + bms_velocity + bms_confidence only (headline composite).
