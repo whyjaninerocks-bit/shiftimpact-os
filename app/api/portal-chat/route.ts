@@ -498,9 +498,17 @@ async function streamResponse({
           controller.enqueue(encoder.encode(sentinel));
         }
       } catch (err) {
+        // TEMP DIAGNOSTIC (remove before final handoff) — every question is
+        // failing in production with the generic fallback below, reproduced
+        // even in demo mode (no campaign data involved), so the failure is
+        // inside the anthropic.messages.stream() call itself, not campaign-
+        // specific. No Vercel log access this session, so surfacing the raw
+        // error inline to find root cause, then reverting to the clean
+        // user-facing message once fixed.
+        const debugDetail = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
         controller.enqueue(
           encoder.encode(
-            "I wasn't able to retrieve the campaign data right now. Please try again or contact your strategist directly."
+            `I wasn't able to retrieve the campaign data right now. Please try again or contact your strategist directly. [DEBUG: ${debugDetail}]`
           )
         );
         console.error("[portal-chat] stream error:", err);
