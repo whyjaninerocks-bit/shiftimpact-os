@@ -418,7 +418,7 @@ export function AgencyPortalView({
               </p>
               {searchValues.length >= 2 && (
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-neutral-400">Brand Search</span>
+                  <span className="text-xs text-neutral-400 truncate max-w-[110px]">{signalThresholds?.signal_1_label ?? "Signal 1"}</span>
                   <span className="text-sm font-bold text-indigo-400">
                     {searchValues[searchValues.length - 1].toFixed(1)}%
                     <span className="text-neutral-500 font-normal ml-1">
@@ -430,7 +430,7 @@ export function AgencyPortalView({
               )}
               {saveValues.length >= 2 && (
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-neutral-400">Save Rate</span>
+                  <span className="text-xs text-neutral-400 truncate max-w-[110px]">{signalThresholds?.signal_2_label ?? "Signal 2"}</span>
                   <span className="text-sm font-bold text-amber-400">
                     {saveValues[saveValues.length - 1].toFixed(1)}%
                     <span className="text-neutral-500 font-normal ml-1">
@@ -442,7 +442,7 @@ export function AgencyPortalView({
               )}
               {ugcValues.length >= 2 && (
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-neutral-400">UGC Volume</span>
+                  <span className="text-xs text-neutral-400 truncate max-w-[110px]">{signalThresholds?.signal_3_label ?? "Signal 3"}</span>
                   <span className="text-sm font-bold text-emerald-400">
                     {ugcValues[ugcValues.length - 1]} pcs
                     <span className="text-neutral-500 font-normal ml-1">
@@ -607,8 +607,8 @@ export function AgencyPortalView({
                           <div className="flex items-baseline justify-between mb-2">
                             <span className="text-2xl font-black text-neutral-900">{latest.signal_1_actual_pct.toFixed(1)}%</span>
                             <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                              latest.conversion_health === "Green" ? "text-emerald-600" : latest.conversion_health === "Amber" ? "text-amber-600" : "text-red-600"
-                            }`}>{latest.conversion_health}</span>
+                              latest.demand_health === "Green" ? "text-emerald-600" : latest.demand_health === "Amber" ? "text-amber-600" : "text-red-600"
+                            }`}>{latest.demand_health}</span>
                           </div>
                           {searchValues.length >= 2 ? (
                             <>
@@ -650,12 +650,12 @@ export function AgencyPortalView({
                       {latest.signal_3_actual_count !== null && (
                         <div className="rounded-xl bg-neutral-50 border border-neutral-100 px-4 py-4">
                           <p className="text-xs font-semibold text-neutral-700">{signalThresholds?.signal_3_label ?? "Signal 3"}</p>
-                          <p className="text-[10px] text-neutral-400 mb-2 leading-snug">Organic amplification — demand signal</p>
+                          <p className="text-[10px] text-neutral-400 mb-2 leading-snug">Conversion signal</p>
                           <div className="flex items-baseline justify-between mb-2">
                             <span className="text-2xl font-black text-neutral-900">{latest.signal_3_actual_count} pcs</span>
                             <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                              latest.demand_health === "Green" ? "text-emerald-600" : latest.demand_health === "Amber" ? "text-amber-600" : "text-red-600"
-                            }`}>{latest.demand_health}</span>
+                              latest.conversion_health === "Green" ? "text-emerald-600" : latest.conversion_health === "Amber" ? "text-amber-600" : "text-red-600"
+                            }`}>{latest.conversion_health}</span>
                           </div>
                           {ugcValues.length >= 2 ? (
                             <>
