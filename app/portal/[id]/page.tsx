@@ -178,6 +178,7 @@ export default async function ClientPortalPage({
         complianceSourceWeek={complianceSourceWeek}
         complianceTargetWeek={complianceTargetWeek}
         signalFramework={signalFramework}
+        signalThresholds={signalThresholds}
       />
     );
   }

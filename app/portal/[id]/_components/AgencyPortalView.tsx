@@ -7,7 +7,7 @@
 
 import { useState, useCallback } from "react";
 import type { CampaignOverview, SignalWeeklyReport, PhaseGate, SignalHealth, FrameBrief } from "@/lib/types";
-import type { CampaignReportClientView, CampaignReportClientFinding, ComplianceItem, CategorySignalFramework } from "@/lib/data";
+import type { CampaignReportClientView, CampaignReportClientFinding, ComplianceItem, CategorySignalFramework, SignalThresholdsClientSafe } from "@/lib/data";
 import { AgencyComplianceChecklist } from "./AgencyComplianceChecklist";
 import { CategorySignalSection } from "./CategorySignalSection";
 import { StrategicBetSection } from "./reportUi";
@@ -197,6 +197,7 @@ interface AgencyPortalViewProps {
   complianceSourceWeek?: number | null;
   complianceTargetWeek?: number | null;
   signalFramework?: CategorySignalFramework | null;
+  signalThresholds?: SignalThresholdsClientSafe | null;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -211,6 +212,7 @@ export function AgencyPortalView({
   complianceSourceWeek = null,
   complianceTargetWeek = null,
   signalFramework = null,
+  signalThresholds = null,
 }: AgencyPortalViewProps) {
   // signalReports comes in desc order (newest first) — reverse for sparkline
   const signalAsc = [...signalReports].reverse();
@@ -229,6 +231,19 @@ export function AgencyPortalView({
 
   // Health score — use confidence_score as the composite proxy
   const healthScore = Math.round(campaign.confidence_score ?? 0);
+
+  // Gate signals converging — computed from the three real health fields
+  // (demand/nurture/conversion), not read from signal_weekly_reports
+  // .gate_signals_converging directly. That column is never written by any
+  // part of the app (no write path exists for it), so it sat at its
+  // default of 0 for every week of every campaign, including weeks where
+  // the gate note explicitly says all signals cleared — a silent,
+  // contradictory "0 / 3" next to "Gate open". Deriving it live from the
+  // health fields that ARE populated fixes this for every campaign, not
+  // just this one.
+  const gateSignalsConverging = latest
+    ? [latest.demand_health, latest.nurture_health, latest.conversion_health].filter((h) => h === "Green").length
+    : 0;
 
   // Posture from report, fallback to gate_status derived
   const posture = report?.risk_posture ?? (latest?.gate_status === "Green" ? "Gaining" : latest?.gate_status === "Amber" ? "Plateauing" : null);
@@ -450,7 +465,7 @@ export function AgencyPortalView({
                 <span className={`text-xl font-black ${
                   latest.gate_status === "Green" ? "text-emerald-400" : latest.gate_status === "Amber" ? "text-amber-400" : "text-red-400"
                 }`}>
-                  {latest.gate_signals_converging} / 3
+                  {gateSignalsConverging} / 3
                 </span>
               </div>
               <p className="text-xs text-neutral-500 mt-1 leading-relaxed line-clamp-2">
@@ -551,7 +566,7 @@ export function AgencyPortalView({
                       )}
                     </div>
                     <span className={`shrink-0 px-3 py-1 rounded-full text-xs font-bold border ${healthBg(latest.gate_status)}`}>
-                      {latest.gate_signals_converging} / 3 signals
+                      {gateSignalsConverging} / 3 signals
                     </span>
                   </div>
 
@@ -587,8 +602,8 @@ export function AgencyPortalView({
                     <div className="grid sm:grid-cols-3 gap-4">
                       {latest.signal_1_actual_pct !== null && (
                         <div className="rounded-xl bg-neutral-50 border border-neutral-100 px-4 py-4">
-                          <p className="text-xs font-semibold text-neutral-700">Brand Search Share (S1)</p>
-                          <p className="text-[10px] text-neutral-400 mb-2 leading-snug">Share of search — demand signal</p>
+                          <p className="text-xs font-semibold text-neutral-700">{signalThresholds?.signal_1_label ?? "Signal 1"}</p>
+                          <p className="text-[10px] text-neutral-400 mb-2 leading-snug">Demand signal</p>
                           <div className="flex items-baseline justify-between mb-2">
                             <span className="text-2xl font-black text-neutral-900">{latest.signal_1_actual_pct.toFixed(1)}%</span>
                             <span className={`text-[10px] font-bold uppercase tracking-wider ${
@@ -610,8 +625,8 @@ export function AgencyPortalView({
                       )}
                       {latest.signal_2_actual_pct !== null && (
                         <div className="rounded-xl bg-neutral-50 border border-neutral-100 px-4 py-4">
-                          <p className="text-xs font-semibold text-neutral-700">Content Save Rate (S2)</p>
-                          <p className="text-[10px] text-neutral-400 mb-2 leading-snug">Purchase intent — nurture signal</p>
+                          <p className="text-xs font-semibold text-neutral-700">{signalThresholds?.signal_2_label ?? "Signal 2"}</p>
+                          <p className="text-[10px] text-neutral-400 mb-2 leading-snug">Nurture signal</p>
                           <div className="flex items-baseline justify-between mb-2">
                             <span className="text-2xl font-black text-neutral-900">{latest.signal_2_actual_pct.toFixed(1)}%</span>
                             <span className={`text-[10px] font-bold uppercase tracking-wider ${
@@ -620,10 +635,11 @@ export function AgencyPortalView({
                           </div>
                           {saveValues.length >= 2 ? (
                             <>
-                              <Sparkline values={saveValues} gate={8} color="#d97706" height={72} />
+                              <Sparkline values={saveValues} gate={signalThresholds?.signal_2_threshold_pct ?? undefined} color="#d97706" height={72} />
                               <p className="text-[10px] text-neutral-500 mt-1">
                                 {(saveValues[saveValues.length - 1] - saveValues[saveValues.length - 2]) >= 0 ? "▲ +" : "▼ "}
-                                {(saveValues[saveValues.length - 1] - saveValues[saveValues.length - 2]).toFixed(1)}% vs last week · Gate ≥8%
+                                {(saveValues[saveValues.length - 1] - saveValues[saveValues.length - 2]).toFixed(1)}% vs last week
+                                {signalThresholds?.signal_2_threshold_pct != null ? ` · Gate ≥${signalThresholds.signal_2_threshold_pct}%` : ""}
                               </p>
                             </>
                           ) : (
@@ -633,7 +649,7 @@ export function AgencyPortalView({
                       )}
                       {latest.signal_3_actual_count !== null && (
                         <div className="rounded-xl bg-neutral-50 border border-neutral-100 px-4 py-4">
-                          <p className="text-xs font-semibold text-neutral-700">UGC Volume (S3)</p>
+                          <p className="text-xs font-semibold text-neutral-700">{signalThresholds?.signal_3_label ?? "Signal 3"}</p>
                           <p className="text-[10px] text-neutral-400 mb-2 leading-snug">Organic amplification — demand signal</p>
                           <div className="flex items-baseline justify-between mb-2">
                             <span className="text-2xl font-black text-neutral-900">{latest.signal_3_actual_count} pcs</span>
@@ -643,10 +659,11 @@ export function AgencyPortalView({
                           </div>
                           {ugcValues.length >= 2 ? (
                             <>
-                              <Sparkline values={ugcValues} gate={100} color="#059669" height={72} />
+                              <Sparkline values={ugcValues} gate={signalThresholds?.signal_3_threshold_count ?? undefined} color="#059669" height={72} />
                               <p className="text-[10px] text-neutral-500 mt-1">
                                 {(ugcValues[ugcValues.length - 1] - ugcValues[ugcValues.length - 2]) >= 0 ? "▲ +" : "▼ "}
-                                {ugcValues[ugcValues.length - 1] - ugcValues[ugcValues.length - 2]} vs last week · Gate ≥100 pcs
+                                {ugcValues[ugcValues.length - 1] - ugcValues[ugcValues.length - 2]} vs last week
+                                {signalThresholds?.signal_3_threshold_count != null ? ` · Gate ≥${signalThresholds.signal_3_threshold_count} pcs` : ""}
                               </p>
                             </>
                           ) : (
