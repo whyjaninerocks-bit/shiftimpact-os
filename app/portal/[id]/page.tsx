@@ -6,6 +6,7 @@ import {
   getFrameBrief,
   getIdeaExtensions,
   getLatestCampaignReport,
+  getLatestReleasedCampaignReport,
   getSignalWeeklyReports,
   getPhaseGates,
   getPredictionAccuracyClientSafe,
@@ -183,6 +184,11 @@ export default async function ClientPortalPage({
     );
   }
 
+  // Brand view only ever sees the latest RELEASED report — deliberately a
+  // separate fetch from the agency-facing `report` above, which can be an
+  // unreleased draft the agency is still writing a narrative for.
+  const releasedReport = await getLatestReleasedCampaignReport(id);
+
   const latest = dashboards[0] ?? null;
   const latestSignalWeek = signalReports[0]?.week_number ?? null;
   const activeChannels: string[] = frame?.active_channels ?? [];
@@ -203,15 +209,15 @@ export default async function ClientPortalPage({
 
   // Weekly report visibility — computed once, used by both the nav section
   // list and the section render below.
-  const reportVisible = !!report && (!!report.client_released_at || !!report.portal_published_at);
-  const releasedAt = report ? report.client_released_at ?? report.portal_published_at : null;
+  const reportVisible = !!releasedReport && (!!releasedReport.client_released_at || !!releasedReport.portal_published_at);
+  const releasedAt = releasedReport ? releasedReport.client_released_at ?? releasedReport.portal_published_at : null;
 
   const showChannels = channelHealth.length > 0 || activeChannels.length > 0;
   const showSignalHealth = signalReports.length > 0 && !signalReports[0].flags_suppressed;
   const showReportHistory = reportHistory.length >= 2;
   const latestPosture = reportHistory.length > 0
     ? [...reportHistory].sort((a, b) => b.report_week - a.report_week)[0].risk_posture
-    : report?.risk_posture ?? null;
+    : releasedReport?.risk_posture ?? null;
 
   // Grouped so the sidebar reads as three clusters instead of one flat list
   // of 15 links: what to check this week, the record of what's already
@@ -445,48 +451,53 @@ export default async function ClientPortalPage({
           )}
         </PortalSection>
 
-        {/* ── Signal Health ── */}
+        {/* ── Signal Health — same card language as the agency view's
+             "What do the signals say?" section (rounded-2xl white card, big
+             gate headline, always-visible 3-column health grid) so both
+             portals present this identically instead of the client seeing a
+             smaller, collapsed-by-default version of the same data. ── */}
         {showSignalHealth && (
           <PortalSection id="signal-health" title="Signal health">
-            {/* Topline — always visible */}
-            <Card>
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-neutral-500">Week {signalReports[0].week_number} — measured signals</p>
-                <Badge tone={ragTone(signalReports[0].gate_status ?? "Red")}>
-                  Gate: {signalReports[0].gate_status ?? "—"}
+            <div className="rounded-2xl border bg-white shadow-sm px-6 py-5">
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div>
+                  <p className="text-xs text-neutral-400 uppercase tracking-widest font-semibold mb-1">
+                    Gate signal status
+                  </p>
+                  <p className={`text-2xl font-black ${
+                    signalReports[0].gate_status === "Green" ? "text-emerald-600" : signalReports[0].gate_status === "Amber" ? "text-amber-600" : "text-red-600"
+                  }`}>
+                    {signalReports[0].gate_status === "Green" ? "Gate open" : signalReports[0].gate_status === "Amber" ? "Gate approaching" : "Gate closed"}
+                  </p>
+                  {signalReports[0].gate_note && (
+                    <p className="text-sm text-neutral-600 mt-2 leading-relaxed">{signalReports[0].gate_note}</p>
+                  )}
+                </div>
+                <Badge tone={ragTone(signalReports[0].gate_status ?? "Red")} className="shrink-0 !text-xs !px-3 !py-1">
+                  Week {signalReports[0].week_number}
                 </Badge>
               </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: "Demand", value: signalReports[0].demand_health },
+                  { label: "Nurture", value: signalReports[0].nurture_health },
+                  { label: "Conversion", value: signalReports[0].conversion_health },
+                ].map(({ label, value }) => (
+                  <div key={label} className="bg-neutral-50 rounded-xl p-3 text-center">
+                    <p className="text-[10px] text-neutral-400 font-semibold uppercase tracking-wider mb-2">{label}</p>
+                    <span className={`text-sm font-bold ${
+                      value === "Green" ? "text-emerald-700" : value === "Amber" ? "text-amber-700" : "text-red-700"
+                    }`}>
+                      {value ?? "—"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
               {/* Week-over-week trend — only renders once there are 2+ weeks */}
               <SignalTrajectorySection reports={signalReports} thresholds={signalThresholds} />
-            </Card>
-            {/* Signal breakdown — collapsed by default */}
-            <Collapse label="Signal breakdown" sublabel="Demand · Nurture · Conversion">
-              <div className="grid grid-cols-3 gap-2 mb-3">
-                <div className="text-center bg-neutral-50 rounded-md p-2">
-                  <p className="text-[10px] text-neutral-400 mb-1">Demand</p>
-                  <Badge tone={ragTone(signalReports[0].demand_health ?? "Red")}>
-                    {signalReports[0].demand_health ?? "—"}
-                  </Badge>
-                </div>
-                <div className="text-center bg-neutral-50 rounded-md p-2">
-                  <p className="text-[10px] text-neutral-400 mb-1">Nurture</p>
-                  <Badge tone={ragTone(signalReports[0].nurture_health ?? "Red")}>
-                    {signalReports[0].nurture_health ?? "—"}
-                  </Badge>
-                </div>
-                <div className="text-center bg-neutral-50 rounded-md p-2">
-                  <p className="text-[10px] text-neutral-400 mb-1">Conversion</p>
-                  <Badge tone={ragTone(signalReports[0].conversion_health ?? "Red")}>
-                    {signalReports[0].conversion_health ?? "—"}
-                  </Badge>
-                </div>
-              </div>
-              {signalReports[0].gate_note && (
-                <p className="text-xs text-neutral-500 pt-3 border-t border-neutral-100">
-                  {signalReports[0].gate_note}
-                </p>
-              )}
-            </Collapse>
+            </div>
           </PortalSection>
         )}
 
@@ -504,40 +515,42 @@ export default async function ClientPortalPage({
         {(() => {
           // reportVisible/releasedAt computed above (shared with nav section
           // list). view === "agency" never reaches here — it's handled by
-          // the early return at the top of this component.
-          if (!reportVisible || !report) return null;
+          // the early return at the top of this component. Uses
+          // releasedReport, not the agency-facing `report`, so this card
+          // never shows an unreleased draft to the client.
+          if (!reportVisible || !releasedReport) return null;
 
           return (
             <PortalSection id="weekly-report" title="Weekly intelligence report">
               <Card className="space-y-4">
                 {/* Agency note — shown to brand client after release */}
-                {report.agency_note && (
+                {releasedReport.agency_note && (
                   <div className="bg-blue-50 border-l-4 border-blue-400 rounded-r-lg px-4 py-3">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600 mb-1.5">A note from your agency</p>
-                    <p className="text-sm text-blue-900 leading-relaxed">{report.agency_note}</p>
+                    <p className="text-sm text-blue-900 leading-relaxed">{releasedReport.agency_note}</p>
                   </div>
                 )}
 
                 {/* Header — posture badge sits right up top, visible without scrolling in */}
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-neutral-900 truncate">{report.report_label}</p>
+                    <p className="text-sm font-semibold text-neutral-900 truncate">{releasedReport.report_label}</p>
                     <p className="text-xs text-neutral-400 mt-0.5">
-                      Week {report.report_week} · Reviewed by your strategist
+                      Week {releasedReport.report_week} · Reviewed by your strategist
                     </p>
                   </div>
-                  {report.risk_posture ? (
+                  {releasedReport.risk_posture ? (
                     <span
                       className={`shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border ${
-                        report.risk_posture === "Gaining"
+                        releasedReport.risk_posture === "Gaining"
                           ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                          : report.risk_posture === "Plateauing"
+                          : releasedReport.risk_posture === "Plateauing"
                           ? "bg-amber-50 text-amber-800 border-amber-200"
                           : "bg-red-50 text-red-800 border-red-200"
                       }`}
                     >
-                      <span className={`w-1.5 h-1.5 rounded-full ${POSTURE_DOT[report.risk_posture] ?? "bg-neutral-400"}`} />
-                      {report.risk_posture}
+                      <span className={`w-1.5 h-1.5 rounded-full ${POSTURE_DOT[releasedReport.risk_posture] ?? "bg-neutral-400"}`} />
+                      {releasedReport.risk_posture}
                     </span>
                   ) : (
                     <Badge tone="green">Ready</Badge>
@@ -545,20 +558,20 @@ export default async function ClientPortalPage({
                 </div>
 
                 {/* Executive summary — editorial blockquote, matches hero tone */}
-                {report.executive_summary && (
+                {releasedReport.executive_summary && (
                   <blockquote className="border-l-4 border-neutral-900 pl-4 text-sm text-neutral-700 leading-relaxed">
-                    {report.executive_summary}
+                    {releasedReport.executive_summary}
                   </blockquote>
                 )}
 
                 {/* Intelligence findings — collapsed by default to reduce scroll */}
-                {report.findings.length > 0 && (
+                {releasedReport.findings.length > 0 && (
                   <Collapse
-                    label={`What the data is telling us · ${report.findings.length} finding${report.findings.length !== 1 ? "s" : ""}`}
+                    label={`What the data is telling us · ${releasedReport.findings.length} finding${releasedReport.findings.length !== 1 ? "s" : ""}`}
                     defaultOpen={false}
                   >
                     <div className="space-y-4">
-                      {report.findings.map((f, i) => (
+                      {releasedReport.findings.map((f, i) => (
                         <div key={i} className="border-l-2 border-neutral-200 pl-3">
                           <p className="text-xs font-semibold text-neutral-800 mb-1">{f.headline}</p>
                           <p className="text-xs text-neutral-500 leading-relaxed">{f.implication}</p>

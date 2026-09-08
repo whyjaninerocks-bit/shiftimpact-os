@@ -726,15 +726,20 @@ export async function getBrandAssets(
   return (data ?? []) as BrandAsset[];
 }
 
-export async function getLatestCampaignReport(
-  campaignId: string
+async function fetchLatestReport(
+  campaignId: string,
+  opts: { releasedOnly: boolean }
 ): Promise<CampaignReportClientView | null> {
   const supabase = createAdminClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("campaign_reports")
     .select("id, report_label, executive_summary, findings, risk_posture, status, report_week, created_at, portal_published_at, agency_preview_at, client_released_at, agency_note")
     .eq("campaign_id", campaignId)
-    .in("status", ["ready", "exported"])
+    .in("status", ["ready", "exported"]);
+  if (opts.releasedOnly) {
+    query = query.not("client_released_at", "is", null);
+  }
+  const { data, error } = await query
     // "Latest" means the highest report_week, not whichever row was written
     // to the database most recently — seeding/backfilling earlier weeks
     // after the fact (as happened for this campaign) was silently picking
@@ -773,6 +778,25 @@ export async function getLatestCampaignReport(
     client_released_at: (data.client_released_at as string | null) ?? null,
     agency_note: (data.agency_note as string | null) ?? null,
   };
+}
+
+// Agency-facing: the true latest report regardless of release status, so the
+// agency can always review and act on this week's draft (write a narrative
+// note, release it) even before it has gone out to the client.
+export async function getLatestCampaignReport(
+  campaignId: string
+): Promise<CampaignReportClientView | null> {
+  return fetchLatestReport(campaignId, { releasedOnly: false });
+}
+
+// Brand-facing: the latest report that has actually been released to the
+// client. Deliberately a *different* row than getLatestCampaignReport
+// whenever the agency has a draft in progress — the client should never see
+// an unreleased week's report card, even though the agency needs to.
+export async function getLatestReleasedCampaignReport(
+  campaignId: string
+): Promise<CampaignReportClientView | null> {
+  return fetchLatestReport(campaignId, { releasedOnly: true });
 }
 
 // ─── Brief / Recommendation Compliance ───────────────────────────────────────
