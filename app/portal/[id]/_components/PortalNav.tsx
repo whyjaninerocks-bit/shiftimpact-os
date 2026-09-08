@@ -2,7 +2,16 @@
 
 import { useEffect, useState } from "react";
 import type { GateSignalStatus } from "@/lib/types";
-import { HealthRing, StatusPill, POSTURE_DOT } from "./reportUi";
+import { HealthRing, POSTURE_DOT } from "./reportUi";
+
+// Mirrors the agency sidebar's confidence-word coloring so both sidebars
+// read at the same visual weight (see AgencyPortalView's CONFIDENCE_TONE).
+const GATE_TONE: Record<string, string> = {
+  "On Track": "text-emerald-400",
+  "At Risk": "text-amber-400",
+  Blocked: "text-red-400",
+  Pending: "text-neutral-400",
+};
 
 // ─── Portal nav shell ─────────────────────────────────────────────────────────
 // Desktop: a persistent dark left sidebar (logo, Brand/Agency/Partner view
@@ -100,12 +109,15 @@ export function PortalNav({
     <>
       {/* ── Desktop sidebar ── */}
       <aside className="hidden lg:flex lg:flex-col lg:w-[470px] xl:w-[540px] lg:shrink-0 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto bg-neutral-900 text-white">
-        <div className="p-5 border-b border-white/10">
+        <div className="px-5 pt-5 pb-3 border-b border-white/10">
           <span className="font-bold text-sm tracking-tight">
-            ShiftImpact <span className="text-neutral-500 font-normal">OS</span>
+            ShiftImpact <span className="text-neutral-400 font-normal">OS</span>
           </span>
-          <p className="text-[11px] text-neutral-400 mt-3">{clientName}</p>
-          <p className="text-sm font-semibold truncate">{campaignName}</p>
+        </div>
+
+        <div className="px-5 py-4 border-b border-white/10">
+          <p className="text-xs font-medium text-neutral-400 mb-1">{clientName}</p>
+          <p className="text-lg font-bold leading-tight text-white truncate">{campaignName}</p>
         </div>
 
         <div className="p-4 border-b border-white/10 flex gap-1">
@@ -113,7 +125,7 @@ export function PortalNav({
             <a
               key={v.key}
               href={viewHref(campaignId, v.key, portalToken)}
-              className={`flex-1 text-center text-[11px] font-semibold px-2 py-1.5 rounded-lg transition-colors ${
+              className={`flex-1 text-center text-[11px] font-semibold px-2 py-2 rounded-lg transition-colors ${
                 currentView === v.key
                   ? "bg-white text-neutral-900"
                   : "text-neutral-400 hover:text-white hover:bg-white/5"
@@ -124,12 +136,17 @@ export function PortalNav({
           ))}
         </div>
 
-        <div className="p-5 border-b border-white/10 flex items-center gap-3">
-          <HealthRing value={healthScore} gateSignalStatus={gateSignalStatus} size={56} />
+        <div className="px-6 py-6 border-b border-white/10 flex items-center gap-5">
+          <HealthRing value={healthScore} gateSignalStatus={gateSignalStatus} size={88} />
           <div className="min-w-0">
-            <StatusPill status={gateSignalStatus} />
+            <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-1">
+              Signal confidence
+            </p>
+            <p className={`text-2xl font-black ${GATE_TONE[gateSignalStatus] ?? "text-neutral-400"}`}>
+              {gateSignalStatus}
+            </p>
             {posture && (
-              <p className="text-[11px] text-neutral-400 mt-1.5 flex items-center gap-1.5">
+              <p className="text-xs text-neutral-400 mt-1 flex items-center gap-1.5">
                 <span className={`w-1.5 h-1.5 rounded-full ${POSTURE_DOT[posture] ?? "bg-neutral-500"}`} />
                 {posture}
               </p>
@@ -141,7 +158,7 @@ export function PortalNav({
           {groupSections(sections).map(({ group, items }) => (
             <div key={group} className="mb-3 last:mb-0">
               {group && (
-                <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-widest text-neutral-600">
+                <p className="px-3 pt-2 pb-1.5 text-xs font-semibold uppercase tracking-widest text-neutral-400">
                   {group}
                 </p>
               )}
@@ -149,7 +166,7 @@ export function PortalNav({
                 <a
                   key={s.id}
                   href={`#${s.id}`}
-                  className={`block text-sm px-3 py-2 rounded-lg transition-colors ${
+                  className={`block text-sm px-3 py-2.5 rounded-xl transition-colors ${
                     activeId === s.id
                       ? "bg-white/10 text-white font-semibold"
                       : "text-neutral-400 hover:text-white hover:bg-white/5"
@@ -163,25 +180,38 @@ export function PortalNav({
         </nav>
 
         {weeks.length > 0 && (
-          <div className="p-3 border-t border-white/10">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 px-3 mb-2">
+          <div className="p-4 border-t border-white/10">
+            <p className="text-xs text-neutral-400 uppercase tracking-widest font-semibold px-1 mb-2">
               Report history
             </p>
             <div className="space-y-0.5">
-              {[...weeks].reverse().map((w) => (
-                <a
-                  key={w.week_number}
-                  href="#report-history"
-                  className="flex items-center gap-2 px-3 py-1 text-xs text-neutral-400 hover:text-white transition-colors"
-                >
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                      w.risk_posture ? POSTURE_DOT[w.risk_posture] ?? "bg-neutral-600" : "bg-neutral-600"
+              {[...weeks].reverse().map((w, i) => {
+                const isCurrent = i === 0;
+                return (
+                  <a
+                    key={w.week_number}
+                    href="#report-history"
+                    className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${
+                      isCurrent ? "bg-white/10" : "hover:bg-white/5"
                     }`}
-                  />
-                  Week {w.week_number}
-                </a>
-              ))}
+                  >
+                    <span
+                      className={`w-2 h-2 rounded-full shrink-0 ${
+                        w.risk_posture ? POSTURE_DOT[w.risk_posture] ?? "bg-neutral-600" : "bg-neutral-600"
+                      }`}
+                    />
+                    <span className="text-sm font-semibold text-white">Week {w.week_number}</span>
+                    {w.risk_posture && (
+                      <span className="text-xs text-neutral-400 flex-1">{w.risk_posture}</span>
+                    )}
+                    {isCurrent && (
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-400 ml-1">
+                        now
+                      </span>
+                    )}
+                  </a>
+                );
+              })}
             </div>
           </div>
         )}
