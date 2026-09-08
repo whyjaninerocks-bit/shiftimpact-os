@@ -157,7 +157,12 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
         cv.height = slicePx;
         cv.getContext("2d")!.drawImage(img, 0, yPx, img.width, slicePx, 0, 0, img.width, slicePx);
 
-        pdf.addImage(cv.toDataURL("image/png"), "PNG", MARGIN_X, MARGIN_Y, CONTENT_W, sliceMm);
+        // JPEG instead of PNG for each page slice — the captured content is a
+        // flat, opaque screenshot with no transparency, so lossless PNG buys
+        // nothing but file size. This is what was pushing downloads to tens
+        // of MB; JPEG at 0.85 quality is visually indistinguishable for a
+        // report readout and brings multi-page PDFs comfortably under 1MB.
+        pdf.addImage(cv.toDataURL("image/jpeg", 0.85), "JPEG", MARGIN_X, MARGIN_Y, CONTENT_W, sliceMm);
         yMm = pageEndMm;
       }
 
