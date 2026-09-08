@@ -735,7 +735,13 @@ export async function getLatestCampaignReport(
     .select("id, report_label, executive_summary, findings, risk_posture, status, report_week, created_at, portal_published_at, agency_preview_at, client_released_at, agency_note")
     .eq("campaign_id", campaignId)
     .in("status", ["ready", "exported"])
-    .order("created_at", { ascending: false })
+    // "Latest" means the highest report_week, not whichever row was written
+    // to the database most recently — seeding/backfilling earlier weeks
+    // after the fact (as happened for this campaign) was silently picking
+    // an older week's report here, which fed the agency banner, narrative
+    // note, and release workflow, so it can show "not yet sent for agency
+    // preview" even when the actual current week has already been released.
+    .order("report_week", { ascending: false })
     .limit(1)
     .maybeSingle();
   if (error) throw error;
