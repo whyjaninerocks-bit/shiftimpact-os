@@ -7,8 +7,9 @@
 
 import { useState, useCallback } from "react";
 import type { CampaignOverview, SignalWeeklyReport, PhaseGate, SignalHealth, FrameBrief } from "@/lib/types";
-import type { CampaignReportClientView, CampaignReportClientFinding, ComplianceItem } from "@/lib/data";
+import type { CampaignReportClientView, CampaignReportClientFinding, ComplianceItem, CategorySignalFramework } from "@/lib/data";
 import { AgencyComplianceChecklist } from "./AgencyComplianceChecklist";
+import { CategorySignalSection } from "./CategorySignalSection";
 
 // ─── Sparkline ────────────────────────────────────────────────────────────────
 
@@ -194,6 +195,7 @@ interface AgencyPortalViewProps {
   complianceItems?: ComplianceItem[];
   complianceSourceWeek?: number | null;
   complianceTargetWeek?: number | null;
+  signalFramework?: CategorySignalFramework | null;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -207,6 +209,7 @@ export function AgencyPortalView({
   complianceItems = [],
   complianceSourceWeek = null,
   complianceTargetWeek = null,
+  signalFramework = null,
 }: AgencyPortalViewProps) {
   // signalReports comes in desc order (newest first) — reverse for sparkline
   const signalAsc = [...signalReports].reverse();
@@ -475,6 +478,18 @@ export function AgencyPortalView({
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{campaign.name}</h1>
             <p className="text-sm text-neutral-500 mt-1">{campaign.current_phase} phase · Agency intelligence view</p>
           </div>
+
+          {/* ── Category signal framework — the forefront view for you to
+               narrate the category story to your own client before you
+               release anything: this campaign's own behaviour chain toward
+               its own named business outcome, not a generic dashboard.
+               Same component and same data as the client-facing portal —
+               internal and external tell the same story. ── */}
+          {signalFramework && (
+            <div className="mb-8">
+              <CategorySignalSection framework={signalFramework} />
+            </div>
+          )}
 
           {/* Agency status banner */}
           {!hasAgencyPreview ? (

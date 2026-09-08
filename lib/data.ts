@@ -1192,6 +1192,7 @@ export type PredictionAccuracyClientSafe = {
 export type CategorySignalFramework = {
   business_outcome_label: string;
   category_name: string | null;
+  behaviour_chain: string[];
   leading_signals: { key: string; label: string }[];
   conversion_signals: { key: string; label: string }[];
   lagging_signals: { key: string; label: string }[];
@@ -1216,13 +1217,21 @@ export async function getCategorySignalFramework(
   if (error || !map) return null;
 
   let categoryName: string | null = null;
+  // behaviour_chain — the category's Discover→...→Business Outcome stage
+  // sequence (e.g. FMCG: Awareness, Consideration, Trial, Purchase, Repeat,
+  // Advocacy). Lived in category_attributes since migration 0073 but was
+  // never selected here, so it never reached the portal even though the
+  // "How we're measuring success" card has existed since — this is the
+  // fix for that gap, not new data.
+  let behaviourChain: string[] = [];
   if (map.category_attribute_id) {
     const { data: cat } = await supabase
       .from("category_attributes")
-      .select("category_name")
+      .select("category_name, behaviour_chain")
       .eq("id", map.category_attribute_id)
       .maybeSingle();
     categoryName = cat?.category_name ?? null;
+    behaviourChain = (cat?.behaviour_chain as string[] | null) ?? [];
   }
 
   const allKeys = Array.from(
@@ -1244,6 +1253,7 @@ export async function getCategorySignalFramework(
   return {
     business_outcome_label: map.business_outcome_label,
     category_name: categoryName,
+    behaviour_chain: behaviourChain,
     leading_signals: toDisplay(map.leading_signals),
     conversion_signals: toDisplay(map.conversion_signals),
     lagging_signals: toDisplay(map.lagging_signals),

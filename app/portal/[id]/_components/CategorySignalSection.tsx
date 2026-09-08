@@ -2,24 +2,30 @@ import type { CategorySignalFramework } from "@/lib/data";
 import { SectionHeading } from "./reportUi";
 import { Collapse } from "@/app/portal/_components/Collapse";
 
-// ─── Category Signal Framework — client-facing ───────────────────────────────
-// Replaces the fixed, FMCG-shaped "Demand/Nurture/Conversion" framing with
-// whatever this specific campaign's category actually tracks (a B2B client
-// sees pipeline-stage signals, an FMCG client sees sell-through signals,
-// etc.) — the core fix requested for v2.
+// ─── Category Signal Framework — client-facing, top-of-report ────────────────
+// This is deliberately the FIRST thing anyone sees on the report (rendered
+// above the hero in page.tsx, and mirrored at the top of AgencyPortalView).
+// The reason: when a commercial director or CFO opens this, the first thing
+// they need to see — before any single number — is that this campaign is
+// being read through ITS OWN category's behaviour chain toward ITS OWN named
+// business outcome, not a generic one-size-fits-all dashboard. That claim
+// has to be demonstrably true, not just asserted in a sales deck, so this
+// renders real data: the category, the named outcome, and the actual
+// Discover→...→Outcome stage sequence from category_attributes.behaviour_chain
+// (e.g. FMCG: Awareness→Consideration→Trial→Purchase→Repeat→Advocacy).
 //
-// Deliberately does NOT try to attach real weekly numbers to these signal
-// groups. There is currently no link in the schema between a signal_vocabulary
-// key (e.g. "product_search") and the fixed signal_1_actual_pct-style columns
-// on signal_weekly_reports — signal_thresholds still uses free-text labels
-// typed by a strategist, unconnected to this newer, validated-key system.
-// Forcing a match between the two here would risk mislabeling a number with
-// a signal it doesn't actually measure. So this section shows the honest
-// framework — what's being tracked, in the client's own category language,
-// and whether each signal currently has data behind it — separately from the
-// existing "Latest weekly update" / "Signal health" sections below, which
-// keep showing whatever real weekly numbers already exist. See the git commit
-// this shipped in for the fuller writeup of this gap.
+// Deliberately does NOT try to attach real weekly numbers to the signal
+// chips below the journey. There is currently no link in the schema between
+// a signal_vocabulary key (e.g. "product_search") and the fixed
+// signal_1_actual_pct-style columns on signal_weekly_reports —
+// signal_thresholds still uses free-text labels typed by a strategist,
+// unconnected to this newer, validated-key system. Forcing a match here
+// would risk mislabeling a number with a signal it doesn't actually
+// measure. So this section shows the honest framework — what's being
+// tracked, in the client's own category language, and whether each signal
+// currently has data behind it — separately from "Latest weekly update" /
+// "Signal health" below, which keep showing whatever real weekly numbers
+// already exist.
 
 const CONFIDENCE_COPY: Record<string, { tone: string; line: string }> = {
   "Conversion Measured": {
@@ -35,6 +41,22 @@ const CONFIDENCE_COPY: Record<string, { tone: string; line: string }> = {
     line: "None of our current data matches this category's leading or conversion signals yet — any outcome read today is a likelihood estimate, not a measured result.",
   },
 };
+
+function BehaviourChain({ stages }: { stages: string[] }) {
+  if (stages.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {stages.map((stage, i) => (
+        <div key={stage} className="flex items-center gap-1.5">
+          <span className="text-[11px] font-semibold text-neutral-700 bg-neutral-100 border border-neutral-200 rounded-full px-2.5 py-1">
+            {stage}
+          </span>
+          {i < stages.length - 1 && <span className="text-neutral-300 text-xs">→</span>}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function SignalGroup({
   title,
@@ -89,7 +111,10 @@ export function CategorySignalSection({ framework }: { framework: CategorySignal
 
   return (
     <section className="space-y-3">
-      <SectionHeading title="How we're measuring success" />
+      <SectionHeading
+        title="How we're measuring success"
+        subtitle="This campaign is read through its own category's path to outcome — not a generic dashboard."
+      />
       <div className="rounded-2xl border border-neutral-200 bg-white p-4 space-y-4">
         <div className="flex items-baseline justify-between gap-3">
           <p className="text-base font-semibold text-neutral-900">{framework.business_outcome_label}</p>
@@ -99,6 +124,15 @@ export function CategorySignalSection({ framework }: { framework: CategorySignal
             </span>
           )}
         </div>
+
+        {framework.behaviour_chain.length > 0 && (
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-2">
+              The path we're tracking, for this category
+            </p>
+            <BehaviourChain stages={framework.behaviour_chain} />
+          </div>
+        )}
 
         <div className={`px-3 py-2 rounded-lg border text-[11px] leading-relaxed ${confidence.tone}`}>
           <span className="font-semibold">{framework.confidence_label}.</span> {confidence.line}

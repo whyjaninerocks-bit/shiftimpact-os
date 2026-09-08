@@ -177,6 +177,7 @@ export default async function ClientPortalPage({
         complianceItems={complianceItems}
         complianceSourceWeek={complianceSourceWeek}
         complianceTargetWeek={complianceTargetWeek}
+        signalFramework={signalFramework}
       />
     );
   }
@@ -215,6 +216,7 @@ export default async function ClientPortalPage({
   // of 15 links: what to check this week, the record of what's already
   // happened, and reference material that doesn't change week to week.
   const navSections: NavSection[] = [
+    ...(signalFramework ? [{ id: "measuring-success", label: "How we measure success", group: "This week" }] : []),
     { id: "campaign-health", label: "Campaign health", group: "This week" },
     { id: "weekly-update", label: "Latest update", group: "This week" },
     ...(showSignalHealth ? [{ id: "signal-health", label: "Signal health", group: "This week" }] : []),
@@ -224,7 +226,6 @@ export default async function ClientPortalPage({
     ...(showReportHistory ? [{ id: "report-history", label: "Report history", group: "History & trust" }] : []),
     ...(reportVisible ? [{ id: "weekly-report", label: "Weekly report", group: "History & trust" }] : []),
     { id: "predictions", label: "Predictions", group: "History & trust" },
-    ...(signalFramework ? [{ id: "measuring-success", label: "How we measure success", group: "Reference" }] : []),
     ...(categoryBenchmarks ? [{ id: "benchmarks", label: "Category benchmarks", group: "Reference" }] : []),
     ...(readyBriefs.length > 0 ? [{ id: "channel-briefs", label: "Channel briefs", group: "Reference" }] : []),
     ...(phaseGates.length > 0 ? [{ id: "milestones", label: "Milestones", group: "Reference" }] : []),
@@ -295,6 +296,17 @@ export default async function ClientPortalPage({
 
         <main className="max-w-2xl mx-auto px-4 sm:px-6 py-10 space-y-8">
 
+          {/* ── Category signal framework — deliberately the FIRST thing on
+               the page. Before any number, a commercial director or CFO
+               opening this needs to see that the report is read through
+               THIS campaign's own category behaviour chain toward its own
+               named business outcome — not a generic dashboard. See
+               CategorySignalSection for why this doesn't try to merge in
+               real weekly numbers yet. ── */}
+          <div id="measuring-success" className="scroll-mt-20">
+            <CategorySignalSection framework={signalFramework} />
+          </div>
+
           {/* ── Hero ── */}
           <ReportHero
             clientName={campaign.client_name}
@@ -338,14 +350,6 @@ export default async function ClientPortalPage({
               }
             />
           </section>
-
-          {/* ── Category signal framework — replaces generic Demand/Nurture/Conversion
-               framing with this campaign's actual category-appropriate signals,
-               when one has been built for it (see CategorySignalSection for why
-               this doesn't try to merge in real weekly numbers yet). ── */}
-          <div id="measuring-success" className="scroll-mt-20">
-            <CategorySignalSection framework={signalFramework} />
-          </div>
 
           {/* ── Category benchmark reference — externally sourced industry
                norms, shown as context for how ambitious this campaign's own
