@@ -173,15 +173,25 @@ export async function POST(
       return NextResponse.json({ error: updateErr.message }, { status: 500 });
     }
 
-    // 5. Send email to brand_contact + agency_partner
+    // 5. Mint a portal access token unconditionally — this must not be
+    // gated on Resend being configured. Previously the token only got
+    // minted inside the email-send branch, so any release without a
+    // working Resend key + recipients left the campaign with a report
+    // marked "released" but zero valid tokens ever issued — the portal
+    // chat widget (and portal-notify) would 401 forever for that campaign,
+    // even for a real client visiting a manually-shared link. A working
+    // link should always exist after release; only the automated email
+    // send itself depends on Resend being configured.
+    const portalToken = await mintPortalToken(report.campaign_id);
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.shift-impact.com";
+    const portalUrl = `${appUrl}/portal/${report.campaign_id}?t=${portalToken}`;
+
+    // 6. Send email to brand_contact + agency_partner (only if configured)
     let emailSent = false;
     const resendKey = process.env.RESEND_API_KEY;
     const fromEmail = process.env.RESEND_FROM_EMAIL;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.shift-impact.com";
 
     if (resendKey && fromEmail && allRecipients.length > 0) {
-      const portalToken = await mintPortalToken(report.campaign_id);
-      const portalUrl = `${appUrl}/portal/${report.campaign_id}?t=${portalToken}`;
       const html = buildClientReleaseEmail({
         clientName,
         campaignName: campaign?.name ?? "your campaign",
@@ -218,6 +228,9 @@ export async function POST(
       email_sent: emailSent,
       recipients_count: allRecipients.length,
       recipients: allRecipients.map((e) => `${e.split("@")[0]}@***`),
+      // Always present now that minting isn't gated on Resend — lets the OS
+      // UI offer a manual "copy link" fallback when no email went out.
+      portal_url: portalUrl,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

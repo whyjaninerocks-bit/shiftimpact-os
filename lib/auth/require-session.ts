@@ -68,3 +68,24 @@ export async function assertInternalSession(): Promise<void> {
     throw new Error("Unauthorized — internal session required.");
   }
 }
+
+/**
+ * Non-throwing, boolean-returning check for "is someone logged into the OS
+ * right now" — for routes that accept more than one form of authorization
+ * (e.g. portal-chat / portal-notify, which allow either a valid portal
+ * access token OR an internal OS session) and need to OR the checks rather
+ * than hard-gate on session alone.
+ *
+ * Usage:
+ *   const tokenValid = await verifyPortalToken(campaign_id, token);
+ *   if (!tokenValid && !(await hasInternalSession())) {
+ *     return NextResponse.json({ error: "Invalid or expired access token" }, { status: 401 });
+ *   }
+ */
+export async function hasInternalSession(): Promise<boolean> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return !!user;
+}

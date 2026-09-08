@@ -14,6 +14,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getModel } from "@/lib/ai-model";
 import { verifyPortalToken } from "@/lib/portal/access-token";
+import { hasInternalSession } from "@/lib/auth/require-session";
 
 export const runtime = "nodejs";
 
@@ -399,8 +400,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "campaign_id required" }, { status: 400 });
     }
 
+    // Allow either a valid portal token (client-facing links, emailed on
+    // release) or an internal OS session (strategist/agency previewing the
+    // same campaign from inside the OS — release-to-client may not have
+    // minted a token yet, or Resend may not be configured, and internal
+    // users shouldn't be locked out of testing/using the widget either way).
     const tokenValid = await verifyPortalToken(campaign_id, token);
-    if (!tokenValid) {
+    if (!tokenValid && !(await hasInternalSession())) {
       return NextResponse.json({ error: "Invalid or expired access token" }, { status: 401 });
     }
 

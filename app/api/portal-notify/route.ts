@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPortalEscalation } from "@/lib/email";
 import { verifyPortalToken } from "@/lib/portal/access-token";
+import { hasInternalSession } from "@/lib/auth/require-session";
 
 export const runtime = "nodejs";
 
@@ -44,8 +45,10 @@ export async function POST(req: NextRequest) {
     // Demo mode (the /portal/demo walkthrough) never has a real campaign_id
     // or minted token — leave it untouched, same as portal-chat.
     if (!demo) {
+      // Same OR logic as portal-chat: valid portal token OR internal OS
+      // session — see comment there for why.
       const tokenValid = await verifyPortalToken(campaign_id, token);
-      if (!tokenValid) {
+      if (!tokenValid && !(await hasInternalSession())) {
         return NextResponse.json({ error: "Invalid or expired access token" }, { status: 401 });
       }
     }
