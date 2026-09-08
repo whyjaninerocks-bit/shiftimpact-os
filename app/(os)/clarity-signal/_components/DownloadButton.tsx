@@ -55,7 +55,11 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
         .sort((a, b) => a - b);
 
       // Capture
-      const SCALE = 1.5;
+      // SCALE lowered from 1.5 — kept in sync with the audit tool's
+      // DownloadButton (see that file's comment): longer category-mode
+      // reports pushed file sizes back up even with JPEG encoding, so
+      // pixel area is trimmed further here too (SCALE² factor).
+      const SCALE = 1.2;
       const dataUrl = await (domtoimage as { toPng: (node: HTMLElement, opts: object) => Promise<string> })
         .toPng(content, { scale: SCALE });
 
@@ -159,10 +163,9 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
 
         // JPEG instead of PNG for each page slice — the captured content is a
         // flat, opaque screenshot with no transparency, so lossless PNG buys
-        // nothing but file size. This is what was pushing downloads to tens
-        // of MB; JPEG at 0.85 quality is visually indistinguishable for a
-        // report readout and brings multi-page PDFs comfortably under 1MB.
-        pdf.addImage(cv.toDataURL("image/jpeg", 0.85), "JPEG", MARGIN_X, MARGIN_Y, CONTENT_W, sliceMm);
+        // nothing but file size. Quality dropped 0.85 → 0.65 in sync with
+        // the audit tool's DownloadButton (see that file's comment).
+        pdf.addImage(cv.toDataURL("image/jpeg", 0.65), "JPEG", MARGIN_X, MARGIN_Y, CONTENT_W, sliceMm);
         yMm = pageEndMm;
       }
 

@@ -55,7 +55,13 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
         .sort((a, b) => a - b);
 
       // Capture
-      const SCALE = 1.5;
+      // SCALE lowered from 1.5 — category-mode reports now render 9 signal
+      // cards instead of 5 plus a behaviour-chain section, so page count
+      // (and therefore file size) grew even with JPEG encoding already in
+      // place. Pixel count scales with SCALE², so 1.5 → 1.2 cuts raster
+      // area by ~36% on top of the quality drop below, without a
+      // noticeable legibility hit at normal PDF zoom.
+      const SCALE = 1.2;
       const dataUrl = await (domtoimage as { toPng: (node: HTMLElement, opts: object) => Promise<string> })
         .toPng(content, { scale: SCALE });
 
@@ -159,10 +165,14 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
 
         // JPEG instead of PNG for each page slice — the captured content is a
         // flat, opaque screenshot with no transparency, so lossless PNG buys
-        // nothing but file size. This is what was pushing downloads to tens
-        // of MB; JPEG at 0.85 quality is visually indistinguishable for a
-        // report readout and brings multi-page PDFs comfortably under 1MB.
-        pdf.addImage(cv.toDataURL("image/jpeg", 0.85), "JPEG", MARGIN_X, MARGIN_Y, CONTENT_W, sliceMm);
+        // nothing but file size. Quality dropped 0.85 → 0.65: category-mode
+        // reports (9 signal cards + behaviour chain vs the old fixed 5) run
+        // longer, so the original 0.85/1.5 setting no longer reliably lands
+        // under 1MB. 0.65 is still clean for text-on-white report content —
+        // JPEG artifacting shows up on photo-like gradients, not flat UI —
+        // combined with the SCALE drop above this should land comfortably
+        // under 1MB even for a 9+ page report.
+        pdf.addImage(cv.toDataURL("image/jpeg", 0.65), "JPEG", MARGIN_X, MARGIN_Y, CONTENT_W, sliceMm);
         yMm = pageEndMm;
       }
 
