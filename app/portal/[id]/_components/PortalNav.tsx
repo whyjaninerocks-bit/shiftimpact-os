@@ -99,7 +99,7 @@ export function PortalNav({
   return (
     <>
       {/* ── Desktop sidebar ── */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:shrink-0 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto bg-neutral-900 text-white">
+      <aside className="hidden lg:flex lg:flex-col lg:w-80 lg:shrink-0 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto bg-neutral-900 text-white">
         <div className="p-5 border-b border-white/10">
           <span className="font-bold text-sm tracking-tight">
             ShiftImpact <span className="text-neutral-500 font-normal">OS</span>

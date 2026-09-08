@@ -10,6 +10,7 @@ import type { CampaignOverview, SignalWeeklyReport, PhaseGate, SignalHealth, Fra
 import type { CampaignReportClientView, CampaignReportClientFinding, ComplianceItem, CategorySignalFramework } from "@/lib/data";
 import { AgencyComplianceChecklist } from "./AgencyComplianceChecklist";
 import { CategorySignalSection } from "./CategorySignalSection";
+import { StrategicBetSection } from "./reportUi";
 
 // ─── Sparkline ────────────────────────────────────────────────────────────────
 
@@ -296,7 +297,7 @@ export function AgencyPortalView({
     <div className="min-h-screen bg-neutral-50 text-neutral-900 lg:flex">
 
       {/* ════════════════════════ SIDEBAR ═══════════════════════════════════ */}
-      <aside className="hidden lg:flex flex-col w-[360px] xl:w-[420px] shrink-0 fixed top-0 left-0 h-screen bg-neutral-900 text-white overflow-y-auto z-20">
+      <aside className="hidden lg:flex flex-col w-[470px] xl:w-[540px] shrink-0 fixed top-0 left-0 h-screen bg-neutral-900 text-white overflow-y-auto z-20">
 
         {/* Logo + context */}
         <div className="px-5 pt-5 pb-3 border-b border-white/10">
@@ -461,8 +462,8 @@ export function AgencyPortalView({
       </aside>
 
       {/* ════════════════════════ MAIN ══════════════════════════════════════ */}
-      <main className="w-full lg:pl-[360px] xl:pl-[420px]">
-        <div className="max-w-3xl mx-auto px-4 sm:px-8 py-10">
+      <main className="w-full lg:pl-[470px] xl:pl-[540px]">
+        <div className="max-w-5xl mx-auto px-4 sm:px-8 py-10">
 
           {/* Header */}
           <div className="flex items-center justify-between mb-2">
@@ -486,10 +487,21 @@ export function AgencyPortalView({
                Same component and same data as the client-facing portal —
                internal and external tell the same story. ── */}
           {signalFramework && (
-            <div className="mb-8">
-              <CategorySignalSection framework={signalFramework} />
+            <div className="mb-4">
+              <CategorySignalSection
+                framework={signalFramework}
+                businessOutcomeActual={campaign.business_outcome_actual}
+                businessOutcomeTarget={campaign.business_outcome_target}
+                retentionMetricLabel={campaign.retention_metric_label}
+                retentionMetricActual={campaign.retention_metric_actual}
+                retentionMetricTarget={campaign.retention_metric_target}
+              />
             </div>
           )}
+
+          <div className="mb-8">
+            <StrategicBetSection statement={frame?.clarity_statement ?? null} />
+          </div>
 
           {/* Agency status banner */}
           {!hasAgencyPreview ? (
@@ -585,7 +597,7 @@ export function AgencyPortalView({
                           </div>
                           {searchValues.length >= 2 ? (
                             <>
-                              <Sparkline values={searchValues} color="#6366f1" height={48} />
+                              <Sparkline values={searchValues} color="#6366f1" height={72} />
                               <p className="text-[10px] text-neutral-500 mt-1">
                                 {(searchValues[searchValues.length - 1] - searchValues[searchValues.length - 2]) >= 0 ? "▲ +" : "▼ "}
                                 {(searchValues[searchValues.length - 1] - searchValues[searchValues.length - 2]).toFixed(1)}% vs last week
@@ -608,7 +620,7 @@ export function AgencyPortalView({
                           </div>
                           {saveValues.length >= 2 ? (
                             <>
-                              <Sparkline values={saveValues} gate={8} color="#d97706" height={48} />
+                              <Sparkline values={saveValues} gate={8} color="#d97706" height={72} />
                               <p className="text-[10px] text-neutral-500 mt-1">
                                 {(saveValues[saveValues.length - 1] - saveValues[saveValues.length - 2]) >= 0 ? "▲ +" : "▼ "}
                                 {(saveValues[saveValues.length - 1] - saveValues[saveValues.length - 2]).toFixed(1)}% vs last week · Gate ≥8%
@@ -631,7 +643,7 @@ export function AgencyPortalView({
                           </div>
                           {ugcValues.length >= 2 ? (
                             <>
-                              <Sparkline values={ugcValues} gate={100} color="#059669" height={48} />
+                              <Sparkline values={ugcValues} gate={100} color="#059669" height={72} />
                               <p className="text-[10px] text-neutral-500 mt-1">
                                 {(ugcValues[ugcValues.length - 1] - ugcValues[ugcValues.length - 2]) >= 0 ? "▲ +" : "▼ "}
                                 {ugcValues[ugcValues.length - 1] - ugcValues[ugcValues.length - 2]} vs last week · Gate ≥100 pcs

@@ -99,7 +99,75 @@ function SignalGroup({
   );
 }
 
-export function CategorySignalSection({ framework }: { framework: CategorySignalFramework | null }) {
+// Recap strip — the actual-vs-target numbers behind the business outcome
+// named above. This is deliberately just a recap (same numbers Campaign
+// Health shows further down), not a new metric — the point is a CFO/
+// commercial director scanning only the top of the report still sees where
+// the campaign actually stands against its own named KPI, not just the
+// label.
+function OutcomeRecap({
+  businessOutcomeLabel,
+  businessOutcomeActual,
+  businessOutcomeTarget,
+  retentionMetricLabel,
+  retentionMetricActual,
+  retentionMetricTarget,
+}: {
+  businessOutcomeLabel: string;
+  businessOutcomeActual?: number | null;
+  businessOutcomeTarget?: number | null;
+  retentionMetricLabel?: string | null;
+  retentionMetricActual?: number | null;
+  retentionMetricTarget?: number | null;
+}) {
+  const hasOutcome = businessOutcomeActual != null || businessOutcomeTarget != null;
+  const hasRetention =
+    retentionMetricLabel != null && (retentionMetricActual != null || retentionMetricTarget != null);
+  if (!hasOutcome && !hasRetention) return null;
+
+  return (
+    <div className="grid grid-cols-2 gap-3 pt-1">
+      {hasOutcome && (
+        <div className="rounded-lg bg-neutral-50 border border-neutral-200 px-3 py-2">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-400 truncate">
+            {businessOutcomeLabel}
+          </p>
+          <p className="text-lg font-black text-neutral-900 mt-0.5">
+            {businessOutcomeActual ?? "—"}
+            <span className="text-xs font-semibold text-neutral-400"> / {businessOutcomeTarget ?? "—"}</span>
+          </p>
+        </div>
+      )}
+      {hasRetention && (
+        <div className="rounded-lg bg-neutral-50 border border-neutral-200 px-3 py-2">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-400 truncate">
+            {retentionMetricLabel}
+          </p>
+          <p className="text-lg font-black text-neutral-900 mt-0.5">
+            {retentionMetricActual ?? "—"}
+            <span className="text-xs font-semibold text-neutral-400"> / {retentionMetricTarget ?? "—"}</span>
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function CategorySignalSection({
+  framework,
+  businessOutcomeActual = null,
+  businessOutcomeTarget = null,
+  retentionMetricLabel = null,
+  retentionMetricActual = null,
+  retentionMetricTarget = null,
+}: {
+  framework: CategorySignalFramework | null;
+  businessOutcomeActual?: number | null;
+  businessOutcomeTarget?: number | null;
+  retentionMetricLabel?: string | null;
+  retentionMetricActual?: number | null;
+  retentionMetricTarget?: number | null;
+}) {
   // No active signal map for this campaign yet — say nothing rather than
   // show an empty/half-built section. Unlike the Prediction section (where
   // "no data yet" is itself meaningful to a client watching for results),
@@ -124,6 +192,15 @@ export function CategorySignalSection({ framework }: { framework: CategorySignal
             </span>
           )}
         </div>
+
+        <OutcomeRecap
+          businessOutcomeLabel={framework.business_outcome_label}
+          businessOutcomeActual={businessOutcomeActual}
+          businessOutcomeTarget={businessOutcomeTarget}
+          retentionMetricLabel={retentionMetricLabel}
+          retentionMetricActual={retentionMetricActual}
+          retentionMetricTarget={retentionMetricTarget}
+        />
 
         {framework.behaviour_chain.length > 0 && (
           <div>

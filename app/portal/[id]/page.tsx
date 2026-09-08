@@ -39,7 +39,7 @@ import { ComplianceSection } from "./_components/ComplianceSection";
 import { CategoryBenchmarkSection } from "./_components/CategoryBenchmarkSection";
 import { NeedsAttentionStrip } from "./_components/NeedsAttentionStrip";
 import { ComingSoonSection } from "./_components/ComingSoonSection";
-import { SectionHeading, ReportHero, CampaignHealthCard, POSTURE_DOT } from "./_components/reportUi";
+import { SectionHeading, ReportHero, CampaignHealthCard, POSTURE_DOT, StrategicBetSection } from "./_components/reportUi";
 import { PortalNav, type NavSection, type NavWeek } from "./_components/PortalNav";
 import { Collapse } from "../_components/Collapse";
 
@@ -294,18 +294,7 @@ export default async function ClientPortalPage({
           <span className="text-xs text-neutral-400">{campaign.client_name}</span>
         </header>
 
-        <main className="max-w-2xl mx-auto px-4 sm:px-6 py-10 space-y-8">
-
-          {/* ── Category signal framework — deliberately the FIRST thing on
-               the page. Before any number, a commercial director or CFO
-               opening this needs to see that the report is read through
-               THIS campaign's own category behaviour chain toward its own
-               named business outcome — not a generic dashboard. See
-               CategorySignalSection for why this doesn't try to merge in
-               real weekly numbers yet. ── */}
-          <div id="measuring-success" className="scroll-mt-20">
-            <CategorySignalSection framework={signalFramework} />
-          </div>
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
 
           {/* ── Hero ── */}
           <ReportHero
@@ -313,11 +302,38 @@ export default async function ClientPortalPage({
             campaignName={campaign.name}
             phaseLabel={label}
             kicker={kicker}
-            clarityStatement={clarityStatement}
             strategistReviewed={!!report}
           />
 
           <NeedsAttentionStrip flags={attentionFlags} />
+
+          {/* ── Category signal framework — right after the attention strip,
+               so anything urgent surfaces first and this reads as the next
+               grounding fact, not competing noise before it. Before any
+               number, a commercial director or CFO scanning this needs to
+               see the report is read through THIS campaign's own category
+               behaviour chain toward its own named business outcome — not a
+               generic dashboard — with the real actual-vs-target numbers
+               recapped right there, not buried further down. See
+               CategorySignalSection for why this doesn't try to merge in
+               real weekly signal numbers yet. ── */}
+          <div id="measuring-success" className="scroll-mt-20">
+            <CategorySignalSection
+              framework={signalFramework}
+              businessOutcomeActual={campaign.business_outcome_actual}
+              businessOutcomeTarget={campaign.business_outcome_target}
+              retentionMetricLabel={campaign.retention_metric_label}
+              retentionMetricActual={campaign.retention_metric_actual}
+              retentionMetricTarget={campaign.retention_metric_target}
+            />
+          </div>
+
+          {/* ── Strategic bet — the campaign's evergreen strategy statement
+               (clarity_statement), moved out of the Hero blockquote to sit
+               right after "how we measure success" so the top of the report
+               reads as one continuous story: category → outcome → strategy
+               → this week's specifics. ── */}
+          <StrategicBetSection statement={clarityStatement} />
 
           {/* ── Campaign health — the main visual anchor of the report, so it
                carries more than the score: a real week-over-week posture

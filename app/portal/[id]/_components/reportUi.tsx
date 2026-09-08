@@ -161,7 +161,7 @@ export function CampaignHealthCard({
   primaryGate?: { label: string; current: number; target: number; unit?: string } | null;
 }) {
   return (
-    <div className="rounded-3xl bg-neutral-900 text-white p-5 sm:p-6">
+    <div className="rounded-xl bg-neutral-900 text-white p-5 sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">
@@ -332,20 +332,18 @@ export function ReportHero({
   campaignName,
   phaseLabel,
   kicker,
-  clarityStatement,
   strategistReviewed,
 }: {
   clientName: string;
   campaignName: string;
   phaseLabel: string;
   kicker: string;
-  clarityStatement: string | null;
   strategistReviewed: boolean;
 }) {
   return (
     <div>
       {/* Dark identity strip */}
-      <div className="bg-neutral-900 text-white rounded-3xl px-5 py-4 sm:px-6 sm:py-5 mb-6">
+      <div className="bg-neutral-900 text-white rounded-lg px-5 py-4 sm:px-6 sm:py-5 mb-6">
         <p className="text-[11px] text-neutral-400">{clientName}</p>
         <div className="flex items-end justify-between gap-3 mt-0.5">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{campaignName}</h1>
@@ -365,11 +363,26 @@ export function ReportHero({
           ✓ Strategist reviewed
         </span>
       )}
-      {clarityStatement && (
-        <blockquote className="border-l-4 border-neutral-900 pl-4 text-sm text-neutral-700 leading-relaxed">
-          {clarityStatement}
-        </blockquote>
-      )}
     </div>
+  );
+}
+
+// ─── Strategic bet — the overall campaign strategy, evergreen ────────────────
+// Was previously a blockquote buried inside the Hero; moved to sit directly
+// under the "How we're measuring success" journey card instead, so the flow
+// reads: here's the category story (measuring success) → here's the
+// strategic bet behind it (this) → here's this week's specifics (everything
+// after). Deliberately does NOT repeat weekly — this is clarity_statement,
+// the campaign's stable strategic framing, not the week-to-week "Strategy
+// Note" that already lives in the Latest Weekly Update section further down.
+export function StrategicBetSection({ statement }: { statement: string | null }) {
+  if (!statement) return null;
+  return (
+    <section className="space-y-3">
+      <SectionHeading title="The strategic bet" subtitle="What we're betting the campaign on, and why." />
+      <blockquote className="rounded-2xl border border-neutral-200 bg-white p-4 border-l-4 border-l-neutral-900 text-sm text-neutral-700 leading-relaxed">
+        {statement}
+      </blockquote>
+    </section>
   );
 }

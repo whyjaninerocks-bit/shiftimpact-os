@@ -57,6 +57,7 @@ export function SignalTrajectorySection({
               values={chronological.map((r) => r.signal_1_actual_pct)}
               threshold={thresholds.signal_1_threshold_pct}
               color="#f59e0b"
+              height={70}
             />
             <p className="text-xs font-semibold text-neutral-700 mt-1">
               {latest.signal_1_actual_pct ?? "—"}%
@@ -76,6 +77,7 @@ export function SignalTrajectorySection({
               values={chronological.map((r) => r.signal_2_actual_pct)}
               threshold={thresholds.signal_2_threshold_pct}
               color="#6366f1"
+              height={70}
             />
             <p className="text-xs font-semibold text-neutral-700 mt-1">
               {latest.signal_2_actual_pct ?? "—"}%
@@ -95,6 +97,7 @@ export function SignalTrajectorySection({
               values={chronological.map((r) => r.signal_3_actual_count)}
               threshold={thresholds.signal_3_threshold_count}
               color="#10b981"
+              height={70}
             />
             <p className="text-xs font-semibold text-neutral-700 mt-1">
               {latest.signal_3_actual_count ?? "—"}
