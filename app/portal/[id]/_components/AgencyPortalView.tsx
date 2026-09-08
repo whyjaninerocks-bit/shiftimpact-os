@@ -545,6 +545,53 @@ export function AgencyPortalView({
             </div>
           )}
 
+          {/* ── Agency note editor — moved to the top so the agency writes
+               its weekly narrative before scrolling through the signal
+               detail, not as an afterthought at the bottom of the page. ── */}
+          {hasAgencyPreview && !released && report && (
+            <SectionQ q="✎" label="Your weekly narrative — write before releasing">
+              <div className="rounded-2xl border bg-white shadow-sm px-6 py-5">
+                <p className="text-xs text-neutral-500 leading-relaxed mb-4">
+                  Write a note to accompany this report for the brand client. This appears as a highlighted callout at the top of their portal view.
+                </p>
+                <textarea
+                  className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200 resize-none leading-relaxed transition"
+                  rows={5}
+                  placeholder="E.g. Save rate is building toward the gate — expect Phase 2 unlock within 2 weeks if this week's creative brief is actioned. No cause for concern from our side."
+                  value={agencyNote}
+                  onChange={(e) => {
+                    setAgencyNote(e.target.value);
+                    setNoteStatus("idle");
+                  }}
+                />
+                <div className="flex items-center justify-between mt-3">
+                  <span className={`text-xs font-medium transition ${
+                    noteStatus === "saved" ? "text-emerald-600" : noteStatus === "error" ? "text-red-600" : "text-transparent"
+                  }`}>
+                    {noteStatus === "saved" ? "✓ Note saved" : noteStatus === "error" ? "Save failed — try again" : "·"}
+                  </span>
+                  <button
+                    onClick={saveNote}
+                    disabled={noteSaving}
+                    className="px-4 py-2 rounded-xl bg-neutral-900 text-white text-xs font-semibold hover:bg-neutral-700 disabled:opacity-50 transition"
+                  >
+                    {noteSaving ? "Saving…" : "Save note"}
+                  </button>
+                </div>
+              </div>
+            </SectionQ>
+          )}
+
+          {/* Show saved note (read-only) if already released */}
+          {released && report?.agency_note && (
+            <div className="mb-10">
+              <div className="rounded-2xl bg-blue-50 border border-blue-200 px-5 py-4">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600 mb-2">Your narrative note (sent to brand client)</p>
+                <p className="text-sm text-blue-900 leading-relaxed">{agencyNote || report.agency_note}</p>
+              </div>
+            </div>
+          )}
+
           {/* ── Q1: What do the signals say? ── */}
           {latest && (
             <SectionQ q="01" label="What do the signals say?">
@@ -787,51 +834,6 @@ export function AgencyPortalView({
                 )}
               </div>
             </SectionQ>
-          )}
-
-          {/* ── Agency note editor ── */}
-          {hasAgencyPreview && !released && report && (
-            <SectionQ q="05" label="Add your narrative note">
-              <div className="rounded-2xl border bg-white shadow-sm px-6 py-5">
-                <p className="text-xs text-neutral-500 leading-relaxed mb-4">
-                  Write a note to accompany this report for the brand client. This appears as a highlighted callout at the top of their portal view.
-                </p>
-                <textarea
-                  className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200 resize-none leading-relaxed transition"
-                  rows={5}
-                  placeholder="E.g. Save rate is building toward the gate — expect Phase 2 unlock within 2 weeks if this week's creative brief is actioned. No cause for concern from our side."
-                  value={agencyNote}
-                  onChange={(e) => {
-                    setAgencyNote(e.target.value);
-                    setNoteStatus("idle");
-                  }}
-                />
-                <div className="flex items-center justify-between mt-3">
-                  <span className={`text-xs font-medium transition ${
-                    noteStatus === "saved" ? "text-emerald-600" : noteStatus === "error" ? "text-red-600" : "text-transparent"
-                  }`}>
-                    {noteStatus === "saved" ? "✓ Note saved" : noteStatus === "error" ? "Save failed — try again" : "·"}
-                  </span>
-                  <button
-                    onClick={saveNote}
-                    disabled={noteSaving}
-                    className="px-4 py-2 rounded-xl bg-neutral-900 text-white text-xs font-semibold hover:bg-neutral-700 disabled:opacity-50 transition"
-                  >
-                    {noteSaving ? "Saving…" : "Save note"}
-                  </button>
-                </div>
-              </div>
-            </SectionQ>
-          )}
-
-          {/* Show saved note (read-only) if already released */}
-          {released && report?.agency_note && (
-            <div className="mb-10">
-              <div className="rounded-2xl bg-blue-50 border border-blue-200 px-5 py-4">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600 mb-2">Your narrative note (sent to brand client)</p>
-                <p className="text-sm text-blue-900 leading-relaxed">{agencyNote || report.agency_note}</p>
-              </div>
-            </div>
           )}
 
           {/* ── Release to brand client ── */}
