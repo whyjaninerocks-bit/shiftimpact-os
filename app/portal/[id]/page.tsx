@@ -472,6 +472,21 @@ export default async function ClientPortalPage({
                   {signalReports[0].gate_note && (
                     <p className="text-sm text-neutral-600 mt-2 leading-relaxed">{signalReports[0].gate_note}</p>
                   )}
+                  <div className="mt-2">
+                    <Collapse label="What does this mean?" variant="inline">
+                      <div className="text-xs text-neutral-600 leading-relaxed space-y-2 max-w-md">
+                        <p>
+                          A gate is a checkpoint your campaign must clear before we move budget or attention into the next phase. Demand, Nurture and Conversion are the three stages we track toward that checkpoint, each read from real signals, not assumptions.
+                        </p>
+                        <p>
+                          Green means that stage cleared its target this week. Amber means it is tracking toward target but has not cleared it yet. Red means it is behind and needs a decision.
+                        </p>
+                        <p>
+                          Gate open means every stage required for this checkpoint has cleared, the signal to move forward. Gate approaching means most signals are close but not all have cleared. Gate closed means the case to move forward has not been earned yet, so budget stays where it is.
+                        </p>
+                      </div>
+                    </Collapse>
+                  </div>
                 </div>
                 <Badge tone={ragTone(signalReports[0].gate_status ?? "Red")} className="shrink-0 !text-xs !px-3 !py-1">
                   Week {signalReports[0].week_number}
