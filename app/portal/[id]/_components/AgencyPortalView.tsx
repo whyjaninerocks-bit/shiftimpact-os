@@ -199,6 +199,11 @@ interface AgencyPortalViewProps {
   complianceTargetWeek?: number | null;
   signalFramework?: CategorySignalFramework | null;
   signalThresholds?: SignalThresholdsClientSafe | null;
+  // Threaded through from the ?t= query param so whoever holds the agency
+  // link can also jump to the brand/client view on the same campaign,
+  // carrying the same token, without needing a second link — they already
+  // have access to both, the agency view just never surfaced the other one.
+  portalToken?: string;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -214,7 +219,9 @@ export function AgencyPortalView({
   complianceTargetWeek = null,
   signalFramework = null,
   signalThresholds = null,
+  portalToken,
 }: AgencyPortalViewProps) {
+  const clientViewHref = `/portal/${campaign.id}${portalToken ? `?t=${portalToken}` : ""}`;
   // signalReports comes in desc order (newest first) — reverse for sparkline
   const signalAsc = [...signalReports].reverse();
   const latest = signalReports[0] ?? null;
@@ -481,12 +488,22 @@ export function AgencyPortalView({
       <main className="w-full lg:pl-[470px] xl:pl-[540px]">
         <div className="max-w-5xl mx-auto px-4 sm:px-8 py-10">
 
-          {/* Header */}
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-bold tracking-tight">
+          {/* Header — includes a link to the brand/client view. Whoever holds
+               the agency link already has access to the client-facing report
+               too, this just surfaces it instead of requiring a second link. */}
+          <div className="flex items-center justify-between mb-2 gap-3">
+            <span className="font-bold tracking-tight shrink-0">
               ShiftImpact <span className="text-neutral-400 font-normal text-sm">OS</span>
             </span>
-            <span className="text-xs text-neutral-400">{campaign.client_name} · Agency</span>
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="text-xs text-neutral-400 truncate">{campaign.client_name} · Agency</span>
+              <a
+                href={clientViewHref}
+                className="shrink-0 text-xs font-semibold text-blue-600 hover:text-blue-800 underline decoration-blue-200 transition-colors"
+              >
+                View as client →
+              </a>
+            </div>
           </div>
 
           {/* Title */}

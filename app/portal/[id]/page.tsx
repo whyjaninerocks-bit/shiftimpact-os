@@ -180,6 +180,7 @@ export default async function ClientPortalPage({
         complianceTargetWeek={complianceTargetWeek}
         signalFramework={signalFramework}
         signalThresholds={signalThresholds}
+        portalToken={portalToken}
       />
     );
   }

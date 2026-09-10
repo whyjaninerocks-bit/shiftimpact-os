@@ -55,13 +55,11 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
         .sort((a, b) => a - b);
 
       // Capture
-      // SCALE lowered from 1.5 — category-mode reports now render 9 signal
-      // cards instead of 5 plus a behaviour-chain section, so page count
-      // (and therefore file size) grew even with JPEG encoding already in
-      // place. Pixel count scales with SCALE², so 1.5 → 1.2 cuts raster
-      // area by ~36% on top of the quality drop below, without a
-      // noticeable legibility hit at normal PDF zoom.
-      const SCALE = 1.2;
+      // SCALE raised back from 1.2 — 1.2/0.65 was landing category-mode
+      // reports (9 signal cards + behaviour chain, 10+ pages) noticeably
+      // blurry at normal PDF zoom. 1.5 restores sharp text; file size still
+      // stays well short of email attachment limits even on long reports.
+      const SCALE = 1.5;
       const dataUrl = await (domtoimage as { toPng: (node: HTMLElement, opts: object) => Promise<string> })
         .toPng(content, { scale: SCALE });
 
@@ -165,14 +163,11 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
 
         // JPEG instead of PNG for each page slice — the captured content is a
         // flat, opaque screenshot with no transparency, so lossless PNG buys
-        // nothing but file size. Quality dropped 0.85 → 0.65: category-mode
-        // reports (9 signal cards + behaviour chain vs the old fixed 5) run
-        // longer, so the original 0.85/1.5 setting no longer reliably lands
-        // under 1MB. 0.65 is still clean for text-on-white report content —
-        // JPEG artifacting shows up on photo-like gradients, not flat UI —
-        // combined with the SCALE drop above this should land comfortably
-        // under 1MB even for a 9+ page report.
-        pdf.addImage(cv.toDataURL("image/jpeg", 0.65), "JPEG", MARGIN_X, MARGIN_Y, CONTENT_W, sliceMm);
+        // nothing but file size. Quality raised 0.65 → 0.8 alongside the
+        // SCALE bump above — 0.65/1.2 was visibly blurry on real category-mode
+        // reports. Text stays sharp at 0.8; still meaningfully smaller than
+        // the original 0.85/1.5 that produced multi-MB files on long reports.
+        pdf.addImage(cv.toDataURL("image/jpeg", 0.8), "JPEG", MARGIN_X, MARGIN_Y, CONTENT_W, sliceMm);
         yMm = pageEndMm;
       }
 
