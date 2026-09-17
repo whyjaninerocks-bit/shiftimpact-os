@@ -151,7 +151,7 @@ const sectionGroups = [
       { href: "#creative-fatigue",        label: "Creative Fatigue ⚿" },
       { href: "#message-sequence",        label: "Msg Sequence ⚿" },
       { href: "#audience-replenishment",  label: "Replenishment ⚿" },
-      { href: "#campaign-learning",       label: "Learning Record ⚿" },
+      { href: "#campaign-learning",       label: "Learning Memory ⚿" },
     ],
   },
 ];
