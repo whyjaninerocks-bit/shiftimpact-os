@@ -2,7 +2,9 @@
 
 // PDF generation: dom-to-image-more → jsPDF
 //
-// Four-step page break decision (first match wins):
+// Five-step page break decision (first match wins). Kept in sync with the
+// audit tool's DownloadButton — see that file's comment for the full
+// rationale on step 5.
 //
 //  1. Straddle (rows only)
 //     A break-marked element < 150mm tall starts on this page but its bottom
@@ -19,6 +21,10 @@
 //
 //  4. Paragraph snap (fallback)
 //     Snap to the latest <p>/<li>/<blockquote> bottom within the last 35mm.
+//
+//  5. Never split a paragraph (final safety net)
+//     If the cut falls strictly inside a paragraph's own span, snap up to
+//     its top unconditionally, even past the usual 35mm window.
 
 import { useState } from "react";
 
@@ -46,13 +52,17 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
         return { top: r.top - contentRect.top, bottom: r.bottom - contentRect.top };
       });
 
-      // Paragraph / list-item bottom edges for snap fallback
-      const textBottomsCssPx = Array.from(
+      // Paragraph / list-item bounds — bottoms for the snap fallback (step 4),
+      // full top+bottom spans for the never-split-a-paragraph safety net (step 5).
+      const textElsCssPx = Array.from(
         content.querySelectorAll("p, li, blockquote, dt, dd")
       )
-        .map(el => (el as HTMLElement).getBoundingClientRect().bottom - contentRect.top)
-        .filter(y => y > 4)
-        .sort((a, b) => a - b);
+        .map(el => {
+          const r = (el as HTMLElement).getBoundingClientRect();
+          return { top: r.top - contentRect.top, bottom: r.bottom - contentRect.top };
+        })
+        .filter(t => t.bottom > 4);
+      const textBottomsCssPx = textElsCssPx.map(t => t.bottom).sort((a, b) => a - b);
 
       // Capture
       // SCALE raised back from 1.2 — kept in sync with the audit tool's
@@ -80,6 +90,10 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
         bottom: b.bottom * cssPxToMm,
       }));
       const textBottomsMm = textBottomsCssPx.map(y => y * cssPxToMm);
+      const textBoundsMm  = textElsCssPx.map(t => ({
+        top:    t.top    * cssPxToMm,
+        bottom: t.bottom * cssPxToMm,
+      }));
 
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
@@ -143,6 +157,12 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
               .filter(y => y >= Math.max(snapStart, minFill) && y < pageEndMm)
               .at(-1);
             if (snapCut !== undefined) pageEndMm = snapCut;
+          }
+
+          // ── Step 5: never split a paragraph (final safety net) ──────
+          const straddledText = textBoundsMm.find(t => t.top < pageEndMm && t.bottom > pageEndMm);
+          if (straddledText && straddledText.top >= minFill) {
+            pageEndMm = straddledText.top;
           }
 
           // Safety guard — never create an undersized page
