@@ -1,6 +1,8 @@
 "use client";
 // CampaignLearningSection.tsx
-// Expert Architecture Addition — Campaign Learning Transfer (F18C)
+// Expert Architecture Addition — Learning Memory / Campaign Learning Record (F18C)
+// Renamed for the Brand-Commerce Intelligence Extension v0.1 demo (Task 2) —
+// same table, fetcher and write path as before, copy-only change.
 //
 // SPEC (PRD Addendum v2.3):
 //   At end-of-campaign: captures what worked, what to change, signal insights.
@@ -276,12 +278,12 @@ export function CampaignLearningSection({ campaignId, campaignName, existingReco
   return (
     <Card>
       <div className="flex items-center gap-2 mb-1">
-        <SectionTitle id="campaign-learning">Campaign Learning Transfer</SectionTitle>
+        <SectionTitle id="campaign-learning">Learning Memory</SectionTitle>
         <Badge tone="neutral">F18C ⚿</Badge>
       </div>
       <p className="text-xs text-neutral-400 mb-4">
-        End-of-campaign capture: what worked, signal insights, and pre-populated recommendations
-        for the next brief. SOV:SOM snapshot feeds brand trajectory tracking.
+        Captures what should make the next campaign smarter. One campaign learning is not a
+        proven transferable formula.
       </p>
 
       {editing ? (
@@ -305,10 +307,10 @@ export function CampaignLearningSection({ campaignId, campaignName, existingReco
       ) : (
         <div className="space-y-4">
           <div className="rounded-lg border border-dashed border-neutral-200 bg-neutral-50/50 px-4 py-6 text-center">
-            <p className="text-sm text-neutral-500 font-medium mb-1">No learning record yet</p>
+            <p className="text-sm text-neutral-500 font-medium mb-1">No campaign learning has been recorded yet</p>
             <p className="text-xs text-neutral-400 mb-3">
-              Complete at end-of-flight. Captures what worked, signal accuracy, and pre-populates
-              the next campaign brief.
+              At campaign close, ShiftImpact captures what worked, what changed, which signals
+              mattered, what to reuse, and what to avoid next time.
             </p>
             <button onClick={() => setEditing(true)} className={buttonClass}>
               Create Learning Record
