@@ -1465,6 +1465,163 @@ export async function getGuardrailsClientSafe(
   }));
 }
 
+// ─── Client-facing subset — Cultural-to-Commerce Signal Read (portal) ───────
+// ACCESS RULES: category/market signals only, never client-owned. Deliberately
+// does NOT filter by cultural_signals.client_id — that column is a foreign
+// key into the unrelated `companies` prospect table, not `clients`, so it
+// can't be used to scope a real client's campaign (see Task 5 notes in the
+// project doc). Matches on relevant_industries instead. Only
+// geographic_scope = 'ID' rows are ever returned here — the pre-existing
+// MY/SG rows populated by the weekly cultural-scan cron are never surfaced
+// through this fetcher. The deeper Cultural Entry Point → Meaning Transfer →
+// Proof Stack → Action Path → Brand Power Check read (plus cultural-depth and
+// challenger-brand-learning layers) is parsed out of handoff_brief, which
+// holds it as JSON for these rows specifically — safe to reuse that column
+// this way only because brand_fit_status stays 'pending' on them, which keeps
+// the internal /cultural-radar admin page's Part 3 (handoff panel) from ever
+// rendering it. See the "Task 5 — Signal Read Build + Seed Plan" doc tab.
+export type CulturalSignalRead = {
+  id: string;
+  signalName: string;
+  signalType: string;
+  categoryRelevance: string[];
+  sourceDescription: string;
+  evidence: string;
+  underlyingTension: string | null;
+  brandFitStatus: string;
+  culturalEntryPoint: string | null;
+  meaningTransfer: {
+    meaningActivated: string;
+    meaningSource: string;
+    howItCouldTransferToBrand: string;
+    whereItLandsToday: string;
+    whereItShouldLand: string;
+  } | null;
+  proofStack: string | null;
+  actionPath: string | null;
+  brandPowerCheck: string | null;
+  culturalDepth: {
+    socialSurface: string;
+    marketCulture: string;
+    humanCulture: string;
+    culturalPattern: string;
+    subculturePsychographic: string;
+    languageCodes: string;
+    underlyingTension: string;
+  } | null;
+  brandCommerceTranslation: {
+    creativeImplication: string;
+    proofImplication: string;
+    commerceImplication: string;
+    brandRiskGuardrail: string;
+  } | null;
+  nextSteps: {
+    suggestedNextQuestion: string;
+    suggestedPatternToTest: string;
+    relatedCaseStudyPattern: string;
+  } | null;
+  challengerBrandLearning: {
+    whatChallengersDoWell: string;
+    whatLegacyCanLearn: string;
+    whatNotToCopyBlindly: string;
+  } | null;
+  evidenceConfidence: string | null;
+  sources: string[];
+  manualDemoLabel: string | null;
+};
+
+export async function getCulturalSignalReadClientSafe(
+  industryProfile: string | null
+): Promise<CulturalSignalRead[]> {
+  const supabase = createAdminClient();
+  let query = supabase
+    .from("cultural_signals")
+    .select(
+      "id, signal_name, signal_type, source_description, evidence, why_it_matters, brand_fit_status, handoff_brief, relevant_industries, geographic_scope, status, created_at"
+    )
+    .eq("geographic_scope", "ID")
+    .neq("status", "archived")
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  if (industryProfile) {
+    query = query.contains("relevant_industries", [industryProfile]);
+  }
+
+  const { data, error } = await query;
+  if (error || !data) return [];
+
+  return data.map((row) => {
+    let parsed: Record<string, any> = {};
+    if (row.handoff_brief) {
+      try {
+        parsed = JSON.parse(row.handoff_brief as string) as Record<string, any>;
+      } catch {
+        parsed = {};
+      }
+    }
+    return {
+      id: row.id as string,
+      signalName: row.signal_name as string,
+      signalType: row.signal_type as string,
+      categoryRelevance: (row.relevant_industries as string[]) ?? [],
+      sourceDescription: row.source_description as string,
+      evidence: row.evidence as string,
+      underlyingTension: (row.why_it_matters as string | null) ?? null,
+      brandFitStatus: row.brand_fit_status as string,
+      culturalEntryPoint: parsed.cultural_entry_point ?? null,
+      meaningTransfer: parsed.meaning_transfer
+        ? {
+            meaningActivated: parsed.meaning_transfer.meaning_activated,
+            meaningSource: parsed.meaning_transfer.meaning_source,
+            howItCouldTransferToBrand: parsed.meaning_transfer.how_it_could_transfer_to_brand,
+            whereItLandsToday: parsed.meaning_transfer.where_it_lands_today,
+            whereItShouldLand: parsed.meaning_transfer.where_it_should_land,
+          }
+        : null,
+      proofStack: parsed.proof_stack ?? null,
+      actionPath: parsed.action_path ?? null,
+      brandPowerCheck: parsed.brand_power_check ?? null,
+      culturalDepth: parsed.cultural_depth
+        ? {
+            socialSurface: parsed.cultural_depth.social_surface,
+            marketCulture: parsed.cultural_depth.market_culture,
+            humanCulture: parsed.cultural_depth.human_culture,
+            culturalPattern: parsed.cultural_depth.cultural_pattern,
+            subculturePsychographic: parsed.cultural_depth.subculture_psychographic,
+            languageCodes: parsed.cultural_depth.language_codes,
+            underlyingTension: parsed.cultural_depth.underlying_tension,
+          }
+        : null,
+      brandCommerceTranslation: parsed.brand_commerce_translation
+        ? {
+            creativeImplication: parsed.brand_commerce_translation.creative_implication,
+            proofImplication: parsed.brand_commerce_translation.proof_implication,
+            commerceImplication: parsed.brand_commerce_translation.commerce_implication,
+            brandRiskGuardrail: parsed.brand_commerce_translation.brand_risk_guardrail,
+          }
+        : null,
+      nextSteps: parsed.next_steps
+        ? {
+            suggestedNextQuestion: parsed.next_steps.suggested_next_question,
+            suggestedPatternToTest: parsed.next_steps.suggested_pattern_to_test,
+            relatedCaseStudyPattern: parsed.next_steps.related_case_study_pattern,
+          }
+        : null,
+      challengerBrandLearning: parsed.challenger_brand_learning
+        ? {
+            whatChallengersDoWell: parsed.challenger_brand_learning.what_challengers_do_well,
+            whatLegacyCanLearn: parsed.challenger_brand_learning.what_legacy_can_learn,
+            whatNotToCopyBlindly: parsed.challenger_brand_learning.what_not_to_copy_blindly,
+          }
+        : null,
+      evidenceConfidence: parsed.evidence_confidence ?? null,
+      sources: Array.isArray(parsed.sources) ? parsed.sources : [],
+      manualDemoLabel: parsed.manual_demo_label ?? null,
+    };
+  });
+}
+
 // ─── Client-facing subset — Signal thresholds (portal) ───────────────────────
 // ACCESS RULES: labels + threshold/gate values only — these are the campaign's
 // own agreed targets, already shared with the client at kickoff (same

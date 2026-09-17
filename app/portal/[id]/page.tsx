@@ -23,6 +23,7 @@ import {
   getCategoryBenchmarksClientSafe,
   getSocialCurrencyScore,
   getAiBrandVisibilityScore,
+  getCulturalSignalReadClientSafe,
 } from "@/lib/data";
 import { Badge, Card, ragTone } from "@/app/_components/ui";
 import type { CampaignPhase, IndustryProfile } from "@/lib/types";
@@ -30,6 +31,7 @@ import { PortalChatWidget } from "./_components/PortalChatWidget";
 import { AgencyPortalView } from "./_components/AgencyPortalView";
 import { PredictionTrackSection } from "./_components/PredictionTrackSection";
 import { CategorySignalSection } from "./_components/CategorySignalSection";
+import { CulturalSignalReadSection } from "./_components/CulturalSignalReadSection";
 import { BrandMomentumSection } from "./_components/BrandMomentumSection";
 import { GuardrailsSection } from "./_components/GuardrailsSection";
 import { SignalTrajectorySection } from "./_components/SignalTrajectorySection";
@@ -128,7 +130,7 @@ export default async function ClientPortalPage({
   const campaign = await getCampaign(id);
   if (!campaign) notFound();
 
-  const [frame, dashboards, extensions, report, signalReports, phaseGates, predictionRecords, signalFramework, brandMomentum, signalThresholds, reportHistory, channelHealth, complianceRecord, categoryBenchmarks, socialCurrencyScore, aiVisibilityScore] =
+  const [frame, dashboards, extensions, report, signalReports, phaseGates, predictionRecords, signalFramework, brandMomentum, signalThresholds, reportHistory, channelHealth, complianceRecord, categoryBenchmarks, socialCurrencyScore, aiVisibilityScore, culturalSignalRead] =
     await Promise.all([
       getFrameBrief(id).catch(() => null),
       getDashboards(id),
@@ -146,6 +148,7 @@ export default async function ClientPortalPage({
       getCategoryBenchmarksClientSafe(id),
       getSocialCurrencyScore(id),
       getAiBrandVisibilityScore(id),
+      getCulturalSignalReadClientSafe(campaign.industry_profile),
     ]);
 
   // Guardrails are keyed off the FRAME brief, which just resolved above.
@@ -334,6 +337,16 @@ export default async function ClientPortalPage({
               retentionMetricActual={campaign.retention_metric_actual}
               retentionMetricTarget={campaign.retention_metric_target}
             />
+          </div>
+
+          {/* ── Cultural-to-Commerce Signal Read — Task 5 (Brand-Commerce
+               Intelligence Extension v0.1). Category/market cultural signals,
+               never client-owned, sitting right after "how we're measuring
+               success" so the Brand-Commerce classification above and the
+               cultural read behind it are read as one continuous story. See
+               getCulturalSignalReadClientSafe in lib/data.ts. ── */}
+          <div id="cultural-signal-read" className="scroll-mt-20">
+            <CulturalSignalReadSection signals={culturalSignalRead} />
           </div>
 
           {/* ── Strategic bet — the campaign's evergreen strategy statement
