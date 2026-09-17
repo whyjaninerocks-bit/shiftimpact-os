@@ -1531,10 +1531,20 @@ export type CulturalSignalRead = {
 };
 
 export async function getCulturalSignalReadClientSafe(
-  industryProfile: string | null
+  _industryProfile: string | null
 ): Promise<CulturalSignalRead[]> {
   const supabase = createAdminClient();
-  let query = supabase
+
+  // Deliberately NOT hard-filtering by industryProfile here (kept as a param
+  // for a future, more selective pass). At this pilot stage there are only a
+  // handful of manually-seeded, clearly demo-labelled ID-scoped signals
+  // spanning a few categories on purpose — this is a breadth-of-capability
+  // read for a prospective client, not a simulation of a single real
+  // client's own narrow feed, so all of them are shown together rather than
+  // silently dropping the ones outside this campaign's own category. Every
+  // row is already labelled "Manually researched / demo signal" and its own
+  // categoryRelevance, so nothing here is ever presented as client-specific.
+  const { data, error } = await supabase
     .from("cultural_signals")
     .select(
       "id, signal_name, signal_type, source_description, evidence, why_it_matters, brand_fit_status, handoff_brief, relevant_industries, geographic_scope, status, created_at"
@@ -1543,12 +1553,6 @@ export async function getCulturalSignalReadClientSafe(
     .neq("status", "archived")
     .order("created_at", { ascending: false })
     .limit(5);
-
-  if (industryProfile) {
-    query = query.contains("relevant_industries", [industryProfile]);
-  }
-
-  const { data, error } = await query;
   if (error || !data) return [];
 
   return data.map((row) => {
