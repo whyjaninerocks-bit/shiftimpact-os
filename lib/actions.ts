@@ -6,7 +6,17 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendBriefNotification } from "@/lib/email";
 import { assertInternalSession } from "@/lib/auth/require-session";
 import { computeConfidenceLabel, validateSignalMapKeys } from "@/lib/signal-maps";
-import type { CategoryAttribute, CampaignPhase, MapStatus } from "@/lib/types";
+import type { CategoryAttribute, CampaignPhase, MapStatus, BrandCommerceClassification } from "@/lib/types";
+
+const BRAND_COMMERCE_CLASSIFICATION_VALUES: BrandCommerceClassification[] = [
+  "not_classified",
+  "brand_builder",
+  "commerce_mover",
+  "promo_extractor",
+  "brand_risk",
+  "inefficient_activity",
+  "conversion_blocked",
+];
 import type { ComplianceStatus } from "@/lib/data";
 
 function str(formData: FormData, key: string): string {
@@ -2132,6 +2142,10 @@ export type SaveCampaignSignalMapInput = {
   // complement of available_data. missing_data means "would improve
   // confidence for this campaign," not "everything not selected."
   missing_data: string[];
+  // Brand-Commerce Intelligence Extension v0.1 — strategist-set only, never
+  // auto-computed. Optional: omitted/null defaults to "not_classified" so
+  // this never blocks an existing save flow.
+  classification?: BrandCommerceClassification | null;
 };
 
 export async function saveCampaignSignalMap(input: SaveCampaignSignalMapInput) {
@@ -2163,6 +2177,15 @@ export async function saveCampaignSignalMap(input: SaveCampaignSignalMapInput) {
       .map(([field, keys]) => `${field}: ${keys.join(", ")}`)
       .join(" | ");
     throw new Error(`Unknown signal key(s) — not in signal_vocabulary: ${detail}`);
+  }
+
+  // 1b. Brand-Commerce classification — strategist-set only. Server-side
+  // check redundant with the DB CHECK constraint by design (belt-and-braces:
+  // fails fast with a clear message here rather than surfacing a raw
+  // Postgres constraint violation to the strategist).
+  const classification = input.classification ?? "not_classified";
+  if (!BRAND_COMMERCE_CLASSIFICATION_VALUES.includes(classification)) {
+    throw new Error(`Invalid classification value: ${classification}`);
   }
 
   // 2. Look up the category (for confidence-label defaults) and the
@@ -2218,6 +2241,7 @@ export async function saveCampaignSignalMap(input: SaveCampaignSignalMapInput) {
       confidence_reason: confidence.reason,
       confidence_matched_data: confidence.matched,
       map_status: "draft",
+      classification,
       is_active: true,
     })
     .select()

@@ -864,6 +864,29 @@ export type ConfidenceLabel =
 
 export type MapStatus = "draft" | "reviewed" | "used_in_report";
 
+// Brand-Commerce Intelligence Extension v0.1 — strategist-set only, never
+// auto-computed. Migration: signal_map_brand_commerce_classification.
+// Client-facing labels live in BRAND_COMMERCE_CLASSIFICATION_LABELS below;
+// never render the raw snake_case value directly.
+export type BrandCommerceClassification =
+  | "not_classified"
+  | "brand_builder"
+  | "commerce_mover"
+  | "promo_extractor"
+  | "brand_risk"
+  | "inefficient_activity"
+  | "conversion_blocked";
+
+export const BRAND_COMMERCE_CLASSIFICATION_LABELS: Record<BrandCommerceClassification, string> = {
+  not_classified: "Not Classified",
+  brand_builder: "Brand Builder",
+  commerce_mover: "Commerce Mover",
+  promo_extractor: "Promo Extractor",
+  brand_risk: "Brand Risk",
+  inefficient_activity: "Inefficient Activity",
+  conversion_blocked: "Conversion Blocked",
+};
+
 export type CampaignSignalMap = {
   id: string;
   campaign_id: string;
@@ -882,6 +905,7 @@ export type CampaignSignalMap = {
   confidence_reason: string | null;
   confidence_matched_data: string[]; // which available_data keys triggered the confidence_label
   map_status: MapStatus;
+  classification: BrandCommerceClassification | null; // strategist-set Brand-Commerce read; null/not_classified = no badge shown
   post_hoc_predictive_signal: string | null;
   post_hoc_outcome_notes: string | null;
   is_active: boolean;              // only one active map per campaign_id (partial unique index)

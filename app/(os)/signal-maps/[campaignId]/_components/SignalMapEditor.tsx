@@ -11,12 +11,19 @@ import { useRouter } from "next/navigation";
 import { saveCampaignSignalMap, updateSignalMapStatus, type SaveCampaignSignalMapInput } from "@/lib/actions";
 import { computeConfidenceLabel } from "@/lib/signal-maps";
 import { Card, SectionTitle, Badge, buttonClass, buttonSecondaryClass, inputClass, labelClass } from "@/app/_components/ui";
-import type {
-  CategoryAttribute,
-  SignalVocabulary,
-  CampaignSignalMapWithContext,
-  MapStatus,
+import {
+  BRAND_COMMERCE_CLASSIFICATION_LABELS,
+  type BrandCommerceClassification,
+  type CategoryAttribute,
+  type SignalVocabulary,
+  type CampaignSignalMapWithContext,
+  type MapStatus,
 } from "@/lib/types";
+
+// Order matches the client-facing enum in lib/types.ts.
+const CLASSIFICATION_OPTIONS = Object.keys(
+  BRAND_COMMERCE_CLASSIFICATION_LABELS
+) as BrandCommerceClassification[];
 
 function confidenceTone(label: string | null): "green" | "amber" | "red" | "neutral" {
   if (label === "Conversion Measured") return "green";
@@ -131,6 +138,12 @@ export function SignalMapEditor({
   const [availableData, setAvailableData] = useState<string[]>(activeMap?.available_data ?? []);
   const [availableDataNotes, setAvailableDataNotes] = useState(activeMap?.available_data_notes ?? "");
   const [missingData, setMissingData] = useState<string[]>(activeMap?.missing_data ?? []);
+  // Strategist-set only, never auto-computed. Every save creates a brand new
+  // active row (see handleSave below), so this is carried forward explicitly
+  // from activeMap rather than defaulting to "not_classified" on every save.
+  const [classification, setClassification] = useState<BrandCommerceClassification>(
+    activeMap?.classification ?? "not_classified"
+  );
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -196,6 +209,7 @@ export function SignalMapEditor({
         available_data: availableData,
         available_data_notes: availableDataNotes.trim() || null,
         missing_data: missingData,
+        classification,
       };
       const result = await saveCampaignSignalMap(input);
       setSavedMap(result as unknown as CampaignSignalMapWithContext);
@@ -288,6 +302,25 @@ export function SignalMapEditor({
             onChange={(e) => setProfileName(e.target.value)}
             placeholder='e.g. "Skincare Trust & Routine"'
           />
+        </div>
+
+        <div className="mb-4">
+          <label className={labelClass}>Brand-Commerce classification</label>
+          <p className="text-xs text-neutral-400 mb-1.5">
+            Evidence-informed strategist read. Not auto-scored — set this from what you know about the
+            campaign's actual mix of brand-building vs. commerce/promo mechanics.
+          </p>
+          <select
+            className={inputClass}
+            value={classification}
+            onChange={(e) => setClassification(e.target.value as BrandCommerceClassification)}
+          >
+            {CLASSIFICATION_OPTIONS.map((value) => (
+              <option key={value} value={value}>
+                {BRAND_COMMERCE_CLASSIFICATION_LABELS[value]}
+              </option>
+            ))}
+          </select>
         </div>
 
         {selectedCategory && (

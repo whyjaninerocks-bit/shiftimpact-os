@@ -153,6 +153,21 @@ function OutcomeRecap({
   );
 }
 
+// Brand-Commerce Intelligence Extension v0.1 — strategist-set classification
+// badge. Renders nothing when classification_label is null (covers both "no
+// classification saved yet" and the explicit "not_classified" value — see
+// getCategorySignalFramework in lib/data.ts, which resolves both to null so
+// this component never has to know about the raw enum).
+function BrandCommerceBadge({ label }: { label: string | null }) {
+  if (!label) return null;
+  return (
+    <div className="px-3 py-2 rounded-lg border border-neutral-200 bg-neutral-50 text-[11px] leading-relaxed">
+      <span className="font-semibold text-neutral-800">Brand-Commerce Read: {label}.</span>{" "}
+      <span className="text-neutral-500">Evidence-informed strategist classification. Not auto-scored.</span>
+    </div>
+  );
+}
+
 export function CategorySignalSection({
   framework,
   businessOutcomeActual = null,
@@ -214,6 +229,8 @@ export function CategorySignalSection({
         <div className={`px-3 py-2 rounded-lg border text-[11px] leading-relaxed ${confidence.tone}`}>
           <span className="font-semibold">{framework.confidence_label}.</span> {confidence.line}
         </div>
+
+        <BrandCommerceBadge label={framework.classification_label} />
 
         <Collapse label="Show signal breakdown" variant="inline">
           <div className="space-y-4 pt-1">

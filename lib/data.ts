@@ -1,5 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { BRAND_COMMERCE_CLASSIFICATION_LABELS } from "@/lib/types";
 import type {
+  BrandCommerceClassification,
   AttributionRecord,
   BigIdeaPlatform,
   BrandMomentumScore,
@@ -1219,6 +1221,11 @@ export type PredictionAccuracyClientSafe = {
 // Only reads the row where is_active = true — a campaign can have draft/
 // superseded rows (see Smashburger Tuesdays Launch in prod, 3 rows, 1
 // active) and those must never reach a client.
+// classification_label is the plain-English Brand-Commerce read (e.g. "Commerce
+// Mover"), already resolved from the raw snake_case classification column —
+// CategorySignalSection never sees or renders the raw enum value. null means
+// either no classification set yet, or it's explicitly "not_classified" (both
+// render as "no badge" client-side — see BRAND_COMMERCE_CLASSIFICATION_LABELS).
 export type CategorySignalFramework = {
   business_outcome_label: string;
   category_name: string | null;
@@ -1229,6 +1236,7 @@ export type CategorySignalFramework = {
   confidence_label: string;
   missing_data: { key: string; label: string }[];
   available_data: string[];
+  classification_label: string | null;
 };
 
 export async function getCategorySignalFramework(
@@ -1238,7 +1246,7 @@ export async function getCategorySignalFramework(
   const { data: map, error } = await supabase
     .from("campaign_signal_maps")
     .select(
-      "business_outcome_label, leading_signals, conversion_signals, lagging_signals, confidence_label, missing_data, available_data, category_attribute_id"
+      "business_outcome_label, leading_signals, conversion_signals, lagging_signals, confidence_label, missing_data, available_data, category_attribute_id, classification"
     )
     .eq("campaign_id", campaignId)
     .eq("is_active", true)
@@ -1280,6 +1288,14 @@ export async function getCategorySignalFramework(
   const toDisplay = (keys: string[] | null) =>
     (keys ?? []).map((k) => ({ key: k, label: labelFor(k) }));
 
+  // "not_classified" and null both mean "no badge" client-side — resolve
+  // both to null here rather than pushing that check into the component.
+  const rawClassification = (map.classification as BrandCommerceClassification | null) ?? null;
+  const classificationLabel =
+    rawClassification && rawClassification !== "not_classified"
+      ? BRAND_COMMERCE_CLASSIFICATION_LABELS[rawClassification]
+      : null;
+
   return {
     business_outcome_label: map.business_outcome_label,
     category_name: categoryName,
@@ -1290,6 +1306,7 @@ export async function getCategorySignalFramework(
     confidence_label: map.confidence_label,
     missing_data: toDisplay(map.missing_data),
     available_data: (map.available_data ?? []) as string[],
+    classification_label: classificationLabel,
   };
 }
 
