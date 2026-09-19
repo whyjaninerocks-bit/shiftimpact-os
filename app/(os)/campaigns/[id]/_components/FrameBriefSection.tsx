@@ -12,7 +12,9 @@ import {
   labelClass,
 } from "@/app/_components/ui";
 import { computeGate1Status } from "@/lib/types";
-import type { FrameBrief, IndustryCategory, CampaignPathway } from "@/lib/types";
+import type { FrameBrief, IndustryCategory, CampaignPathway, StrategicBasisSource } from "@/lib/types";
+import type { CulturalSignalPickerRow } from "@/lib/data";
+import { StrategicBasisSourcesPanel } from "./StrategicBasisSourcesPanel";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -163,9 +165,13 @@ function IcsSlider({
 export function FrameBriefSection({
   campaignId,
   frame,
+  strategicBasisSources = [],
+  culturalSignalsForPicker = [],
 }: {
   campaignId: string;
   frame: FrameBrief;
+  strategicBasisSources?: StrategicBasisSource[];
+  culturalSignalsForPicker?: CulturalSignalPickerRow[];
 }) {
   const [enemyOpen, setEnemyOpen] = useState(frame.enemy_active);
   const [elevationOn, setElevationOn] = useState(frame.elevation_mode_enabled);
@@ -477,6 +483,14 @@ export function FrameBriefSection({
                 placeholder="Plain-language summary of the above for client alignment."
               />
             </div>
+
+            <StrategicBasisSourcesPanel
+              campaignId={campaignId}
+              targetType="frame_brief"
+              targetId={frame.id}
+              initialSources={strategicBasisSources}
+              culturalSignals={culturalSignalsForPicker}
+            />
           </div>
         </div>
 

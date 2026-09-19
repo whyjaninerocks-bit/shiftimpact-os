@@ -6,7 +6,15 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendBriefNotification } from "@/lib/email";
 import { assertInternalSession } from "@/lib/auth/require-session";
 import { computeConfidenceLabel, validateSignalMapKeys } from "@/lib/signal-maps";
-import type { CategoryAttribute, CampaignPhase, MapStatus, BrandCommerceClassification } from "@/lib/types";
+import type {
+  CategoryAttribute,
+  CampaignPhase,
+  MapStatus,
+  BrandCommerceClassification,
+  StrategicBasisTargetType,
+  StrategicBasisSourceType,
+  StrategicBasisSource,
+} from "@/lib/types";
 
 const BRAND_COMMERCE_CLASSIFICATION_VALUES: BrandCommerceClassification[] = [
   "not_classified",
@@ -1060,6 +1068,217 @@ export async function setBipLockStatus(campaignId: string, bipId: string, lock: 
 
   revalidatePath(`/campaigns/${campaignId}`);
   redirect(`/campaigns/${campaignId}#bip`);
+}
+
+// ─── Strategic Basis Sources — Signal-to-Creative Citation v0.1 (Stage 4A) ───
+// Captures the strategic basis / supporting insight sources that inform a
+// FRAME Brief or Big Idea Platform. Optional, non-blocking — never gates
+// Gate 1, BIP completeness, or locking. See lib/types.ts and
+// supabase/migrations/0087_strategic_basis_sources.sql for the approved
+// architecture (Stage 3 build plan + Stage 4A approval).
+//
+// target_id is polymorphic and Postgres cannot enforce a real FK on it, so
+// every write here validates the target exists in the matching table AND
+// belongs to the passed campaign_id before touching strategic_basis_sources.
+// This app is demo-first with no per-user permission model yet (see
+// CLAUDE.md — "no login wall in v1"), so "confirm user is allowed to edit
+// the campaign" is implemented the same way the rest of this codebase
+// implements it today: assertInternalSession() (an OS session exists) plus
+// confirming the target row genuinely belongs to that campaign_id. This
+// matches the one other strategist-set, never-auto-computed feature in this
+// file (saveCampaignSignalMap) rather than inventing a new access model.
+
+const STRATEGIC_BASIS_TARGET_TYPES: StrategicBasisTargetType[] = ["frame_brief", "big_idea_platform"];
+
+const STRATEGIC_BASIS_SOURCE_TYPES: StrategicBasisSourceType[] = [
+  "os_cultural_radar_signal",
+  "agency_provided_insight",
+  "client_provided_research",
+  "platform_social_listening_insight",
+  "category_market_report",
+  "creative_team_observation",
+  "strategist_manual_note",
+  "not_applicable",
+];
+
+async function assertStrategicBasisTarget(
+  supabase: ReturnType<typeof createAdminClient>,
+  campaignId: string,
+  targetType: StrategicBasisTargetType,
+  targetId: string
+) {
+  const table = targetType === "frame_brief" ? "frame_briefs" : "big_idea_platforms";
+  const { data, error } = await supabase.from(table).select("id, campaign_id").eq("id", targetId).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) {
+    throw new Error(`${targetType === "frame_brief" ? "FRAME Brief" : "Big Idea Platform"} not found.`);
+  }
+  if ((data as { campaign_id: string }).campaign_id !== campaignId) {
+    throw new Error("This target does not belong to the specified campaign.");
+  }
+}
+
+export type AddStrategicBasisSourceInput = {
+  campaign_id: string;
+  target_type: StrategicBasisTargetType;
+  target_id: string;
+  source_type: Exclude<StrategicBasisSourceType, "not_applicable">;
+  // Required when source_type === "os_cultural_radar_signal"; ignored otherwise.
+  cultural_signal_id?: string | null;
+  // Required for every source_type EXCEPT os_cultural_radar_signal, where the
+  // title is always re-derived server-side from the signal's current name —
+  // a client-supplied title is never trusted for that type.
+  source_title?: string;
+  source_note?: string | null;
+  source_url?: string | null;
+  created_by?: string | null;
+};
+
+export async function addStrategicBasisSource(input: AddStrategicBasisSourceInput) {
+  await assertInternalSession();
+
+  if (!STRATEGIC_BASIS_TARGET_TYPES.includes(input.target_type)) {
+    throw new Error(`Invalid target_type: ${input.target_type}`);
+  }
+  // input.source_type is typed to exclude "not_applicable" already, but this
+  // is a server action — a non-TS or stale-typed caller could still pass it
+  // at runtime, so the check stays. Widened to string so TS doesn't flag the
+  // comparison as unreachable.
+  const rawSourceType = input.source_type as string;
+  if (!STRATEGIC_BASIS_SOURCE_TYPES.includes(input.source_type) || rawSourceType === "not_applicable") {
+    throw new Error(`Invalid source_type: ${input.source_type}`);
+  }
+
+  const supabase = createAdminClient();
+  await assertStrategicBasisTarget(supabase, input.campaign_id, input.target_type, input.target_id);
+
+  let sourceTitle = (input.source_title ?? "").trim();
+  let culturalSignalId: string | null = null;
+
+  if (input.source_type === "os_cultural_radar_signal") {
+    if (!input.cultural_signal_id) {
+      throw new Error("Select a Cultural Radar signal to link.");
+    }
+    const { data: signal, error: signalError } = await supabase
+      .from("cultural_signals")
+      .select("id, signal_name")
+      .eq("id", input.cultural_signal_id)
+      .maybeSingle();
+    if (signalError) throw new Error(signalError.message);
+    if (!signal) throw new Error("Selected Cultural Radar signal not found.");
+    culturalSignalId = (signal as { id: string; signal_name: string }).id;
+    // Snapshot at citation time — see migration 0087 header for why this is
+    // intentional (the citation is a historical record, not a live mirror).
+    sourceTitle = (signal as { id: string; signal_name: string }).signal_name;
+  } else if (!sourceTitle) {
+    throw new Error("Source title is required.");
+  }
+
+  // Adding a real source and 'not_applicable' are mutually exclusive for the
+  // same target. Clear any existing not_applicable marker before inserting —
+  // this is the "remove not_applicable if a strategist later adds a real
+  // source" rule from the approved architecture.
+  await supabase
+    .from("strategic_basis_sources")
+    .delete()
+    .eq("target_type", input.target_type)
+    .eq("target_id", input.target_id)
+    .eq("source_type", "not_applicable");
+
+  const { data: inserted, error } = await supabase
+    .from("strategic_basis_sources")
+    .insert({
+      campaign_id: input.campaign_id,
+      target_type: input.target_type,
+      target_id: input.target_id,
+      source_type: input.source_type,
+      cultural_signal_id: culturalSignalId,
+      source_title: sourceTitle,
+      source_note: input.source_note?.trim() || null,
+      source_url: input.source_url?.trim() || null,
+      created_by: input.created_by ?? null,
+    })
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/campaigns/${input.campaign_id}`);
+  return inserted as StrategicBasisSource;
+}
+
+// Removes a single row — used both for deleting a real cited source and for
+// the "undo" action on a not_applicable marker (which is a row too).
+export async function removeStrategicBasisSource(campaignId: string, sourceId: string) {
+  await assertInternalSession();
+  const supabase = createAdminClient();
+
+  const { data: existing, error: fetchError } = await supabase
+    .from("strategic_basis_sources")
+    .select("id, campaign_id")
+    .eq("id", sourceId)
+    .maybeSingle();
+  if (fetchError) throw new Error(fetchError.message);
+  if (!existing) throw new Error("Strategic basis source not found.");
+  if ((existing as { campaign_id: string }).campaign_id !== campaignId) {
+    throw new Error("This source does not belong to the specified campaign.");
+  }
+
+  const { error } = await supabase.from("strategic_basis_sources").delete().eq("id", sourceId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/campaigns/${campaignId}`);
+}
+
+export type MarkStrategicBasisNotApplicableInput = {
+  campaign_id: string;
+  target_type: StrategicBasisTargetType;
+  target_id: string;
+  created_by?: string | null;
+};
+
+export async function markStrategicBasisNotApplicable(input: MarkStrategicBasisNotApplicableInput) {
+  await assertInternalSession();
+
+  if (!STRATEGIC_BASIS_TARGET_TYPES.includes(input.target_type)) {
+    throw new Error(`Invalid target_type: ${input.target_type}`);
+  }
+
+  const supabase = createAdminClient();
+  await assertStrategicBasisTarget(supabase, input.campaign_id, input.target_type, input.target_id);
+
+  // Conservative direction: don't silently wipe out real citations to mark
+  // a target not-applicable. In the UI this action only ever appears in the
+  // empty state (zero rows), so this guard should never actually trigger —
+  // it exists as a server-side backstop against a stale/racing client.
+  const { data: realSources, error: realError } = await supabase
+    .from("strategic_basis_sources")
+    .select("id")
+    .eq("target_type", input.target_type)
+    .eq("target_id", input.target_id)
+    .neq("source_type", "not_applicable");
+  if (realError) throw new Error(realError.message);
+  if (realSources && realSources.length > 0) {
+    throw new Error(
+      "Remove the existing strategic basis sources for this target before marking it not applicable."
+    );
+  }
+
+  const { data: inserted, error } = await supabase
+    .from("strategic_basis_sources")
+    .insert({
+      campaign_id: input.campaign_id,
+      target_type: input.target_type,
+      target_id: input.target_id,
+      source_type: "not_applicable",
+      source_title: "Not applicable for this campaign",
+      created_by: input.created_by ?? null,
+    })
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/campaigns/${input.campaign_id}`);
+  return inserted as StrategicBasisSource;
 }
 
 // ───────────────────────────────────────────────────────────────────────

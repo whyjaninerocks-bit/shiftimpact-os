@@ -40,6 +40,8 @@ import {
   getAudienceReplenishment,
   getCompetitiveSignalActive,
   getClientCompetitiveIntel,
+  getStrategicBasisSourcesForTarget,
+  getCulturalSignalsForPicker,
 } from "@/lib/data";
 import { getLatestReviewPlatformScore } from "@/lib/data-review-platform";
 import { Badge, ErrorBanner, gateSignalTone, phaseTone } from "@/app/_components/ui";
@@ -217,6 +219,14 @@ export default async function CampaignDetailPage({
 
   const latestSignalWeek = signalReports[0]?.week_number ?? null;
 
+  // Strategic Basis Sources — Signal-to-Creative Citation v0.1 (Stage 4A).
+  // Needs frame.id / bip.id, so this runs after the main Promise.all above.
+  const [frameBasisSources, bipBasisSources, culturalSignalsForPicker] = await Promise.all([
+    getStrategicBasisSourcesForTarget("frame_brief", frame.id),
+    bip ? getStrategicBasisSourcesForTarget("big_idea_platform", bip.id) : Promise.resolve([]),
+    getCulturalSignalsForPicker(),
+  ]);
+
   return (
     <div className="space-y-6">
       <div>
@@ -303,8 +313,21 @@ export default async function CampaignDetailPage({
       </div>
       <CampaignInfoSection campaign={campaign} teamMembers={teamMembers} />
       <DataSourceSetupSection campaignId={id} initialPrefs={dataPreferences} />
-      <FrameBriefSection campaignId={id} frame={frame} />
-      {bip && <BigIdeaPlatformSection campaignId={id} frame={frame} bip={bip} />}
+      <FrameBriefSection
+        campaignId={id}
+        frame={frame}
+        strategicBasisSources={frameBasisSources}
+        culturalSignalsForPicker={culturalSignalsForPicker}
+      />
+      {bip && (
+        <BigIdeaPlatformSection
+          campaignId={id}
+          frame={frame}
+          bip={bip}
+          strategicBasisSources={bipBasisSources}
+          culturalSignalsForPicker={culturalSignalsForPicker}
+        />
+      )}
       {bip && (
         <IqEvaluateSection
           campaignId={id}

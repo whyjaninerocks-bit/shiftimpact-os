@@ -12,7 +12,9 @@ import {
   labelClass,
 } from "@/app/_components/ui";
 import { computeGate1Status, computeBipComplete } from "@/lib/types";
-import type { BigIdeaPlatform, FrameBrief } from "@/lib/types";
+import type { BigIdeaPlatform, FrameBrief, StrategicBasisSource } from "@/lib/types";
+import type { CulturalSignalPickerRow } from "@/lib/data";
+import { StrategicBasisSourcesPanel } from "./StrategicBasisSourcesPanel";
 
 // ─── BipField ─────────────────────────────────────────────────────────────────
 
@@ -185,10 +187,14 @@ export function BigIdeaPlatformSection({
   campaignId,
   frame,
   bip,
+  strategicBasisSources = [],
+  culturalSignalsForPicker = [],
 }: {
   campaignId: string;
   frame: FrameBrief;
   bip: BigIdeaPlatform;
+  strategicBasisSources?: StrategicBasisSource[];
+  culturalSignalsForPicker?: CulturalSignalPickerRow[];
 }) {
   const gate1Passed = computeGate1Status(frame) === "Passed";
   const bipComplete = computeBipComplete(bip);
@@ -326,6 +332,19 @@ export function BigIdeaPlatformSection({
                 locked={locked}
                 rows={3}
               />
+
+              {/* Deliberately visually separate from Cultural Tension above —
+                  its own bordered box with its own heading, so it never reads
+                  as part of that field. See Stage 3/4A naming-conflict note. */}
+              <div className="pt-1">
+                <StrategicBasisSourcesPanel
+                  campaignId={campaignId}
+                  targetType="big_idea_platform"
+                  targetId={bip.id}
+                  initialSources={strategicBasisSources}
+                  culturalSignals={culturalSignalsForPicker}
+                />
+              </div>
             </BipAccordionGroup>
 
             {/* ── Group C: THE EXPRESSION ── */}

@@ -46,6 +46,9 @@ import type {
   // Outcome-Led Signal Mapping (migration 0073/0074) — internal only
   SignalVocabulary,
   CampaignSignalMapWithContext,
+  // Strategic Basis Sources — Signal-to-Creative Citation v0.1 (Stage 4A)
+  StrategicBasisTargetType,
+  StrategicBasisSource,
 } from "@/lib/types";
 
 export async function getClients(): Promise<ClientWithRollups[]> {
@@ -307,6 +310,55 @@ export async function getBigIdeaPlatform(campaignId: string): Promise<BigIdeaPla
     .maybeSingle();
   if (error) throw error;
   return data as BigIdeaPlatform | null;
+}
+
+// ─── Strategic Basis Sources — Signal-to-Creative Citation v0.1 (Stage 4A) ───
+// Internal only (FRAME Brief / Big Idea Platform pages). Optional,
+// non-blocking — see lib/types.ts and supabase/migrations/0087.
+
+export async function getStrategicBasisSourcesForTarget(
+  targetType: StrategicBasisTargetType,
+  targetId: string
+): Promise<StrategicBasisSource[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("strategic_basis_sources")
+    .select("*")
+    .eq("target_type", targetType)
+    .eq("target_id", targetId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data as StrategicBasisSource[]) ?? [];
+}
+
+export async function getStrategicBasisSourcesForCampaign(
+  campaignId: string
+): Promise<StrategicBasisSource[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("strategic_basis_sources")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data as StrategicBasisSource[]) ?? [];
+}
+
+// Lightweight picker list for the "Link OS Cultural Radar signal" flow —
+// id + signal_name only, non-archived, most recent first. Not the full
+// CulturalSignalRead shape (that's the client-safe portal read); this is
+// purely for the internal strategist-facing picker dropdown.
+export type CulturalSignalPickerRow = { id: string; signal_name: string };
+
+export async function getCulturalSignalsForPicker(): Promise<CulturalSignalPickerRow[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("cultural_signals")
+    .select("id, signal_name")
+    .neq("status", "archived")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data as CulturalSignalPickerRow[]) ?? [];
 }
 
 // ─── Signal Intelligence (Feature 12 — Sprint 2) ──────────────────────────────

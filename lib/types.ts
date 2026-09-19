@@ -578,6 +578,42 @@ export function computeBipComplete(bip: BigIdeaPlatform): boolean {
   ].every((f) => f.trim().length > 0);
 }
 
+// ─── Strategic Basis Sources — Signal-to-Creative Citation v0.1 (Stage 4A) ───
+// Captures the strategic basis / supporting insight sources that inform a
+// FRAME Brief or Big Idea Platform. First evidence-trail foundation:
+// culture or insight source → FRAME Brief → Big Idea Platform →
+// (later) Creative Format Read → Connected Intelligence → Learning Memory.
+// Optional, non-blocking — see supabase/migrations/0087_strategic_basis_sources.sql.
+
+export type StrategicBasisTargetType = "frame_brief" | "big_idea_platform";
+
+export type StrategicBasisSourceType =
+  | "os_cultural_radar_signal"
+  | "agency_provided_insight"
+  | "client_provided_research"
+  | "platform_social_listening_insight"
+  | "category_market_report"
+  | "creative_team_observation"
+  | "strategist_manual_note"
+  | "not_applicable";
+
+export type StrategicBasisSource = {
+  id: string;
+  campaign_id: string;
+  target_type: StrategicBasisTargetType;
+  target_id: string;
+  source_type: StrategicBasisSourceType;
+  // Populated only when source_type === "os_cultural_radar_signal" — live
+  // link to the current cultural_signals row (source_title is a snapshot).
+  cultural_signal_id: string | null;
+  source_title: string;
+  source_note: string | null;
+  source_url: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 // ─── Knowledge Base (Feature 15 — Cultural Intelligence & Regulatory Layer) ──
 // Stores uploaded strategic documents: cultural briefs, regulatory guides,
 // market intelligence, and cross-market reference material.
