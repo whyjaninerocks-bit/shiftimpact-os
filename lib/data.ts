@@ -346,17 +346,26 @@ export async function getStrategicBasisSourcesForCampaign(
   return (data as StrategicBasisSource[]) ?? [];
 }
 
-// Lightweight picker list for the "Link OS Cultural Radar signal" flow —
-// id + signal_name only, non-archived, most recent first. Not the full
-// CulturalSignalRead shape (that's the client-safe portal read); this is
-// purely for the internal strategist-facing picker dropdown.
-export type CulturalSignalPickerRow = { id: string; signal_name: string };
+// Picker list for the "Link OS Cultural Radar signal" flow — Stage 4A.2.
+// Non-archived, most recent first. Carries the metadata the campaign-aware
+// grouped picker (lib/cultural-signal-picker.ts) needs to classify each
+// signal deterministically; still not the full CulturalSignalRead shape
+// (that's the client-safe portal read).
+export type CulturalSignalPickerRow = {
+  id: string;
+  signal_name: string;
+  signal_type: string | null;
+  geographic_scope: string | null;
+  relevant_industries: string[] | null;
+  brand_fit_status: string | null;
+  is_trending: boolean | null;
+};
 
 export async function getCulturalSignalsForPicker(): Promise<CulturalSignalPickerRow[]> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("cultural_signals")
-    .select("id, signal_name")
+    .select("id, signal_name, signal_type, geographic_scope, relevant_industries, brand_fit_status, is_trending")
     .neq("status", "archived")
     .order("created_at", { ascending: false });
   if (error) throw error;

@@ -44,6 +44,7 @@ import {
   getCulturalSignalsForPicker,
   getStrategicSynthesisRunsForTarget,
 } from "@/lib/data";
+import { inferCampaignMarket, type CampaignSignalContext } from "@/lib/cultural-signal-picker";
 import { getLatestReviewPlatformScore } from "@/lib/data-review-platform";
 import { Badge, ErrorBanner, gateSignalTone, phaseTone } from "@/app/_components/ui";
 import { CampaignInfoSection } from "./_components/CampaignInfoSection";
@@ -231,6 +232,20 @@ export default async function CampaignDetailPage({
       bip ? getStrategicSynthesisRunsForTarget("big_idea_platform", bip.id) : Promise.resolve([]),
     ]);
 
+  // Campaign-aware signal picker context — Stage 4A.2. industryCategory is
+  // real/reliable (FrameBrief field, same vocabulary as
+  // cultural_signals.relevant_industries). market is best-effort only — see
+  // inferCampaignMarket header note on why no structured market field
+  // exists yet on campaigns/clients/frame_briefs.
+  const campaignSignalContext: CampaignSignalContext = {
+    industryCategory: frame.industry_category ?? null,
+    market: inferCampaignMarket({
+      primaryCulturalContext: frame.primary_cultural_context,
+      clientName: campaign.client_name,
+      industryProfile: campaign.industry_profile,
+    }),
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -322,6 +337,7 @@ export default async function CampaignDetailPage({
         frame={frame}
         strategicBasisSources={frameBasisSources}
         culturalSignalsForPicker={culturalSignalsForPicker}
+        campaignSignalContext={campaignSignalContext}
         strategicSynthesisRuns={frameSynthesisRuns}
       />
       {bip && (
@@ -331,6 +347,7 @@ export default async function CampaignDetailPage({
           bip={bip}
           strategicBasisSources={bipBasisSources}
           culturalSignalsForPicker={culturalSignalsForPicker}
+          campaignSignalContext={campaignSignalContext}
           strategicSynthesisRuns={bipSynthesisRuns}
         />
       )}

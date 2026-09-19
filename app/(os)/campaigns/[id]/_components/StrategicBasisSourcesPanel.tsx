@@ -1,6 +1,11 @@
 "use client";
 
-// Signal-to-Creative Citation v0.1 — Stage 4A build, Stage 4A.1 copy pass.
+// Signal-to-Creative Citation v0.1 — Stage 4A build, Stage 4A.1 copy pass,
+// Stage 4A.2 UX fix (campaign-aware grouped OS Cultural Radar signal picker
+// — see lib/cultural-signal-picker.ts — replacing the flat dropdown; also
+// fixed a red production Server Components render error caused by passing
+// `undefined` as an object property value into the addStrategicBasisSource
+// Server Action call, see the source_title comment in AddSourceForm below).
 // Reusable panel used on both the FRAME Brief page (near clarity_statement)
 // and the Big Idea Platform page (near cultural_tension, but visually
 // separate from it). Captures the strategic basis / supporting insight
@@ -23,7 +28,7 @@
 // signal," "required cultural signal," "cannot proceed," "campaign must
 // select signal."
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   addStrategicBasisSource,
   removeStrategicBasisSource,
@@ -32,6 +37,14 @@ import {
 } from "@/lib/actions";
 import type { StrategicBasisSource, StrategicBasisTargetType, StrategicBasisSourceType } from "@/lib/types";
 import type { CulturalSignalPickerRow } from "@/lib/data";
+import {
+  groupSignals,
+  signalMatchesSearch,
+  displayMarket,
+  SIGNAL_GROUP_LABELS,
+  SIGNAL_GROUP_ORDER,
+  type CampaignSignalContext,
+} from "@/lib/cultural-signal-picker";
 import { buttonClass, buttonSecondaryClass, inputClass, labelClass } from "@/app/_components/ui";
 
 // Target-aware copy — see file header. Keys are StrategicBasisTargetType.
@@ -132,11 +145,115 @@ function SourceRow({
   );
 }
 
+// ─── Campaign-aware grouped Cultural Radar signal picker — Stage 4A.2 ──────
+// Replaces the flat, unscoped dropdown. Deterministic grouping only (see
+// lib/cultural-signal-picker.ts) — no AI ranking, no scoring, no
+// auto-selection. "Other available signals" is never hidden; search filters
+// within groups, it never removes a group from the list.
+
+function SignalChips({ signal }: { signal: CulturalSignalPickerRow }) {
+  return (
+    <div className="flex flex-wrap gap-1 mt-1">
+      <span className="text-[9px] px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500">
+        {displayMarket(signal.geographic_scope)}
+      </span>
+      {signal.relevant_industries && signal.relevant_industries.length > 0 && (
+        <span className="text-[9px] px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500">
+          {signal.relevant_industries.join(", ")}
+        </span>
+      )}
+      {signal.signal_type && (
+        <span className="text-[9px] px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500 capitalize">
+          {signal.signal_type}
+        </span>
+      )}
+      {signal.is_trending && (
+        <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">
+          Currently trending
+        </span>
+      )}
+      {signal.brand_fit_status && (
+        <span className="text-[9px] px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500 capitalize">
+          Brand fit: {signal.brand_fit_status}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function CulturalSignalPicker({
+  signals,
+  campaignSignalContext,
+  selectedId,
+  onSelect,
+}: {
+  signals: CulturalSignalPickerRow[];
+  campaignSignalContext?: CampaignSignalContext;
+  selectedId: string;
+  onSelect: (id: string) => void;
+}) {
+  const [search, setSearch] = useState("");
+
+  const context: CampaignSignalContext = campaignSignalContext ?? { industryCategory: null, market: null };
+  const filtered = useMemo(() => signals.filter((s) => signalMatchesSearch(s, search)), [signals, search]);
+  const grouped = useMemo(() => groupSignals(filtered, context), [filtered, context]);
+
+  return (
+    <div>
+      <label className={labelClass}>Cultural Radar signal</label>
+      <input
+        className={`${inputClass} mb-2`}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.preventDefault();
+        }}
+        placeholder="Search by title, category, market or signal type…"
+      />
+      <div className="border border-neutral-200 rounded-md max-h-64 overflow-y-auto divide-y divide-neutral-100">
+        {SIGNAL_GROUP_ORDER.map((groupKey) => {
+          const rows = grouped[groupKey];
+          if (rows.length === 0) return null;
+          const { title, helper } = SIGNAL_GROUP_LABELS[groupKey];
+          return (
+            <div key={groupKey}>
+              <div className="px-2.5 pt-2 pb-1 bg-neutral-50 sticky top-0">
+                <p className="text-[10px] font-semibold text-neutral-600 uppercase tracking-wide">{title}</p>
+                <p className="text-[10px] text-neutral-400">{helper}</p>
+              </div>
+              {rows.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => onSelect(s.id)}
+                  className={`w-full text-left px-2.5 py-2 hover:bg-neutral-50 ${
+                    selectedId === s.id ? "bg-blue-50" : ""
+                  }`}
+                >
+                  <span className="text-xs font-medium text-neutral-800">{s.signal_name}</span>
+                  <SignalChips signal={s} />
+                </button>
+              ))}
+            </div>
+          );
+        })}
+        {filtered.length === 0 && (
+          <p className="text-xs text-neutral-400 px-2.5 py-3">No signals match this search.</p>
+        )}
+      </div>
+      <p className="text-[10px] text-neutral-400 mt-1">
+        The signal&apos;s current name is saved as the citation label. You can still open the current signal later.
+      </p>
+    </div>
+  );
+}
+
 function AddSourceForm({
   campaignId,
   targetType,
   targetId,
   culturalSignals,
+  campaignSignalContext,
   defaultSourceType,
   onAdded,
   onCancel,
@@ -145,12 +262,16 @@ function AddSourceForm({
   targetType: StrategicBasisTargetType;
   targetId: string;
   culturalSignals: CulturalSignalPickerRow[];
+  campaignSignalContext?: CampaignSignalContext;
   defaultSourceType: AddableSourceType;
   onAdded: (row: StrategicBasisSource) => void;
   onCancel: () => void;
 }) {
   const [sourceType, setSourceType] = useState<AddableSourceType>(defaultSourceType);
-  const [signalId, setSignalId] = useState(culturalSignals[0]?.id ?? "");
+  // Deliberately starts unselected — the grouped picker (Stage 4A.2) never
+  // auto-selects a signal, even the first one in a group. The strategist
+  // must actively choose.
+  const [signalId, setSignalId] = useState("");
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
   const [url, setUrl] = useState("");
@@ -176,6 +297,10 @@ function AddSourceForm({
   // right next to clarity_statement / cultural_tension), and HTML forbids
   // nesting <form> elements. Submission is handled via a plain button click.
   async function handleSubmit() {
+    if (isOsSignal && !signalId) {
+      setError("Select a Cultural Radar signal to link.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -185,7 +310,13 @@ function AddSourceForm({
         target_id: targetId,
         source_type: sourceType,
         cultural_signal_id: isOsSignal ? signalId : null,
-        source_title: isOsSignal ? undefined : title.trim(),
+        // Never pass `undefined` as an object property value into a Server
+        // Action call — this is exactly what was causing the red production
+        // Server Components render error (see file header / Stage 4A.2
+        // fix note below). The server already re-derives the title for OS
+        // signal rows (see addStrategicBasisSource), so "" is a safe,
+        // fully-serializable placeholder that's never actually used.
+        source_title: isOsSignal ? "" : title.trim(),
         source_note: note.trim() || null,
         source_url: url.trim() || null,
       };
@@ -224,19 +355,12 @@ function AddSourceForm({
             </a>
           </p>
         ) : (
-          <div>
-            <label className={labelClass}>Cultural Radar signal</label>
-            <select className={inputClass} value={signalId} onChange={(e) => setSignalId(e.target.value)}>
-              {culturalSignals.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.signal_name}
-                </option>
-              ))}
-            </select>
-            <p className="text-[10px] text-neutral-400 mt-1">
-              The signal&apos;s current name is saved as the citation label. You can still open the current signal later.
-            </p>
-          </div>
+          <CulturalSignalPicker
+            signals={culturalSignals}
+            campaignSignalContext={campaignSignalContext}
+            selectedId={signalId}
+            onSelect={setSignalId}
+          />
         )
       ) : (
         <div>
@@ -282,7 +406,7 @@ function AddSourceForm({
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={saving || (isOsSignal && culturalSignals.length === 0)}
+          disabled={saving || (isOsSignal && (culturalSignals.length === 0 || !signalId))}
           className={buttonClass}
         >
           {saving ? "Saving…" : "Save source"}
@@ -301,6 +425,7 @@ export function StrategicBasisSourcesPanel({
   targetId,
   initialSources,
   culturalSignals,
+  campaignSignalContext,
   synthesisSlot,
 }: {
   campaignId: string;
@@ -308,6 +433,10 @@ export function StrategicBasisSourcesPanel({
   targetId: string;
   initialSources: StrategicBasisSource[];
   culturalSignals: CulturalSignalPickerRow[];
+  // Campaign-aware grouping context for the OS Cultural Radar signal picker
+  // — Stage 4A.2. Optional/undefined degrades gracefully (picker still
+  // works, everything just falls into "broader market" / "other").
+  campaignSignalContext?: CampaignSignalContext;
   // Strategic Synthesis v0.1 (Stage 4C.2) trigger — rendered here so it sits
   // inside this basis panel's own box, per approval. This component has no
   // knowledge of synthesis internals; the caller passes the fully-formed
@@ -434,6 +563,7 @@ export function StrategicBasisSourcesPanel({
           targetType={targetType}
           targetId={targetId}
           culturalSignals={culturalSignals}
+          campaignSignalContext={campaignSignalContext}
           defaultSourceType={addingType}
           onAdded={(row) => {
             setSources((prev) => [...prev.filter((s) => s.source_type !== "not_applicable"), row]);

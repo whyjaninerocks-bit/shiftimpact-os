@@ -14,6 +14,7 @@ import {
 import { computeGate1Status, computeBipComplete } from "@/lib/types";
 import type { BigIdeaPlatform, FrameBrief, StrategicBasisSource, StrategicSynthesisRun } from "@/lib/types";
 import type { CulturalSignalPickerRow } from "@/lib/data";
+import type { CampaignSignalContext } from "@/lib/cultural-signal-picker";
 import { StrategicBasisSourcesPanel } from "./StrategicBasisSourcesPanel";
 import { StrategicSynthesisPanel } from "./StrategicSynthesisPanel";
 
@@ -190,6 +191,7 @@ export function BigIdeaPlatformSection({
   bip,
   strategicBasisSources = [],
   culturalSignalsForPicker = [],
+  campaignSignalContext,
   strategicSynthesisRuns = [],
 }: {
   campaignId: string;
@@ -197,6 +199,7 @@ export function BigIdeaPlatformSection({
   bip: BigIdeaPlatform;
   strategicBasisSources?: StrategicBasisSource[];
   culturalSignalsForPicker?: CulturalSignalPickerRow[];
+  campaignSignalContext?: CampaignSignalContext;
   strategicSynthesisRuns?: StrategicSynthesisRun[];
 }) {
   const gate1Passed = computeGate1Status(frame) === "Passed";
@@ -346,6 +349,7 @@ export function BigIdeaPlatformSection({
                   targetId={bip.id}
                   initialSources={strategicBasisSources}
                   culturalSignals={culturalSignalsForPicker}
+                  campaignSignalContext={campaignSignalContext}
                   synthesisSlot={
                     <StrategicSynthesisPanel
                       campaignId={campaignId}

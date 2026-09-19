@@ -14,6 +14,7 @@ import {
 import { computeGate1Status } from "@/lib/types";
 import type { FrameBrief, IndustryCategory, CampaignPathway, StrategicBasisSource, StrategicSynthesisRun } from "@/lib/types";
 import type { CulturalSignalPickerRow } from "@/lib/data";
+import type { CampaignSignalContext } from "@/lib/cultural-signal-picker";
 import { StrategicBasisSourcesPanel } from "./StrategicBasisSourcesPanel";
 import { StrategicSynthesisPanel } from "./StrategicSynthesisPanel";
 
@@ -168,12 +169,14 @@ export function FrameBriefSection({
   frame,
   strategicBasisSources = [],
   culturalSignalsForPicker = [],
+  campaignSignalContext,
   strategicSynthesisRuns = [],
 }: {
   campaignId: string;
   frame: FrameBrief;
   strategicBasisSources?: StrategicBasisSource[];
   culturalSignalsForPicker?: CulturalSignalPickerRow[];
+  campaignSignalContext?: CampaignSignalContext;
   strategicSynthesisRuns?: StrategicSynthesisRun[];
 }) {
   const [enemyOpen, setEnemyOpen] = useState(frame.enemy_active);
@@ -493,6 +496,7 @@ export function FrameBriefSection({
               targetId={frame.id}
               initialSources={strategicBasisSources}
               culturalSignals={culturalSignalsForPicker}
+              campaignSignalContext={campaignSignalContext}
               synthesisSlot={
                 <StrategicSynthesisPanel
                   campaignId={campaignId}
