@@ -44,7 +44,7 @@ export function OsModuleLinksSection({ campaignId, clientId }: OsModuleLinksSect
           </p>
           <div className="flex flex-col gap-0.5">
             <Link
-              href={`/portal/${campaignId}#cultural-signal-read`}
+              href={`/portal/${campaignId}?view=agency#cultural-signal-read`}
               className="inline-block text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline"
             >
               View client-facing read →

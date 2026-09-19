@@ -31,7 +31,6 @@ import { PortalChatWidget } from "./_components/PortalChatWidget";
 import { AgencyPortalView } from "./_components/AgencyPortalView";
 import { PredictionTrackSection } from "./_components/PredictionTrackSection";
 import { CategorySignalSection } from "./_components/CategorySignalSection";
-import { CulturalSignalReadSection } from "./_components/CulturalSignalReadSection";
 import { BrandMomentumSection } from "./_components/BrandMomentumSection";
 import { GuardrailsSection } from "./_components/GuardrailsSection";
 import { SignalTrajectorySection } from "./_components/SignalTrajectorySection";
@@ -183,6 +182,7 @@ export default async function ClientPortalPage({
         complianceTargetWeek={complianceTargetWeek}
         signalFramework={signalFramework}
         signalThresholds={signalThresholds}
+        culturalSignalRead={culturalSignalRead}
         portalToken={portalToken}
       />
     );
@@ -339,15 +339,12 @@ export default async function ClientPortalPage({
             />
           </div>
 
-          {/* ── Cultural-to-Commerce Signal Read — Task 5 (Brand-Commerce
-               Intelligence Extension v0.1). Category/market cultural signals,
-               never client-owned, sitting right after "how we're measuring
-               success" so the Brand-Commerce classification above and the
-               cultural read behind it are read as one continuous story. See
-               getCulturalSignalReadClientSafe in lib/data.ts. ── */}
-          <div id="cultural-signal-read" className="scroll-mt-20">
-            <CulturalSignalReadSection signals={culturalSignalRead} />
-          </div>
+          {/* Cultural-to-Commerce Signal Read moved to Agency view (Task 5.5
+               Pass A) — see AgencyPortalView.tsx. Deliberately no longer
+               rendered here: this is strategist research material (source
+               description, evidence, challenger-brand learning), not a
+               brand-facing finding. culturalSignalRead is still fetched
+               above and passed through to AgencyPortalView below. */}
 
           {/* ── Strategic bet — the campaign's evergreen strategy statement
                (clarity_statement), moved out of the Hero blockquote to sit

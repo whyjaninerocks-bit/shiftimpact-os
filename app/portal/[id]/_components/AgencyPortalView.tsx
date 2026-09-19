@@ -7,9 +7,10 @@
 
 import { useState, useCallback } from "react";
 import type { CampaignOverview, SignalWeeklyReport, PhaseGate, SignalHealth, FrameBrief } from "@/lib/types";
-import type { CampaignReportClientView, CampaignReportClientFinding, ComplianceItem, CategorySignalFramework, SignalThresholdsClientSafe } from "@/lib/data";
+import type { CampaignReportClientView, CampaignReportClientFinding, ComplianceItem, CategorySignalFramework, SignalThresholdsClientSafe, CulturalSignalRead } from "@/lib/data";
 import { AgencyComplianceChecklist } from "./AgencyComplianceChecklist";
 import { CategorySignalSection } from "./CategorySignalSection";
+import { CulturalSignalReadSection } from "./CulturalSignalReadSection";
 import { StrategicBetSection } from "./reportUi";
 import { Collapse } from "../../_components/Collapse";
 
@@ -199,6 +200,7 @@ interface AgencyPortalViewProps {
   complianceTargetWeek?: number | null;
   signalFramework?: CategorySignalFramework | null;
   signalThresholds?: SignalThresholdsClientSafe | null;
+  culturalSignalRead?: CulturalSignalRead[];
   // Threaded through from the ?t= query param so whoever holds the agency
   // link can also jump to the brand/client view on the same campaign,
   // carrying the same token, without needing a second link — they already
@@ -219,6 +221,7 @@ export function AgencyPortalView({
   complianceTargetWeek = null,
   signalFramework = null,
   signalThresholds = null,
+  culturalSignalRead = [],
   portalToken,
 }: AgencyPortalViewProps) {
   const clientViewHref = `/portal/${campaign.id}${portalToken ? `?t=${portalToken}` : ""}`;
@@ -531,6 +534,19 @@ export function AgencyPortalView({
               />
             </div>
           )}
+
+          {/* ── Cultural & Creative Intelligence — Task 5.5 Pass A. Moved here
+               from Brand view: this is strategist research material (source
+               description, evidence, challenger-brand learning, brand risk
+               guardrails), not a brand-facing finding. Deep-linked from the
+               internal campaign working page's OS Modules panel via
+               ?view=agency#cultural-signal-read. ── */}
+          <div id="cultural-signal-read" className="mb-8 scroll-mt-20">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-3">
+              Cultural &amp; Creative Intelligence
+            </p>
+            <CulturalSignalReadSection signals={culturalSignalRead} />
+          </div>
 
           <div className="mb-8">
             <StrategicBetSection statement={frame?.clarity_statement ?? null} />
