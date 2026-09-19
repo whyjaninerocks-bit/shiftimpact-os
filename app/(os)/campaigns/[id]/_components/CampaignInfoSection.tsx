@@ -6,6 +6,7 @@
 
 import { useTransition } from "react";
 import { updateCampaign } from "@/lib/actions";
+import { MARKET_CODE_OPTIONS } from "@/lib/cultural-signal-picker";
 import type { CampaignOverview, TeamMember } from "@/lib/types";
 import {
   Badge,
@@ -96,6 +97,23 @@ export function CampaignInfoSection({ campaign, teamMembers }: CampaignInfoSecti
                 <option value="At Risk">At Risk</option>
                 <option value="Blocked">Blocked</option>
               </select>
+            </div>
+
+            <div>
+              <label className={labelClass}>Primary market</label>
+              <select
+                name="primary_market_code"
+                defaultValue={campaign.primary_market_code ?? ""}
+                className={inputClass}
+              >
+                <option value="">— Not set —</option>
+                {MARKET_CODE_OPTIONS.map((o) => (
+                  <option key={o.code} value={o.code}>{o.label}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-neutral-500">
+                Used to match campaign-relevant cultural signals. Optional.
+              </p>
             </div>
 
             <div>

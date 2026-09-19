@@ -127,11 +127,36 @@ const MARKET_DISPLAY_NAMES: Record<string, string> = {
   TH: "Thailand",
   PH: "Philippines",
   VN: "Vietnam",
+  SEA: "Southeast Asia",
+  GLOBAL: "Global",
+  OTHER: "Other",
 };
 
 export function displayMarket(code: string | null): string {
   if (!code) return "Market not tagged";
   return MARKET_DISPLAY_NAMES[code] ?? code;
+}
+
+// ─── campaigns.primary_market_code — Stage 4A.3 ────────────────────────────
+// Canonical option list for the "Primary market" control on the campaign
+// page (CampaignInfoSection.tsx) and for server-side validation in
+// updateCampaign() (lib/actions.ts). One source of truth so the UI and the
+// validation allow-list can never drift apart. No DB CHECK constraint —
+// adding a market later is a code change here, not a migration.
+export const MARKET_CODE_OPTIONS: { code: string; label: string }[] = [
+  { code: "MY", label: "Malaysia (MY)" },
+  { code: "ID", label: "Indonesia (ID)" },
+  { code: "SG", label: "Singapore (SG)" },
+  { code: "PH", label: "Philippines (PH)" },
+  { code: "TH", label: "Thailand (TH)" },
+  { code: "VN", label: "Vietnam (VN)" },
+  { code: "SEA", label: "Southeast Asia (SEA)" },
+  { code: "GLOBAL", label: "Global" },
+  { code: "OTHER", label: "Other" },
+];
+
+export function isValidMarketCode(code: string): boolean {
+  return MARKET_CODE_OPTIONS.some((o) => o.code === code);
 }
 
 function hasIndustryOverlap(signalIndustries: string[] | null, campaignCategory: string | null): boolean {

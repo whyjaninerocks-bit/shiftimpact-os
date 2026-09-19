@@ -195,6 +195,11 @@ export type Campaign = {
   status: CampaignStatus;
   created_at: string;
   updated_at: string;
+  // Stage 4A.3 — structured campaign market, nullable/optional by design.
+  // Used only to sharpen Cultural Radar signal picker grouping (matched
+  // against cultural_signals.geographic_scope); never required, never
+  // AI-inferred. See lib/cultural-signal-picker.ts.
+  primary_market_code: string | null;
 };
 
 export type CampaignOverview = Campaign & {

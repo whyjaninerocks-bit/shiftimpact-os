@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendBriefNotification } from "@/lib/email";
 import { assertInternalSession } from "@/lib/auth/require-session";
 import { computeConfidenceLabel, validateSignalMapKeys } from "@/lib/signal-maps";
+import { isValidMarketCode } from "@/lib/cultural-signal-picker";
 import type {
   CategoryAttribute,
   CampaignPhase,
@@ -224,6 +225,20 @@ export async function createCampaign(formData: FormData) {
 
 export async function updateCampaign(campaignId: string, formData: FormData) {
   const supabase = createAdminClient();
+
+  // Stage 4A.3 — primary_market_code. Blank/not-set stays null (never
+  // required, never blocks campaign setup). A non-blank value must be one
+  // of the approved codes — validated against the same MARKET_CODE_OPTIONS
+  // list the <select> in CampaignInfoSection.tsx renders from, since there
+  // is no DB CHECK constraint on this column by design (Stage 4A.3
+  // approval: app-level validation only, so a future market is a code
+  // change, not a migration).
+  const rawMarketCode = str(formData, "primary_market_code").trim();
+  if (rawMarketCode && !isValidMarketCode(rawMarketCode)) {
+    redirect(`/campaigns/${campaignId}?error=${encodeURIComponent(`Invalid market code: ${rawMarketCode}`)}`);
+  }
+  const primaryMarketCode = rawMarketCode || null;
+
   const { error } = await supabase
     .from("campaigns")
     .update({
@@ -239,6 +254,7 @@ export async function updateCampaign(campaignId: string, formData: FormData) {
       retention_metric_target: numOrNull(formData, "retention_metric_target"),
       retention_metric_actual: numOrNull(formData, "retention_metric_actual"),
       status: str(formData, "status"),
+      primary_market_code: primaryMarketCode,
     })
     .eq("id", campaignId);
 

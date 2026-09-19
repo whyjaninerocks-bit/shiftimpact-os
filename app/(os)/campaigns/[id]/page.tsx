@@ -232,18 +232,22 @@ export default async function CampaignDetailPage({
       bip ? getStrategicSynthesisRunsForTarget("big_idea_platform", bip.id) : Promise.resolve([]),
     ]);
 
-  // Campaign-aware signal picker context — Stage 4A.2. industryCategory is
-  // real/reliable (FrameBrief field, same vocabulary as
-  // cultural_signals.relevant_industries). market is best-effort only — see
-  // inferCampaignMarket header note on why no structured market field
-  // exists yet on campaigns/clients/frame_briefs.
+  // Campaign-aware signal picker context — Stage 4A.2, updated Stage 4A.3.
+  // industryCategory is real/reliable (FrameBrief field, same vocabulary as
+  // cultural_signals.relevant_industries). market prefers the structured
+  // campaigns.primary_market_code field (Stage 4A.3) when the strategist has
+  // set it; the free-text inferCampaignMarket() keyword scan is only a
+  // fallback for campaigns that haven't been tagged yet, never overriding a
+  // structured value.
   const campaignSignalContext: CampaignSignalContext = {
     industryCategory: frame.industry_category ?? null,
-    market: inferCampaignMarket({
-      primaryCulturalContext: frame.primary_cultural_context,
-      clientName: campaign.client_name,
-      industryProfile: campaign.industry_profile,
-    }),
+    market:
+      campaign.primary_market_code ||
+      inferCampaignMarket({
+        primaryCulturalContext: frame.primary_cultural_context,
+        clientName: campaign.client_name,
+        industryProfile: campaign.industry_profile,
+      }),
   };
 
   return (
