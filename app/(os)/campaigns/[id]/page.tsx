@@ -44,6 +44,7 @@ import {
 import { getLatestReviewPlatformScore } from "@/lib/data-review-platform";
 import { Badge, ErrorBanner, gateSignalTone, phaseTone } from "@/app/_components/ui";
 import { CampaignInfoSection } from "./_components/CampaignInfoSection";
+import { OsModuleLinksSection } from "./_components/OsModuleLinksSection";
 import { FrameBriefSection } from "./_components/FrameBriefSection";
 import { KillSwitchesSection } from "./_components/KillSwitchesSection";
 import { StageBriefsSection } from "./_components/StageBriefsSection";
@@ -237,6 +238,8 @@ export default async function CampaignDetailPage({
         <ShareBriefWidget campaignId={id} />
         <ShareReportWidget campaignId={id} />
       </div>
+
+      <OsModuleLinksSection campaignId={id} clientId={campaign.client_id} />
 
       <ErrorBanner message={error} />
 
