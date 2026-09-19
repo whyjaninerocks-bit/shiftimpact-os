@@ -279,6 +279,14 @@ function AddSourceForm({
   const [error, setError] = useState<string | null>(null);
 
   const isOsSignal = sourceType === "os_cultural_radar_signal";
+  // Client-side gate mirroring the server's own requirement (lib/actions.ts
+  // addStrategicBasisSource: "Source title is required." for every
+  // non-OS-signal type). This is what previously let an empty-title manual
+  // source reach the server action at all — the Save button's `required`
+  // attribute is never enforced because this is a type="button" click
+  // handler, not a real form submit (see the "Deliberately a <div>, not a
+  // <form>" comment below).
+  const canSubmit = isOsSignal ? !!signalId : title.trim().length > 0;
 
   // This panel renders inside the FRAME Brief / BIP page's own
   // <form action={...}>, which has a real type="submit" button elsewhere in
@@ -297,8 +305,21 @@ function AddSourceForm({
   // right next to clarity_statement / cultural_tension), and HTML forbids
   // nesting <form> elements. Submission is handled via a plain button click.
   async function handleSubmit() {
+    // Known, anticipated validation cases are checked here, client-side,
+    // before the server action is ever called — this is the only way to
+    // show a specific, useful message instead of Next.js's generic
+    // production Server Action error text. Next.js redacts the .message of
+    // ANY thrown Error from a Server Action in production builds (not just
+    // unexpected ones — this applies uniformly, including the server's own
+    // deliberate `throw new Error("Source title is required.")` etc.), so
+    // once a call reaches the server, a real failure there can only ever
+    // surface client-side as that same generic, undifferentiated text.
     if (isOsSignal && !signalId) {
       setError("Select a Cultural Radar signal to link.");
+      return;
+    }
+    if (!isOsSignal && !title.trim()) {
+      setError("Please add a title before saving.");
       return;
     }
     setSaving(true);
@@ -323,7 +344,19 @@ function AddSourceForm({
       const inserted = await addStrategicBasisSource(input);
       onAdded(inserted);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not add this source.");
+      // A thrown Error from a Server Action is redacted to this generic
+      // "Server Components render" / digest text by Next.js in production
+      // builds, regardless of what actually failed server-side (auth,
+      // validation, or a real DB error) — there is no way to recover the
+      // real reason client-side. Showing that raw text to a strategist is
+      // more alarming than useful, so it's replaced with a plain retry
+      // prompt; anything else (a message we don't recognize as the
+      // Next.js redaction shape) is shown as-is, in case a future,
+      // non-redacted error path adds a genuinely specific message.
+      const rawMessage = err instanceof Error ? err.message : "";
+      const isRedactedProductionError =
+        !rawMessage || rawMessage.includes("Server Components render") || rawMessage.includes("digest");
+      setError(isRedactedProductionError ? "Could not save source. Please try again." : rawMessage);
     } finally {
       setSaving(false);
     }
@@ -336,7 +369,14 @@ function AddSourceForm({
         <select
           className={inputClass}
           value={sourceType}
-          onChange={(e) => setSourceType(e.target.value as AddableSourceType)}
+          onChange={(e) => {
+            // A stale error from a previous failed attempt (e.g. "Please
+            // add a title before saving" while on a manual-note type)
+            // should never linger onto a different source type — clear it
+            // whenever the strategist changes what they're trying to save.
+            setSourceType(e.target.value as AddableSourceType);
+            setError(null);
+          }}
         >
           {ADDABLE_SOURCE_TYPES.map((t) => (
             <option key={t} value={t}>
@@ -359,7 +399,10 @@ function AddSourceForm({
             signals={culturalSignals}
             campaignSignalContext={campaignSignalContext}
             selectedId={signalId}
-            onSelect={setSignalId}
+            onSelect={(id) => {
+              setSignalId(id);
+              setError(null);
+            }}
           />
         )
       ) : (
@@ -368,7 +411,10 @@ function AddSourceForm({
           <input
             className={inputClass}
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setError(null);
+            }}
             onKeyDown={preventImplicitFormSubmit}
             placeholder="e.g. Client Q3 brand tracker"
             required
@@ -406,7 +452,7 @@ function AddSourceForm({
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={saving || (isOsSignal && (culturalSignals.length === 0 || !signalId))}
+          disabled={saving || (isOsSignal && culturalSignals.length === 0) || !canSubmit}
           className={buttonClass}
         >
           {saving ? "Saving…" : "Save source"}

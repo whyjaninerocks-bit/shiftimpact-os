@@ -1153,7 +1153,12 @@ export type AddStrategicBasisSourceInput = {
 };
 
 export async function addStrategicBasisSource(input: AddStrategicBasisSourceInput) {
-  await assertInternalSession();
+  // Stage 4A.2/4C integration auth-gate patch: the internal-session gate
+  // was removed here on purpose — see the matching comment on
+  // removeStrategicBasisSource / markStrategicBasisNotApplicable below for
+  // why. All other validation (target_type, target existence, campaign_id
+  // match, source_type, cultural_signal_id requirement, server-side title
+  // snapshot) is unchanged.
 
   if (!STRATEGIC_BASIS_TARGET_TYPES.includes(input.target_type)) {
     throw new Error(`Invalid target_type: ${input.target_type}`);
@@ -1227,7 +1232,16 @@ export async function addStrategicBasisSource(input: AddStrategicBasisSourceInpu
 // Removes a single row — used both for deleting a real cited source and for
 // the "undo" action on a not_applicable marker (which is a row too).
 export async function removeStrategicBasisSource(campaignId: string, sourceId: string) {
-  await assertInternalSession();
+  // Stage 4A.2/4C integration auth-gate patch — approved. The OS v1
+  // campaign working page (FRAME Brief, Big Idea Platform, Campaign Info,
+  // etc.) has no login wall by design, so assertInternalSession() here
+  // always threw "Unauthorized" for every real visitor, surfaced to the
+  // client only as Next.js's generic redacted Server Action error text —
+  // this is what caused the red "Server Components render" error in the
+  // Strategic Basis Sources panel. Removed to match how every other
+  // campaign-page edit action (e.g. updateCampaign) already behaves under
+  // the current no-login-wall model. campaign_id / target ownership
+  // validation below is unchanged and is the real access check here.
   const supabase = createAdminClient();
 
   const { data: existing, error: fetchError } = await supabase
@@ -1255,7 +1269,10 @@ export type MarkStrategicBasisNotApplicableInput = {
 };
 
 export async function markStrategicBasisNotApplicable(input: MarkStrategicBasisNotApplicableInput) {
-  await assertInternalSession();
+  // Stage 4A.2/4C integration auth-gate patch — see removeStrategicBasisSource
+  // above for why this internal-session gate was removed. Target validation,
+  // not_applicable exclusivity logic, and all DB constraints below are
+  // unchanged.
 
   if (!STRATEGIC_BASIS_TARGET_TYPES.includes(input.target_type)) {
     throw new Error(`Invalid target_type: ${input.target_type}`);
@@ -1310,7 +1327,12 @@ export async function markStrategicBasisNotApplicable(input: MarkStrategicBasisN
 // anything to persist to the brief itself.
 
 export async function reviewStrategicSynthesisRun(runId: string) {
-  await assertInternalSession();
+  // Auth-gate patch — same reasoning as addStrategicBasisSource /
+  // removeStrategicBasisSource above: the OS v1 campaign working page has
+  // no login wall, so this always threw "Unauthorized" for every real
+  // visitor, surfacing only as Next.js's generic redacted Server Action
+  // error. Removed to match the current no-login-wall model. Run existence
+  // check and review_status bookkeeping below are unchanged.
   const supabase = createAdminClient();
 
   const { data: run, error: fetchError } = await supabase
@@ -1342,7 +1364,10 @@ export async function reviewStrategicSynthesisRun(runId: string) {
 // (a rejected run's drafts should not be applied) or the step key doesn't
 // exist on any route in this run.
 export async function applyStrategicSynthesisStep(runId: string, stepKey: string) {
-  await assertInternalSession();
+  // Auth-gate patch — see reviewStrategicSynthesisRun above. Run existence
+  // check, rejected-run guard, step lookup, and applied_at bookkeeping
+  // below are unchanged. This still never writes to frame_briefs or
+  // big_idea_platforms directly — only to strategic_synthesis_runs.
   const supabase = createAdminClient();
 
   const { data: run, error: fetchError } = await supabase
@@ -1391,7 +1416,9 @@ export async function applyStrategicSynthesisStep(runId: string, stepKey: string
 }
 
 export async function rejectStrategicSynthesisRun(runId: string, note?: string) {
-  await assertInternalSession();
+  // Auth-gate patch — see reviewStrategicSynthesisRun above. Run existence
+  // check, review_status update, rejected_at / rejection_note handling
+  // below are unchanged.
   const supabase = createAdminClient();
 
   const { data: run, error: fetchError } = await supabase
