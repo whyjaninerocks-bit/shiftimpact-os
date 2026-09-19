@@ -1,16 +1,27 @@
 "use client";
 
-// Signal-to-Creative Citation v0.1 — Stage 4A build.
+// Signal-to-Creative Citation v0.1 — Stage 4A build, Stage 4A.1 copy pass.
 // Reusable panel used on both the FRAME Brief page (near clarity_statement)
 // and the Big Idea Platform page (near cultural_tension, but visually
 // separate from it). Captures the strategic basis / supporting insight
-// sources that inform that brief — optional and non-blocking. Never gates
+// sources that inform that target — optional and non-blocking. Never gates
 // Gate 1, BIP completeness, or locking.
 //
-// Approved vocabulary only: "cultural basis," "supporting insight,"
-// "linked signal," "external insight," "not selected yet," "not
-// applicable." Never: "missing cultural signal," "required cultural
-// signal," "cannot proceed," "campaign must select signal."
+// FRAME Brief and Big Idea Platform are NOT the same kind of brief, even
+// though both are valid strategic_basis_sources targets sharing this one
+// component and one table. FRAME Brief is the client/brand/marketing brief
+// — the business-side objective and how success is measured. Big Idea
+// Platform is the agency/creative brief — the agency's translation of that
+// objective into human truth, creative territory, and proposition. The copy
+// below is target-aware (TARGET_COPY) so the panel never implies the two
+// are interchangeable; the data model itself stays target-agnostic on
+// purpose (one table, one component — see migration 0087).
+//
+// Approved vocabulary only: "brief basis," "creative strategy basis,"
+// "supporting input," "supporting insight," "linked signal," "external
+// insight," "not selected yet," "not applicable." Never: "missing cultural
+// signal," "required cultural signal," "cannot proceed," "campaign must
+// select signal."
 
 import { useState } from "react";
 import {
@@ -22,6 +33,39 @@ import {
 import type { StrategicBasisSource, StrategicBasisTargetType, StrategicBasisSourceType } from "@/lib/types";
 import type { CulturalSignalPickerRow } from "@/lib/data";
 import { buttonClass, buttonSecondaryClass, inputClass, labelClass } from "@/app/_components/ui";
+
+// Target-aware copy — see file header. Keys are StrategicBasisTargetType.
+const TARGET_COPY: Record<
+  StrategicBasisTargetType,
+  {
+    panelTitle: string;
+    helper: string;
+    emptyState: string;
+    addInsightAction: string;
+    linkSignalAction: string;
+    markNaAction: string;
+    notApplicableState: string;
+  }
+> = {
+  frame_brief: {
+    panelTitle: "Brief basis",
+    helper: "Capture the client, brand, market or business inputs shaping this marketing brief. Optional and non-blocking.",
+    emptyState: "No brief basis selected yet.",
+    addInsightAction: "Add supporting input",
+    linkSignalAction: "Link OS Cultural Radar signal",
+    markNaAction: "Mark as not applicable for this brief",
+    notApplicableState: "Not applicable for this brief",
+  },
+  big_idea_platform: {
+    panelTitle: "Creative strategy basis",
+    helper: "Capture the insight sources shaping this creative direction. Optional and non-blocking.",
+    emptyState: "No creative strategy basis selected yet.",
+    addInsightAction: "Add supporting insight",
+    linkSignalAction: "Link OS Cultural Radar signal",
+    markNaAction: "Mark as not applicable for this creative brief",
+    notApplicableState: "Not applicable for this creative brief",
+  },
+};
 
 type AddableSourceType = Exclude<StrategicBasisSourceType, "not_applicable">;
 
@@ -270,6 +314,8 @@ export function StrategicBasisSourcesPanel({
   const [markingNa, setMarkingNa] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const copy = TARGET_COPY[targetType];
+
   const notApplicable = sources.find((s) => s.source_type === "not_applicable") ?? null;
   const realSources = sources.filter((s) => s.source_type !== "not_applicable");
 
@@ -306,10 +352,8 @@ export function StrategicBasisSourcesPanel({
   return (
     <div className="border border-neutral-200 rounded-md p-4 bg-white space-y-3">
       <div>
-        <p className="text-sm font-semibold text-neutral-800">Strategic basis</p>
-        <p className="text-xs text-neutral-400 mt-0.5">
-          Capture the insight sources shaping this strategy. Optional and non-blocking.
-        </p>
+        <p className="text-sm font-semibold text-neutral-800">{copy.panelTitle}</p>
+        <p className="text-xs text-neutral-400 mt-0.5">{copy.helper}</p>
       </div>
 
       {error && <p className="text-xs text-red-600">{error}</p>}
@@ -317,21 +361,21 @@ export function StrategicBasisSourcesPanel({
       {/* Empty state — zero rows, nothing marked not_applicable */}
       {sources.length === 0 && !addingType && (
         <div className="space-y-2">
-          <p className="text-xs text-neutral-400">No strategic basis selected yet.</p>
+          <p className="text-xs text-neutral-400">{copy.emptyState}</p>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               className={buttonSecondaryClass}
               onClick={() => setAddingType("strategist_manual_note")}
             >
-              Add supporting insight
+              {copy.addInsightAction}
             </button>
             <button
               type="button"
               className={buttonSecondaryClass}
               onClick={() => setAddingType("os_cultural_radar_signal")}
             >
-              Link OS Cultural Radar signal
+              {copy.linkSignalAction}
             </button>
             <button
               type="button"
@@ -339,7 +383,7 @@ export function StrategicBasisSourcesPanel({
               disabled={markingNa}
               className="text-xs text-neutral-400 hover:text-neutral-700 underline disabled:opacity-50"
             >
-              {markingNa ? "Saving…" : "Mark as not applicable for this campaign"}
+              {markingNa ? "Saving…" : copy.markNaAction}
             </button>
           </div>
         </div>
@@ -348,7 +392,7 @@ export function StrategicBasisSourcesPanel({
       {/* Not-applicable state */}
       {notApplicable && realSources.length === 0 && (
         <div className="flex items-center justify-between gap-3">
-          <p className="text-xs text-neutral-500">Not applicable for this campaign</p>
+          <p className="text-xs text-neutral-500">{copy.notApplicableState}</p>
           <button
             type="button"
             onClick={() => handleRemove(notApplicable.id)}
