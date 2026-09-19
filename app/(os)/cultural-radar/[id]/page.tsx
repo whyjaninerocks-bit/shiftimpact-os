@@ -9,6 +9,8 @@ import Link from "next/link";
 import { BrandFitForm } from "./_components/BrandFitForm";
 import { HandoffPanel } from "./_components/HandoffPanel";
 import { ArchiveButtonClient } from "./_components/ArchiveButtonClient";
+import { DurabilityStatusForm } from "./_components/DurabilityStatusForm";
+import { displayDurabilityStatus } from "@/lib/cultural-signal-picker";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +30,7 @@ type Signal = {
   handoff_generated_at: string | null;
   status: string;
   created_at: string;
+  durability_status: string | null;
 };
 
 function typeTone(type: string): "blue" | "green" | "amber" | "purple" | "neutral" {
@@ -102,6 +105,9 @@ export default async function CulturalSignalDetailPage({
         <div className="flex items-center gap-2 flex-wrap">
           <Badge tone={typeTone(signal.signal_type)}>{signal.signal_type}</Badge>
           <Badge tone="neutral">{signal.geographic_scope}</Badge>
+          {displayDurabilityStatus(signal.durability_status) && (
+            <Badge tone="purple">{displayDurabilityStatus(signal.durability_status)}</Badge>
+          )}
           {signal.is_trending
             ? <Badge tone="green">Currently moving</Badge>
             : <Badge tone="neutral">Permanent ordinary</Badge>
@@ -131,6 +137,8 @@ export default async function CulturalSignalDetailPage({
             <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Evidence</p>
             <p className="text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap">{signal.evidence}</p>
           </div>
+
+          <DurabilityStatusForm signalId={signal.id} currentValue={signal.durability_status} />
 
           <div className="flex gap-2 pt-1">
             <Link

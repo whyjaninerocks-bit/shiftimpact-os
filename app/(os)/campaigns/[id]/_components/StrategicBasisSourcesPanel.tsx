@@ -41,6 +41,7 @@ import {
   groupSignals,
   signalMatchesSearch,
   displayMarket,
+  displayDurabilityStatus,
   SIGNAL_GROUP_LABELS,
   SIGNAL_GROUP_ORDER,
   type CampaignSignalContext,
@@ -152,8 +153,17 @@ function SourceRow({
 // within groups, it never removes a group from the list.
 
 function SignalChips({ signal }: { signal: CulturalSignalPickerRow }) {
+  // durability_status is the primary read when set — surfaced first and
+  // most prominently. is_trending stays as the legacy/supporting movement
+  // flag alongside it, unchanged.
+  const durabilityLabel = displayDurabilityStatus(signal.durability_status);
   return (
     <div className="flex flex-wrap gap-1 mt-1">
+      {durabilityLabel && (
+        <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-medium">
+          {durabilityLabel}
+        </span>
+      )}
       <span className="text-[9px] px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500">
         {displayMarket(signal.geographic_scope)}
       </span>

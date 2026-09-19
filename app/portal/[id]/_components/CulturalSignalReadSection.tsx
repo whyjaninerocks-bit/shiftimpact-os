@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { CulturalSignalRead } from "@/lib/data";
 import { SectionHeading } from "./reportUi";
+import { displayDurabilityStatus } from "@/lib/cultural-signal-picker";
 
 // ─── Creative, Culture & Commerce Intelligence — Agency-view only ───────────
 // Task 5.5 Pass B. Summary first, choice second, depth third: an executive
@@ -178,13 +179,20 @@ function SignalSummaryCard({
         )}
       </div>
 
-      <span
-        className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide ${
-          TYPE_TONE[signal.signalType] ?? "bg-neutral-100 text-neutral-500"
-        }`}
-      >
-        {signal.signalType}
-      </span>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span
+          className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide ${
+            TYPE_TONE[signal.signalType] ?? "bg-neutral-100 text-neutral-500"
+          }`}
+        >
+          {signal.signalType}
+        </span>
+        {displayDurabilityStatus(signal.durabilityStatus) && (
+          <span className="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide bg-indigo-100 text-indigo-600">
+            {displayDurabilityStatus(signal.durabilityStatus)}
+          </span>
+        )}
+      </div>
 
       {signal.culturalEntryPoint && (
         <p className="text-xs text-neutral-600 leading-relaxed line-clamp-2">{signal.culturalEntryPoint}</p>

@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isValidDurabilityStatus } from "@/lib/cultural-signal-picker";
 
 export async function GET(
   _req: NextRequest,
@@ -36,11 +37,27 @@ export async function PATCH(
     "is_trending", "geographic_scope",
     "why_it_matters", "brand_fit_notes", "brand_fit_status", "community_respect_check",
     "status",
+    "durability_status",
   ] as const;
 
   const patch: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) patch[key] = body[key];
+  }
+
+  // durability_status — Stage 4B — strategist-set only, app-level validation
+  // (no DB CHECK). Blank/empty string clears it back to NULL (explicitly
+  // supported — this is how a strategist "un-sets" it); a non-blank value
+  // must be one of the five approved values or the request is rejected.
+  if ("durability_status" in patch) {
+    const raw = patch.durability_status;
+    if (raw === null || raw === "" || (typeof raw === "string" && raw.trim() === "")) {
+      patch.durability_status = null;
+    } else if (typeof raw !== "string" || !isValidDurabilityStatus(raw.trim())) {
+      return NextResponse.json({ error: `Invalid durability_status: ${String(raw)}` }, { status: 400 });
+    } else {
+      patch.durability_status = raw.trim();
+    }
   }
 
   // Auto-advance status when brand fit is completed

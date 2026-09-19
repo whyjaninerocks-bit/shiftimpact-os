@@ -1,0 +1,26 @@
+-- Migration 0090: Stage 4B — cultural_signals.durability_status
+--
+-- Adds a durability_status field so Cultural Radar can distinguish durable
+-- cultural patterns from trends, emerging signals, and signals that simply
+-- haven't been assessed yet. The existing is_trending boolean conflates
+-- "not trending" with "never assessed" — this field exists alongside it,
+-- not in place of it. is_trending stays completely unchanged (creation
+-- form, badges, cron scanner, digest emails all keep working exactly as
+-- before).
+--
+-- Nullable, no default, no CHECK constraint on purpose — the approved
+-- five-value list is validated at the app layer
+-- (lib/cultural-signal-picker.ts isValidDurabilityStatus()), matching the
+-- existing pattern for campaigns.primary_market_code / frame_briefs
+-- campaign_pathway. Adding a future value later is a code change, not a
+-- migration.
+--
+-- NULL means never touched by a strategist. The literal value
+-- 'not_assessed' means a strategist reviewed the signal and explicitly
+-- could not classify it yet — these are two different states, which is the
+-- actual gap this field closes (is_trending=false today means both).
+--
+-- No backfill — every existing row stays NULL. No view wraps
+-- cultural_signals (checked pg_views before writing this), so nothing else
+-- needs to change.
+alter table cultural_signals add column if not exists durability_status text;

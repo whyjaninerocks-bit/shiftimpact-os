@@ -359,13 +359,14 @@ export type CulturalSignalPickerRow = {
   relevant_industries: string[] | null;
   brand_fit_status: string | null;
   is_trending: boolean | null;
+  durability_status: string | null;
 };
 
 export async function getCulturalSignalsForPicker(): Promise<CulturalSignalPickerRow[]> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("cultural_signals")
-    .select("id, signal_name, signal_type, geographic_scope, relevant_industries, brand_fit_status, is_trending")
+    .select("id, signal_name, signal_type, geographic_scope, relevant_industries, brand_fit_status, is_trending, durability_status")
     .neq("status", "archived")
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -1610,6 +1611,7 @@ export type CulturalSignalRead = {
   evidenceConfidence: string | null;
   sources: string[];
   manualDemoLabel: string | null;
+  durabilityStatus: string | null;
 };
 
 export async function getCulturalSignalReadClientSafe(
@@ -1629,7 +1631,7 @@ export async function getCulturalSignalReadClientSafe(
   const { data, error } = await supabase
     .from("cultural_signals")
     .select(
-      "id, signal_name, signal_type, source_description, evidence, why_it_matters, brand_fit_status, handoff_brief, relevant_industries, geographic_scope, status, created_at"
+      "id, signal_name, signal_type, source_description, evidence, why_it_matters, brand_fit_status, handoff_brief, relevant_industries, geographic_scope, status, created_at, durability_status"
     )
     .eq("geographic_scope", "ID")
     .neq("status", "archived")
@@ -1704,6 +1706,7 @@ export async function getCulturalSignalReadClientSafe(
       evidenceConfidence: parsed.evidence_confidence ?? null,
       sources: Array.isArray(parsed.sources) ? parsed.sources : [],
       manualDemoLabel: parsed.manual_demo_label ?? null,
+      durabilityStatus: (row as { durability_status?: string | null }).durability_status ?? null,
     };
   });
 }

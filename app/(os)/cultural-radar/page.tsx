@@ -5,6 +5,7 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Badge, Card, SectionTitle, buttonClass } from "@/app/_components/ui";
+import { displayDurabilityStatus } from "@/lib/cultural-signal-picker";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ type CulturalSignal = {
   brand_fit_status: string;
   status: string;
   created_at: string;
+  durability_status: string | null;
 };
 
 function typeTone(type: string): "blue" | "green" | "amber" | "purple" | "neutral" {
@@ -68,7 +70,7 @@ export default async function CulturalRadarPage() {
   const supabase = createAdminClient();
   const { data: signals } = await supabase
     .from("cultural_signals")
-    .select("id, signal_name, signal_type, is_trending, geographic_scope, brand_fit_status, status, created_at")
+    .select("id, signal_name, signal_type, is_trending, geographic_scope, brand_fit_status, status, created_at, durability_status")
     .neq("status", "archived")
     .order("created_at", { ascending: false });
 
@@ -150,6 +152,11 @@ export default async function CulturalRadarPage() {
                       {sig.signal_name}
                     </p>
                     <div className="flex items-center gap-2 flex-shrink-0">
+                      {displayDurabilityStatus(sig.durability_status) && (
+                        <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">
+                          {displayDurabilityStatus(sig.durability_status)}
+                        </span>
+                      )}
                       {sig.is_trending && (
                         <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
                           Moving

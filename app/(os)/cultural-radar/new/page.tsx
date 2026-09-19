@@ -11,6 +11,7 @@ import {
   Card, SectionTitle,
   inputClass, labelClass, buttonClass, buttonSecondaryClass,
 } from "@/app/_components/ui";
+import { DURABILITY_STATUS_OPTIONS } from "@/lib/cultural-signal-picker";
 
 const SIGNAL_TYPES = [
   { value: "behavioural", label: "Behavioural", desc: "What people are doing — searches, saves, purchases, rituals" },
@@ -58,6 +59,13 @@ function NewCulturalSignalForm() {
       relevant_industries:  selectedIndustries,
     };
     if (prefillClientId) body.client_id = prefillClientId;
+    // Stage 4B — optional at creation, only sent if the strategist actually
+    // picked one. Left unset/blank by default (see Movement field above,
+    // which stays a separate, forced binary — this is a distinct concern).
+    const durabilityStatusValue = fd.get("durability_status");
+    if (durabilityStatusValue && String(durabilityStatusValue).trim()) {
+      body.durability_status = durabilityStatusValue;
+    }
 
     const res = await fetch("/api/cultural-signals", {
       method: "POST",
@@ -183,6 +191,19 @@ function NewCulturalSignalForm() {
                 </label>
               ))}
             </div>
+          </div>
+
+          {/* Durability — Stage 4B. Optional, separate from Movement above.
+              Left unset by default; the strategist can classify now or come
+              back to it later from the signal detail page. */}
+          <div>
+            <label className={labelClass}>Durability <span className="text-neutral-400 font-normal">(optional — can set later)</span></label>
+            <select name="durability_status" defaultValue="" className={inputClass}>
+              <option value="">Not set</option>
+              {DURABILITY_STATUS_OPTIONS.map(({ value, label }) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
           </div>
 
           {/* Market */}

@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import Anthropic from "@anthropic-ai/sdk";
 import { getModel } from "@/lib/ai-model";
+import { isValidDurabilityStatus } from "@/lib/cultural-signal-picker";
 
 const INDUSTRY_OPTIONS = [
   "FMCG", "Financial Services", "Technology", "Retail", "QSR",
@@ -94,12 +95,19 @@ export async function POST(req: NextRequest) {
     // Manual overrides — if provided, skip auto-classify for those fields
     relevant_industries: manualIndustries,
     client_id,
+    // Stage 4B — strategist-set only, never auto-computed. Optional at
+    // creation; omitted/blank means "never touched" (NULL), distinct from
+    // the explicit 'not_assessed' value. See lib/cultural-signal-picker.ts.
+    durability_status,
   } = body;
 
   if (!signal_name?.trim())        return NextResponse.json({ error: "signal_name required" }, { status: 400 });
   if (!signal_type)                return NextResponse.json({ error: "signal_type required" }, { status: 400 });
   if (!source_description?.trim()) return NextResponse.json({ error: "source_description required" }, { status: 400 });
   if (!evidence?.trim())           return NextResponse.json({ error: "evidence required" }, { status: 400 });
+  if (durability_status && typeof durability_status === "string" && durability_status.trim() && !isValidDurabilityStatus(durability_status.trim())) {
+    return NextResponse.json({ error: `Invalid durability_status: ${durability_status}` }, { status: 400 });
+  }
 
   // Step 1: save the signal with any manually-provided industries
   const insertRow: Record<string, unknown> = {
@@ -114,6 +122,9 @@ export async function POST(req: NextRequest) {
     relevant_industries: Array.isArray(manualIndustries) && manualIndustries.length > 0
       ? manualIndustries
       : [],
+    durability_status: typeof durability_status === "string" && durability_status.trim()
+      ? durability_status.trim()
+      : null,
   };
   if (client_id) insertRow.client_id = client_id;
 

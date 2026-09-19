@@ -79,6 +79,11 @@ export type SignalPickerInput = {
   relevant_industries: string[] | null;
   brand_fit_status: string | null;
   is_trending: boolean | null;
+  // Stage 4B — type-shape only, not used by grouping logic below (grouping
+  // still keys off geographic_scope/relevant_industries only, unchanged).
+  // Present here so CulturalSignalPickerRow round-trips through
+  // groupSignals()/groupSignalForCampaign() without losing the field.
+  durability_status: string | null;
 };
 
 export type CampaignSignalContext = {
@@ -157,6 +162,44 @@ export const MARKET_CODE_OPTIONS: { code: string; label: string }[] = [
 
 export function isValidMarketCode(code: string): boolean {
   return MARKET_CODE_OPTIONS.some((o) => o.code === code);
+}
+
+// ─── cultural_signals.durability_status — Stage 4B ─────────────────────────
+// Distinguishes durable cultural patterns from trends, emerging signals, and
+// signals that simply haven't been assessed yet. Independent of is_trending,
+// which stays as a legacy/supporting "movement" flag set at signal creation
+// — this field is strategist-set only, never auto-computed, and can be set,
+// changed, or cleared at any point in the signal's life (see cultural-radar
+// [id] page). NULL means never touched; 'not_assessed' means a strategist
+// reviewed the signal and explicitly could not classify it yet — those are
+// two different states, which is the actual gap this field closes.
+export type DurabilityStatus =
+  | "not_assessed"
+  | "rooted_cultural_pattern"
+  | "emerging_signal"
+  | "currently_trending"
+  | "needs_validation";
+
+export const DURABILITY_STATUS_OPTIONS: { value: DurabilityStatus; label: string; desc: string }[] = [
+  { value: "not_assessed", label: "Not assessed", desc: "Reviewed, but not enough evidence to classify yet." },
+  { value: "rooted_cultural_pattern", label: "Rooted cultural pattern", desc: "Long-standing — not tied to a moment." },
+  { value: "emerging_signal", label: "Emerging signal", desc: "New — not yet confirmed as durable or fleeting." },
+  { value: "currently_trending", label: "Currently trending", desc: "Actively gaining momentum right now." },
+  { value: "needs_validation", label: "Needs validation", desc: "Uncertain — needs more evidence before acting on it." },
+];
+
+export function isValidDurabilityStatus(value: string): value is DurabilityStatus {
+  return DURABILITY_STATUS_OPTIONS.some((o) => o.value === value);
+}
+
+// Display helper for read-only surfaces (portal read section, campaign
+// picker chips). Deliberately returns null for both NULL and 'not_assessed'
+// — an unassessed signal should show nothing, never a label that reads like
+// a warning or an error state.
+export function displayDurabilityStatus(value: string | null | undefined): string | null {
+  if (!value || value === "not_assessed") return null;
+  const match = DURABILITY_STATUS_OPTIONS.find((o) => o.value === value);
+  return match?.label ?? null;
 }
 
 function hasIndustryOverlap(signalIndustries: string[] | null, campaignCategory: string | null): boolean {
