@@ -12,9 +12,10 @@ import {
   labelClass,
 } from "@/app/_components/ui";
 import { computeGate1Status, computeBipComplete } from "@/lib/types";
-import type { BigIdeaPlatform, FrameBrief, StrategicBasisSource } from "@/lib/types";
+import type { BigIdeaPlatform, FrameBrief, StrategicBasisSource, StrategicSynthesisRun } from "@/lib/types";
 import type { CulturalSignalPickerRow } from "@/lib/data";
 import { StrategicBasisSourcesPanel } from "./StrategicBasisSourcesPanel";
+import { StrategicSynthesisPanel } from "./StrategicSynthesisPanel";
 
 // ─── BipField ─────────────────────────────────────────────────────────────────
 
@@ -189,12 +190,14 @@ export function BigIdeaPlatformSection({
   bip,
   strategicBasisSources = [],
   culturalSignalsForPicker = [],
+  strategicSynthesisRuns = [],
 }: {
   campaignId: string;
   frame: FrameBrief;
   bip: BigIdeaPlatform;
   strategicBasisSources?: StrategicBasisSource[];
   culturalSignalsForPicker?: CulturalSignalPickerRow[];
+  strategicSynthesisRuns?: StrategicSynthesisRun[];
 }) {
   const gate1Passed = computeGate1Status(frame) === "Passed";
   const bipComplete = computeBipComplete(bip);
@@ -343,6 +346,15 @@ export function BigIdeaPlatformSection({
                   targetId={bip.id}
                   initialSources={strategicBasisSources}
                   culturalSignals={culturalSignalsForPicker}
+                  synthesisSlot={
+                    <StrategicSynthesisPanel
+                      campaignId={campaignId}
+                      targetType="big_idea_platform"
+                      targetId={bip.id}
+                      initialRuns={strategicSynthesisRuns}
+                      locked={locked}
+                    />
+                  }
                 />
               </div>
             </BipAccordionGroup>

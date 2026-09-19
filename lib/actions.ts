@@ -14,6 +14,8 @@ import type {
   StrategicBasisTargetType,
   StrategicBasisSourceType,
   StrategicBasisSource,
+  SynthesisRoute,
+  SynthesisReviewStatus,
 } from "@/lib/types";
 
 const BRAND_COMMERCE_CLASSIFICATION_VALUES: BrandCommerceClassification[] = [
@@ -1279,6 +1281,123 @@ export async function markStrategicBasisNotApplicable(input: MarkStrategicBasisN
 
   revalidatePath(`/campaigns/${input.campaign_id}`);
   return inserted as StrategicBasisSource;
+}
+
+// ─── Strategic Synthesis — v0.1 (Stage 4C.2) ─────────────────────────────
+// Optional, user-triggered, strategist-reviewed assistive drafting. These
+// three actions are pure bookkeeping on an already-generated run — they
+// never write to frame_briefs or big_idea_platforms and never regenerate
+// content. Actual field pre-fill happens client-side in
+// StrategicSynthesisPanel.tsx; "apply" here only records that the
+// strategist applied a given step so the run's history is accurate. The
+// strategist still has to use the existing FRAME/BIP Save action for
+// anything to persist to the brief itself.
+
+export async function reviewStrategicSynthesisRun(runId: string) {
+  await assertInternalSession();
+  const supabase = createAdminClient();
+
+  const { data: run, error: fetchError } = await supabase
+    .from("strategic_synthesis_runs")
+    .select("id, campaign_id, review_status")
+    .eq("id", runId)
+    .maybeSingle();
+  if (fetchError) throw new Error(fetchError.message);
+  if (!run) throw new Error("Strategic synthesis run not found.");
+  const typedRun = run as { id: string; campaign_id: string; review_status: SynthesisReviewStatus };
+
+  // Reviewing is a soft acknowledgement — don't downgrade a run that's
+  // already been applied or rejected back to merely "reviewed".
+  if (typedRun.review_status === "applied" || typedRun.review_status === "rejected") {
+    return;
+  }
+
+  const { error } = await supabase
+    .from("strategic_synthesis_runs")
+    .update({ review_status: "reviewed", reviewed_at: new Date().toISOString() })
+    .eq("id", runId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/campaigns/${typedRun.campaign_id}`);
+}
+
+// Records that a strategist applied one step's draft into the live FRAME/BIP
+// form. Bookkeeping only — see header above. Throws if the run was rejected
+// (a rejected run's drafts should not be applied) or the step key doesn't
+// exist on any route in this run.
+export async function applyStrategicSynthesisStep(runId: string, stepKey: string) {
+  await assertInternalSession();
+  const supabase = createAdminClient();
+
+  const { data: run, error: fetchError } = await supabase
+    .from("strategic_synthesis_runs")
+    .select("id, campaign_id, routes, review_status")
+    .eq("id", runId)
+    .maybeSingle();
+  if (fetchError) throw new Error(fetchError.message);
+  if (!run) throw new Error("Strategic synthesis run not found.");
+  const typedRun = run as {
+    id: string;
+    campaign_id: string;
+    routes: SynthesisRoute[];
+    review_status: SynthesisReviewStatus;
+  };
+
+  if (typedRun.review_status === "rejected") {
+    throw new Error("This run was rejected — its drafts cannot be applied.");
+  }
+
+  let found = false;
+  const updatedRoutes = typedRun.routes.map((route) => ({
+    ...route,
+    steps: route.steps.map((step) => {
+      if (step.key !== stepKey) return step;
+      found = true;
+      if (!step.applicable || !step.target_field) {
+        throw new Error(`Step "${step.label}" is read-only and cannot be applied.`);
+      }
+      return { ...step, applied: true };
+    }),
+  }));
+  if (!found) throw new Error(`Step "${stepKey}" not found on this run.`);
+
+  const { error } = await supabase
+    .from("strategic_synthesis_runs")
+    .update({
+      routes: updatedRoutes,
+      review_status: "applied",
+      applied_at: new Date().toISOString(),
+    })
+    .eq("id", runId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/campaigns/${typedRun.campaign_id}`);
+}
+
+export async function rejectStrategicSynthesisRun(runId: string, note?: string) {
+  await assertInternalSession();
+  const supabase = createAdminClient();
+
+  const { data: run, error: fetchError } = await supabase
+    .from("strategic_synthesis_runs")
+    .select("id, campaign_id")
+    .eq("id", runId)
+    .maybeSingle();
+  if (fetchError) throw new Error(fetchError.message);
+  if (!run) throw new Error("Strategic synthesis run not found.");
+  const typedRun = run as { id: string; campaign_id: string };
+
+  const { error } = await supabase
+    .from("strategic_synthesis_runs")
+    .update({
+      review_status: "rejected",
+      rejected_at: new Date().toISOString(),
+      rejection_note: note?.trim() || null,
+    })
+    .eq("id", runId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/campaigns/${typedRun.campaign_id}`);
 }
 
 // ───────────────────────────────────────────────────────────────────────

@@ -12,9 +12,10 @@ import {
   labelClass,
 } from "@/app/_components/ui";
 import { computeGate1Status } from "@/lib/types";
-import type { FrameBrief, IndustryCategory, CampaignPathway, StrategicBasisSource } from "@/lib/types";
+import type { FrameBrief, IndustryCategory, CampaignPathway, StrategicBasisSource, StrategicSynthesisRun } from "@/lib/types";
 import type { CulturalSignalPickerRow } from "@/lib/data";
 import { StrategicBasisSourcesPanel } from "./StrategicBasisSourcesPanel";
+import { StrategicSynthesisPanel } from "./StrategicSynthesisPanel";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -167,11 +168,13 @@ export function FrameBriefSection({
   frame,
   strategicBasisSources = [],
   culturalSignalsForPicker = [],
+  strategicSynthesisRuns = [],
 }: {
   campaignId: string;
   frame: FrameBrief;
   strategicBasisSources?: StrategicBasisSource[];
   culturalSignalsForPicker?: CulturalSignalPickerRow[];
+  strategicSynthesisRuns?: StrategicSynthesisRun[];
 }) {
   const [enemyOpen, setEnemyOpen] = useState(frame.enemy_active);
   const [elevationOn, setElevationOn] = useState(frame.elevation_mode_enabled);
@@ -490,6 +493,15 @@ export function FrameBriefSection({
               targetId={frame.id}
               initialSources={strategicBasisSources}
               culturalSignals={culturalSignalsForPicker}
+              synthesisSlot={
+                <StrategicSynthesisPanel
+                  campaignId={campaignId}
+                  targetType="frame_brief"
+                  targetId={frame.id}
+                  initialRuns={strategicSynthesisRuns}
+                  locked={locked}
+                />
+              }
             />
           </div>
         </div>

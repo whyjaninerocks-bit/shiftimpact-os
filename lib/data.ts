@@ -35,6 +35,11 @@ import type {
   // Sprint 18
   IqEvaluation,
   MediaDeliveryRecord,
+  // Strategic Basis Sources — Signal-to-Creative Citation v0.1 (Stage 4A)
+  StrategicBasisTargetType,
+  StrategicBasisSource,
+  // Strategic Synthesis v0.1 (Stage 4C.2)
+  StrategicSynthesisRun,
   // Sprint 19
   AiBrandVisibilityScore,
   // Sprint 20
@@ -46,9 +51,6 @@ import type {
   // Outcome-Led Signal Mapping (migration 0073/0074) — internal only
   SignalVocabulary,
   CampaignSignalMapWithContext,
-  // Strategic Basis Sources — Signal-to-Creative Citation v0.1 (Stage 4A)
-  StrategicBasisTargetType,
-  StrategicBasisSource,
 } from "@/lib/types";
 
 export async function getClients(): Promise<ClientWithRollups[]> {
@@ -359,6 +361,25 @@ export async function getCulturalSignalsForPicker(): Promise<CulturalSignalPicke
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data as CulturalSignalPickerRow[]) ?? [];
+}
+
+// ─── Strategic Synthesis — v0.1 (Stage 4C.2) ─────────────────────────────────
+// Internal only. Optional, user-triggered, strategist-reviewed assistive
+// drafting — see lib/types.ts and supabase/migrations/0088.
+
+export async function getStrategicSynthesisRunsForTarget(
+  targetType: StrategicBasisTargetType,
+  targetId: string
+): Promise<StrategicSynthesisRun[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("strategic_synthesis_runs")
+    .select("*")
+    .eq("target_type", targetType)
+    .eq("target_id", targetId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data as StrategicSynthesisRun[]) ?? [];
 }
 
 // ─── Signal Intelligence (Feature 12 — Sprint 2) ──────────────────────────────

@@ -301,12 +301,18 @@ export function StrategicBasisSourcesPanel({
   targetId,
   initialSources,
   culturalSignals,
+  synthesisSlot,
 }: {
   campaignId: string;
   targetType: StrategicBasisTargetType;
   targetId: string;
   initialSources: StrategicBasisSource[];
   culturalSignals: CulturalSignalPickerRow[];
+  // Strategic Synthesis v0.1 (Stage 4C.2) trigger — rendered here so it sits
+  // inside this basis panel's own box, per approval. This component has no
+  // knowledge of synthesis internals; the caller passes the fully-formed
+  // <StrategicSynthesisPanel /> element.
+  synthesisSlot?: React.ReactNode;
 }) {
   const [sources, setSources] = useState<StrategicBasisSource[]>(initialSources);
   const [addingType, setAddingType] = useState<AddableSourceType | null>(null);
@@ -436,6 +442,8 @@ export function StrategicBasisSourcesPanel({
           onCancel={() => setAddingType(null)}
         />
       )}
+
+      {synthesisSlot && <div className="pt-2 border-t border-neutral-100">{synthesisSlot}</div>}
     </div>
   );
 }

@@ -42,6 +42,7 @@ import {
   getClientCompetitiveIntel,
   getStrategicBasisSourcesForTarget,
   getCulturalSignalsForPicker,
+  getStrategicSynthesisRunsForTarget,
 } from "@/lib/data";
 import { getLatestReviewPlatformScore } from "@/lib/data-review-platform";
 import { Badge, ErrorBanner, gateSignalTone, phaseTone } from "@/app/_components/ui";
@@ -221,11 +222,14 @@ export default async function CampaignDetailPage({
 
   // Strategic Basis Sources — Signal-to-Creative Citation v0.1 (Stage 4A).
   // Needs frame.id / bip.id, so this runs after the main Promise.all above.
-  const [frameBasisSources, bipBasisSources, culturalSignalsForPicker] = await Promise.all([
-    getStrategicBasisSourcesForTarget("frame_brief", frame.id),
-    bip ? getStrategicBasisSourcesForTarget("big_idea_platform", bip.id) : Promise.resolve([]),
-    getCulturalSignalsForPicker(),
-  ]);
+  const [frameBasisSources, bipBasisSources, culturalSignalsForPicker, frameSynthesisRuns, bipSynthesisRuns] =
+    await Promise.all([
+      getStrategicBasisSourcesForTarget("frame_brief", frame.id),
+      bip ? getStrategicBasisSourcesForTarget("big_idea_platform", bip.id) : Promise.resolve([]),
+      getCulturalSignalsForPicker(),
+      getStrategicSynthesisRunsForTarget("frame_brief", frame.id),
+      bip ? getStrategicSynthesisRunsForTarget("big_idea_platform", bip.id) : Promise.resolve([]),
+    ]);
 
   return (
     <div className="space-y-6">
@@ -318,6 +322,7 @@ export default async function CampaignDetailPage({
         frame={frame}
         strategicBasisSources={frameBasisSources}
         culturalSignalsForPicker={culturalSignalsForPicker}
+        strategicSynthesisRuns={frameSynthesisRuns}
       />
       {bip && (
         <BigIdeaPlatformSection
@@ -326,6 +331,7 @@ export default async function CampaignDetailPage({
           bip={bip}
           strategicBasisSources={bipBasisSources}
           culturalSignalsForPicker={culturalSignalsForPicker}
+          strategicSynthesisRuns={bipSynthesisRuns}
         />
       )}
       {bip && (

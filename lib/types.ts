@@ -614,6 +614,93 @@ export type StrategicBasisSource = {
   updated_at: string;
 };
 
+// ─── Strategic Synthesis — v0.1 (Stage 4C.2) ─────────────────────────────────
+// Optional, user-triggered, strategist-reviewed assistive drafting for the
+// FRAME Brief (Marketing Brief Synthesis) and Big Idea Platform (Creative
+// Strategy Synthesis). Never automatic, never a standing mode (unlike
+// Elevation Mode / IQ Evaluate), never a direct write to frame_briefs or
+// big_idea_platforms — applying a step only pre-fills the field client-side;
+// the strategist still has to use the existing Save action for anything to
+// persist. See supabase/migrations/0088_strategic_synthesis_runs.sql.
+//
+// Corrected per Stage 4C.2 mapping-patch review: FRAME distinguishes
+// read-only context steps from apply-able component steps from protected
+// structured/committed fields (see StepProtection in lib/strategic-synthesis.ts).
+// BIP's enemy_villain stays apply-able but inheritance-aware (never silently
+// overwrites — see overwrite_risk below). expression_summary stays
+// read-only-only. commerce_action_intelligence was removed as a standalone
+// step — commerce framing now only modulates propagation_mechanism's
+// guidance when structurally relevant (Brand-Commerce Read classification).
+
+export type SynthesisEvidenceQuality = "direct_evidence" | "inference" | "insufficient_evidence";
+
+export type SynthesisRunStatus = "pending" | "ready" | "error";
+export type SynthesisReviewStatus = "not_reviewed" | "reviewed" | "applied" | "rejected";
+
+export type SynthesisStep = {
+  key: string;              // stable identifier within the route, e.g. "clarity_statement"
+  label: string;             // strategist-facing name, e.g. "Clarity Statement"
+  // target_field: the exact FrameBrief / BigIdeaPlatform column this step's
+  // draft can be applied to. null = read-only-only (context/feed-forward —
+  // no field to apply to, e.g. Creative Territory, Proof Stack, Brand Power
+  // Risk, Expression Summary, business_context/business_outcome/
+  // audience_market_priority). Never "topline_idea" for anything except the
+  // Proposition Route step. Never "expression_summary" for any step —
+  // explicitly excluded per approval.
+  target_field: string | null;
+  draft_text: string;
+  rationale: string;         // why this draft, referencing input_snapshot basis sources
+  evidence_quality: SynthesisEvidenceQuality;
+  // applicable: final computed apply-ability for THIS run, after protection
+  // rules — false for read-only steps, false for empty_only steps whose
+  // live field was already filled at generation time, false for enum steps
+  // whose draft didn't match an allowed value. True does not mean "safe to
+  // apply blindly" — see overwrite_risk.
+  applicable: boolean;
+  // current_value: the live field's effective value at generation time —
+  // populated only for protected fields (empty_only / confirm_overwrite)
+  // so the UI can render a comparison instead of a blank Apply button.
+  current_value: string | null;
+  // overwrite_risk: true when applying this step would replace a non-empty
+  // existing value. Used only by confirm_overwrite steps (BIP enemy_villain)
+  // — empty_only steps never reach applicable=true while filled, so they
+  // never need this flag. The UI must require an explicit second
+  // confirmation before applying when this is true; never a single-click
+  // silent overwrite.
+  overwrite_risk: boolean;
+  applied: boolean;          // bookkeeping only — set by applyStrategicSynthesisStep()
+};
+
+export type SynthesisRoute = {
+  key: string;               // e.g. "marketing_brief_synthesis" | "creative_strategy_synthesis"
+  label: string;
+  steps: SynthesisStep[];
+};
+
+export type StrategicSynthesisRun = {
+  id: string;
+  campaign_id: string;
+  target_type: StrategicBasisTargetType;
+  target_id: string;
+  triggered_by: string | null;
+  // Frozen at run time: FRAME/BIP field values + the specific
+  // strategic_basis_sources ids actually used. Never a live join — a later
+  // edit to the brief or its sources must never retroactively misrepresent
+  // what this run was based on.
+  input_snapshot: Record<string, unknown>;
+  routes: SynthesisRoute[];
+  status: SynthesisRunStatus;
+  review_status: SynthesisReviewStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  applied_at: string | null;
+  rejected_at: string | null;
+  rejection_note: string | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 // ─── Knowledge Base (Feature 15 — Cultural Intelligence & Regulatory Layer) ──
 // Stores uploaded strategic documents: cultural briefs, regulatory guides,
 // market intelligence, and cross-market reference material.
