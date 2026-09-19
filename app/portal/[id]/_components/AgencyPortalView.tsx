@@ -542,9 +542,6 @@ export function AgencyPortalView({
                internal campaign working page's OS Modules panel via
                ?view=agency#cultural-signal-read. ── */}
           <div id="cultural-signal-read" className="mb-8 scroll-mt-20">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-3">
-              Cultural &amp; Creative Intelligence
-            </p>
             <CulturalSignalReadSection signals={culturalSignalRead} />
           </div>
 
