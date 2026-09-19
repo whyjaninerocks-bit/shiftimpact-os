@@ -225,6 +225,11 @@ export const SYNTHESIS_FORBIDDEN_WORDS: string[] = [
   "revolutionary", "unprecedented", "game-changing", "groundbreaking",
   "definitely will", "certainly will", "always works", "never fails",
   "#1", "number one", "top-ranked", "highest performing",
+  // Added per Stage 4C.2 guardrail patch — 6 terms approved after live
+  // production testing confirmed none appeared in real output, but the
+  // code-level list had not yet been updated to catch them if they did.
+  "proven", "caused by", "automatically derived", "final truth",
+  "winning route", "best territory",
 ];
 
 // 3 additional structural rules (not word-matchable) enforced via the
