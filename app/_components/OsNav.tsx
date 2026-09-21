@@ -117,6 +117,15 @@ const NAV = [
       </svg>
     ),
   },
+  {
+    href: "/platform-benchmarks",
+    label: "Platform Benchmarks",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 19V5m5 14V9m5 10V13m5 6V7" />
+      </svg>
+    ),
+  },
 ];
 
 function NavLink({ href, label, icon, active, onClick }: {

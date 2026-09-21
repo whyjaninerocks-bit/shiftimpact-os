@@ -7,6 +7,12 @@ import { sendBriefNotification } from "@/lib/email";
 import { assertInternalSession, assertShiftImpactSession } from "@/lib/auth/require-session";
 import { computeConfidenceLabel, validateSignalMapKeys } from "@/lib/signal-maps";
 import { isValidMarketCode } from "@/lib/cultural-signal-picker";
+import {
+  isValidMarketApplicability,
+  isValidSourceType,
+  isValidConfidenceLevel,
+  sanitizeRiskTags,
+} from "@/lib/platform-benchmarks";
 import type {
   CategoryAttribute,
   CampaignPhase,
@@ -3021,3 +3027,127 @@ export async function sendExternalReviewerInvite(
   return { ok: true };
 }
 
+
+// ───────────────────────────────────────────────────────────────────────
+// Platform Benchmark Reference Library — v0.1 (migration 0099)
+// INTERNAL ONLY. Plain CRUD over platform_benchmarks — no AI, no scraping,
+// no connection to Creative Format Read. Mirrors createPartner/
+// updatePartner/togglePartner/deletePartner's shape exactly: gated by the
+// (os) route group's own session requirement (same as every other action
+// in this section), not an explicit assertInternalSession() call — this is
+// ordinary internal reference data, not an access-control action.
+// ───────────────────────────────────────────────────────────────────────
+
+export async function createPlatformBenchmark(formData: FormData) {
+  const supabase = createAdminClient();
+
+  const marketApplicability = str(formData, "market_applicability");
+  const sourceType = str(formData, "source_type");
+  const confidenceLevel = str(formData, "confidence_level") || "medium";
+
+  if (!isValidMarketApplicability(marketApplicability)) {
+    redirect(`/platform-benchmarks?error=${encodeURIComponent("Invalid market applicability value")}`);
+  }
+  if (!isValidSourceType(sourceType)) {
+    redirect(`/platform-benchmarks?error=${encodeURIComponent("Invalid source type value")}`);
+  }
+  if (!isValidConfidenceLevel(confidenceLevel)) {
+    redirect(`/platform-benchmarks?error=${encodeURIComponent("Invalid confidence level value")}`);
+  }
+
+  const riskTags = sanitizeRiskTags(formData.getAll("risk_tags") as string[]);
+
+  const { error } = await supabase.from("platform_benchmarks").insert({
+    platform: str(formData, "platform"),
+    format: str(formData, "format"),
+    asset_type: str(formData, "asset_type"),
+    campaign_objective: str(formData, "campaign_objective") || null,
+    market_code: str(formData, "market_code") || null,
+    market_applicability: marketApplicability,
+    source_type: sourceType,
+    source_title: str(formData, "source_title"),
+    source_url: str(formData, "source_url") || null,
+    captured_on: dateOrNull(formData, "captured_on"),
+    staleness_window_days: numOrNull(formData, "staleness_window_days"),
+    guidance_or_benchmark: str(formData, "guidance_or_benchmark"),
+    strategic_implication: str(formData, "strategic_implication"),
+    risk_tags: riskTags,
+    what_to_check_in_asset: str(formData, "what_to_check_in_asset") || null,
+    what_not_to_claim: str(formData, "what_not_to_claim") || null,
+    confidence_level: confidenceLevel,
+    is_active: true,
+  });
+  if (error) redirect(`/platform-benchmarks?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/platform-benchmarks");
+  redirect("/platform-benchmarks");
+}
+
+export async function updatePlatformBenchmark(benchmarkId: string, formData: FormData) {
+  const supabase = createAdminClient();
+
+  const marketApplicability = str(formData, "market_applicability");
+  const sourceType = str(formData, "source_type");
+  const confidenceLevel = str(formData, "confidence_level") || "medium";
+
+  if (!isValidMarketApplicability(marketApplicability)) {
+    redirect(`/platform-benchmarks?error=${encodeURIComponent("Invalid market applicability value")}`);
+  }
+  if (!isValidSourceType(sourceType)) {
+    redirect(`/platform-benchmarks?error=${encodeURIComponent("Invalid source type value")}`);
+  }
+  if (!isValidConfidenceLevel(confidenceLevel)) {
+    redirect(`/platform-benchmarks?error=${encodeURIComponent("Invalid confidence level value")}`);
+  }
+
+  const riskTags = sanitizeRiskTags(formData.getAll("risk_tags") as string[]);
+
+  const { error } = await supabase.from("platform_benchmarks").update({
+    platform: str(formData, "platform"),
+    format: str(formData, "format"),
+    asset_type: str(formData, "asset_type"),
+    campaign_objective: str(formData, "campaign_objective") || null,
+    market_code: str(formData, "market_code") || null,
+    market_applicability: marketApplicability,
+    source_type: sourceType,
+    source_title: str(formData, "source_title"),
+    source_url: str(formData, "source_url") || null,
+    captured_on: dateOrNull(formData, "captured_on"),
+    staleness_window_days: numOrNull(formData, "staleness_window_days"),
+    guidance_or_benchmark: str(formData, "guidance_or_benchmark"),
+    strategic_implication: str(formData, "strategic_implication"),
+    risk_tags: riskTags,
+    what_to_check_in_asset: str(formData, "what_to_check_in_asset") || null,
+    what_not_to_claim: str(formData, "what_not_to_claim") || null,
+    confidence_level: confidenceLevel,
+  }).eq("id", benchmarkId);
+  if (error) redirect(`/platform-benchmarks?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/platform-benchmarks");
+  redirect("/platform-benchmarks");
+}
+
+// "Archive" / "Restore" — never a hard delete of the normal kind (see
+// deletePlatformBenchmark below, kept only for a true mis-entry). Archiving
+// is the expected way a stale or superseded entry is retired: the row
+// stays for history but getPlatformBenchmarks()'s consumers must treat
+// is_active === false as not-citable. Named toggle to match togglePartner's
+// bind(null, id, !current) call pattern in the client component.
+export async function togglePlatformBenchmarkActive(benchmarkId: string, active: boolean) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("platform_benchmarks")
+    .update({ is_active: active })
+    .eq("id", benchmarkId);
+  if (error) redirect(`/platform-benchmarks?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/platform-benchmarks");
+  redirect("/platform-benchmarks");
+}
+
+// True delete — for a genuine mis-entry (wrong data entered, not a stale
+// reference). Archiving (above) is the correct action for "this guidance
+// is outdated"; this is only for "this row should never have existed."
+export async function deletePlatformBenchmark(benchmarkId: string) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("platform_benchmarks").delete().eq("id", benchmarkId);
+  if (error) redirect(`/platform-benchmarks?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/platform-benchmarks");
+  redirect("/platform-benchmarks");
+}

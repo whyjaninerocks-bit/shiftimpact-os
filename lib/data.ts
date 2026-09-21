@@ -42,6 +42,7 @@ import type {
   StrategicSynthesisRun,
   // Creative Format Read — v0.1 schema/UI
   CreativeFormatReadRun,
+  PlatformBenchmark,
   // Sprint 19
   AiBrandVisibilityScore,
   // Sprint 20
@@ -422,6 +423,22 @@ export async function getCreativeFormatReadsForCampaign(
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data as CreativeFormatReadRun[]) ?? [];
+}
+
+// ─── Platform Benchmark Reference Library — v0.1 (migration 0099) ──────────
+// INTERNAL ONLY, plain reference data — not a run log. Fetches every entry
+// (active + archived); the CRUD UI filters/searches client-side, same
+// pattern as PartnersClient.tsx. Reference-library scale doesn't warrant a
+// server-side filtered query yet.
+
+export async function getPlatformBenchmarks(): Promise<PlatformBenchmark[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("platform_benchmarks")
+    .select("*")
+    .order("captured_on", { ascending: false });
+  if (error) throw error;
+  return (data as PlatformBenchmark[]) ?? [];
 }
 
 // ─── Signal Intelligence (Feature 12 — Sprint 2) ──────────────────────────────

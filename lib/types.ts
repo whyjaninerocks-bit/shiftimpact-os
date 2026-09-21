@@ -755,6 +755,79 @@ export type CreativeFormatReadRun = {
   created_at: string;
 };
 
+// ─── Platform Benchmark Reference Library — v0.1 (migration 0099) ──────────
+// Manual, human-curated reference bank for Platform Behaviour + Format
+// Efficacy Intelligence (see the approved plan). INTERNAL ONLY, plain CRUD
+// reference data — not a run log, not AI-touched, not connected to
+// CreativeFormatReadRun above yet (that pairing is explicit future work).
+// Editable/archivable like PartnerWorkspace (has updated_at + a trigger),
+// unlike CreativeFormatReadRun's append-only runs, because this is a
+// maintained library a strategist keeps current, not a diagnosis history.
+
+export type PlatformBenchmarkMarketApplicability =
+  | "country_specific"
+  | "sea_regional"
+  | "global"
+  | "proxy_needs_validation";
+
+export type PlatformBenchmarkSourceType =
+  | "platform_published_metric"
+  | "platform_creative_guidance"
+  | "industry_benchmark"
+  | "mccann_client_benchmark"
+  | "campaign_actual"
+  | "strategist_observation";
+
+export type PlatformBenchmarkConfidenceLevel = "low" | "medium" | "high";
+
+// Fixed vocabulary — validated in lib/platform-benchmarks.ts, not a DB CHECK
+// (see migration 0099 header note). This is the single source of truth for
+// which risk tags the UI offers and which values are considered valid.
+export type PlatformBenchmarkRiskTag =
+  | "attention_risk"
+  | "opening_frame_risk"
+  | "proof_timing_risk"
+  | "brand_transfer_risk"
+  | "creator_host_role_risk"
+  | "cta_action_path_risk"
+  | "commerce_pressure_risk"
+  | "format_mismatch_risk"
+  | "unsupported_claim_risk"
+  | "market_proxy_risk";
+
+export type PlatformBenchmark = {
+  id: string;
+
+  platform: string;
+  format: string;
+  asset_type: string;
+  campaign_objective: string | null;
+
+  market_code: string | null;
+  market_applicability: PlatformBenchmarkMarketApplicability;
+
+  source_type: PlatformBenchmarkSourceType;
+  source_title: string;
+  source_url: string | null;
+  captured_on: string; // ISO date
+  staleness_window_days: number | null;
+
+  guidance_or_benchmark: string;
+  strategic_implication: string;
+
+  risk_tags: PlatformBenchmarkRiskTag[];
+  what_to_check_in_asset: string | null;
+  what_not_to_claim: string | null;
+
+  confidence_level: PlatformBenchmarkConfidenceLevel;
+
+  is_active: boolean;
+
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 // ─── Knowledge Base (Feature 15 — Cultural Intelligence & Regulatory Layer) ──
 // Stores uploaded strategic documents: cultural briefs, regulatory guides,
 // market intelligence, and cross-market reference material.
