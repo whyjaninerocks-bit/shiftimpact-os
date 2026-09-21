@@ -52,12 +52,26 @@ export async function middleware(request: NextRequest) {
 
   if (!user) {
     // If there's an auth code on the URL, route it to the callback handler
-    // instead of losing it by redirecting to /login
+    // instead of losing it by redirecting to /login. The normal case (see
+    // app/login/page.tsx) is the code already landing on /auth/callback
+    // with its own next param attached — that value must be preserved,
+    // not overwritten with the current pathname (which in that case is
+    // just "/auth/callback" itself, a useless self-referential value that
+    // would strand every login, culture-review invites included, back on
+    // the callback screen). Only synthesize next from the current pathname
+    // when rescuing a code that landed somewhere else entirely, or when
+    // whatever next is already present isn't a safe internal path — same
+    // internal-relative-path rule /login and /auth/callback already apply.
     const code = request.nextUrl.searchParams.get("code");
     if (code) {
       const callbackUrl = request.nextUrl.clone();
+      const existingNext = callbackUrl.searchParams.get("next");
+      const existingNextIsSafe =
+        !!existingNext && existingNext.startsWith("/") && !existingNext.startsWith("//");
       callbackUrl.pathname = "/auth/callback";
-      callbackUrl.searchParams.set("next", pathname);
+      if (!existingNextIsSafe) {
+        callbackUrl.searchParams.set("next", pathname);
+      }
       return NextResponse.redirect(callbackUrl);
     }
 
