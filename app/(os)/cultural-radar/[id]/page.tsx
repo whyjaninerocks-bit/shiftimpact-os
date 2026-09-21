@@ -10,6 +10,7 @@ import { BrandFitForm } from "./_components/BrandFitForm";
 import { HandoffPanel } from "./_components/HandoffPanel";
 import { ArchiveButtonClient } from "./_components/ArchiveButtonClient";
 import { DurabilityStatusForm } from "./_components/DurabilityStatusForm";
+import { SignalQualityChecklist } from "./_components/SignalQualityChecklist";
 import { displayDurabilityStatus, isReassessOverdue } from "@/lib/cultural-signal-picker";
 
 export const dynamic = "force-dynamic";
@@ -158,6 +159,9 @@ export default async function CulturalSignalDetailPage({
           </div>
         </div>
       </Card>
+
+      {/* ── Cultural Signal Quality Lens — Layer 2 v0.1 ─────────────────── */}
+      <SignalQualityChecklist signal={signal} />
 
       {/* ── Part 2: Understand the culture ─────────────────────────────── */}
       <div>

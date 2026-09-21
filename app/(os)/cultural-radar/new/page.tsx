@@ -225,9 +225,13 @@ function NewCulturalSignalForm() {
             />
           </div>
 
-          {/* Evidence */}
+          {/* Evidence — Layer 2 copy pass: observed evidence only, not
+              interpretation. What it means belongs in Why it matters
+              (Part 2, on the signal detail page) — keeping the two apart is
+              what lets a later reader tell what was actually seen from what
+              a strategist concluded from it. */}
           <div>
-            <label className={labelClass}>Evidence — what exactly did you see or hear? *</label>
+            <label className={labelClass}>Evidence — what did you literally observe? *</label>
             <textarea
               name="evidence"
               required
@@ -235,6 +239,10 @@ function NewCulturalSignalForm() {
               className={inputClass}
               placeholder={'e.g. "Every time someone asks where to eat on TikTok, the most liked reply is \'cincai lah\'. The phrase appears in 60%+ of comments on food decision videos."\n\nInclude verbatim quotes, data, or specific observations.'}
             />
+            <p className="text-xs text-neutral-400 mt-1">
+              Just the observation — the quote, the data point, the specific thing you saw or heard. Save your read on
+              what it means for the next step.
+            </p>
           </div>
 
           {/* Error */}

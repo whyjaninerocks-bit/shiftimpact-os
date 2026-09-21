@@ -363,13 +363,21 @@ export type CulturalSignalPickerRow = {
   brand_fit_status: string | null;
   is_trending: boolean | null;
   durability_status: string | null;
+  // Cultural Signal Quality Lens — Layer 2 v0.1. Added so the picker's
+  // lightweight quality badge (summarizeSignalQuality, in
+  // lib/cultural-signal-picker.ts) can read the same fields the detail
+  // page's full checklist already reads, without a second query.
+  evidence: string | null;
+  why_it_matters: string | null;
 };
 
 export async function getCulturalSignalsForPicker(): Promise<CulturalSignalPickerRow[]> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("cultural_signals")
-    .select("id, signal_name, signal_type, geographic_scope, relevant_industries, brand_fit_status, is_trending, durability_status")
+    .select(
+      "id, signal_name, signal_type, geographic_scope, relevant_industries, brand_fit_status, is_trending, durability_status, evidence, why_it_matters"
+    )
     .neq("status", "archived")
     .order("created_at", { ascending: false });
   if (error) throw error;

@@ -25,6 +25,8 @@
 // auto-ranking" instruction. relevant_industries/geographic_scope are the
 // real structured fields and are the only inputs used here.
 
+import type { MarketCoverageStatus } from "@/lib/types";
+
 export type SignalGroupKey =
   | "recommended"
   | "same_market_adjacent"
@@ -84,6 +86,12 @@ export type SignalPickerInput = {
   // Present here so CulturalSignalPickerRow round-trips through
   // groupSignals()/groupSignalForCampaign() without losing the field.
   durability_status: string | null;
+  // Cultural Signal Quality Lens — Layer 2 v0.1. Same reasoning as
+  // durability_status above: not used by grouping/search, present purely so
+  // CulturalSignalPickerRow round-trips through groupSignals() without
+  // losing the fields summarizeSignalQuality() needs downstream.
+  evidence: string | null;
+  why_it_matters: string | null;
 };
 
 export type CampaignSignalContext = {
@@ -164,6 +172,29 @@ export function isValidMarketCode(code: string): boolean {
   return MARKET_CODE_OPTIONS.some((o) => o.code === code);
 }
 
+// ─── market_parameters.coverage_status — Market Activation by Radar Layer 1 ──
+// Honest, strategist-set label for how much real curated cultural
+// intelligence exists for a market — never a claim of full regional
+// coverage. Mirrors displayDurabilityStatus below: one canonical options
+// list, one validator, one display helper, so the UI and any prompt-chain
+// context can never drift apart on wording.
+export const MARKET_COVERAGE_STATUS_OPTIONS: { value: MarketCoverageStatus; label: string }[] = [
+  { value: "not_tracked", label: "Not actively tracked yet" },
+  { value: "experimental", label: "Limited coverage" },
+  { value: "active_tracking", label: "Actively tracked" },
+  { value: "strategic_coverage", label: "Actively tracked" },
+];
+
+export function isValidMarketCoverageStatus(value: string): value is MarketCoverageStatus {
+  return MARKET_COVERAGE_STATUS_OPTIONS.some((o) => o.value === value);
+}
+
+export function displayMarketCoverageStatus(value: string | null | undefined): string {
+  if (!value) return "Not actively tracked yet";
+  const match = MARKET_COVERAGE_STATUS_OPTIONS.find((o) => o.value === value);
+  return match?.label ?? "Not actively tracked yet";
+}
+
 // ─── cultural_signals.durability_status — Stage 4B ─────────────────────────
 // Distinguishes durable cultural patterns from trends, emerging signals, and
 // signals that simply haven't been assessed yet. Independent of is_trending,
@@ -239,6 +270,157 @@ export function isReassessOverdue(
   if (!reassessAt || !durabilityStatus || durabilityStatus === "not_assessed") return false;
   const todayStr = today.toISOString().slice(0, 10);
   return reassessAt < todayStr;
+}
+
+// ─── Cultural Signal Quality Lens — Layer 2 v0.1 ───────────────────────────
+// Pure, read-only completeness logic. No DB writes, no new fields, nothing
+// blocking — this only ever reads a signal's existing columns and reports
+// back. Honestly represents what those fields do and do not answer for each
+// of the 8 checklist items from the Layer 2 plan; never invents data that
+// isn't there.
+//
+// Two of the eight items — human tension, subculture / psychographic lens —
+// have no home anywhere in cultural_signals today and are always reported
+// as a flat gap in this pass. Two more — meaning system, confidence limit —
+// have a related-but-not-equivalent field (why_it_matters, durability_status
+// respectively) and are capped at "needs_judgement," never "captured": a
+// filled-in why_it_matters might genuinely name the broader meaning system,
+// or it might just be brand-fit commentary — that distinction needs a
+// strategist, not a length check. Same logic as durability_status not being
+// confidence (see that field's own header comment above): related is not
+// equivalent.
+
+export type SignalQualityStatus = "captured" | "needs_judgement" | "gap";
+
+export type SignalQualityChecklistKey =
+  | "surface_signal"
+  | "human_tension"
+  | "market_code"
+  | "subculture_lens"
+  | "language_rituals_behaviours"
+  | "meaning_system"
+  | "strategic_implication"
+  | "confidence_limit";
+
+export type SignalQualityChecklistItem = {
+  key: SignalQualityChecklistKey;
+  label: string;
+  status: SignalQualityStatus;
+  note: string;
+};
+
+// The minimal shape this needs — a subset of both CulturalSignalPickerRow
+// (picker) and the full cultural_signals row (detail page), so both callers
+// can pass their existing data straight through with no extra fetch beyond
+// what's added to the picker row below.
+export type SignalQualityInput = {
+  signal_name: string | null;
+  geographic_scope: string | null;
+  signal_type: string | null;
+  evidence: string | null;
+  why_it_matters: string | null;
+  durability_status: string | null;
+};
+
+const MIN_EVIDENCE_CHARS = 20;
+
+export function computeSignalQualityChecklist(signal: SignalQualityInput): SignalQualityChecklistItem[] {
+  const hasSignalName = !!signal.signal_name && signal.signal_name.trim().length > 0;
+  const hasMarket = !!signal.geographic_scope;
+  const hasSubstantiveEvidence = !!signal.evidence && signal.evidence.trim().length >= MIN_EVIDENCE_CHARS;
+  const hasWhyItMatters = !!signal.why_it_matters && signal.why_it_matters.trim().length > 0;
+  const hasDurability =
+    !!signal.durability_status &&
+    isValidDurabilityStatus(signal.durability_status) &&
+    signal.durability_status !== "not_assessed";
+
+  return [
+    {
+      key: "surface_signal",
+      label: "Surface signal",
+      status: hasSignalName ? "captured" : "gap",
+      note: hasSignalName ? "Signal name is set." : "No signal name yet.",
+    },
+    {
+      key: "human_tension",
+      label: "Human tension",
+      status: "gap",
+      note: "Not yet captured — no dedicated field for this yet. Worth naming explicitly in Why it matters.",
+    },
+    {
+      key: "market_code",
+      label: "Market code",
+      status: hasMarket ? "captured" : "gap",
+      note: hasMarket ? `Tagged to ${signal.geographic_scope}.` : "No market tagged yet.",
+    },
+    {
+      key: "subculture_lens",
+      label: "Subculture / psychographic lens",
+      status: "gap",
+      note: "Not yet captured — no dedicated field for this yet.",
+    },
+    {
+      key: "language_rituals_behaviours",
+      label: "Language / rituals / behaviours",
+      status: signal.signal_type ? (hasSubstantiveEvidence ? "captured" : "needs_judgement") : "gap",
+      note: !signal.signal_type
+        ? "No signal type set."
+        : hasSubstantiveEvidence
+        ? "Signal type set and evidence has real detail."
+        : "Signal type set, but evidence is thin — add more specific detail.",
+    },
+    {
+      key: "meaning_system",
+      label: "Meaning system",
+      status: hasWhyItMatters ? "needs_judgement" : "gap",
+      note: hasWhyItMatters
+        ? "Why it matters has content — confirm it actually names the broader meaning system, not just brand fit."
+        : "Not yet captured — Why it matters is empty.",
+    },
+    {
+      key: "strategic_implication",
+      label: "Strategic implication",
+      status: hasWhyItMatters ? "captured" : "gap",
+      note: hasWhyItMatters ? "Why it matters is filled in." : "Why it matters is empty.",
+    },
+    {
+      key: "confidence_limit",
+      label: "Confidence limit",
+      status: hasDurability ? "needs_judgement" : "gap",
+      note: hasDurability
+        ? "Durability is classified, but durability is not confidence — confirm separately how much to trust this signal."
+        : "Not yet captured — durability isn't classified either.",
+    },
+  ];
+}
+
+// Items that can actually reach "captured" today, given the two structural
+// gaps above and the two items permanently capped at needs_judgement.
+const CAPTURABLE_KEYS: SignalQualityChecklistKey[] = [
+  "surface_signal",
+  "market_code",
+  "language_rituals_behaviours",
+  "strategic_implication",
+];
+
+// Lightweight summary for the picker badge — a single small chip, not the
+// full 8-item checklist. Tiered off the 4 items that can realistically be
+// "captured" today, so the badge never implies a max score that's currently
+// unreachable (see file header — 4 of the 8 items cap below "captured").
+export function summarizeSignalQuality(signal: SignalQualityInput): {
+  capturedCount: number;
+  capturableTotal: number;
+  tier: "strong" | "partial" | "thin";
+  label: string;
+} {
+  const checklist = computeSignalQualityChecklist(signal);
+  const capturable = checklist.filter((c) => CAPTURABLE_KEYS.includes(c.key));
+  const capturedCount = capturable.filter((c) => c.status === "captured").length;
+  const capturableTotal = capturable.length;
+  const tier: "strong" | "partial" | "thin" =
+    capturedCount >= capturableTotal ? "strong" : capturedCount >= capturableTotal / 2 ? "partial" : "thin";
+  const label = tier === "strong" ? "Strong context" : tier === "partial" ? "Partial context" : "Thin context";
+  return { capturedCount, capturableTotal, tier, label };
 }
 
 function hasIndustryOverlap(signalIndustries: string[] | null, campaignCategory: string | null): boolean {

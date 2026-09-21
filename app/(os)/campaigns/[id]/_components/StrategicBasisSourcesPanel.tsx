@@ -42,6 +42,7 @@ import {
   signalMatchesSearch,
   displayMarket,
   displayDurabilityStatus,
+  summarizeSignalQuality,
   SIGNAL_GROUP_LABELS,
   SIGNAL_GROUP_ORDER,
   type CampaignSignalContext,
@@ -152,13 +153,27 @@ function SourceRow({
 // auto-selection. "Other available signals" is never hidden; search filters
 // within groups, it never removes a group from the list.
 
+// Cultural Signal Quality Lens — Layer 2 v0.1. Lightweight, single-chip read
+// of signal completeness — not the full 8-item checklist (that lives on the
+// signal detail page). Never blocks selection; a "Thin context" signal can
+// still be picked, this is guidance only.
+const QUALITY_BADGE_CLASS: Record<"strong" | "partial" | "thin", string> = {
+  strong: "bg-emerald-50 text-emerald-700",
+  partial: "bg-amber-50 text-amber-700",
+  thin: "bg-neutral-100 text-neutral-500",
+};
+
 function SignalChips({ signal }: { signal: CulturalSignalPickerRow }) {
   // durability_status is the primary read when set — surfaced first and
   // most prominently. is_trending stays as the legacy/supporting movement
   // flag alongside it, unchanged.
   const durabilityLabel = displayDurabilityStatus(signal.durability_status);
+  const quality = summarizeSignalQuality(signal);
   return (
     <div className="flex flex-wrap gap-1 mt-1">
+      <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${QUALITY_BADGE_CLASS[quality.tier]}`}>
+        {quality.label}
+      </span>
       {durabilityLabel && (
         <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-medium">
           {durabilityLabel}

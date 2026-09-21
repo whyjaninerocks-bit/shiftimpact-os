@@ -58,7 +58,11 @@ export function BrandFitForm({ signal }: { signal: Signal }) {
     <Card>
       <form onSubmit={handleSubmit} className="space-y-5">
 
-        {/* Why it matters */}
+        {/* Why it matters — Layer 2 copy pass: this one field is asked to
+            carry three separate things (human tension, meaning system,
+            strategic implication) since none of them has its own field yet
+            (see Cultural Signal Quality Lens v0.1). Nudged explicitly here
+            rather than left to guesswork. */}
         <div>
           <label className={labelClass}>Why is this happening? What does it mean? *</label>
           <textarea
@@ -67,7 +71,7 @@ export function BrandFitForm({ signal }: { signal: Signal }) {
             rows={3}
             defaultValue={signal.why_it_matters ?? ""}
             className={inputClass}
-            placeholder="Root cause and cultural meaning. Is this moving or has it always been there? Be honest about uncertainty."
+            placeholder="Name the human tension underneath it, what it fits into within the bigger cultural picture, and why it matters strategically. Be honest about uncertainty."
           />
         </div>
 
