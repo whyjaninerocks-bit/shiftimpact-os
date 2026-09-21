@@ -45,6 +45,7 @@ import {
   getStrategicSynthesisRunsForTarget,
   getExternalReviewerGrants,
   getOrganisationOptions,
+  getCreativeFormatReadsForCampaign,
 } from "@/lib/data";
 import { inferCampaignMarket, type CampaignSignalContext } from "@/lib/cultural-signal-picker";
 import { getLatestReviewPlatformScore } from "@/lib/data-review-platform";
@@ -62,6 +63,7 @@ import { SignalLogSection } from "./_components/SignalLogSection";
 import { DiagnosticsSection } from "./_components/DiagnosticsSection";
 import { IdeaExtensionsSection } from "./_components/IdeaExtensionsSection";
 import { BigIdeaPlatformSection } from "./_components/BigIdeaPlatformSection";
+import { CreativeFormatReadSection } from "./_components/CreativeFormatReadSection";
 import { SignalIntelligenceSection, type WeeklyDataContext } from "./_components/SignalIntelligenceSection";
 import { CrossChannelSection } from "./_components/CrossChannelSection";
 import { ConsumerBehaviourSection } from "./_components/ConsumerBehaviourSection";
@@ -117,6 +119,7 @@ const sectionGroups = [
       { href: "#data-configuration", label: "Data Config" },
       { href: "#frame", label: "FRAME Brief" },
       { href: "#bip", label: "Big Idea Platform" },
+      { href: "#creative-format-read", label: "Creative Format Read ⚿" },
       { href: "#iq-evaluate", label: "IQ Evaluate ✦" },
       { href: "#kill-switches", label: "Kill Switches" },
       { href: "#stage-briefs", label: "STAGE Briefs" },
@@ -182,7 +185,7 @@ export default async function CampaignDetailPage({
 
   const clientChannels = await getClientChannels(campaign.client_id);
 
-  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions, bip, signalThreshold, signalReports, campaignChannels, crossChannelReports, allChannelProfiles, behaviourStates, marketContexts, attributionRecords, consumerSnapshot, iqEvaluation, mdhRecords, aiBrandVisibilityScore, socialCurrencyScore, latestCstrReading, brandAssets, reviewScore, dataPreferences, cascadeRecords, dsemRecords, kolTrackers, budgetMovements, categoryClientCount, predictionRecords, clientCampaignBriefs, campaignLearning, audienceReplenishment, hasCompetitiveSignal, competitiveIntel, externalReviewerGrants, organisationOptions] = await Promise.all([
+  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions, bip, signalThreshold, signalReports, campaignChannels, crossChannelReports, allChannelProfiles, behaviourStates, marketContexts, attributionRecords, consumerSnapshot, iqEvaluation, mdhRecords, aiBrandVisibilityScore, socialCurrencyScore, latestCstrReading, brandAssets, reviewScore, dataPreferences, cascadeRecords, dsemRecords, kolTrackers, budgetMovements, categoryClientCount, predictionRecords, clientCampaignBriefs, campaignLearning, audienceReplenishment, hasCompetitiveSignal, competitiveIntel, externalReviewerGrants, organisationOptions, creativeFormatReads] = await Promise.all([
     getKillSwitches(frame.id),
     getStageBriefs(id),
     getPhaseGates(id),
@@ -222,6 +225,7 @@ export default async function CampaignDetailPage({
     getClientCompetitiveIntel(campaign.client_id),
     getExternalReviewerGrants(id),
     getOrganisationOptions(),
+    getCreativeFormatReadsForCampaign(id),
   ]);
 
   const latestSignalWeek = signalReports[0]?.week_number ?? null;
@@ -366,6 +370,7 @@ export default async function CampaignDetailPage({
           strategicSynthesisRuns={bipSynthesisRuns}
         />
       )}
+      <CreativeFormatReadSection campaignId={id} initialRuns={creativeFormatReads} />
       {bip && (
         <IqEvaluateSection
           campaignId={id}

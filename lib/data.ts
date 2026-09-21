@@ -40,6 +40,8 @@ import type {
   StrategicBasisSource,
   // Strategic Synthesis v0.1 (Stage 4C.2)
   StrategicSynthesisRun,
+  // Creative Format Read — v0.1 schema/UI
+  CreativeFormatReadRun,
   // Sprint 19
   AiBrandVisibilityScore,
   // Sprint 20
@@ -401,6 +403,25 @@ export async function getStrategicSynthesisRunsForTarget(
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data as StrategicSynthesisRun[]) ?? [];
+}
+
+// ─── Creative Format Read — v0.1 schema/UI ─────────────────────────────────
+// INTERNAL ONLY. Genuinely append-only — see migration 0098 header. One
+// fetch per campaign (not per target) since a campaign accumulates reads
+// across multiple assets over time, unlike Strategic Synthesis's per-target
+// runs.
+
+export async function getCreativeFormatReadsForCampaign(
+  campaignId: string
+): Promise<CreativeFormatReadRun[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("creative_format_reads")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data as CreativeFormatReadRun[]) ?? [];
 }
 
 // ─── Signal Intelligence (Feature 12 — Sprint 2) ──────────────────────────────

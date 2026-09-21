@@ -706,6 +706,55 @@ export type StrategicSynthesisRun = {
   updated_at: string;
 };
 
+// ─── Creative Format Read — v0.1 schema/UI (logic module: lib/creative-format-read.ts) ──
+// INTERNAL ONLY. Diagnostic read against a pasted creative asset, never a
+// draft applied to a field — so unlike StrategicSynthesisRun above, there is
+// no review/apply/reject lifecycle here and no updated_at: genuinely
+// append-only, one row per run, never updated after insert. Independently
+// defined here (not imported from lib/creative-format-read.ts) to match the
+// existing convention: SynthesisStep/SynthesisRoute above are the persisted
+// shapes and are independently defined too, separate from
+// lib/strategic-synthesis.ts's own build-time types.
+
+export type CreativeAssetMaturity = "script" | "storyboard" | "rough_cut" | "final_asset";
+export type CreativeFormatDiagnosisStatus = "applicable" | "not_applicable" | "insufficient_input";
+export type CreativeFormatReadStatus = "pending" | "ready" | "error";
+
+export type CreativeFormatDimensionResult = {
+  key: string;
+  label: string;
+  observed_read: string;
+  rationale: string;
+  evidence_quality: SynthesisEvidenceQuality;
+  status: CreativeFormatDiagnosisStatus;
+  strengthening_move: string;
+};
+
+export type CreativeFormatPlatformSeam = {
+  platform_dependent: boolean;
+  platform_note: string;
+};
+
+export type CreativeFormatReadRun = {
+  id: string;
+  campaign_id: string;
+  frame_brief_id: string | null;
+  big_idea_platform_id: string | null;
+  asset_description: string;
+  asset_maturity: CreativeAssetMaturity;
+  // Frozen at run time: FRAME/BIP field values, cited basis sources, market
+  // coverage, and Brand-Commerce classification actually used to build the
+  // prompt. Never a live join — same reasoning as StrategicSynthesisRun.
+  input_snapshot: Record<string, unknown>;
+  output_dimensions: CreativeFormatDimensionResult[];
+  platform_seam: CreativeFormatPlatformSeam;
+  strategist_summary: string | null;
+  status: CreativeFormatReadStatus;
+  error_message: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
 // ─── Knowledge Base (Feature 15 — Cultural Intelligence & Regulatory Layer) ──
 // Stores uploaded strategic documents: cultural briefs, regulatory guides,
 // market intelligence, and cross-market reference material.
