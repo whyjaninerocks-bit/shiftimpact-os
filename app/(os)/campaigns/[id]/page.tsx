@@ -43,11 +43,14 @@ import {
   getStrategicBasisSourcesForTarget,
   getCulturalSignalsForPicker,
   getStrategicSynthesisRunsForTarget,
+  getExternalReviewerGrants,
+  getOrganisationOptions,
 } from "@/lib/data";
 import { inferCampaignMarket, type CampaignSignalContext } from "@/lib/cultural-signal-picker";
 import { getLatestReviewPlatformScore } from "@/lib/data-review-platform";
 import { Badge, ErrorBanner, gateSignalTone, phaseTone } from "@/app/_components/ui";
 import { CampaignInfoSection } from "./_components/CampaignInfoSection";
+import { ExternalReviewersSection } from "./_components/ExternalReviewersSection";
 import { OsModuleLinksSection } from "./_components/OsModuleLinksSection";
 import { FrameBriefSection } from "./_components/FrameBriefSection";
 import { KillSwitchesSection } from "./_components/KillSwitchesSection";
@@ -179,7 +182,7 @@ export default async function CampaignDetailPage({
 
   const clientChannels = await getClientChannels(campaign.client_id);
 
-  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions, bip, signalThreshold, signalReports, campaignChannels, crossChannelReports, allChannelProfiles, behaviourStates, marketContexts, attributionRecords, consumerSnapshot, iqEvaluation, mdhRecords, aiBrandVisibilityScore, socialCurrencyScore, latestCstrReading, brandAssets, reviewScore, dataPreferences, cascadeRecords, dsemRecords, kolTrackers, budgetMovements, categoryClientCount, predictionRecords, clientCampaignBriefs, campaignLearning, audienceReplenishment, hasCompetitiveSignal, competitiveIntel] = await Promise.all([
+  const [killSwitches, stageBriefs, phaseGates, dashboards, businessOutcomes, teamMembers, signalLogs, ideaExtensions, bip, signalThreshold, signalReports, campaignChannels, crossChannelReports, allChannelProfiles, behaviourStates, marketContexts, attributionRecords, consumerSnapshot, iqEvaluation, mdhRecords, aiBrandVisibilityScore, socialCurrencyScore, latestCstrReading, brandAssets, reviewScore, dataPreferences, cascadeRecords, dsemRecords, kolTrackers, budgetMovements, categoryClientCount, predictionRecords, clientCampaignBriefs, campaignLearning, audienceReplenishment, hasCompetitiveSignal, competitiveIntel, externalReviewerGrants, organisationOptions] = await Promise.all([
     getKillSwitches(frame.id),
     getStageBriefs(id),
     getPhaseGates(id),
@@ -217,6 +220,8 @@ export default async function CampaignDetailPage({
     getAudienceReplenishment(id),
     getCompetitiveSignalActive(campaign.client_id),
     getClientCompetitiveIntel(campaign.client_id),
+    getExternalReviewerGrants(id),
+    getOrganisationOptions(),
   ]);
 
   const latestSignalWeek = signalReports[0]?.week_number ?? null;
@@ -335,6 +340,7 @@ export default async function CampaignDetailPage({
         <div className="flex-1 h-px bg-neutral-200" />
       </div>
       <CampaignInfoSection campaign={campaign} teamMembers={teamMembers} />
+      <ExternalReviewersSection campaignId={id} grants={externalReviewerGrants} organisations={organisationOptions} />
       <DataSourceSetupSection campaignId={id} initialPrefs={dataPreferences} />
       <FrameBriefSection
         campaignId={id}

@@ -1568,3 +1568,28 @@ export type DataPreferences = {
   created_at: string;
   updated_at: string;
 };
+
+// ─── External Reviewers card v0.1 ────────────────────────────────────────────
+// Manages org_access_grants rows scoped to resource_type "campaign" — who
+// outside ShiftImpact can open /culture-review/[campaignId] for this
+// campaign, and whether they can save an assessment (view_plus_assessment)
+// or only read (view). INTERNAL ONLY — not shown in Client Interface.
+
+export type ExternalReviewerAccessLevel = "view" | "view_plus_assessment";
+
+export type ExternalReviewerGrant = {
+  id: string;
+  campaign_id: string;
+  grantee_user_id: string | null;
+  grantee_email: string | null;
+  grantee_org_id: string;
+  grantee_org_name: string;
+  access_level: ExternalReviewerAccessLevel;
+  created_at: string;
+};
+
+export type OrganisationOption = {
+  id: string;
+  name: string;
+  type: "Partner" | "Client";
+};

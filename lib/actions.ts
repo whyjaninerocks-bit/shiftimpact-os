@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendBriefNotification } from "@/lib/email";
-import { assertInternalSession } from "@/lib/auth/require-session";
+import { assertInternalSession, assertShiftImpactSession } from "@/lib/auth/require-session";
 import { computeConfidenceLabel, validateSignalMapKeys } from "@/lib/signal-maps";
 import { isValidMarketCode } from "@/lib/cultural-signal-picker";
 import type {
@@ -17,6 +17,7 @@ import type {
   StrategicBasisSource,
   SynthesisRoute,
   SynthesisReviewStatus,
+  ExternalReviewerAccessLevel,
 } from "@/lib/types";
 
 const BRAND_COMMERCE_CLASSIFICATION_VALUES: BrandCommerceClassification[] = [
@@ -2745,5 +2746,140 @@ export async function submitClientComplianceStatus(campaignId: string, formData:
 
   revalidatePath(`/portal/${campaignId}`);
   redirect(`/portal/${campaignId}#compliance`);
+}
+
+// ─── External Reviewers card v0.1 ────────────────────────────────────────────
+// Manages org_access_grants rows for resource_type "campaign" — who outside
+// ShiftImpact can open /culture-review/[campaignId]. Deliberately gated on
+// assertShiftImpactSession(), unlike the FRAME Brief / Strategic Basis
+// Sources actions above, which had session gating removed because the
+// campaign working page itself has no login wall in v1 (see the comment on
+// removeStrategicBasisSource). Granting external access is a different risk
+// class from editing campaign copy, so this one requires a real signed-in
+// ShiftImpact OS session by design — which in practice means it will throw
+// "Unauthorized" unless the person using this card is signed in via
+// /login as a ShiftImpact user, since nothing else on this page currently
+// requires that.
+//
+// Originally gated on assertInternalSession() alone, which only proves a
+// session exists — a Partner/Client user (an external reviewer themselves)
+// would pass that identically to a ShiftImpact strategist. Patched to
+// assertShiftImpactSession(), which additionally checks
+// user_profiles.org_type === "ShiftImpact", so this action is correct on
+// its own and does not rely on middleware's EXTERNAL_ALLOWED_PREFIXES guard
+// as the only thing standing between an external session and granting
+// access to other external users.
+
+const EXTERNAL_REVIEWER_ACCESS_LEVELS: ExternalReviewerAccessLevel[] = ["view", "view_plus_assessment"];
+const EXTERNAL_REVIEWER_ORG_TYPES = ["Partner", "Client"] as const;
+
+export type UpsertExternalReviewerGrantInput = {
+  campaign_id: string;
+  email: string;
+  access_level: ExternalReviewerAccessLevel;
+  organisation_id?: string | null;
+  new_organisation_name?: string | null;
+  new_organisation_type?: "Partner" | "Client" | null;
+};
+
+export type UpsertExternalReviewerGrantResult =
+  | { ok: true; created: boolean }
+  | { ok: false; error: string };
+
+export async function upsertExternalReviewerGrant(
+  input: UpsertExternalReviewerGrantInput,
+): Promise<UpsertExternalReviewerGrantResult> {
+  await assertShiftImpactSession();
+
+  const email = input.email.trim();
+  if (!email) return { ok: false, error: "Email is required." };
+
+  if (!EXTERNAL_REVIEWER_ACCESS_LEVELS.includes(input.access_level)) {
+    return { ok: false, error: "Choose a valid access level." };
+  }
+
+  const supabase = createAdminClient();
+
+  // 1. Resolve the organisation — either an existing row, or a minimal new
+  // one created inline. Every org_access_grants row requires a
+  // grantee_org_id (NOT NULL), and organisations has no link back to
+  // clients, so this can never be silently inferred from the campaign.
+  let organisationId = input.organisation_id?.trim() || null;
+  if (!organisationId) {
+    const newName = input.new_organisation_name?.trim();
+    const newType = input.new_organisation_type;
+    if (!newName) {
+      return { ok: false, error: "Choose an organisation, or enter a name to create one." };
+    }
+    if (!newType || !EXTERNAL_REVIEWER_ORG_TYPES.includes(newType)) {
+      return { ok: false, error: "Choose whether the new organisation is a Partner or a Client." };
+    }
+    const { data: newOrg, error: orgError } = await supabase
+      .from("organisations")
+      .insert({ name: newName, type: newType })
+      .select("id")
+      .single();
+    if (orgError) return { ok: false, error: orgError.message };
+    organisationId = (newOrg as { id: string }).id;
+  }
+
+  // 2. Resolve the auth user by email — existing-user-only for v0.1, no
+  // account creation here. The lookup function returns only an id (or
+  // null), never other auth.users columns — see migration 0095.
+  const { data: userId, error: lookupError } = await supabase.rpc("lookup_auth_user_id_by_email", {
+    lookup_email: email,
+  });
+  if (lookupError) return { ok: false, error: lookupError.message };
+  if (!userId) {
+    return {
+      ok: false,
+      error: `No account found for ${email}. They need to sign in once at /login before you can grant access.`,
+    };
+  }
+
+  // 3. Update the existing grant if this user already has one for this
+  // campaign, otherwise insert. This is a read-then-write, not a database
+  // upsert — targeting ON CONFLICT against a partial unique index needs
+  // its WHERE clause restated at the conflict target, which supabase-js's
+  // .upsert() has no way to express. Migration 0095's partial unique index
+  // is still the real backstop: if a genuine race slips past this check,
+  // the insert below fails with 23505 instead of silently duplicating.
+  const { data: existing, error: existingError } = await supabase
+    .from("org_access_grants")
+    .select("id")
+    .eq("resource_type", "campaign")
+    .eq("resource_id", input.campaign_id)
+    .eq("grantee_user_id", userId as string)
+    .maybeSingle();
+  if (existingError) return { ok: false, error: existingError.message };
+
+  if (existing) {
+    const { error: updateError } = await supabase
+      .from("org_access_grants")
+      .update({ access_level: input.access_level, grantee_org_id: organisationId })
+      .eq("id", (existing as { id: string }).id);
+    if (updateError) return { ok: false, error: updateError.message };
+    revalidatePath(`/campaigns/${input.campaign_id}`);
+    return { ok: true, created: false };
+  }
+
+  const { error: insertError } = await supabase.from("org_access_grants").insert({
+    resource_type: "campaign",
+    resource_id: input.campaign_id,
+    grantee_user_id: userId as string,
+    grantee_org_id: organisationId,
+    access_level: input.access_level,
+  });
+  if (insertError) {
+    // 23505 = unique_violation — the partial unique index catching a race
+    // that slipped past the read-then-write check above.
+    if ((insertError as { code?: string }).code === "23505") {
+      return { ok: false, error: "This person already has a grant for this campaign. Refresh and try again." };
+    }
+    return { ok: false, error: insertError.message };
+  }
+
+  revalidatePath(`/campaigns/${input.campaign_id}`);
+  return { ok: true, created: true };
 }
 

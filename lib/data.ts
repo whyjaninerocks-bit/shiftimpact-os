@@ -51,6 +51,9 @@ import type {
   // Outcome-Led Signal Mapping (migration 0073/0074) — internal only
   SignalVocabulary,
   CampaignSignalMapWithContext,
+  // External Reviewers card v0.1
+  ExternalReviewerGrant,
+  OrganisationOption,
 } from "@/lib/types";
 
 export async function getClients(): Promise<ClientWithRollups[]> {
@@ -2056,4 +2059,62 @@ export async function getActiveSignalMapSummaries(): Promise<Record<string, Sign
     };
   }
   return out;
+}
+
+// ─── External Reviewers card v0.1 ────────────────────────────────────────────
+// See lib/types.ts for the ExternalReviewerGrant / OrganisationOption header
+// comment. INTERNAL ONLY — not shown in Client Interface.
+
+export async function getExternalReviewerGrants(campaignId: string): Promise<ExternalReviewerGrant[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("org_access_grants")
+    .select("id, campaign_id:resource_id, grantee_user_id, access_level, created_at, grantee_org_id, organisations(name)")
+    .eq("resource_type", "campaign")
+    .eq("resource_id", campaignId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+
+  const rows = (data as Record<string, unknown>[]) ?? [];
+
+  // grantee_user_id only ever points at auth.users, which PostgREST doesn't
+  // expose — the admin Auth API is the only way to resolve an email from an
+  // id. Grant counts per campaign are small (a handful of reviewers), so one
+  // lookup per row is fine for v0.1; batch-resolving would only matter if
+  // this list grew into the hundreds.
+  const withEmail = await Promise.all(
+    rows.map(async (row) => {
+      const userId = row.grantee_user_id as string | null;
+      let email: string | null = null;
+      if (userId) {
+        const { data: userData } = await supabase.auth.admin.getUserById(userId);
+        email = userData?.user?.email ?? null;
+      }
+      const org = row.organisations as { name: string } | { name: string }[] | null;
+      const orgName = Array.isArray(org) ? org[0]?.name : org?.name;
+      return {
+        id: row.id as string,
+        campaign_id: row.campaign_id as string,
+        grantee_user_id: userId,
+        grantee_email: email,
+        grantee_org_id: row.grantee_org_id as string,
+        grantee_org_name: orgName ?? "Unknown organisation",
+        access_level: row.access_level as ExternalReviewerGrant["access_level"],
+        created_at: row.created_at as string,
+      } satisfies ExternalReviewerGrant;
+    }),
+  );
+
+  return withEmail;
+}
+
+export async function getOrganisationOptions(): Promise<OrganisationOption[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("organisations")
+    .select("id, name, type")
+    .in("type", ["Partner", "Client"])
+    .order("name", { ascending: true });
+  if (error) throw error;
+  return (data as OrganisationOption[]) ?? [];
 }

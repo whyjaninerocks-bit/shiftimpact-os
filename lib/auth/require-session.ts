@@ -89,3 +89,50 @@ export async function hasInternalSession(): Promise<boolean> {
   } = await supabase.auth.getUser();
   return !!user;
 }
+
+/**
+ * Throwing variant that requires not just a session, but a ShiftImpact
+ * session — user_profiles.org_type === "ShiftImpact". assertInternalSession()
+ * alone only proves "someone is logged in"; a Partner/Client user (e.g. an
+ * external culture-review reviewer) can satisfy that just as easily as a
+ * ShiftImpact strategist, since firewall_spike-style fixtures and real
+ * external reviewers are still real Supabase Auth users with real sessions.
+ *
+ * Use this for any Server Action that manages who else gets access (e.g.
+ * upsertExternalReviewerGrant), where the access-control decision must not
+ * be delegated to middleware's org_type check alone. middleware.ts's
+ * EXTERNAL_ALLOWED_PREFIXES guard protects page loads and same-path Server
+ * Action POSTs today, but a Server Action is still directly callable
+ * exported code — this makes the action correct on its own, independent of
+ * how the request reached it or whether the matcher/prefix list ever changes.
+ *
+ * Same RLS-scoped read pattern middleware.ts already uses for its own
+ * org_type check (a session-bound client, not the admin client), so this
+ * relies on nothing that isn't already proven to work.
+ *
+ * Usage:
+ *   export async function upsertExternalReviewerGrant(...) {
+ *     await assertShiftImpactSession();
+ *     ...
+ *   }
+ */
+export async function assertShiftImpactSession(): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("Unauthorized — internal session required.");
+  }
+
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("org_type")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profile?.org_type !== "ShiftImpact") {
+    throw new Error("Unauthorized — ShiftImpact session required.");
+  }
+}
