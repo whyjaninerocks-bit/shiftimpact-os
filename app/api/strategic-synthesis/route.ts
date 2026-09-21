@@ -24,6 +24,7 @@ import {
   buildSynthesisUserPrompt,
   buildSynthesisTool,
   assembleSynthesisRoute,
+  type MarketCoverageContext,
 } from "@/lib/strategic-synthesis";
 import type { StrategicBasisTargetType, StrategicBasisSource, BrandCommerceClassification } from "@/lib/types";
 
@@ -80,7 +81,7 @@ export async function POST(req: NextRequest) {
     // is read-only context only, never a synthesis target.
     const { data: campaign, error: cErr } = await supabase
       .from("campaigns")
-      .select("name, business_outcome_target, business_outcome_actual, clients(name, business_outcome_label)")
+      .select("name, business_outcome_target, business_outcome_actual, primary_market_code, clients(name, business_outcome_label)")
       .eq("id", campaign_id)
       .single();
     if (cErr || !campaign) {
@@ -93,6 +94,31 @@ export async function POST(req: NextRequest) {
       actual: campaign.business_outcome_actual ?? null,
       label: clientRow?.business_outcome_label ?? "Business Outcome",
     };
+
+    // 2b. Market Activation by Radar Layer 1 — honest coverage read for this
+    // campaign's primary market. primary_market_code may be null (never
+    // set), or a non-country code (SEA/GLOBAL/OTHER) with no
+    // market_parameters row — both resolve to marketParamRow === null,
+    // which buildMarketCoverageBlock treats as "not tracked."
+    const marketCode = (campaign as { primary_market_code?: string | null }).primary_market_code ?? null;
+    let marketCoverage: MarketCoverageContext | null = null;
+    if (marketCode) {
+      const { data: marketParamRow } = await supabase
+        .from("market_parameters")
+        .select("market_name, coverage_status")
+        .eq("market_code", marketCode.toUpperCase())
+        .maybeSingle();
+      const { count: signalCount } = await supabase
+        .from("cultural_signals")
+        .select("id", { count: "exact", head: true })
+        .eq("geographic_scope", marketCode);
+      marketCoverage = {
+        marketCode,
+        marketName: marketParamRow?.market_name ?? null,
+        coverageStatus: marketParamRow?.coverage_status ?? null,
+        signalCount: signalCount ?? 0,
+      };
+    }
 
     // 3. Always load FRAME (BIP synthesis needs FRAME context too; FRAME
     // synthesis's own target IS the frame).
@@ -210,6 +236,7 @@ export async function POST(req: NextRequest) {
       steps: stepDefs,
       businessOutcome: target_type === "frame_brief" ? businessOutcome : null,
       enemyInheritance,
+      marketCoverage,
     });
 
     const tool = buildSynthesisTool(stepDefs);

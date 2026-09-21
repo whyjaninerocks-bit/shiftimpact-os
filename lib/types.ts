@@ -1055,6 +1055,18 @@ export type CampaignSignalMapWithContext = CampaignSignalMap & {
 
 export type DigitalPenetrationBand = "High" | "Medium" | "Low";
 
+// ─── market_parameters.coverage_status — Market Activation by Radar Layer 1 ──
+// Strategist-set, never auto-computed from signal volume or any other count.
+// Distinguishes markets with real, curated OS Cultural Radar coverage from
+// markets that are seeded metadata only. NOT the same as is_active_for_kb
+// (false for all 10 seeded rows today, including Malaysia — a separate,
+// currently-unwired KB feature; deliberately not reused here).
+export type MarketCoverageStatus =
+  | "not_tracked"        // no curated cultural signal coverage yet
+  | "experimental"       // early/limited coverage — directional only
+  | "active_tracking"    // real, ongoing curated coverage
+  | "strategic_coverage"; // mature, high-confidence curated coverage
+
 export type MarketParameter = {
   id: string;
   market_code: string;          // ISO 3166-1 alpha-2 (e.g. 'MY')
@@ -1065,6 +1077,7 @@ export type MarketParameter = {
   digital_penetration_band: DigitalPenetrationBand;
   mobile_first: boolean;
   is_primary_market: boolean;   // TRUE for MY only
+  coverage_status: MarketCoverageStatus;
   active: boolean;
   created_at: string;
   updated_at: string;

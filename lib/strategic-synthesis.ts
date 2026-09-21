@@ -41,8 +41,10 @@ import type {
   SynthesisEvidenceQuality,
   SynthesisRoute,
   SynthesisStep,
+  MarketCoverageStatus,
 } from "@/lib/types";
 import type { BrandCommerceClassification } from "@/lib/types";
+import { displayMarketCoverageStatus } from "@/lib/cultural-signal-picker";
 
 // ─── Protection rules (server-defined, never model-controlled) ──────────────
 // Governs whether a step's draft can actually be applied to a field, beyond
@@ -243,6 +245,43 @@ export function checkGuardrails(text: string): { clean: boolean; hits: string[] 
   return { clean: hits.length === 0, hits };
 }
 
+// ─── Market Cultural Coverage — Market Activation by Radar Layer 1 ─────────
+// Injects an honest read of how much curated cultural intelligence actually
+// exists for this campaign's primary market, so the model calibrates
+// confidence instead of treating every market as equally well-covered.
+// coverage_status is strategist-set (via market_parameters), never derived
+// here from signalCount — signalCount is shown for transparency only.
+
+export type MarketCoverageContext = {
+  marketCode: string | null;
+  marketName: string | null;
+  coverageStatus: MarketCoverageStatus | null;
+  signalCount: number;
+};
+
+export function buildMarketCoverageBlock(marketCoverage?: MarketCoverageContext | null): string {
+  if (!marketCoverage || !marketCoverage.marketCode) {
+    return "No primary market is set on this campaign. Do not invent, assume, or generalize market-specific cultural intelligence — reason only from the brief/BIP inputs and any explicitly cited basis sources.";
+  }
+
+  const { marketCode, marketName, coverageStatus, signalCount } = marketCoverage;
+  const label = marketName ?? marketCode;
+  const statusLabel = displayMarketCoverageStatus(coverageStatus);
+
+  if (coverageStatus === "active_tracking" || coverageStatus === "strategic_coverage") {
+    return `Market: ${label} (${marketCode}). Coverage: ${statusLabel} — ${signalCount} curated cultural signal(s) exist for this market. Normal confidence framing applies, still subject to rule 7's citation gate above.`;
+  }
+
+  if (coverageStatus === "experimental") {
+    return `Market: ${label} (${marketCode}). Coverage: ${statusLabel} — ${signalCount} curated cultural signal(s), not yet fully validated. Frame any market-level cultural input as directional and early-stage only — do not present it with the same confidence as a well-established market.`;
+  }
+
+  // not_tracked, or the market code has no market_parameters row at all
+  // (e.g. SEA / GLOBAL / OTHER, or a market not yet seeded).
+  const marketDisplay = marketName && marketName !== marketCode ? `${marketName} (${marketCode})` : marketCode;
+  return `Market: ${marketDisplay}. Coverage: Not actively tracked yet — ${signalCount} curated cultural signal(s) exist for this market. Do NOT invent, assume, or generalize cultural intelligence for this market. Omit market-specific cultural claims entirely and reason only from the brief/BIP inputs and any explicitly cited basis sources.`;
+}
+
 // ─── System prompt ────────────────────────────────────────────────────────
 
 export const SYNTHESIS_SYSTEM_PROMPT = `You are the Strategic Synthesis assistant embedded in ShiftImpact OS — a senior strategist drafting FIRST-PASS material for a human strategist to review, edit, or discard. You are not the author of record. Every draft you produce is a starting point, never a finished, approved output.
@@ -259,6 +298,7 @@ Ground rules — non-negotiable:
 9. Never infer commerce intent from free-text objectives or campaign names yourself — only the structured classification passed to you determines this.
 10. For every step, set evidence_quality honestly: "direct_evidence" (directly grounded in specific, cited inputs), "inference" (a reasonable extrapolation from thinner inputs), or "insufficient_evidence" (inputs too thin to say anything specific).
 11. Write rationale as 1-2 sentences naming what in the inputs the draft is based on — never a generic justification. For the BIP enemy_villain step specifically: if a FRAME-level enemy is already active and you are sharpening or changing it, say so explicitly in the rationale — never present a changed enemy as if it were simply inherited unchanged.
+12. Respect this run's Market Cultural Coverage status (see below) in addition to rule 7. Rule 7 gates cultural framing on whether a signal was cited at all; this rule governs how much confidence to place in market-level cultural framing even when one was. If coverage is "not tracked," do not invent, assume, or generalize any market-specific cultural intelligence — omit market-specific cultural claims entirely and reason only from the brief/BIP inputs and any explicitly cited basis sources. If coverage is "limited/experimental," frame any market-level cultural input as directional and early-stage, not settled fact — never with the same confidence you'd use for a well-established market.
 
 You will be asked to draft multiple steps in one call. Follow the per-step guidance given for each exactly, and respect which steps are read-only context (they still need a thoughtful draft — they're simply never applied directly to a field).`;
 
@@ -282,10 +322,15 @@ export function buildSynthesisUserPrompt(params: {
   // BigIdeaPlatformSection.tsx (bip.enemy_villain if set, else
   // frame.enemy_villain if frame.enemy_active).
   enemyInheritance?: { effectiveValue: string | null; inheritedFromFrame: boolean } | null;
+  // Market Activation by Radar Layer 1 — honest coverage read for this
+  // campaign's primary market. Optional/nullable throughout: older callers
+  // or campaigns with no primary_market_code set still work unchanged.
+  marketCoverage?: MarketCoverageContext | null;
 }): string {
   const {
     targetType, campaignName, clientName, frame, bip, basisSources,
     brandCommerceClassification, steps, businessOutcome, enemyInheritance,
+    marketCoverage,
   } = params;
 
   const cultureOk = cultureIsCitable(basisSources);
@@ -351,6 +396,9 @@ Expression Summary: ${bip.expression_summary || "(empty)"}
 ${sourcesBlock}
 
 Cultural framing permitted for this run: ${cultureOk ? "YES — a real OS Cultural Radar signal was cited above." : "NO — do not name or invent a specific cultural tension/signal; reason from brief/BIP inputs only."}
+
+─── MARKET CULTURAL COVERAGE ───
+${buildMarketCoverageBlock(marketCoverage)}
 
 ─── STEPS TO DRAFT (in order) ───
 ${stepsBlock}
