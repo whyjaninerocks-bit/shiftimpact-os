@@ -16,6 +16,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireSession } from "@/lib/auth/require-session";
 import { getModel } from "@/lib/ai-model";
 import {
   FRAME_SYNTHESIS_STEPS,
@@ -31,6 +32,9 @@ import type { StrategicBasisTargetType, StrategicBasisSource, BrandCommerceClass
 const TARGET_TYPES: StrategicBasisTargetType[] = ["frame_brief", "big_idea_platform"];
 
 export async function POST(req: NextRequest) {
+  const authError = await requireSession();
+  if (authError) return authError;
+
   const supabase = createAdminClient();
 
   let campaign_id: string | undefined;
