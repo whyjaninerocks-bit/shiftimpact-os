@@ -10,7 +10,7 @@ import { BrandFitForm } from "./_components/BrandFitForm";
 import { HandoffPanel } from "./_components/HandoffPanel";
 import { ArchiveButtonClient } from "./_components/ArchiveButtonClient";
 import { DurabilityStatusForm } from "./_components/DurabilityStatusForm";
-import { displayDurabilityStatus } from "@/lib/cultural-signal-picker";
+import { displayDurabilityStatus, isReassessOverdue } from "@/lib/cultural-signal-picker";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +31,7 @@ type Signal = {
   status: string;
   created_at: string;
   durability_status: string | null;
+  durability_reassess_at: string | null;
 };
 
 function typeTone(type: string): "blue" | "green" | "amber" | "purple" | "neutral" {
@@ -108,6 +109,9 @@ export default async function CulturalSignalDetailPage({
           {displayDurabilityStatus(signal.durability_status) && (
             <Badge tone="purple">{displayDurabilityStatus(signal.durability_status)}</Badge>
           )}
+          {isReassessOverdue(signal.durability_reassess_at, signal.durability_status) && (
+            <Badge tone="red">Reassess overdue</Badge>
+          )}
           {signal.is_trending
             ? <Badge tone="green">Currently moving</Badge>
             : <Badge tone="neutral">Permanent ordinary</Badge>
@@ -138,7 +142,11 @@ export default async function CulturalSignalDetailPage({
             <p className="text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap">{signal.evidence}</p>
           </div>
 
-          <DurabilityStatusForm signalId={signal.id} currentValue={signal.durability_status} />
+          <DurabilityStatusForm
+            signalId={signal.id}
+            currentValue={signal.durability_status}
+            currentReassessAt={signal.durability_reassess_at}
+          />
 
           <div className="flex gap-2 pt-1">
             <Link

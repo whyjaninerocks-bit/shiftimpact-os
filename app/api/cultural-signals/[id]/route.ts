@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isValidDurabilityStatus } from "@/lib/cultural-signal-picker";
+import { isValidDurabilityStatus, suggestReassessDate } from "@/lib/cultural-signal-picker";
 
 export async function GET(
   _req: NextRequest,
@@ -38,6 +38,7 @@ export async function PATCH(
     "why_it_matters", "brand_fit_notes", "brand_fit_status", "community_respect_check",
     "status",
     "durability_status",
+    "durability_reassess_at",
   ] as const;
 
   const patch: Record<string, unknown> = {};
@@ -49,14 +50,43 @@ export async function PATCH(
   // (no DB CHECK). Blank/empty string clears it back to NULL (explicitly
   // supported — this is how a strategist "un-sets" it); a non-blank value
   // must be one of the five approved values or the request is rejected.
+  const reassessExplicitlyProvided = "durability_reassess_at" in patch;
   if ("durability_status" in patch) {
     const raw = patch.durability_status;
     if (raw === null || raw === "" || (typeof raw === "string" && raw.trim() === "")) {
       patch.durability_status = null;
+      // Clearing the classification clears its reassessment date too,
+      // unless the caller explicitly set one in the same request.
+      if (!reassessExplicitlyProvided) patch.durability_reassess_at = null;
     } else if (typeof raw !== "string" || !isValidDurabilityStatus(raw.trim())) {
       return NextResponse.json({ error: `Invalid durability_status: ${String(raw)}` }, { status: 400 });
     } else {
       patch.durability_status = raw.trim();
+      // Stage 4B follow-up — "longer term durability reassess": when the
+      // caller doesn't explicitly send a reassess date (e.g. the simple
+      // create-time dropdown on /cultural-radar/new), propose one
+      // server-side based on the value, so every classified signal gets a
+      // reassessment horizon without extra UI. DurabilityStatusForm on the
+      // detail page always sends an explicit value (the strategist's own
+      // edit or their accepted suggestion), which takes precedence here.
+      if (!reassessExplicitlyProvided) {
+        patch.durability_reassess_at = suggestReassessDate(patch.durability_status as string);
+      }
+    }
+  }
+
+  // durability_reassess_at — plain date validation only (YYYY-MM-DD or
+  // null/blank to clear). The suggested default is computed client-side
+  // (DurabilityStatusForm) or server-side above; either way this field is
+  // never silently recomputed once the caller has sent an explicit value.
+  if (reassessExplicitlyProvided) {
+    const raw = patch.durability_reassess_at;
+    if (raw === null || raw === "" || (typeof raw === "string" && raw.trim() === "")) {
+      patch.durability_reassess_at = null;
+    } else if (typeof raw !== "string" || Number.isNaN(Date.parse(raw))) {
+      return NextResponse.json({ error: `Invalid durability_reassess_at: ${String(raw)}` }, { status: 400 });
+    } else {
+      patch.durability_reassess_at = raw.trim();
     }
   }
 

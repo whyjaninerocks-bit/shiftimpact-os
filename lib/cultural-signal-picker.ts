@@ -202,6 +202,45 @@ export function displayDurabilityStatus(value: string | null | undefined): strin
   return match?.label ?? null;
 }
 
+// ─── cultural_signals.durability_reassess_at — Stage 4B follow-up ──────────
+// "Durability is a judgment about now — it should get checked again later."
+// Default horizon (days) proposed to the strategist per value, never applied
+// silently — the strategist can always move the date. Fast-moving
+// classifications (trending, needs_validation) get short horizons; rooted
+// patterns get a long one, so even those eventually come back for a sanity
+// check rather than being classified once and never revisited.
+export const DURABILITY_REASSESS_DEFAULT_DAYS: Record<DurabilityStatus, number | null> = {
+  not_assessed: null,
+  needs_validation: 30,
+  currently_trending: 60,
+  emerging_signal: 90,
+  rooted_cultural_pattern: 365,
+};
+
+// Returns a YYYY-MM-DD string (matches <input type="date"> + Postgres date),
+// or null when the value has no reassessment horizon (not_assessed, or an
+// unrecognized value).
+export function suggestReassessDate(status: string | null, from: Date = new Date()): string | null {
+  if (!status || !isValidDurabilityStatus(status)) return null;
+  const days = DURABILITY_REASSESS_DEFAULT_DAYS[status];
+  if (days == null) return null;
+  const d = new Date(from);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+// A signal is only ever flagged overdue if it actually carries a
+// classification — an unset/'not_assessed' signal has nothing to reassess.
+export function isReassessOverdue(
+  reassessAt: string | null | undefined,
+  durabilityStatus: string | null | undefined,
+  today: Date = new Date()
+): boolean {
+  if (!reassessAt || !durabilityStatus || durabilityStatus === "not_assessed") return false;
+  const todayStr = today.toISOString().slice(0, 10);
+  return reassessAt < todayStr;
+}
+
 function hasIndustryOverlap(signalIndustries: string[] | null, campaignCategory: string | null): boolean {
   if (!campaignCategory || !signalIndustries || signalIndustries.length === 0) return false;
   const target = campaignCategory.trim().toLowerCase();

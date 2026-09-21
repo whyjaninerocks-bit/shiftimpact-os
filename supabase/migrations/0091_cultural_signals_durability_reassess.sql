@@ -1,0 +1,16 @@
+-- Migration 0091: durability reassessment date
+--
+-- Follow-up to 0090 (durability_status). Janine asked for durability to be
+-- "longer term" — built now so it starts flagging automatically after time
+-- passes, without needing a separate feature pass later.
+--
+-- durability_reassess_at: nullable date, no default, no CHECK. When a
+-- strategist sets durability_status, the UI proposes a default reassess date
+-- based on the value chosen (short horizon for currently_trending /
+-- needs_validation, longer for emerging_signal, longest for
+-- rooted_cultural_pattern) — but the strategist can move that date, same
+-- human-decided principle as durability_status itself. Nothing here is
+-- computed by a cron; a signal is simply flagged as "overdue" in the UI once
+-- today's date passes durability_reassess_at. No backfill — every existing
+-- row (all currently NULL durability_status) gets NULL here too.
+alter table cultural_signals add column if not exists durability_reassess_at date;

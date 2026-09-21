@@ -5,7 +5,7 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Badge, Card, SectionTitle, buttonClass } from "@/app/_components/ui";
-import { displayDurabilityStatus } from "@/lib/cultural-signal-picker";
+import { displayDurabilityStatus, displayMarket, isReassessOverdue, MARKET_CODE_OPTIONS } from "@/lib/cultural-signal-picker";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +19,7 @@ type CulturalSignal = {
   status: string;
   created_at: string;
   durability_status: string | null;
+  durability_reassess_at: string | null;
 };
 
 function typeTone(type: string): "blue" | "green" | "amber" | "purple" | "neutral" {
@@ -66,11 +67,41 @@ function formatDate(iso: string) {
   });
 }
 
+// Country/market sectioning — Stage 4B follow-up. Groups the flat feed by
+// geographic_scope so signals from different markets aren't mixed together
+// as the log grows toward full ASEAN coverage. Section order follows the
+// same canonical MARKET_CODE_OPTIONS list used for campaigns.primary_market_code
+// (lib/cultural-signal-picker.ts) — any code outside that list still gets its
+// own section (alphabetical, appended at the end) rather than being hidden or
+// dropped into a catch-all, and untagged signals get their own section too.
+// Grouping only — no filtering, nothing is ever hidden.
+function groupByCountry(signals: CulturalSignal[]): { code: string; label: string; rows: CulturalSignal[] }[] {
+  const byCode = new Map<string, CulturalSignal[]>();
+  for (const sig of signals) {
+    const code = (sig.geographic_scope || "").trim().toUpperCase() || "UNTAGGED";
+    if (!byCode.has(code)) byCode.set(code, []);
+    byCode.get(code)!.push(sig);
+  }
+
+  const knownOrder = MARKET_CODE_OPTIONS.map((o) => o.code);
+  const knownPresent = knownOrder.filter((code) => byCode.has(code));
+  const unknownPresent = [...byCode.keys()]
+    .filter((code) => code !== "UNTAGGED" && !knownOrder.includes(code))
+    .sort();
+  const orderedCodes = [...knownPresent, ...unknownPresent, ...(byCode.has("UNTAGGED") ? ["UNTAGGED"] : [])];
+
+  return orderedCodes.map((code) => ({
+    code,
+    label: code === "UNTAGGED" ? "Not tagged" : displayMarket(code),
+    rows: byCode.get(code)!,
+  }));
+}
+
 export default async function CulturalRadarPage() {
   const supabase = createAdminClient();
   const { data: signals } = await supabase
     .from("cultural_signals")
-    .select("id, signal_name, signal_type, is_trending, geographic_scope, brand_fit_status, status, created_at, durability_status")
+    .select("id, signal_name, signal_type, is_trending, geographic_scope, brand_fit_status, status, created_at, durability_status, durability_reassess_at")
     .neq("status", "archived")
     .order("created_at", { ascending: false });
 
@@ -132,67 +163,86 @@ export default async function CulturalRadarPage() {
           </div>
         </Card>
       ) : (
-        <Card className="overflow-hidden">
-          <div className="divide-y divide-neutral-50">
-            {(signals as CulturalSignal[]).map((sig) => (
-              <Link
-                key={sig.id}
-                href={`/cultural-radar/${sig.id}`}
-                className="flex items-start gap-4 px-6 py-4 hover:bg-neutral-50 transition-colors group"
-              >
-                {/* Status dot */}
-                <div className="flex-shrink-0 pt-1.5">
-                  <div className={`w-2 h-2 rounded-full ${statusDot(sig.status)}`} />
-                </div>
+        <div className="space-y-4">
+          {groupByCountry(signals as CulturalSignal[]).map(({ code, label, rows }) => (
+            <details key={code} open className="group/section">
+              <summary className="flex items-center gap-2 cursor-pointer select-none mb-2 list-none">
+                <svg className="w-3.5 h-3.5 text-neutral-400 transition-transform group-open/section:rotate-90" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+                <h3 className="text-xs font-bold text-neutral-500 uppercase tracking-widest">{label}</h3>
+                <span className="text-xs text-neutral-300">{rows.length}</span>
+              </summary>
 
-                {/* Main content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="font-semibold text-sm text-neutral-900 group-hover:text-neutral-700 leading-snug">
-                      {sig.signal_name}
-                    </p>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {displayDurabilityStatus(sig.durability_status) && (
-                        <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">
-                          {displayDurabilityStatus(sig.durability_status)}
-                        </span>
-                      )}
-                      {sig.is_trending && (
-                        <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
-                          Moving
-                        </span>
-                      )}
-                      <Badge tone={typeTone(sig.signal_type)}>
-                        {sig.signal_type}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 mt-1.5">
-                    <span className="text-xs text-neutral-400">{sig.geographic_scope}</span>
-                    <span className="text-xs text-neutral-200">·</span>
-                    <span className="text-xs text-neutral-400">{formatDate(sig.created_at)}</span>
-                    {sig.brand_fit_status !== "pending" && (
-                      <>
-                        <span className="text-xs text-neutral-200">·</span>
-                        <Badge tone={fitTone(sig.brand_fit_status)}>
-                          {sig.brand_fit_status === "not_ours" ? "Not ours" : sig.brand_fit_status}
-                        </Badge>
-                      </>
-                    )}
-                    <span className="text-xs text-neutral-200">·</span>
-                    <span className="text-xs text-neutral-400">{statusLabel(sig.status)}</span>
-                  </div>
-                </div>
+              <Card className="overflow-hidden">
+                <div className="divide-y divide-neutral-50">
+                  {rows.map((sig) => (
+                    <Link
+                      key={sig.id}
+                      href={`/cultural-radar/${sig.id}`}
+                      className="flex items-start gap-4 px-6 py-4 hover:bg-neutral-50 transition-colors group"
+                    >
+                      {/* Status dot */}
+                      <div className="flex-shrink-0 pt-1.5">
+                        <div className={`w-2 h-2 rounded-full ${statusDot(sig.status)}`} />
+                      </div>
 
-                <div className="text-neutral-300 group-hover:text-neutral-400 flex-shrink-0 pt-0.5">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
+                      {/* Main content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="font-semibold text-sm text-neutral-900 group-hover:text-neutral-700 leading-snug">
+                            {sig.signal_name}
+                          </p>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {isReassessOverdue(sig.durability_reassess_at, sig.durability_status) && (
+                              <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest">
+                                Reassess overdue
+                              </span>
+                            )}
+                            {displayDurabilityStatus(sig.durability_status) && (
+                              <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">
+                                {displayDurabilityStatus(sig.durability_status)}
+                              </span>
+                            )}
+                            {sig.is_trending && (
+                              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
+                                Moving
+                              </span>
+                            )}
+                            <Badge tone={typeTone(sig.signal_type)}>
+                              {sig.signal_type}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1.5">
+                          <span className="text-xs text-neutral-400">{sig.geographic_scope}</span>
+                          <span className="text-xs text-neutral-200">·</span>
+                          <span className="text-xs text-neutral-400">{formatDate(sig.created_at)}</span>
+                          {sig.brand_fit_status !== "pending" && (
+                            <>
+                              <span className="text-xs text-neutral-200">·</span>
+                              <Badge tone={fitTone(sig.brand_fit_status)}>
+                                {sig.brand_fit_status === "not_ours" ? "Not ours" : sig.brand_fit_status}
+                              </Badge>
+                            </>
+                          )}
+                          <span className="text-xs text-neutral-200">·</span>
+                          <span className="text-xs text-neutral-400">{statusLabel(sig.status)}</span>
+                        </div>
+                      </div>
+
+                      <div className="text-neutral-300 group-hover:text-neutral-400 flex-shrink-0 pt-0.5">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                        </svg>
+                      </div>
+                    </Link>
+                  ))}
                 </div>
-              </Link>
-            ))}
-          </div>
-        </Card>
+              </Card>
+            </details>
+          ))}
+        </div>
       )}
 
       {/* ── Principle reminder ───────────────────────────────────────────── */}

@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import Anthropic from "@anthropic-ai/sdk";
 import { getModel } from "@/lib/ai-model";
-import { isValidDurabilityStatus } from "@/lib/cultural-signal-picker";
+import { isValidDurabilityStatus, suggestReassessDate } from "@/lib/cultural-signal-picker";
 
 const INDUSTRY_OPTIONS = [
   "FMCG", "Financial Services", "Technology", "Retail", "QSR",
@@ -124,6 +124,12 @@ export async function POST(req: NextRequest) {
       : [],
     durability_status: typeof durability_status === "string" && durability_status.trim()
       ? durability_status.trim()
+      : null,
+    // Stage 4B follow-up — a signal created with a durability classification
+    // already picked gets a default reassessment horizon from day one; see
+    // suggestReassessDate() in lib/cultural-signal-picker.ts.
+    durability_reassess_at: typeof durability_status === "string" && durability_status.trim()
+      ? suggestReassessDate(durability_status.trim())
       : null,
   };
   if (client_id) insertRow.client_id = client_id;
