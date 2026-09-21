@@ -4,6 +4,14 @@ import { type NextRequest, NextResponse } from "next/server";
 // Paths accessible without authentication
 const PUBLIC_PREFIXES = ["/login", "/auth/callback", "/portal", "/s/", "/api/", "/decide", "/growth-sprint/share"];
 
+// External users (org_type Partner/Client on user_profiles) are confined to
+// this narrow set of authenticated paths, on top of the always-public
+// prefixes above. Firewall prototype — smallest safe guard: a Supabase
+// session alone used to be enough to reach every internal OS page, since
+// those pages use the admin client with no row scoping. This closes that
+// gap without touching internal access or building a dashboard.
+const EXTERNAL_ALLOWED_PREFIXES = ["/culture-review", "/account"];
+
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
@@ -58,6 +66,28 @@ export async function middleware(request: NextRequest) {
     loginUrl.searchParams.delete("code");
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // External-user guard. Fails closed: a user with no user_profiles row,
+  // or any org_type other than 'ShiftImpact', is treated as external, not
+  // internal. Only checked for paths outside the always-allowed set above,
+  // so this costs one extra query per request on internal OS pages —
+  // negligible today, worth revisiting if that ever matters.
+  if (!EXTERNAL_ALLOWED_PREFIXES.some((p) => pathname.startsWith(p))) {
+    const { data: profile } = await supabase
+      .from("user_profiles")
+      .select("org_type")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const isInternal = profile?.org_type === "ShiftImpact";
+
+    if (!isInternal) {
+      return new NextResponse(
+        "Access restricted. Use the culture review link you were given, or contact ShiftImpact.",
+        { status: 403 },
+      );
+    }
   }
 
   return supabaseResponse;
