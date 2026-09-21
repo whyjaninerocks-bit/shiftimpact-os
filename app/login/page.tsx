@@ -16,13 +16,27 @@ function LoginForm() {
     if (err) setError(decodeURIComponent(err));
   }, [searchParams]);
 
+  // Preserve the intended destination (e.g. middleware sending an
+  // unauthenticated request to /login?next=/culture-review/<id>) through the
+  // magic-link round trip. Only an internal relative path is accepted —
+  // "/culture-review/xyz" is fine, "//evil.com" or "https://evil.com" is
+  // not, so this can never be turned into an open redirect. /auth/callback
+  // already re-validates with the same startsWith("/") rule and falls back
+  // to /clients, but this rejects the protocol-relative "//" case that
+  // check alone would miss, before it ever reaches the emailed link.
+  const rawNext = searchParams.get("next");
+  const safeNext =
+    rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     const supabase = createClient();
-    const redirectTo = `${window.location.origin}/auth/callback`;
+    const redirectTo = safeNext
+      ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(safeNext)}`
+      : `${window.location.origin}/auth/callback`;
 
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
