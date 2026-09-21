@@ -2883,3 +2883,141 @@ export async function upsertExternalReviewerGrant(
   return { ok: true, created: true };
 }
 
+// ─── External Reviewer invite email v0.1 ─────────────────────────────────────
+// Notification-only nudge for the "No account found" dead end in
+// upsertExternalReviewerGrant(): tells someone with no Supabase Auth account
+// yet to go sign in, so a strategist can grant them access afterward. This
+// action does NOT create an Auth user, does NOT touch org_access_grants, and
+// writes nothing to the database — it sends one Resend email and returns.
+// Access is still only ever granted through the existing upsert flow, after
+// the person has actually signed in.
+//
+// Deliberately uses Resend (same raw-fetch pattern as
+// app/api/campaign-report/[id]/send-agency-preview/route.ts), not Supabase's
+// own admin.inviteUserByEmail() — that goes through the same Supabase SMTP
+// quota that's currently exhausted and paused. Resend is a separate quota,
+// so this can be sent without touching the thing we're protecting.
+//
+// Gated on assertShiftImpactSession() — same reasoning as
+// upsertExternalReviewerGrant: this is still "who gets nudged toward access
+// to this campaign," not a harmless read.
+
+// No hardcoded fallback here on purpose. The earlier version defaulted to
+// https://www.shift-impact.com, copied from send-agency-preview's fallback
+// — but that's not this app's live domain (shiftimpact-os.vercel.app is),
+// so a missing env var would have silently sent a login link to the wrong
+// site. Safer to refuse to send than to send a broken link.
+
+export type SendExternalReviewerInviteInput = {
+  campaign_id: string;
+  campaign_name: string;
+  email: string;
+  organisation_type: "Partner" | "Client";
+};
+
+export type SendExternalReviewerInviteResult = { ok: true } | { ok: false; error: string };
+
+function buildExternalReviewerInviteEmail(params: {
+  campaignName: string;
+  loginUrl: string;
+  isAgency: boolean;
+}): { subject: string; html: string } {
+  const { campaignName, loginUrl, isAgency } = params;
+
+  const subject = isAgency
+    ? `You've been invited to review — ${campaignName}`
+    : `Your culture review is ready — ${campaignName}`;
+
+  const intro = isAgency
+    ? `You've been invited to review the culture intelligence behind <strong>${campaignName}</strong> so you can prep your narrative before it goes further.`
+    : `You've been invited to review the culture intelligence behind <strong>${campaignName}</strong>.`;
+
+  const cta = isAgency ? "Sign in to review →" : "Sign in to view →";
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>${subject}</title>
+</head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+<div style="max-width:560px;margin:0 auto;padding:32px 16px;">
+  <div style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+    <div style="background:#1e3a5f;padding:28px 32px;">
+      <p style="font-size:10px;color:#93c5fd;letter-spacing:0.12em;text-transform:uppercase;margin:0 0 6px;">ShiftImpact OS — Culture Review</p>
+      <p style="font-size:20px;font-weight:600;color:#ffffff;margin:0;">${campaignName}</p>
+    </div>
+    <div style="padding:28px 32px;">
+      <p style="font-size:15px;color:#374151;line-height:1.7;margin:0 0 20px;">${intro}</p>
+      <p style="font-size:13px;color:#6b7280;line-height:1.6;margin:0 0 20px;">
+        You'll need to sign in once with this email address to get access. If this is your first time, that sign-in also creates your account — no separate signup needed.
+      </p>
+      <a href="${loginUrl}" style="display:block;text-align:center;background:#1e3a5f;color:#ffffff;font-size:15px;font-weight:600;padding:14px 24px;border-radius:8px;text-decoration:none;margin:0 0 20px;">${cta}</a>
+      <hr style="border:none;border-top:1px solid #f3f4f6;margin:20px 0;" />
+      <p style="font-size:12px;color:#9ca3af;line-height:1.6;margin:0;">
+        If you weren't expecting this, you can ignore this email.
+      </p>
+    </div>
+    <div style="padding:20px 32px;background:#fafafa;border-top:1px solid #f3f4f6;">
+      <p style="font-size:11px;color:#9ca3af;margin:0;">ShiftImpact OS &nbsp;·&nbsp; Growth Intelligence for ${campaignName}</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>`;
+
+  return { subject, html };
+}
+
+export async function sendExternalReviewerInvite(
+  input: SendExternalReviewerInviteInput,
+): Promise<SendExternalReviewerInviteResult> {
+  await assertShiftImpactSession();
+
+  const email = input.email.trim();
+  if (!email) return { ok: false, error: "Email is required." };
+
+  const resendKey = process.env.RESEND_API_KEY;
+  const fromEmail = process.env.RESEND_FROM_EMAIL;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (!resendKey || !fromEmail || !appUrl) {
+    return { ok: false, error: "Invite email sending isn't configured." };
+  }
+
+  const loginUrl = `${appUrl}/login?next=${encodeURIComponent(
+    `/culture-review/${input.campaign_id}`,
+  )}`;
+
+  const { subject, html } = buildExternalReviewerInviteEmail({
+    campaignName: input.campaign_name,
+    loginUrl,
+    isAgency: input.organisation_type === "Partner",
+  });
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: fromEmail,
+        to: [email],
+        subject,
+        html,
+      }),
+    });
+    if (!res.ok) {
+      console.error("[sendExternalReviewerInvite] Resend error:", await res.text());
+      return { ok: false, error: "Couldn't send the invite email. Try again." };
+    }
+  } catch (err) {
+    console.error("[sendExternalReviewerInvite] Email send failed:", err);
+    return { ok: false, error: "Couldn't send the invite email. Try again." };
+  }
+
+  return { ok: true };
+}
+

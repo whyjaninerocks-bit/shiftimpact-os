@@ -5,15 +5,18 @@
 // /culture-review/[campaignId] for this campaign, and at what access level.
 // INTERNAL ONLY — not shown in Client Interface.
 //
-// v0.1 scope: existing Supabase Auth users only (no invite email, no account
-// creation). See upsertExternalReviewerGrant in lib/actions.ts for the full
-// behavior and the reasoning behind gating this action on assertInternalSession()
-// even though the rest of this page has no login wall in v1.
+// v0.1 scope: existing Supabase Auth users only for granting access. The
+// "Send invite email" flow (v0.1) is notification-only — it sends a Resend
+// email nudging someone with no Auth account yet to sign in, and creates no
+// database row. See upsertExternalReviewerGrant / sendExternalReviewerInvite
+// in lib/actions.ts for the full behavior and the reasoning behind gating
+// both on assertShiftImpactSession() even though the rest of this page has
+// no login wall in v1.
 
 import { useState, useTransition } from "react";
-import { upsertExternalReviewerGrant } from "@/lib/actions";
+import { sendExternalReviewerInvite, upsertExternalReviewerGrant } from "@/lib/actions";
 import type { ExternalReviewerAccessLevel, ExternalReviewerGrant, OrganisationOption } from "@/lib/types";
-import { Card, SectionTitle, buttonClass, inputClass, labelClass } from "@/app/_components/ui";
+import { Card, SectionTitle, buttonClass, buttonSecondaryClass, inputClass, labelClass } from "@/app/_components/ui";
 
 const ACCESS_LEVEL_LABELS: Record<ExternalReviewerAccessLevel, string> = {
   view: "View only",
@@ -21,6 +24,7 @@ const ACCESS_LEVEL_LABELS: Record<ExternalReviewerAccessLevel, string> = {
 };
 
 const NEW_ORG_VALUE = "__new__";
+const NO_ACCOUNT_ERROR_PREFIX = "No account found for";
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" });
@@ -28,28 +32,42 @@ function fmtDate(iso: string) {
 
 interface ExternalReviewersSectionProps {
   campaignId: string;
+  campaignName: string;
   grants: ExternalReviewerGrant[];
   organisations: OrganisationOption[];
 }
 
-export function ExternalReviewersSection({ campaignId, grants, organisations }: ExternalReviewersSectionProps) {
+export function ExternalReviewersSection({
+  campaignId,
+  campaignName,
+  grants,
+  organisations,
+}: ExternalReviewersSectionProps) {
   const [isPending, startTransition] = useTransition();
+  const [isInvitePending, startInviteTransition] = useTransition();
   const [email, setEmail] = useState("");
   const [accessLevel, setAccessLevel] = useState<ExternalReviewerAccessLevel>("view");
   const [organisationId, setOrganisationId] = useState<string>(organisations[0]?.id ?? NEW_ORG_VALUE);
   const [newOrgName, setNewOrgName] = useState("");
   const [newOrgType, setNewOrgType] = useState<"Partner" | "Client">("Partner");
   const [message, setMessage] = useState<{ kind: "error" | "success"; text: string } | null>(null);
+  const [noAccountEmail, setNoAccountEmail] = useState<string | null>(null);
+  const [inviteMessage, setInviteMessage] = useState<{ kind: "error" | "success"; text: string } | null>(null);
 
   const creatingNewOrg = organisationId === NEW_ORG_VALUE;
+  const effectiveOrgType: "Partner" | "Client" =
+    creatingNewOrg ? newOrgType : organisations.find((o) => o.id === organisationId)?.type ?? "Partner";
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setMessage(null);
+    setNoAccountEmail(null);
+    setInviteMessage(null);
+    const submittedEmail = email;
     startTransition(async () => {
       const result = await upsertExternalReviewerGrant({
         campaign_id: campaignId,
-        email,
+        email: submittedEmail,
         access_level: accessLevel,
         organisation_id: creatingNewOrg ? null : organisationId,
         new_organisation_name: creatingNewOrg ? newOrgName : null,
@@ -57,6 +75,9 @@ export function ExternalReviewersSection({ campaignId, grants, organisations }: 
       });
       if (!result.ok) {
         setMessage({ kind: "error", text: result.error });
+        if (result.error.startsWith(NO_ACCOUNT_ERROR_PREFIX)) {
+          setNoAccountEmail(submittedEmail);
+        }
         return;
       }
       setMessage({
@@ -64,6 +85,24 @@ export function ExternalReviewersSection({ campaignId, grants, organisations }: 
         text: result.created ? "Reviewer added." : "Access level updated for existing reviewer.",
       });
       setEmail("");
+    });
+  }
+
+  function handleSendInvite() {
+    if (!noAccountEmail) return;
+    setInviteMessage(null);
+    startInviteTransition(async () => {
+      const result = await sendExternalReviewerInvite({
+        campaign_id: campaignId,
+        campaign_name: campaignName,
+        email: noAccountEmail,
+        organisation_type: effectiveOrgType,
+      });
+      if (!result.ok) {
+        setInviteMessage({ kind: "error", text: result.error });
+        return;
+      }
+      setInviteMessage({ kind: "success", text: `Invite email sent to ${noAccountEmail}.` });
     });
   }
 
@@ -111,7 +150,11 @@ export function ExternalReviewersSection({ campaignId, grants, organisations }: 
                 type="email"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setNoAccountEmail(null);
+                  setInviteMessage(null);
+                }}
                 placeholder="reviewer@agency.com"
                 className={inputClass}
               />
@@ -176,6 +219,28 @@ export function ExternalReviewersSection({ campaignId, grants, organisations }: 
             <p className={`text-sm ${message.kind === "error" ? "text-red-600" : "text-green-700"}`}>
               {message.text}
             </p>
+          )}
+
+          {noAccountEmail && (
+            <div className="rounded-md bg-neutral-50 border border-neutral-200 p-3 space-y-2">
+              <p className="text-xs text-neutral-500">
+                Send a one-off email nudging {noAccountEmail} to sign in. This does not grant access —
+                once they've signed in, submit this form again to add them.
+              </p>
+              <button
+                type="button"
+                onClick={handleSendInvite}
+                disabled={isInvitePending}
+                className={buttonSecondaryClass}
+              >
+                {isInvitePending ? "Sending…" : "Send invite email"}
+              </button>
+              {inviteMessage && (
+                <p className={`text-sm ${inviteMessage.kind === "error" ? "text-red-600" : "text-green-700"}`}>
+                  {inviteMessage.text}
+                </p>
+              )}
+            </div>
           )}
 
           <button type="submit" disabled={isPending} className={buttonClass}>

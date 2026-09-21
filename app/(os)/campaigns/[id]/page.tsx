@@ -340,7 +340,12 @@ export default async function CampaignDetailPage({
         <div className="flex-1 h-px bg-neutral-200" />
       </div>
       <CampaignInfoSection campaign={campaign} teamMembers={teamMembers} />
-      <ExternalReviewersSection campaignId={id} grants={externalReviewerGrants} organisations={organisationOptions} />
+      <ExternalReviewersSection
+        campaignId={id}
+        campaignName={campaign.name}
+        grants={externalReviewerGrants}
+        organisations={organisationOptions}
+      />
       <DataSourceSetupSection campaignId={id} initialPrefs={dataPreferences} />
       <FrameBriefSection
         campaignId={id}
