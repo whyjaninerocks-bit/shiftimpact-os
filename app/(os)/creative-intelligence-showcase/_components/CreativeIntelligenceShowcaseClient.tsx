@@ -122,20 +122,27 @@ const MISSING_EVIDENCE: { label: string; detail: string }[] = [
   { label: "No performance data", detail: "Any performance, reach, or reported result beyond the award tier itself" },
 ];
 
-const PROGRESS_PATH: { label: string; light: EvidenceLight; read: string }[] = [
+const PROGRESS_PATH: { label: string; light: EvidenceLight; short: string; read: string }[] = [
   { label: "Asset structure", light: "direct",
+    short: "Confirmed directly: warmth-first open, authority in the middle, retail close.",
     read: "Three part shape observed directly across the sampled frames: warmth first (home scene), authority second (expert + citation), retail close (product range + line)." },
   { label: "Proof timing", light: "direct",
+    short: "Proof sits mid film — not at the open, not folded into the close.",
     read: "Substantiation sits in the middle of the sequence, not at the open and not folded into the close — a placement pattern read directly from the ordered samples." },
   { label: "Brand role", light: "inference",
+    short: "No stated brand role on file; observationally the brand reads constant throughout.",
     read: "No Big Idea Platform exists on file for this external case, so there is no stated brand role to check against. Observationally, the brand is constant and central throughout." },
   { label: "CTA / action path", light: "direct",
+    short: "One retail availability line; no digital next step observed.",
     read: "On screen Indonesian text read directly: a retail availability line, no digital next step (no link, no shop now, no QR code) observed in any sampled frame." },
   { label: "Brand power risk", light: "inference",
+    short: "Cited source reads internal, not independent; the tonal jump is unconfirmed on the real edit.",
     read: "Forward looking by nature, always capped to inference. The cited source reads as internal rather than independent, and the tonal jump between scenes is a real, unconfirmed structural choice." },
   { label: "Evidence confidence", light: "inference",
+    short: "Moderate on structure and placement, thin on exact timing and audio.",
     read: "Moderate for structure and placement, thin for anything requiring literal opening seconds, audio, or exact timing — four sampled frames, not a full linear watch." },
   { label: "Platform benchmark check", light: "missing",
+    short: "Not run — platform is unconfirmed, so no benchmark row is attached yet.",
     read: "Not run. Platform is unconfirmed, so no Platform Benchmark row can be attached to this read with confidence — see the Platform Lens for what would change if it were." },
 ];
 
@@ -257,9 +264,10 @@ const VALIDATION_ASK: { title: string; detail: string }[] = [
 
 type PlannedMockKind = "asset-card" | "keyframes" | "transcript" | "actuals" | "learning" | "tiered";
 
-const PLANNED_NEXT: { title: string; whyItMatters: string; mccannSupplies: string; wontClaim: string; mockKey: PlannedMockKind }[] = [
+const PLANNED_NEXT: { title: string; oneLiner: string; whyItMatters: string; mccannSupplies: string; wontClaim: string; mockKey: PlannedMockKind }[] = [
   {
     title: "Asset Card Intake",
+    oneLiner: "Turns one asset into a structured record — type, maturity, objective, platform, format, keyframes.",
     whyItMatters: "Captures an asset once, structured, so it can be read against every future dimension without re-analyzing raw video each time.",
     mccannSupplies: "Asset type, maturity, objective, platform, format, transcript if available, and a short set of keyframes.",
     wontClaim: "Will not infer objective, platform, or maturity on its own — every field is supplied, never guessed.",
@@ -267,6 +275,7 @@ const PLANNED_NEXT: { title: string; whyItMatters: string; mccannSupplies: strin
   },
   {
     title: "Keyframe Extraction",
+    oneLiner: "Pulls five to seven targeted frames from a video instead of requiring a full manual watch.",
     whyItMatters: "A small, targeted set of frames (five to seven) is what actually produced a useful read on Gentle Care — this would make that repeatable rather than manual.",
     mccannSupplies: "The source video file, or approval to pull opening seconds, first product appearance, first brand cue, proof moment, creator moment, and closing frame.",
     wontClaim: "Will not claim to capture the full film — a keyframe read is always a sampled read, and will say so.",
@@ -274,6 +283,7 @@ const PLANNED_NEXT: { title: string; whyItMatters: string; mccannSupplies: strin
   },
   {
     title: "Transcript / OCR Support",
+    oneLiner: "Adds what was said and shown on screen — voiceover, subtitles, disclaimers — to the read.",
     whyItMatters: "Closes the audio and on screen text gap this showcase explicitly could not fill — voiceover, subtitles, claims, disclaimers, CTA language.",
     mccannSupplies: "A transcript or the source file to transcribe, and any on screen disclaimer text McCann already has on file.",
     wontClaim: "Will not translate or interpret spoken claims beyond what the transcript literally says.",
@@ -281,6 +291,7 @@ const PLANNED_NEXT: { title: string; whyItMatters: string; mccannSupplies: strin
   },
   {
     title: "Platform Actuals Read",
+    oneLiner: "Grounds the read in real completion, drop off, and engagement numbers when McCann has them.",
     whyItMatters: "Grounds a read in what actually happened, when McCann has it, rather than general platform guidance alone.",
     mccannSupplies: "Completion rate, drop off, CTR, add to cart, comments, saves, or shares — whatever McCann or the client is able to share.",
     wontClaim: "Will not treat one asset's actuals as a forecast for a different asset, and will not fetch or infer this data itself.",
@@ -288,6 +299,7 @@ const PLANNED_NEXT: { title: string; whyItMatters: string; mccannSupplies: strin
   },
   {
     title: "Learning Memory",
+    oneLiner: "Carries what worked, or didn't, on past campaigns into every new read for the same brand or market.",
     whyItMatters: "Makes every subsequent read in the same brand, category, or market start from accumulated context instead of a cold read.",
     mccannSupplies: "Confirmation of what actually worked or didn't on delivered campaigns, in McCann's or the client's own words.",
     wontClaim: "Will not generalize one campaign's learning to a different brand or market without that being stated explicitly.",
@@ -295,6 +307,7 @@ const PLANNED_NEXT: { title: string; whyItMatters: string; mccannSupplies: strin
   },
   {
     title: "Tiered Analysis",
+    oneLiner: "Matches how deep a read goes to how much the asset actually needs.",
     whyItMatters: "Keeps cost and turnaround proportional to what an asset actually needs — most assets don't need a deep video review.",
     mccannSupplies: "A sense of which assets are high stakes enough to warrant the deepest tier, campaign by campaign.",
     wontClaim: "Will not apply the deepest, most expensive tier by default — that stays a deliberate, named exception.",
@@ -303,19 +316,19 @@ const PLANNED_NEXT: { title: string; whyItMatters: string; mccannSupplies: strin
 ];
 
 // ─── Coming Next — mock visual previews ─────────────────────────────────────
-// Purely illustrative layout sketches so McCann can see the shape of each
-// planned card at a glance instead of reading three paragraphs first. Every
-// value shown is a placeholder (dashes, blank fields, generic category
-// labels already named in the copy above) — never a real number, never a
-// claim about Gentle Care or any other asset. The dashed border + "Preview —
-// layout only" tag keep these visually distinct from anything live on this
-// page.
+// Illustrative layout sketches so McCann can see the shape of each planned
+// card at a glance instead of reading three paragraphs first. Every value
+// shown is a made-up, generic example (a fictional format, a round number, a
+// placeholder campaign name) chosen to make the layout legible — never a
+// real number, never a claim about Gentle Care or any other actual asset or
+// campaign. The dashed border + "Example — illustrative, not real data" tag
+// keep these visually distinct from anything live on this page.
 
 function MockPreviewFrame({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative rounded-lg border border-dashed border-neutral-300 bg-white px-3 pt-3.5 pb-3 mb-3">
       <span className="absolute -top-2 left-2 bg-neutral-50 px-1.5 text-[9px] font-bold text-neutral-400 uppercase tracking-widest">
-        Preview — layout only
+        Example — illustrative, not real data
       </span>
       {children}
     </div>
@@ -323,26 +336,34 @@ function MockPreviewFrame({ children }: { children: React.ReactNode }) {
 }
 
 function AssetCardMock() {
-  const fields = ["Type", "Maturity", "Objective", "Platform", "Format"];
+  const fields: [string, string][] = [
+    ["Type", "Video ad"],
+    ["Maturity", "Rough cut"],
+    ["Objective", "Consideration"],
+    ["Platform", "Instagram Reels"],
+    ["Format", "15s vertical"],
+  ];
   return (
     <MockPreviewFrame>
       <div className="flex flex-wrap gap-1.5 mb-2.5">
-        {fields.map((f) => (
+        {fields.map(([k, v]) => (
           <span
-            key={f}
-            className="inline-flex items-center gap-1 rounded border border-neutral-200 bg-neutral-50 px-2 py-1 text-[10px] text-neutral-400"
+            key={k}
+            className="inline-flex items-center gap-1 rounded border border-neutral-200 bg-neutral-50 px-2 py-1 text-[10px]"
           >
-            {f} <span className="text-neutral-300">▾</span>
+            <span className="text-neutral-400">{k}:</span> <span className="font-medium text-neutral-600">{v}</span>
           </span>
         ))}
       </div>
       <div className="flex items-center gap-1.5">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="w-7 h-5 rounded bg-neutral-100 border border-neutral-200" />
+          <div key={i} className="w-7 h-5 rounded bg-neutral-100 border border-neutral-200 flex items-center justify-center text-[7px] text-neutral-400">
+            {i + 1}
+          </div>
         ))}
-        <span className="ml-1 text-[9px] text-neutral-400">keyframes</span>
-        <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[9px] text-neutral-400">
-          ⬚ transcript
+        <span className="ml-1 text-[9px] text-neutral-400">6 keyframes</span>
+        <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9px] text-emerald-700">
+          ✓ transcript attached
         </span>
       </div>
     </MockPreviewFrame>
@@ -354,9 +375,12 @@ function KeyframeMock() {
   return (
     <MockPreviewFrame>
       <div className="flex gap-1">
-        {frames.map((f) => (
+        {frames.map((f, i) => (
           <div key={f} className="flex-1 text-center">
-            <div className="w-full aspect-[4/3] rounded bg-neutral-100 border border-neutral-200 mb-1" />
+            <div className="relative w-full aspect-[4/3] rounded bg-neutral-100 border border-neutral-200 mb-1 flex items-center justify-center">
+              <span className="absolute top-0.5 left-1 text-[7px] text-neutral-400 font-semibold">{i + 1}</span>
+              <span className="text-neutral-300 text-[10px]">▶</span>
+            </div>
             <p className="text-[8.5px] text-neutral-400 leading-tight">{f}</p>
           </div>
         ))}
@@ -375,20 +399,20 @@ function TranscriptMock() {
           </div>
         </div>
         <div className="flex-1 space-y-1.5 py-0.5">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[9px] text-neutral-300 font-mono">00:04</span>
-            <div className="h-1.5 rounded-full bg-neutral-100 flex-1" />
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-[9px] text-neutral-300 font-mono shrink-0">00:04</span>
+            <p className="text-[10px] text-neutral-500 italic leading-tight">"This is where it begins…"</p>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[9px] text-neutral-300 font-mono">00:11</span>
-            <div className="h-1.5 rounded-full bg-neutral-100 w-4/5" />
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-[9px] text-neutral-300 font-mono shrink-0">00:11</span>
+            <p className="text-[10px] text-neutral-500 italic leading-tight">"…here's what makes it different."</p>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[9px] text-neutral-300 font-mono">00:19</span>
-            <div className="h-1.5 rounded-full bg-neutral-100 w-3/5" />
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-[9px] text-neutral-300 font-mono shrink-0">00:19</span>
+            <p className="text-[10px] text-neutral-400 italic leading-tight">On-screen: "Now available — learn more"</p>
           </div>
           <span className="inline-block mt-1 text-[9px] text-neutral-400 border border-neutral-200 rounded-full px-1.5 py-0.5">
-            on screen text detected
+            example lines — not a real transcript
           </span>
         </div>
       </div>
@@ -397,14 +421,21 @@ function TranscriptMock() {
 }
 
 function ActualsMock() {
-  const stats = ["Completion", "Drop off", "CTR", "Add to cart", "Comments", "Saves / Shares"];
+  const stats: [string, string][] = [
+    ["Completion", "42%"],
+    ["Drop off", "18%"],
+    ["CTR", "1.8%"],
+    ["Add to cart", "3.2%"],
+    ["Comments", "128"],
+    ["Saves / Shares", "64"],
+  ];
   return (
     <MockPreviewFrame>
       <div className="grid grid-cols-3 gap-1.5">
-        {stats.map((s) => (
-          <div key={s} className="rounded border border-neutral-200 bg-neutral-50 px-1.5 py-1.5 text-center">
-            <p className="text-[8.5px] text-neutral-400 leading-tight mb-0.5">{s}</p>
-            <p className="text-sm font-semibold text-neutral-300">—</p>
+        {stats.map(([label, value]) => (
+          <div key={label} className="rounded border border-neutral-200 bg-neutral-50 px-1.5 py-1.5 text-center">
+            <p className="text-[8.5px] text-neutral-400 leading-tight mb-0.5">{label}</p>
+            <p className="text-sm font-semibold text-neutral-600">{value}</p>
           </div>
         ))}
       </div>
@@ -413,15 +444,20 @@ function ActualsMock() {
 }
 
 function LearningMemoryMock() {
+  const entries: [string, string][] = [
+    ["Campaign Alpha · Brand X", "Warmth-first open outperformed authority-first in awareness."],
+    ["Campaign Beta · Brand X", "Generic retail CTA underperformed a named next step."],
+    ["Campaign Gamma · Brand Y", "Creator-led cut held attention longer than the produced version."],
+  ];
   return (
     <MockPreviewFrame>
       <div className="space-y-2">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="flex items-start gap-2">
+        {entries.map(([title, note]) => (
+          <div key={title} className="flex items-start gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-neutral-300 mt-1.5 shrink-0" />
-            <div className="flex-1">
-              <div className="h-1.5 rounded-full bg-neutral-200 w-2/5 mb-1" />
-              <div className="h-1.5 rounded-full bg-neutral-100 w-4/5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-semibold text-neutral-600">{title}</p>
+              <p className="text-[10px] text-neutral-500 leading-tight">{note}</p>
             </div>
           </div>
         ))}
@@ -431,13 +467,19 @@ function LearningMemoryMock() {
 }
 
 function TieredMock() {
+  const tiers: { name: string; note: string; h: string }[] = [
+    { name: "Light", note: "quick pass", h: "h-4" },
+    { name: "Standard", note: "full read", h: "h-8" },
+    { name: "Deep", note: "frame by frame", h: "h-12" },
+  ];
   return (
     <MockPreviewFrame>
-      <div className="flex items-end justify-center gap-3 h-14">
-        {[1, 2, 3].map((tier) => (
-          <div key={tier} className="flex flex-col items-center gap-1">
-            <div className={`w-8 rounded-t bg-neutral-200 ${tier === 1 ? "h-4" : tier === 2 ? "h-8" : "h-12"}`} />
-            <p className="text-[9px] text-neutral-400">Tier {tier}</p>
+      <div className="flex items-end justify-center gap-4 h-16">
+        {tiers.map((t) => (
+          <div key={t.name} className="flex flex-col items-center gap-1">
+            <div className={`w-9 rounded-t bg-neutral-300 ${t.h}`} />
+            <p className="text-[9px] font-semibold text-neutral-600">{t.name}</p>
+            <p className="text-[8px] text-neutral-400">{t.note}</p>
           </div>
         ))}
       </div>
@@ -527,7 +569,6 @@ export function CreativeIntelligenceShowcaseClient({
   const [activePlatform, setActivePlatform] = useState<PlatformKey>("youtube");
   const [active, setActive] = useState<string>("decision");
   const [comingNextOpen, setComingNextOpen] = useState(false);
-  const [selectedStep, setSelectedStep] = useState(0);
 
   const activeScenario = PLATFORM_SCENARIOS.find((p) => p.key === activePlatform)!;
   const matchedRows = benchmarks.filter((b) => b.is_active && activeScenario.match(b));
@@ -687,54 +728,38 @@ export function CreativeIntelligenceShowcaseClient({
             </Card>
 
             <Card>
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-1">
                 <p className="text-sm font-semibold text-neutral-800">Creative Format Read — evidence lights</p>
                 <EvidenceLightsLegend />
               </div>
+              <p className="text-[11px] text-neutral-400 mb-3">Read top to bottom — cleared first, most open at the bottom.</p>
 
-              {/* Timeline: cleared (green) to urgency (amber/grey), left to right, one node per dimension */}
-              <div className="flex items-center mb-3">
+              {/* Quick scan: cleared (green) to urgency (amber/grey), left to right, one node per dimension */}
+              <div className="flex items-center mb-4">
                 {PROGRESS_PATH.map((step, i) => (
                   <div key={step.label} className="flex items-center flex-1 last:flex-none">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedStep(i)}
-                      title={step.label}
-                      className={`shrink-0 rounded-full transition-all ${LIGHT_DOT_CLASS[step.light]} ${
-                        selectedStep === i ? "w-4 h-4 ring-2 ring-offset-2 ring-neutral-900" : "w-3 h-3 hover:ring-2 hover:ring-offset-2 hover:ring-neutral-300"
-                      }`}
-                    />
+                    <span title={step.label} className={`shrink-0 w-3 h-3 rounded-full ${LIGHT_DOT_CLASS[step.light]}`} />
                     {i < PROGRESS_PATH.length - 1 && <div className={`h-0.5 flex-1 mx-1 rounded-full ${LIGHT_LINE_CLASS[step.light]}`} />}
                   </div>
                 ))}
               </div>
 
-              {/* Compact index — click any step to load it into the detail panel below */}
-              <div className="flex flex-wrap gap-1.5 mb-4">
-                {PROGRESS_PATH.map((step, i) => (
-                  <button
-                    key={step.label}
-                    type="button"
-                    onClick={() => setSelectedStep(i)}
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                      selectedStep === i
-                        ? "border-neutral-900 bg-neutral-900 text-white"
-                        : "border-neutral-200 bg-white text-neutral-600 hover:border-neutral-400"
-                    }`}
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${selectedStep === i ? "bg-white" : LIGHT_DOT_CLASS[step.light]}`} />
-                    {step.label}
-                  </button>
+              {/* Always-visible read — no click required to see what each light means */}
+              <div className="divide-y divide-neutral-100">
+                {PROGRESS_PATH.map((step) => (
+                  <div key={step.label} className="flex items-start gap-2.5 py-2.5 first:pt-0 last:pb-0">
+                    <EvidenceDot light={step.light} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-neutral-800">{step.label}</p>
+                      <p className="text-xs text-neutral-600 leading-relaxed">{step.short}</p>
+                      <div className="mt-1">
+                        <Reveal label="Full read" hideLabel="Hide full read">
+                          <p className="text-xs text-neutral-500 leading-relaxed">{step.read}</p>
+                        </Reveal>
+                      </div>
+                    </div>
+                  </div>
                 ))}
-              </div>
-
-              {/* Shared detail panel — one open at a time, no per-row expand/collapse sprawl */}
-              <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3.5">
-                <div className="flex items-center gap-2 mb-1">
-                  <EvidenceDot light={PROGRESS_PATH[selectedStep].light} />
-                  <p className="text-sm font-semibold text-neutral-800">{PROGRESS_PATH[selectedStep].label}</p>
-                </div>
-                <p className="text-xs text-neutral-600 leading-relaxed">{PROGRESS_PATH[selectedStep].read}</p>
               </div>
             </Card>
           </section>
@@ -875,10 +900,11 @@ export function CreativeIntelligenceShowcaseClient({
                 <div className="grid sm:grid-cols-2 gap-3">
                   {PLANNED_NEXT.map((card) => (
                     <div key={card.title} className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
-                      <div className="flex items-center justify-between mb-2.5">
+                      <div className="flex items-center justify-between mb-1">
                         <p className="text-sm font-semibold text-neutral-800">{card.title}</p>
                         <Badge tone="neutral">Planned</Badge>
                       </div>
+                      <p className="text-xs text-neutral-500 leading-relaxed mb-2.5">{card.oneLiner}</p>
                       <PlannedMock kind={card.mockKey} />
                       <Reveal label="Why this matters + what it needs">
                         <div className="space-y-2">
