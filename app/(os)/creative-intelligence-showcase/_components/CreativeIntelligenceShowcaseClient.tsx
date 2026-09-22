@@ -255,44 +255,212 @@ const VALIDATION_ASK: { title: string; detail: string }[] = [
   { title: "Current manual read", detail: "The strategist's own current manual read on the same assets, for comparison." },
 ];
 
-const PLANNED_NEXT: { title: string; whyItMatters: string; mccannSupplies: string; wontClaim: string }[] = [
+type PlannedMockKind = "asset-card" | "keyframes" | "transcript" | "actuals" | "learning" | "tiered";
+
+const PLANNED_NEXT: { title: string; whyItMatters: string; mccannSupplies: string; wontClaim: string; mockKey: PlannedMockKind }[] = [
   {
     title: "Asset Card Intake",
     whyItMatters: "Captures an asset once, structured, so it can be read against every future dimension without re-analyzing raw video each time.",
     mccannSupplies: "Asset type, maturity, objective, platform, format, transcript if available, and a short set of keyframes.",
     wontClaim: "Will not infer objective, platform, or maturity on its own — every field is supplied, never guessed.",
+    mockKey: "asset-card",
   },
   {
     title: "Keyframe Extraction",
     whyItMatters: "A small, targeted set of frames (five to seven) is what actually produced a useful read on Gentle Care — this would make that repeatable rather than manual.",
     mccannSupplies: "The source video file, or approval to pull opening seconds, first product appearance, first brand cue, proof moment, creator moment, and closing frame.",
     wontClaim: "Will not claim to capture the full film — a keyframe read is always a sampled read, and will say so.",
+    mockKey: "keyframes",
   },
   {
     title: "Transcript / OCR Support",
     whyItMatters: "Closes the audio and on screen text gap this showcase explicitly could not fill — voiceover, subtitles, claims, disclaimers, CTA language.",
     mccannSupplies: "A transcript or the source file to transcribe, and any on screen disclaimer text McCann already has on file.",
     wontClaim: "Will not translate or interpret spoken claims beyond what the transcript literally says.",
+    mockKey: "transcript",
   },
   {
     title: "Platform Actuals Read",
     whyItMatters: "Grounds a read in what actually happened, when McCann has it, rather than general platform guidance alone.",
     mccannSupplies: "Completion rate, drop off, CTR, add to cart, comments, saves, or shares — whatever McCann or the client is able to share.",
     wontClaim: "Will not treat one asset's actuals as a forecast for a different asset, and will not fetch or infer this data itself.",
+    mockKey: "actuals",
   },
   {
     title: "Learning Memory",
     whyItMatters: "Makes every subsequent read in the same brand, category, or market start from accumulated context instead of a cold read.",
     mccannSupplies: "Confirmation of what actually worked or didn't on delivered campaigns, in McCann's or the client's own words.",
     wontClaim: "Will not generalize one campaign's learning to a different brand or market without that being stated explicitly.",
+    mockKey: "learning",
   },
   {
     title: "Tiered Analysis",
     whyItMatters: "Keeps cost and turnaround proportional to what an asset actually needs — most assets don't need a deep video review.",
     mccannSupplies: "A sense of which assets are high stakes enough to warrant the deepest tier, campaign by campaign.",
     wontClaim: "Will not apply the deepest, most expensive tier by default — that stays a deliberate, named exception.",
+    mockKey: "tiered",
   },
 ];
+
+// ─── Coming Next — mock visual previews ─────────────────────────────────────
+// Purely illustrative layout sketches so McCann can see the shape of each
+// planned card at a glance instead of reading three paragraphs first. Every
+// value shown is a placeholder (dashes, blank fields, generic category
+// labels already named in the copy above) — never a real number, never a
+// claim about Gentle Care or any other asset. The dashed border + "Preview —
+// layout only" tag keep these visually distinct from anything live on this
+// page.
+
+function MockPreviewFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative rounded-lg border border-dashed border-neutral-300 bg-white px-3 pt-3.5 pb-3 mb-3">
+      <span className="absolute -top-2 left-2 bg-neutral-50 px-1.5 text-[9px] font-bold text-neutral-400 uppercase tracking-widest">
+        Preview — layout only
+      </span>
+      {children}
+    </div>
+  );
+}
+
+function AssetCardMock() {
+  const fields = ["Type", "Maturity", "Objective", "Platform", "Format"];
+  return (
+    <MockPreviewFrame>
+      <div className="flex flex-wrap gap-1.5 mb-2.5">
+        {fields.map((f) => (
+          <span
+            key={f}
+            className="inline-flex items-center gap-1 rounded border border-neutral-200 bg-neutral-50 px-2 py-1 text-[10px] text-neutral-400"
+          >
+            {f} <span className="text-neutral-300">▾</span>
+          </span>
+        ))}
+      </div>
+      <div className="flex items-center gap-1.5">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="w-7 h-5 rounded bg-neutral-100 border border-neutral-200" />
+        ))}
+        <span className="ml-1 text-[9px] text-neutral-400">keyframes</span>
+        <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[9px] text-neutral-400">
+          ⬚ transcript
+        </span>
+      </div>
+    </MockPreviewFrame>
+  );
+}
+
+function KeyframeMock() {
+  const frames = ["Open", "Product", "Brand cue", "Proof", "Creator", "Close"];
+  return (
+    <MockPreviewFrame>
+      <div className="flex gap-1">
+        {frames.map((f) => (
+          <div key={f} className="flex-1 text-center">
+            <div className="w-full aspect-[4/3] rounded bg-neutral-100 border border-neutral-200 mb-1" />
+            <p className="text-[8.5px] text-neutral-400 leading-tight">{f}</p>
+          </div>
+        ))}
+      </div>
+    </MockPreviewFrame>
+  );
+}
+
+function TranscriptMock() {
+  return (
+    <MockPreviewFrame>
+      <div className="flex gap-3">
+        <div className="w-14 shrink-0">
+          <div className="w-full aspect-[9/16] rounded bg-neutral-100 border border-neutral-200 flex items-center justify-center text-neutral-300 text-xs">
+            ▶
+          </div>
+        </div>
+        <div className="flex-1 space-y-1.5 py-0.5">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[9px] text-neutral-300 font-mono">00:04</span>
+            <div className="h-1.5 rounded-full bg-neutral-100 flex-1" />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[9px] text-neutral-300 font-mono">00:11</span>
+            <div className="h-1.5 rounded-full bg-neutral-100 w-4/5" />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[9px] text-neutral-300 font-mono">00:19</span>
+            <div className="h-1.5 rounded-full bg-neutral-100 w-3/5" />
+          </div>
+          <span className="inline-block mt-1 text-[9px] text-neutral-400 border border-neutral-200 rounded-full px-1.5 py-0.5">
+            on screen text detected
+          </span>
+        </div>
+      </div>
+    </MockPreviewFrame>
+  );
+}
+
+function ActualsMock() {
+  const stats = ["Completion", "Drop off", "CTR", "Add to cart", "Comments", "Saves / Shares"];
+  return (
+    <MockPreviewFrame>
+      <div className="grid grid-cols-3 gap-1.5">
+        {stats.map((s) => (
+          <div key={s} className="rounded border border-neutral-200 bg-neutral-50 px-1.5 py-1.5 text-center">
+            <p className="text-[8.5px] text-neutral-400 leading-tight mb-0.5">{s}</p>
+            <p className="text-sm font-semibold text-neutral-300">—</p>
+          </div>
+        ))}
+      </div>
+    </MockPreviewFrame>
+  );
+}
+
+function LearningMemoryMock() {
+  return (
+    <MockPreviewFrame>
+      <div className="space-y-2">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="flex items-start gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-neutral-300 mt-1.5 shrink-0" />
+            <div className="flex-1">
+              <div className="h-1.5 rounded-full bg-neutral-200 w-2/5 mb-1" />
+              <div className="h-1.5 rounded-full bg-neutral-100 w-4/5" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </MockPreviewFrame>
+  );
+}
+
+function TieredMock() {
+  return (
+    <MockPreviewFrame>
+      <div className="flex items-end justify-center gap-3 h-14">
+        {[1, 2, 3].map((tier) => (
+          <div key={tier} className="flex flex-col items-center gap-1">
+            <div className={`w-8 rounded-t bg-neutral-200 ${tier === 1 ? "h-4" : tier === 2 ? "h-8" : "h-12"}`} />
+            <p className="text-[9px] text-neutral-400">Tier {tier}</p>
+          </div>
+        ))}
+      </div>
+    </MockPreviewFrame>
+  );
+}
+
+function PlannedMock({ kind }: { kind: PlannedMockKind }) {
+  switch (kind) {
+    case "asset-card":
+      return <AssetCardMock />;
+    case "keyframes":
+      return <KeyframeMock />;
+    case "transcript":
+      return <TranscriptMock />;
+    case "actuals":
+      return <ActualsMock />;
+    case "learning":
+      return <LearningMemoryMock />;
+    case "tiered":
+      return <TieredMock />;
+  }
+}
 
 const RAIL_SECTIONS: { id: string; label: string }[] = [
   { id: "decision", label: "Decision" },
@@ -701,24 +869,30 @@ export function CreativeIntelligenceShowcaseClient({
             {comingNextOpen && (
               <div className="mt-3">
                 <p className="text-xs text-neutral-500 mb-3">
-                  Nothing below runs today. Every card here is copy only, named so the roadmap is visible, not built into this page.
+                  Nothing below runs today. Every card here — including its preview mockup — is copy and layout sketch
+                  only, named so the roadmap is visible, not built into this page.
                 </p>
                 <div className="grid sm:grid-cols-2 gap-3">
                   {PLANNED_NEXT.map((card) => (
                     <div key={card.title} className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center justify-between mb-2.5">
                         <p className="text-sm font-semibold text-neutral-800">{card.title}</p>
                         <Badge tone="neutral">Planned</Badge>
                       </div>
-                      <p className="text-xs text-neutral-600 leading-relaxed mb-2">
-                        <span className="font-medium text-neutral-700">Why it matters: </span>{card.whyItMatters}
-                      </p>
-                      <p className="text-xs text-neutral-600 leading-relaxed mb-2">
-                        <span className="font-medium text-neutral-700">McCann would supply: </span>{card.mccannSupplies}
-                      </p>
-                      <p className="text-xs text-neutral-500 leading-relaxed">
-                        <span className="font-medium text-neutral-600">Will not claim: </span>{card.wontClaim}
-                      </p>
+                      <PlannedMock kind={card.mockKey} />
+                      <Reveal label="Why this matters + what it needs">
+                        <div className="space-y-2">
+                          <p className="text-xs text-neutral-600 leading-relaxed">
+                            <span className="font-medium text-neutral-700">Why it matters: </span>{card.whyItMatters}
+                          </p>
+                          <p className="text-xs text-neutral-600 leading-relaxed">
+                            <span className="font-medium text-neutral-700">McCann would supply: </span>{card.mccannSupplies}
+                          </p>
+                          <p className="text-xs text-neutral-500 leading-relaxed">
+                            <span className="font-medium text-neutral-600">Will not claim: </span>{card.wontClaim}
+                          </p>
+                        </div>
+                      </Reveal>
                     </div>
                   ))}
                 </div>
