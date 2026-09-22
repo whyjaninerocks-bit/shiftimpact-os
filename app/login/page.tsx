@@ -66,7 +66,7 @@ function LoginForm() {
             Click it to access the OS.
           </p>
           <button
-            onClick={() => { setSubmitted(false); setEmail(""); }}
+            onClick={() => { setSubmitted(false); setEmail(""); setLoading(false); setError(null); }}
             className="mt-5 text-xs text-neutral-400 hover:text-neutral-600 underline underline-offset-2"
           >
             Use a different email
