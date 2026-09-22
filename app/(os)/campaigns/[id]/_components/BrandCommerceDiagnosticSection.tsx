@@ -368,7 +368,13 @@ function DiagnosticCard({
               : "Not classified at the time"}
           </Badge>
         </div>
-        <span className="text-[10px] text-neutral-400">{new Date(diagnostic.created_at).toLocaleString()}</span>
+        {/* suppressHydrationWarning: toLocaleString() can render differently on
+            the server (Vercel's runtime locale/timezone) than in the visitor's
+            browser. That mismatch is expected and harmless (React error #418),
+            not a real bug, so it's silenced here rather than restructured. */}
+        <span className="text-[10px] text-neutral-400" suppressHydrationWarning>
+          {new Date(diagnostic.created_at).toLocaleString()}
+        </span>
       </div>
 
       <div>
@@ -408,7 +414,7 @@ function DiagnosticCard({
 
       <div className="flex items-center gap-2 pt-1 border-t border-neutral-100">
         {diagnostic.reviewed_at ? (
-          <span className="text-xs text-emerald-700">
+          <span className="text-xs text-emerald-700" suppressHydrationWarning>
             Reviewed {new Date(diagnostic.reviewed_at).toLocaleDateString()}
           </span>
         ) : (
