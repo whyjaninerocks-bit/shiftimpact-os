@@ -42,6 +42,53 @@ export async function requireSession(): Promise<NextResponse | null> {
 }
 
 /**
+ * Route-level variant of assertShiftImpactSession() — returns a NextResponse
+ * instead of throwing, for use in the same spot requireSession() is used
+ * today: `const authError = await requireShiftImpactSession(); if (authError)
+ * return authError;`.
+ *
+ * requireSession() alone only proves "someone is logged in" — a Partner or
+ * Client org_type user (an external reviewer, or a future client account)
+ * satisfies that just as easily as a ShiftImpact strategist, since both are
+ * real Supabase Auth users with real sessions. Creative Format Read and
+ * Strategic Synthesis both produce first-pass LLM judgment meant for an
+ * internal strategist to weigh before anyone client-facing sees it — this
+ * closes the gap the Signal Architecture Assessment named, where either
+ * route could be called directly by a non-ShiftImpact authenticated account,
+ * bypassing the UI they'd normally reach this through.
+ *
+ * No session → 401 (matches requireSession()'s existing convention).
+ * Session but not org_type "ShiftImpact" → 403 (distinct status, since the
+ * caller in that case is authenticated but not authorized for this route).
+ *
+ * Usage:
+ *   const authError = await requireShiftImpactSession();
+ *   if (authError) return authError;
+ */
+export async function requireShiftImpactSession(): Promise<NextResponse | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("org_type")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profile?.org_type !== "ShiftImpact") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  return null;
+}
+
+/**
  * Throwing variant of requireSession(), for use inside Server Actions
  * (lib/actions.ts style) rather than route handlers. Server Actions can't
  * return a NextResponse — they should throw, and the caller/UI handles the
