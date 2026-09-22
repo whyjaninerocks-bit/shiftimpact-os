@@ -69,6 +69,7 @@ import { IdeaExtensionsSection } from "./_components/IdeaExtensionsSection";
 import { BigIdeaPlatformSection } from "./_components/BigIdeaPlatformSection";
 import { CreativeFormatReadSection } from "./_components/CreativeFormatReadSection";
 import { BrandCommerceDiagnosticSection, type CulturalSignalOption } from "./_components/BrandCommerceDiagnosticSection";
+import { BrandCommerceSignalReadPreview } from "./_components/BrandCommerceSignalReadPreview";
 import { SignalIntelligenceSection, type WeeklyDataContext } from "./_components/SignalIntelligenceSection";
 import { CrossChannelSection } from "./_components/CrossChannelSection";
 import { ConsumerBehaviourSection } from "./_components/ConsumerBehaviourSection";
@@ -278,6 +279,20 @@ export default async function CampaignDetailPage({
     ? await getBrandCommerceDiagnosticSources(latestBrandCommerceDiagnostic.id)
     : [];
 
+  // Brand-Commerce Signal Read, Agency Preview (Stage A) — deliberately a
+  // different row than latestBrandCommerceDiagnostic above: this one must be
+  // reviewed (reviewed_at IS NOT NULL), the diagnostic list above is not
+  // filtered that way and can legitimately have a newer, unreviewed draft in
+  // brandCommerceDiagnostics[0]. See BrandCommerceSignalReadPreview.tsx.
+  const latestReviewedBrandCommerceDiagnostic =
+    brandCommerceDiagnostics.find((d) => d.reviewed_at !== null) ?? null;
+  const latestReviewedBrandCommerceDiagnosticSources =
+    latestReviewedBrandCommerceDiagnostic === null
+      ? []
+      : latestReviewedBrandCommerceDiagnostic.id === latestBrandCommerceDiagnostic?.id
+        ? latestBrandCommerceDiagnosticSources
+        : await getBrandCommerceDiagnosticSources(latestReviewedBrandCommerceDiagnostic.id);
+
   // Campaign-aware signal picker context — Stage 4A.2, updated Stage 4A.3.
   // industryCategory is real/reliable (FrameBrief field, same vocabulary as
   // cultural_signals.relevant_industries). market prefers the structured
@@ -416,6 +431,11 @@ export default async function CampaignDetailPage({
         culturalSignalOptions={culturalSignalOptions}
         strategicBasisOptions={campaignBasisSources}
         campaignLearningRecordId={campaignLearning?.id ?? null}
+      />
+      <BrandCommerceSignalReadPreview
+        diagnostic={latestReviewedBrandCommerceDiagnostic}
+        sources={latestReviewedBrandCommerceDiagnosticSources}
+        currentClassification={activeSignalMap?.classification ?? null}
       />
       {bip && (
         <IqEvaluateSection
