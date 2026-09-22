@@ -46,6 +46,10 @@ import {
   getExternalReviewerGrants,
   getOrganisationOptions,
   getCreativeFormatReadsForCampaign,
+  getStrategicBasisSourcesForCampaign,
+  getActiveCampaignSignalMap,
+  getBrandCommerceDiagnosticsForCampaign,
+  getBrandCommerceDiagnosticSources,
 } from "@/lib/data";
 import { inferCampaignMarket, type CampaignSignalContext } from "@/lib/cultural-signal-picker";
 import { getLatestReviewPlatformScore } from "@/lib/data-review-platform";
@@ -64,6 +68,7 @@ import { DiagnosticsSection } from "./_components/DiagnosticsSection";
 import { IdeaExtensionsSection } from "./_components/IdeaExtensionsSection";
 import { BigIdeaPlatformSection } from "./_components/BigIdeaPlatformSection";
 import { CreativeFormatReadSection } from "./_components/CreativeFormatReadSection";
+import { BrandCommerceDiagnosticSection, type CulturalSignalOption } from "./_components/BrandCommerceDiagnosticSection";
 import { SignalIntelligenceSection, type WeeklyDataContext } from "./_components/SignalIntelligenceSection";
 import { CrossChannelSection } from "./_components/CrossChannelSection";
 import { ConsumerBehaviourSection } from "./_components/ConsumerBehaviourSection";
@@ -120,6 +125,7 @@ const sectionGroups = [
       { href: "#frame", label: "FRAME Brief" },
       { href: "#bip", label: "Big Idea Platform" },
       { href: "#creative-format-read", label: "Creative Format Read ⚿" },
+      { href: "#brand-commerce-diagnostic", label: "Brand-Commerce Diagnostic ⚿" },
       { href: "#iq-evaluate", label: "IQ Evaluate ✦" },
       { href: "#kill-switches", label: "Kill Switches" },
       { href: "#stage-briefs", label: "STAGE Briefs" },
@@ -232,14 +238,45 @@ export default async function CampaignDetailPage({
 
   // Strategic Basis Sources — Signal-to-Creative Citation v0.1 (Stage 4A).
   // Needs frame.id / bip.id, so this runs after the main Promise.all above.
-  const [frameBasisSources, bipBasisSources, culturalSignalsForPicker, frameSynthesisRuns, bipSynthesisRuns] =
-    await Promise.all([
-      getStrategicBasisSourcesForTarget("frame_brief", frame.id),
-      bip ? getStrategicBasisSourcesForTarget("big_idea_platform", bip.id) : Promise.resolve([]),
-      getCulturalSignalsForPicker(),
-      getStrategicSynthesisRunsForTarget("frame_brief", frame.id),
-      bip ? getStrategicSynthesisRunsForTarget("big_idea_platform", bip.id) : Promise.resolve([]),
-    ]);
+  const [
+    frameBasisSources,
+    bipBasisSources,
+    culturalSignalsForPicker,
+    frameSynthesisRuns,
+    bipSynthesisRuns,
+    campaignBasisSources,
+    activeSignalMap,
+    brandCommerceDiagnostics,
+  ] = await Promise.all([
+    getStrategicBasisSourcesForTarget("frame_brief", frame.id),
+    bip ? getStrategicBasisSourcesForTarget("big_idea_platform", bip.id) : Promise.resolve([]),
+    getCulturalSignalsForPicker(),
+    getStrategicSynthesisRunsForTarget("frame_brief", frame.id),
+    bip ? getStrategicSynthesisRunsForTarget("big_idea_platform", bip.id) : Promise.resolve([]),
+    // Campaign-scoped, for the Brand-Commerce Diagnostic evidence pickers —
+    // see BrandCommerceDiagnosticSection.tsx.
+    getStrategicBasisSourcesForCampaign(id),
+    getActiveCampaignSignalMap(id),
+    getBrandCommerceDiagnosticsForCampaign(id),
+  ]);
+
+  // Cultural signals already cited somewhere on this campaign (via Brief
+  // basis or Creative strategy basis) — the campaign-scoped option set for
+  // the Brand-Commerce Diagnostic's cultural_signal evidence source picker.
+  // Deliberately not the full, unscoped Cultural Radar picker used elsewhere
+  // — see BrandCommerceDiagnosticSection.tsx header comment.
+  const culturalSignalOptions: CulturalSignalOption[] = Array.from(
+    new Map(
+      [...frameBasisSources, ...bipBasisSources]
+        .filter((s) => s.source_type === "os_cultural_radar_signal" && s.cultural_signal_id)
+        .map((s) => [s.cultural_signal_id as string, { id: s.cultural_signal_id as string, label: s.source_title }])
+    ).values()
+  );
+
+  const latestBrandCommerceDiagnostic = brandCommerceDiagnostics[0] ?? null;
+  const latestBrandCommerceDiagnosticSources = latestBrandCommerceDiagnostic
+    ? await getBrandCommerceDiagnosticSources(latestBrandCommerceDiagnostic.id)
+    : [];
 
   // Campaign-aware signal picker context — Stage 4A.2, updated Stage 4A.3.
   // industryCategory is real/reliable (FrameBrief field, same vocabulary as
@@ -371,6 +408,15 @@ export default async function CampaignDetailPage({
         />
       )}
       <CreativeFormatReadSection campaignId={id} initialRuns={creativeFormatReads} />
+      <BrandCommerceDiagnosticSection
+        campaignId={id}
+        classification={activeSignalMap?.classification ?? null}
+        initialDiagnostics={brandCommerceDiagnostics}
+        initialLatestSources={latestBrandCommerceDiagnosticSources}
+        culturalSignalOptions={culturalSignalOptions}
+        strategicBasisOptions={campaignBasisSources}
+        campaignLearningRecordId={campaignLearning?.id ?? null}
+      />
       {bip && (
         <IqEvaluateSection
           campaignId={id}

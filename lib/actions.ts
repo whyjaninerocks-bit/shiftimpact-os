@@ -24,6 +24,10 @@ import type {
   SynthesisRoute,
   SynthesisReviewStatus,
   ExternalReviewerAccessLevel,
+  BrandCommerceDiagnostic,
+  BrandCommerceDiagnosticSource,
+  BrandCommerceDiagnosticSourceType,
+  SynthesisEvidenceQuality,
 } from "@/lib/types";
 
 const BRAND_COMMERCE_CLASSIFICATION_VALUES: BrandCommerceClassification[] = [
@@ -2503,6 +2507,257 @@ export async function saveAudienceReplenishment(campaignId: string, formData: Fo
   await supabase
     .from("audience_replenishment")
     .upsert(payload, { onConflict: "campaign_id,week_number" });
+
+  revalidatePath(`/campaigns/${campaignId}`);
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Brand-Commerce Diagnostic v0.1 — migration 0101. Internal only, campaign
+// page only (BrandCommerceDiagnosticSection.tsx). Reads live in lib/data.ts
+// (getBrandCommerceDiagnosticsForCampaign, getBrandCommerceDiagnosticSources).
+//
+// No session gate here, on purpose, matching addStrategicBasisSource /
+// removeStrategicBasisSource just above rather than assertShiftImpactSession.
+// Those two were originally gated on assertInternalSession() and had to be
+// un-gated (see their own comments) because the OS v1 campaign working page
+// has no login wall by design — every real visitor has no session, so any
+// session check on a plain campaign-page edit action always throws
+// "Unauthorized," surfaced to the user as a broken feature. assertShiftImpactSession()
+// stays reserved for actions that manage who else gets access
+// (upsertExternalReviewerGrant, sendExternalReviewerInvite below) — a
+// materially different risk than writing a diagnostic note on a campaign
+// only ShiftImpact staff can already reach. campaign_id / row-ownership
+// checks below are the real access check, same pattern as every other
+// campaign-page action in this file.
+// ───────────────────────────────────────────────────────────────────────
+
+const EVIDENCE_CONFIDENCE_VALUES: SynthesisEvidenceQuality[] = [
+  "direct_evidence",
+  "inference",
+  "insufficient_evidence",
+];
+
+const BRAND_COMMERCE_DIAGNOSTIC_SOURCE_TYPES: BrandCommerceDiagnosticSourceType[] = [
+  "cultural_signal",
+  "strategic_basis",
+  "client_supplied_context",
+  "campaign_observation",
+  "commerce_mechanic",
+  "platform_or_category_reference",
+  "learning_memory",
+  "strategist_note",
+];
+
+export type CreateBrandCommerceDiagnosticInput = {
+  campaign_id: string;
+  classification_rationale: string;
+  commerce_mechanic_description?: string | null;
+  promotion_pressure_notes?: string | null;
+  proof_layer_notes?: string | null;
+  brand_meaning_risk_notes?: string | null;
+  evidence_confidence?: SynthesisEvidenceQuality | null;
+  created_by?: string | null;
+};
+
+export async function createBrandCommerceDiagnostic(
+  input: CreateBrandCommerceDiagnosticInput
+): Promise<BrandCommerceDiagnostic> {
+  const rationale = input.classification_rationale.trim();
+  if (!rationale) {
+    throw new Error("Classification rationale is required.");
+  }
+  if (input.evidence_confidence && !EVIDENCE_CONFIDENCE_VALUES.includes(input.evidence_confidence)) {
+    throw new Error(`Invalid evidence_confidence: ${input.evidence_confidence}`);
+  }
+
+  const supabase = createAdminClient();
+
+  // Snapshot classification_at_diagnosis server-side, read fresh right now —
+  // never trust a client-supplied value for this field. A campaign with no
+  // active signal map yet, or one with classification still unset, both
+  // resolve to null here; that is a valid, honest snapshot, not an error.
+  const { data: signalMap } = await supabase
+    .from("campaign_signal_maps")
+    .select("id, classification")
+    .eq("campaign_id", input.campaign_id)
+    .eq("is_active", true)
+    .maybeSingle();
+  const map = signalMap as { id: string; classification: BrandCommerceClassification | null } | null;
+
+  const { data: inserted, error } = await supabase
+    .from("brand_commerce_diagnostic")
+    .insert({
+      campaign_id: input.campaign_id,
+      campaign_signal_map_id: map?.id ?? null,
+      classification_at_diagnosis: map?.classification ?? null,
+      classification_rationale: rationale,
+      commerce_mechanic_description: input.commerce_mechanic_description?.trim() || null,
+      promotion_pressure_notes: input.promotion_pressure_notes?.trim() || null,
+      proof_layer_notes: input.proof_layer_notes?.trim() || null,
+      brand_meaning_risk_notes: input.brand_meaning_risk_notes?.trim() || null,
+      evidence_confidence: input.evidence_confidence ?? null,
+      created_by: input.created_by ?? null,
+    })
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/campaigns/${input.campaign_id}`);
+  return inserted as BrandCommerceDiagnostic;
+}
+
+export type AddBrandCommerceDiagnosticSourceInput = {
+  diagnostic_id: string;
+  campaign_id: string;
+  source_type: BrandCommerceDiagnosticSourceType;
+  source_title: string;
+  source_note?: string | null;
+  source_url?: string | null;
+  cultural_signal_id?: string | null;
+  strategic_basis_source_id?: string | null;
+  campaign_learning_record_id?: string | null;
+  evidence_confidence?: SynthesisEvidenceQuality | null;
+  created_by?: string | null;
+};
+
+export async function addBrandCommerceDiagnosticSource(
+  input: AddBrandCommerceDiagnosticSourceInput
+): Promise<BrandCommerceDiagnosticSource> {
+  if (!BRAND_COMMERCE_DIAGNOSTIC_SOURCE_TYPES.includes(input.source_type)) {
+    throw new Error(`Invalid source_type: ${input.source_type}`);
+  }
+  const title = input.source_title.trim();
+  if (!title) {
+    throw new Error("Source title is required.");
+  }
+  if (input.evidence_confidence && !EVIDENCE_CONFIDENCE_VALUES.includes(input.evidence_confidence)) {
+    throw new Error(`Invalid evidence_confidence: ${input.evidence_confidence}`);
+  }
+
+  // Mirrors the three database check constraints exactly (bcds_cultural_signal_required,
+  // bcds_strategic_basis_required, bcds_learning_memory_required) so the user
+  // sees a real message here rather than a raw Postgres error from the insert.
+  if (input.source_type === "cultural_signal" && !input.cultural_signal_id) {
+    throw new Error("Select a cultural signal to link.");
+  }
+  if (input.source_type === "strategic_basis" && !input.strategic_basis_source_id) {
+    throw new Error("Select a strategic basis source to link.");
+  }
+  if (input.source_type === "learning_memory" && !input.campaign_learning_record_id) {
+    throw new Error("This campaign has no Learning Memory record to link yet.");
+  }
+
+  const supabase = createAdminClient();
+
+  // Ownership checks — cross-campaign citation guard. The UI only ever
+  // offers campaign-scoped options (see BrandCommerceDiagnosticSection.tsx),
+  // but this re-validates server-side rather than trusting the client.
+  const { data: diag, error: diagErr } = await supabase
+    .from("brand_commerce_diagnostic")
+    .select("id, campaign_id")
+    .eq("id", input.diagnostic_id)
+    .maybeSingle();
+  if (diagErr) throw new Error(diagErr.message);
+  if (!diag) throw new Error("Diagnostic not found.");
+  if ((diag as { campaign_id: string }).campaign_id !== input.campaign_id) {
+    throw new Error("This diagnostic does not belong to the specified campaign.");
+  }
+
+  if (input.strategic_basis_source_id) {
+    const { data: basis } = await supabase
+      .from("strategic_basis_sources")
+      .select("id, campaign_id")
+      .eq("id", input.strategic_basis_source_id)
+      .maybeSingle();
+    if (!basis || (basis as { campaign_id: string }).campaign_id !== input.campaign_id) {
+      throw new Error("Selected strategic basis source does not belong to this campaign.");
+    }
+  }
+  if (input.campaign_learning_record_id) {
+    const { data: record } = await supabase
+      .from("campaign_learning_records")
+      .select("id, campaign_id")
+      .eq("id", input.campaign_learning_record_id)
+      .maybeSingle();
+    if (!record || (record as { campaign_id: string }).campaign_id !== input.campaign_id) {
+      throw new Error("Selected Learning Memory record does not belong to this campaign.");
+    }
+  }
+
+  const { data: inserted, error } = await supabase
+    .from("brand_commerce_diagnostic_sources")
+    .insert({
+      diagnostic_id: input.diagnostic_id,
+      campaign_id: input.campaign_id,
+      source_type: input.source_type,
+      source_title: title,
+      source_note: input.source_note?.trim() || null,
+      source_url: input.source_url?.trim() || null,
+      cultural_signal_id: input.cultural_signal_id ?? null,
+      strategic_basis_source_id: input.strategic_basis_source_id ?? null,
+      campaign_learning_record_id: input.campaign_learning_record_id ?? null,
+      evidence_confidence: input.evidence_confidence ?? null,
+      created_by: input.created_by ?? null,
+    })
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/campaigns/${input.campaign_id}`);
+  return inserted as BrandCommerceDiagnosticSource;
+}
+
+export async function removeBrandCommerceDiagnosticSource(campaignId: string, sourceId: string) {
+  const supabase = createAdminClient();
+
+  const { data: existing, error: fetchError } = await supabase
+    .from("brand_commerce_diagnostic_sources")
+    .select("id, campaign_id")
+    .eq("id", sourceId)
+    .maybeSingle();
+  if (fetchError) throw new Error(fetchError.message);
+  if (!existing) throw new Error("Source not found.");
+  if ((existing as { campaign_id: string }).campaign_id !== campaignId) {
+    throw new Error("This source does not belong to the specified campaign.");
+  }
+
+  const { error } = await supabase.from("brand_commerce_diagnostic_sources").delete().eq("id", sourceId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/campaigns/${campaignId}`);
+}
+
+/**
+ * Marks a diagnostic reviewed. reviewed_by is best-effort — this campaign
+ * page has no login wall in v1 (see file header comment above), so there is
+ * no reliable current-user id to attribute here; when none is available
+ * this stores null and the UI shows basic "Reviewed" state (timestamp only,
+ * no name) rather than fabricating an identity. No text field on the
+ * diagnostic is editable via this action — only reviewed_by / reviewed_at.
+ */
+export async function markBrandCommerceDiagnosticReviewed(
+  campaignId: string,
+  diagnosticId: string,
+  reviewedBy?: string | null
+) {
+  const supabase = createAdminClient();
+
+  const { data: existing, error: fetchError } = await supabase
+    .from("brand_commerce_diagnostic")
+    .select("id, campaign_id")
+    .eq("id", diagnosticId)
+    .maybeSingle();
+  if (fetchError) throw new Error(fetchError.message);
+  if (!existing) throw new Error("Diagnostic not found.");
+  if ((existing as { campaign_id: string }).campaign_id !== campaignId) {
+    throw new Error("This diagnostic does not belong to the specified campaign.");
+  }
+
+  const { error } = await supabase
+    .from("brand_commerce_diagnostic")
+    .update({ reviewed_by: reviewedBy ?? null, reviewed_at: new Date().toISOString() })
+    .eq("id", diagnosticId);
+  if (error) throw new Error(error.message);
 
   revalidatePath(`/campaigns/${campaignId}`);
 }

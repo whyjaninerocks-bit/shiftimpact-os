@@ -1169,6 +1169,70 @@ export type CampaignSignalMapWithContext = CampaignSignalMap & {
   category_slug: string;
 };
 
+// ── Brand-Commerce Diagnostic v0.1 — migration 0101 ───────────────────────────
+// Internal-only, campaign-page authoring record. classification stays
+// strategist-set on campaign_signal_maps; this table never computes or
+// mirrors it live. classification_at_diagnosis is a one-time snapshot taken
+// server-side at create time — never a client-supplied value, never updated
+// after insert. Append-only for v0.1: no update action exists, a strategist
+// writes a new diagnostic rather than editing an old one. evidence_confidence
+// reuses SynthesisEvidenceQuality verbatim, same vocabulary already live in
+// Strategic Synthesis and Creative Format Read.
+export type BrandCommerceDiagnostic = {
+  id: string;
+  campaign_id: string;
+  campaign_signal_map_id: string | null;
+  classification_at_diagnosis: BrandCommerceClassification | null;
+  classification_rationale: string;
+  commerce_mechanic_description: string | null;
+  promotion_pressure_notes: string | null;
+  proof_layer_notes: string | null;
+  brand_meaning_risk_notes: string | null;
+  evidence_confidence: SynthesisEvidenceQuality | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BrandCommerceDiagnosticSourceType =
+  | "cultural_signal"
+  | "strategic_basis"
+  | "client_supplied_context"
+  | "campaign_observation"
+  | "commerce_mechanic"
+  | "platform_or_category_reference"
+  | "learning_memory"
+  | "strategist_note";
+
+export const BRAND_COMMERCE_DIAGNOSTIC_SOURCE_TYPE_LABELS: Record<BrandCommerceDiagnosticSourceType, string> = {
+  cultural_signal: "Cultural signal",
+  strategic_basis: "Strategic basis",
+  client_supplied_context: "Client-supplied context",
+  campaign_observation: "Campaign observation",
+  commerce_mechanic: "Commerce mechanic",
+  platform_or_category_reference: "Platform / category reference",
+  learning_memory: "Learning memory",
+  strategist_note: "Strategist note",
+};
+
+export type BrandCommerceDiagnosticSource = {
+  id: string;
+  diagnostic_id: string;
+  campaign_id: string;
+  source_type: BrandCommerceDiagnosticSourceType;
+  source_title: string;
+  source_note: string | null;
+  source_url: string | null;
+  cultural_signal_id: string | null;
+  strategic_basis_source_id: string | null;
+  campaign_learning_record_id: string | null;
+  evidence_confidence: SynthesisEvidenceQuality | null;
+  created_by: string | null;
+  created_at: string;
+};
+
 // ── F17F — Market Parameter Architecture ──────────────────────────────────────
 // 10 ASEAN markets seeded in migration 0008 (MY, SG, ID, TH, VN, PH, MM, KH, LA, BN).
 // confidence_weight: 1.00 = primary market (MY); lower = less directly applicable.

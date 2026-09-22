@@ -57,6 +57,9 @@ import type {
   // External Reviewers card v0.1
   ExternalReviewerGrant,
   OrganisationOption,
+  // Brand-Commerce Diagnostic v0.1 — migration 0101
+  BrandCommerceDiagnostic,
+  BrandCommerceDiagnosticSource,
 } from "@/lib/types";
 
 export async function getClients(): Promise<ClientWithRollups[]> {
@@ -2163,4 +2166,34 @@ export async function getOrganisationOptions(): Promise<OrganisationOption[]> {
     .order("name", { ascending: true });
   if (error) throw error;
   return (data as OrganisationOption[]) ?? [];
+}
+
+// ─── Brand-Commerce Diagnostic v0.1 — migration 0101 ─────────────────────────
+// Internal only (campaigns/[id]/page.tsx). See lib/types.ts header comment
+// for the append-only / snapshot-only rules this data model follows.
+
+export async function getBrandCommerceDiagnosticsForCampaign(
+  campaignId: string
+): Promise<BrandCommerceDiagnostic[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("brand_commerce_diagnostic")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data as BrandCommerceDiagnostic[]) ?? [];
+}
+
+export async function getBrandCommerceDiagnosticSources(
+  diagnosticId: string
+): Promise<BrandCommerceDiagnosticSource[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("brand_commerce_diagnostic_sources")
+    .select("*")
+    .eq("diagnostic_id", diagnosticId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data as BrandCommerceDiagnosticSource[]) ?? [];
 }
