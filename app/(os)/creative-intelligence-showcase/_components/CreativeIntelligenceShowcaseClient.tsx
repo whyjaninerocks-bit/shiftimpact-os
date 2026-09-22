@@ -76,18 +76,6 @@ function Reveal({
   );
 }
 
-const LIGHT_DOT_CLASS: Record<EvidenceLight, string> = {
-  direct: "bg-emerald-500",
-  inference: "bg-amber-400",
-  missing: "bg-neutral-300",
-};
-
-const LIGHT_LINE_CLASS: Record<EvidenceLight, string> = {
-  direct: "bg-emerald-300",
-  inference: "bg-amber-300",
-  missing: "bg-neutral-200",
-};
-
 function RiskBadge({ level }: { level: "Low" | "Medium" | "Higher" }) {
   const tone = level === "Low" ? "green" : level === "Medium" ? "amber" : "red";
   return <Badge tone={tone}>{level} risk shift</Badge>;
@@ -110,7 +98,7 @@ function CountChip({ label, n, tone }: { label: string; n: number; tone: "green"
 
 const OBSERVED_EVIDENCE: { label: string; detail: string }[] = [
   { label: "Smarties 2024 winners listing", detail: "MMA Smarties Indonesia 2024 winners listing — campaign name, client, agency pairing, market, two award categories" },
-  { label: "Smarties credits page", detail: "MMA Smarties credits page — individually named McCann, Reckitt, and Mediacom staff and titles" },
+  { label: "Smarties credits page", detail: "MMA Smarties credits page — individually named Reckitt and Mediacom staff and titles" },
   { label: "4 sampled case-film frames", detail: "Four sampled frames from the actual, playable case film: opening domestic scene, expert / product science segment, DOKTER toy scene, closing product range shot" },
 ];
 
@@ -146,6 +134,21 @@ const PROGRESS_PATH: { label: string; light: EvidenceLight; short: string; read:
     read: "Not run. Platform is unconfirmed, so no Platform Benchmark row can be attached to this read with confidence — see the Platform Lens for what would change if it were." },
 ];
 
+// Grouped by evidence status rather than left in analysis order, so the
+// escalation from cleared to urgent is the actual structure of the section,
+// not just a color implied by an arbitrary sequence.
+const EVIDENCE_ZONES: { light: EvidenceLight; heading: string; note: string; border: string; text: string }[] = [
+  { light: "direct", heading: "Confirmed directly", note: "Solid — no action needed.", border: "border-emerald-400", text: "text-emerald-700" },
+  { light: "inference", heading: "Inferred, not observed", note: "Worth a quick check before this moves forward.", border: "border-amber-400", text: "text-amber-700" },
+  { light: "missing", heading: "Missing evidence", note: "The gap to close first.", border: "border-neutral-300", text: "text-neutral-500" },
+];
+
+const EVIDENCE_COUNTS = {
+  direct: PROGRESS_PATH.filter((p) => p.light === "direct").length,
+  inference: PROGRESS_PATH.filter((p) => p.light === "inference").length,
+  missing: PROGRESS_PATH.filter((p) => p.light === "missing").length,
+};
+
 const DECISION_BOARD: { key: "HOLD" | "STRENGTHEN" | "VALIDATE" | "WATCH"; tone: "green" | "amber" | "blue" | "red"; blurb: string; items: string[] }[] = [
   {
     key: "HOLD", tone: "green",
@@ -168,7 +171,7 @@ const DECISION_BOARD: { key: "HOLD" | "STRENGTHEN" | "VALIDATE" | "WATCH"; tone:
   },
   {
     key: "VALIDATE", tone: "blue",
-    blurb: "Needs data, platform confirmation, or McCann input.",
+    blurb: "Needs data, platform confirmation, or agency input.",
     items: [
       "Platform and distribution channel are entirely unconfirmed — the single gap limiting everything downstream.",
       "Full running time, complete sequence, and audio were never available.",
@@ -256,20 +259,20 @@ const CONFIDENCE_MAP = {
 const VALIDATION_ASK: { title: string; detail: string }[] = [
   { title: "Live Indonesia campaign", detail: "One live Indonesia campaign, current or recent." },
   { title: "2–3 assets", detail: "Two to three assets from that campaign at different stages — script, storyboard, rough cut, or final." },
-  { title: "Intended platform / format", detail: "The intended platform and format, stated by McCann, not inferred." },
+  { title: "Intended platform / format", detail: "The intended platform and format, stated by the agency, not inferred." },
   { title: "Campaign objective", detail: "The campaign's actual objective — brand building, commerce driving, or a mix." },
-  { title: "Benchmarks or actuals", detail: "Any platform benchmarks or client actuals McCann already holds for that market or format." },
+  { title: "Benchmarks or actuals", detail: "Any platform benchmarks or client actuals the agency already holds for that market or format." },
   { title: "Current manual read", detail: "The strategist's own current manual read on the same assets, for comparison." },
 ];
 
 type PlannedMockKind = "asset-card" | "keyframes" | "transcript" | "actuals" | "learning" | "tiered";
 
-const PLANNED_NEXT: { title: string; oneLiner: string; whyItMatters: string; mccannSupplies: string; wontClaim: string; mockKey: PlannedMockKind }[] = [
+const PLANNED_NEXT: { title: string; oneLiner: string; whyItMatters: string; agencySupplies: string; wontClaim: string; mockKey: PlannedMockKind }[] = [
   {
     title: "Asset Card Intake",
     oneLiner: "Turns one asset into a structured record — type, maturity, objective, platform, format, keyframes.",
     whyItMatters: "Captures an asset once, structured, so it can be read against every future dimension without re-analyzing raw video each time.",
-    mccannSupplies: "Asset type, maturity, objective, platform, format, transcript if available, and a short set of keyframes.",
+    agencySupplies: "Asset type, maturity, objective, platform, format, transcript if available, and a short set of keyframes.",
     wontClaim: "Will not infer objective, platform, or maturity on its own — every field is supplied, never guessed.",
     mockKey: "asset-card",
   },
@@ -277,7 +280,7 @@ const PLANNED_NEXT: { title: string; oneLiner: string; whyItMatters: string; mcc
     title: "Keyframe Extraction",
     oneLiner: "Pulls five to seven targeted frames from a video instead of requiring a full manual watch.",
     whyItMatters: "A small, targeted set of frames (five to seven) is what actually produced a useful read on Gentle Care — this would make that repeatable rather than manual.",
-    mccannSupplies: "The source video file, or approval to pull opening seconds, first product appearance, first brand cue, proof moment, creator moment, and closing frame.",
+    agencySupplies: "The source video file, or approval to pull opening seconds, first product appearance, first brand cue, proof moment, creator moment, and closing frame.",
     wontClaim: "Will not claim to capture the full film — a keyframe read is always a sampled read, and will say so.",
     mockKey: "keyframes",
   },
@@ -285,15 +288,15 @@ const PLANNED_NEXT: { title: string; oneLiner: string; whyItMatters: string; mcc
     title: "Transcript / OCR Support",
     oneLiner: "Adds what was said and shown on screen — voiceover, subtitles, disclaimers — to the read.",
     whyItMatters: "Closes the audio and on screen text gap this showcase explicitly could not fill — voiceover, subtitles, claims, disclaimers, CTA language.",
-    mccannSupplies: "A transcript or the source file to transcribe, and any on screen disclaimer text McCann already has on file.",
+    agencySupplies: "A transcript or the source file to transcribe, and any on screen disclaimer text the agency already has on file.",
     wontClaim: "Will not translate or interpret spoken claims beyond what the transcript literally says.",
     mockKey: "transcript",
   },
   {
     title: "Platform Actuals Read",
-    oneLiner: "Grounds the read in real completion, drop off, and engagement numbers when McCann has them.",
-    whyItMatters: "Grounds a read in what actually happened, when McCann has it, rather than general platform guidance alone.",
-    mccannSupplies: "Completion rate, drop off, CTR, add to cart, comments, saves, or shares — whatever McCann or the client is able to share.",
+    oneLiner: "Grounds the read in real completion, drop off, and engagement numbers when the agency has them.",
+    whyItMatters: "Grounds a read in what actually happened, when the agency has it, rather than general platform guidance alone.",
+    agencySupplies: "Completion rate, drop off, CTR, add to cart, comments, saves, or shares — whatever the agency or the client is able to share.",
     wontClaim: "Will not treat one asset's actuals as a forecast for a different asset, and will not fetch or infer this data itself.",
     mockKey: "actuals",
   },
@@ -301,7 +304,7 @@ const PLANNED_NEXT: { title: string; oneLiner: string; whyItMatters: string; mcc
     title: "Learning Memory",
     oneLiner: "Carries what worked, or didn't, on past campaigns into every new read for the same brand or market.",
     whyItMatters: "Makes every subsequent read in the same brand, category, or market start from accumulated context instead of a cold read.",
-    mccannSupplies: "Confirmation of what actually worked or didn't on delivered campaigns, in McCann's or the client's own words.",
+    agencySupplies: "Confirmation of what actually worked or didn't on delivered campaigns, in the agency's or the client's own words.",
     wontClaim: "Will not generalize one campaign's learning to a different brand or market without that being stated explicitly.",
     mockKey: "learning",
   },
@@ -309,14 +312,14 @@ const PLANNED_NEXT: { title: string; oneLiner: string; whyItMatters: string; mcc
     title: "Tiered Analysis",
     oneLiner: "Matches how deep a read goes to how much the asset actually needs.",
     whyItMatters: "Keeps cost and turnaround proportional to what an asset actually needs — most assets don't need a deep video review.",
-    mccannSupplies: "A sense of which assets are high stakes enough to warrant the deepest tier, campaign by campaign.",
+    agencySupplies: "A sense of which assets are high stakes enough to warrant the deepest tier, campaign by campaign.",
     wontClaim: "Will not apply the deepest, most expensive tier by default — that stays a deliberate, named exception.",
     mockKey: "tiered",
   },
 ];
 
 // ─── Coming Next — mock visual previews ─────────────────────────────────────
-// Illustrative layout sketches so McCann can see the shape of each planned
+// Illustrative layout sketches so the agency can see the shape of each planned
 // card at a glance instead of reading three paragraphs first. Every value
 // shown is a made-up, generic example (a fictional format, a round number, a
 // placeholder campaign name) chosen to make the layout legible — never a
@@ -732,34 +735,49 @@ export function CreativeIntelligenceShowcaseClient({
                 <p className="text-sm font-semibold text-neutral-800">Creative Format Read — evidence lights</p>
                 <EvidenceLightsLegend />
               </div>
-              <p className="text-[11px] text-neutral-400 mb-3">Read top to bottom — cleared first, most open at the bottom.</p>
+              <p className="text-[11px] text-neutral-400 mb-3">
+                Grouped by how solid the evidence is — confirmed first, the open gap last.
+              </p>
 
-              {/* Quick scan: cleared (green) to urgency (amber/grey), left to right, one node per dimension */}
-              <div className="flex items-center mb-4">
-                {PROGRESS_PATH.map((step, i) => (
-                  <div key={step.label} className="flex items-center flex-1 last:flex-none">
-                    <span title={step.label} className={`shrink-0 w-3 h-3 rounded-full ${LIGHT_DOT_CLASS[step.light]}`} />
-                    {i < PROGRESS_PATH.length - 1 && <div className={`h-0.5 flex-1 mx-1 rounded-full ${LIGHT_LINE_CLASS[step.light]}`} />}
-                  </div>
-                ))}
+              {/* Distribution bar — how much of the 7-dimension read is confirmed vs. still open, at a glance */}
+              <div className="flex h-2 w-full overflow-hidden rounded-full mb-1.5">
+                <div style={{ width: `${(EVIDENCE_COUNTS.direct / PROGRESS_PATH.length) * 100}%` }} className="bg-emerald-500" />
+                <div style={{ width: `${(EVIDENCE_COUNTS.inference / PROGRESS_PATH.length) * 100}%` }} className="bg-amber-400" />
+                <div style={{ width: `${(EVIDENCE_COUNTS.missing / PROGRESS_PATH.length) * 100}%` }} className="bg-neutral-300" />
+              </div>
+              <div className="flex justify-between text-[10px] text-neutral-400 mb-4">
+                <span>{EVIDENCE_COUNTS.direct} confirmed</span>
+                <span>{EVIDENCE_COUNTS.inference} inferred</span>
+                <span>{EVIDENCE_COUNTS.missing} missing</span>
               </div>
 
-              {/* Always-visible read — no click required to see what each light means */}
-              <div className="divide-y divide-neutral-100">
-                {PROGRESS_PATH.map((step) => (
-                  <div key={step.label} className="flex items-start gap-2.5 py-2.5 first:pt-0 last:pb-0">
-                    <EvidenceDot light={step.light} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-neutral-800">{step.label}</p>
-                      <p className="text-xs text-neutral-600 leading-relaxed">{step.short}</p>
-                      <div className="mt-1">
-                        <Reveal label="Full read" hideLabel="Hide full read">
-                          <p className="text-xs text-neutral-500 leading-relaxed">{step.read}</p>
-                        </Reveal>
+              {/* Three zones, sorted cleared → urgent — the grouping itself is the story, not a color someone has to decode */}
+              <div className="space-y-4">
+                {EVIDENCE_ZONES.map((zone) => {
+                  const items = PROGRESS_PATH.filter((p) => p.light === zone.light);
+                  if (items.length === 0) return null;
+                  return (
+                    <div key={zone.light} className={`border-l-4 ${zone.border} pl-3`}>
+                      <p className={`text-[10px] font-bold uppercase tracking-widest mb-0.5 ${zone.text}`}>
+                        {zone.heading} · {items.length}
+                      </p>
+                      <p className="text-[11px] text-neutral-400 mb-1.5">{zone.note}</p>
+                      <div className="divide-y divide-neutral-100">
+                        {items.map((step) => (
+                          <div key={step.label} className="py-2 first:pt-0 last:pb-0">
+                            <p className="text-xs font-semibold text-neutral-800">{step.label}</p>
+                            <p className="text-xs text-neutral-600 leading-relaxed">{step.short}</p>
+                            <div className="mt-1">
+                              <Reveal label="Full read" hideLabel="Hide full read">
+                                <p className="text-xs text-neutral-500 leading-relaxed">{step.read}</p>
+                              </Reveal>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </Card>
           </section>
@@ -769,7 +787,7 @@ export function CreativeIntelligenceShowcaseClient({
             <h2 className="text-xl font-bold tracking-tight text-neutral-900 mb-3">Confidence</h2>
             <Card>
               <p className="text-xs text-neutral-500 mb-1">
-                What the OS can say, cannot say, and what McCann needs to confirm — exact wording, not paraphrased.
+                What the OS can say, cannot say, and what the agency needs to confirm — exact wording, not paraphrased.
               </p>
               <Reveal label="View confidence map" hideLabel="Hide confidence map">
                 <div className="grid sm:grid-cols-3 gap-4 mt-3">
@@ -866,7 +884,7 @@ export function CreativeIntelligenceShowcaseClient({
           {/* Pilot Ask — six tiles */}
           <section id="pilot" className="scroll-mt-20">
             <h2 className="text-xl font-bold tracking-tight text-neutral-900 mb-1">Pilot Ask</h2>
-            <p className="text-xs text-neutral-500 mb-3">To move from this cold sample to a real pilot, we'd ask McCann for:</p>
+            <p className="text-xs text-neutral-500 mb-3">To move from this cold sample to a real pilot, we'd ask the agency for:</p>
             <div className="grid sm:grid-cols-3 gap-3">
               {VALIDATION_ASK.map((ask, i) => (
                 <div key={ask.title} className="rounded-lg border border-neutral-200 bg-white p-4">
@@ -887,7 +905,7 @@ export function CreativeIntelligenceShowcaseClient({
             >
               <div>
                 <h2 className="text-base font-bold tracking-tight text-neutral-900">Coming Next</h2>
-                <p className="text-xs text-neutral-500 mt-0.5">What this becomes if McCann moves forward</p>
+                <p className="text-xs text-neutral-500 mt-0.5">What this becomes if the agency moves forward</p>
               </div>
               <span className="text-neutral-400 text-sm shrink-0 ml-3">{comingNextOpen ? "Hide ▾" : "Show ▸"}</span>
             </button>
@@ -912,7 +930,7 @@ export function CreativeIntelligenceShowcaseClient({
                             <span className="font-medium text-neutral-700">Why it matters: </span>{card.whyItMatters}
                           </p>
                           <p className="text-xs text-neutral-600 leading-relaxed">
-                            <span className="font-medium text-neutral-700">McCann would supply: </span>{card.mccannSupplies}
+                            <span className="font-medium text-neutral-700">Agency would supply: </span>{card.agencySupplies}
                           </p>
                           <p className="text-xs text-neutral-500 leading-relaxed">
                             <span className="font-medium text-neutral-600">Will not claim: </span>{card.wontClaim}

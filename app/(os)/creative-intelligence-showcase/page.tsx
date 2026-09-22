@@ -2,7 +2,7 @@
 // Creative Intelligence Showcase Mode — INTERNAL ONLY, UI LAYER ONLY.
 //
 // Renders the already-completed Creative Format Read of the Gentle Care /
-// Brilliant Digestion Educator case (McCann x EssenceMediacom, Smarties
+// Brilliant Digestion Educator case (EssenceMediacom, Smarties
 // Indonesia 2024) as a Pre-flight Creative Decision Console: a hero decision
 // summary, a sticky story rail (Decision / Evidence / Confidence / Platform
 // Lens / Pilot Ask / Coming Next), a HOLD / STRENGTHEN / VALIDATE / WATCH
