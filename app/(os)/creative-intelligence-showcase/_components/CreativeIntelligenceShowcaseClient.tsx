@@ -76,6 +76,18 @@ function Reveal({
   );
 }
 
+const LIGHT_DOT_CLASS: Record<EvidenceLight, string> = {
+  direct: "bg-emerald-500",
+  inference: "bg-amber-400",
+  missing: "bg-neutral-300",
+};
+
+const LIGHT_LINE_CLASS: Record<EvidenceLight, string> = {
+  direct: "bg-emerald-300",
+  inference: "bg-amber-300",
+  missing: "bg-neutral-200",
+};
+
 function RiskBadge({ level }: { level: "Low" | "Medium" | "Higher" }) {
   const tone = level === "Low" ? "green" : level === "Medium" ? "amber" : "red";
   return <Badge tone={tone}>{level} risk shift</Badge>;
@@ -347,6 +359,7 @@ export function CreativeIntelligenceShowcaseClient({
   const [activePlatform, setActivePlatform] = useState<PlatformKey>("youtube");
   const [active, setActive] = useState<string>("decision");
   const [comingNextOpen, setComingNextOpen] = useState(false);
+  const [selectedStep, setSelectedStep] = useState(0);
 
   const activeScenario = PLATFORM_SCENARIOS.find((p) => p.key === activePlatform)!;
   const matchedRows = benchmarks.filter((b) => b.is_active && activeScenario.match(b));
@@ -506,25 +519,55 @@ export function CreativeIntelligenceShowcaseClient({
             </Card>
 
             <Card>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-4">
                 <p className="text-sm font-semibold text-neutral-800">Creative Format Read — evidence lights</p>
                 <EvidenceLightsLegend />
               </div>
-              <ul className="divide-y divide-neutral-100">
-                {PROGRESS_PATH.map((step) => (
-                  <li key={step.label} className="py-2.5 first:pt-0 last:pb-0">
-                    <div className="flex items-center gap-2">
-                      <EvidenceDot light={step.light} />
-                      <p className="text-sm font-medium text-neutral-800">{step.label}</p>
-                    </div>
-                    <div className="pl-[18px] mt-1">
-                      <Reveal label="View reasoning">
-                        <p className="text-xs text-neutral-500 leading-relaxed">{step.read}</p>
-                      </Reveal>
-                    </div>
-                  </li>
+
+              {/* Timeline: cleared (green) to urgency (amber/grey), left to right, one node per dimension */}
+              <div className="flex items-center mb-3">
+                {PROGRESS_PATH.map((step, i) => (
+                  <div key={step.label} className="flex items-center flex-1 last:flex-none">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStep(i)}
+                      title={step.label}
+                      className={`shrink-0 rounded-full transition-all ${LIGHT_DOT_CLASS[step.light]} ${
+                        selectedStep === i ? "w-4 h-4 ring-2 ring-offset-2 ring-neutral-900" : "w-3 h-3 hover:ring-2 hover:ring-offset-2 hover:ring-neutral-300"
+                      }`}
+                    />
+                    {i < PROGRESS_PATH.length - 1 && <div className={`h-0.5 flex-1 mx-1 rounded-full ${LIGHT_LINE_CLASS[step.light]}`} />}
+                  </div>
                 ))}
-              </ul>
+              </div>
+
+              {/* Compact index — click any step to load it into the detail panel below */}
+              <div className="flex flex-wrap gap-1.5 mb-4">
+                {PROGRESS_PATH.map((step, i) => (
+                  <button
+                    key={step.label}
+                    type="button"
+                    onClick={() => setSelectedStep(i)}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                      selectedStep === i
+                        ? "border-neutral-900 bg-neutral-900 text-white"
+                        : "border-neutral-200 bg-white text-neutral-600 hover:border-neutral-400"
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${selectedStep === i ? "bg-white" : LIGHT_DOT_CLASS[step.light]}`} />
+                    {step.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Shared detail panel — one open at a time, no per-row expand/collapse sprawl */}
+              <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3.5">
+                <div className="flex items-center gap-2 mb-1">
+                  <EvidenceDot light={PROGRESS_PATH[selectedStep].light} />
+                  <p className="text-sm font-semibold text-neutral-800">{PROGRESS_PATH[selectedStep].label}</p>
+                </div>
+                <p className="text-xs text-neutral-600 leading-relaxed">{PROGRESS_PATH[selectedStep].read}</p>
+              </div>
             </Card>
           </section>
 
