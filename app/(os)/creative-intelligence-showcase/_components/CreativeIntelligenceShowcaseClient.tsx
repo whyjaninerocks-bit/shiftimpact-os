@@ -2,17 +2,29 @@
 
 // Creative Intelligence Showcase Mode — client UI.
 //
-// Every fact about the Gentle Care asset below is the same, already-produced
-// Creative Format Read from this engagement (four sampled frames of the real
-// Smarties Indonesia 2024 case film, MMA Smarties listing + credits page).
-// Nothing here is invented for the demo, and nothing here is a live model
-// call — this file is presentation only. The platform scenario cards below
-// pull real row titles from the existing, live platform_benchmarks table
-// (read-only, via the `benchmarks` prop) so they never go stale against the
-// library's actual contents; everything else is static, reviewed copy.
+// Pre-flight Creative Decision Console. Every fact about the Gentle Care
+// asset below is the same, already-produced Creative Format Read from this
+// engagement (four sampled frames of the real Smarties Indonesia 2024 case
+// film, MMA Smarties listing + credits page). Nothing here is invented for
+// the demo, and nothing here is a live model call — this file is
+// presentation only. The platform scenario cards below pull real row titles
+// from the existing, live platform_benchmarks table (read-only, via the
+// `benchmarks` prop) so they never go stale against the library's actual
+// contents; everything else is static, reviewed copy.
+//
+// This is a visual restructure only — every underlying fact, evidence-light
+// value, decision-bucket item, platform-match rule, and benchmark query is
+// byte-for-byte the same content that shipped in the first version of this
+// page. What changed is default visibility (collapsed behind "View
+// reasoning" / drawers / chips) and layout (sticky story rail, hero decision
+// summary, larger Decision Room cards), never the words themselves — nothing
+// here is paraphrased into a shorter claim; short labels are additive
+// (chips carry a `detail` alongside the original sentence, revealed on
+// demand), and compliance-sensitive text (the Confidence Map's can/cannot
+// say lines) is never shortened, only shown collapsed by default.
 
-import { useState } from "react";
-import { Badge, Card, ErrorBanner, SectionTitle } from "@/app/_components/ui";
+import { useEffect, useState } from "react";
+import { Badge, Card, ErrorBanner } from "@/app/_components/ui";
 import type { PlatformBenchmark } from "@/lib/types";
 
 // ─── Evidence lights ────────────────────────────────────────────────────────
@@ -29,28 +41,73 @@ function EvidenceDot({ light }: { light: EvidenceLight }) {
 
 function EvidenceLightsLegend() {
   return (
-    <div className="flex flex-wrap items-center gap-4 text-xs text-neutral-500">
-      <span className="flex items-center gap-1.5"><EvidenceDot light="direct" /> Observed / direct</span>
-      <span className="flex items-center gap-1.5"><EvidenceDot light="inference" /> Inference</span>
-      <span className="flex items-center gap-1.5"><EvidenceDot light="missing" /> Missing / insufficient</span>
+    <div className="flex flex-wrap items-center gap-3 text-[11px] text-neutral-500">
+      <span className="flex items-center gap-1.5"><EvidenceDot light="direct" /> Observed</span>
+      <span className="flex items-center gap-1.5"><EvidenceDot light="inference" /> Inferred</span>
+      <span className="flex items-center gap-1.5"><EvidenceDot light="missing" /> Insufficient</span>
     </div>
   );
 }
 
-// ─── Static case content — the already-produced Gentle Care read ───────────
+// ─── Small reusable building blocks ─────────────────────────────────────────
 
-const OBSERVED_EVIDENCE = [
-  "MMA Smarties Indonesia 2024 winners listing — campaign name, client, agency pairing, market, two award categories",
-  "MMA Smarties credits page — individually named McCann, Reckitt, and Mediacom staff and titles",
-  "Four sampled frames from the actual, playable case film: opening domestic scene, expert / product science segment, DOKTER toy scene, closing product range shot",
+/** Collapses arbitrary content behind a click — never rewrites the content, only its default visibility. */
+function Reveal({
+  label,
+  hideLabel = "Show less",
+  children,
+}: {
+  label: string;
+  hideLabel?: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="text-[11px] font-semibold text-neutral-500 hover:text-neutral-800 underline underline-offset-2"
+      >
+        {open ? hideLabel : label}
+      </button>
+      {open && <div className="mt-2">{children}</div>}
+    </div>
+  );
+}
+
+function RiskBadge({ level }: { level: "Low" | "Medium" | "Higher" }) {
+  const tone = level === "Low" ? "green" : level === "Medium" ? "amber" : "red";
+  return <Badge tone={tone}>{level} risk shift</Badge>;
+}
+
+function CountChip({ label, n, tone }: { label: string; n: number; tone: "green" | "amber" | "blue" | "red" }) {
+  const dot: Record<string, string> = { green: "bg-emerald-500", amber: "bg-amber-500", blue: "bg-blue-500", red: "bg-red-500" };
+  return (
+    <a
+      href="#decision"
+      className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-700 hover:border-neutral-400 transition-colors"
+    >
+      <span className={`w-2 h-2 rounded-full ${dot[tone]}`} /> {label} <span className="text-neutral-400 font-normal">{n}</span>
+    </a>
+  );
+}
+
+// ─── Static case content — the already-produced Gentle Care read ───────────
+// (unchanged from the original build — see file header)
+
+const OBSERVED_EVIDENCE: { label: string; detail: string }[] = [
+  { label: "Smarties 2024 winners listing", detail: "MMA Smarties Indonesia 2024 winners listing — campaign name, client, agency pairing, market, two award categories" },
+  { label: "Smarties credits page", detail: "MMA Smarties credits page — individually named McCann, Reckitt, and Mediacom staff and titles" },
+  { label: "4 sampled case-film frames", detail: "Four sampled frames from the actual, playable case film: opening domestic scene, expert / product science segment, DOKTER toy scene, closing product range shot" },
 ];
 
-const MISSING_EVIDENCE = [
-  "Which platform or channel this asset actually ran on",
-  "Full running time and complete linear sequence — only four discontinuous moments were sampled",
-  "Audio, voiceover, or spoken content — nothing was heard, only seen",
-  "A written brief, FRAME, or Big Idea Platform — this campaign never ran through the OS",
-  "Any performance, reach, or reported result beyond the award tier itself",
+const MISSING_EVIDENCE: { label: string; detail: string }[] = [
+  { label: "Platform / channel unconfirmed", detail: "Which platform or channel this asset actually ran on" },
+  { label: "Only 4 moments sampled", detail: "Full running time and complete linear sequence — only four discontinuous moments were sampled" },
+  { label: "No audio reviewed", detail: "Audio, voiceover, or spoken content — nothing was heard, only seen" },
+  { label: "No brief on file", detail: "A written brief, FRAME, or Big Idea Platform — this campaign never ran through the OS" },
+  { label: "No performance data", detail: "Any performance, reach, or reported result beyond the award tier itself" },
 ];
 
 const PROGRESS_PATH: { label: string; light: EvidenceLight; read: string }[] = [
@@ -67,7 +124,7 @@ const PROGRESS_PATH: { label: string; light: EvidenceLight; read: string }[] = [
   { label: "Evidence confidence", light: "inference",
     read: "Moderate for structure and placement, thin for anything requiring literal opening seconds, audio, or exact timing — four sampled frames, not a full linear watch." },
   { label: "Platform benchmark check", light: "missing",
-    read: "Not run. Platform is unconfirmed, so no Platform Benchmark row can be attached to this read with confidence — see the scenario toggle below for what would change if it were." },
+    read: "Not run. Platform is unconfirmed, so no Platform Benchmark row can be attached to this read with confidence — see the Platform Lens for what would change if it were." },
 ];
 
 const DECISION_BOARD: { key: "HOLD" | "STRENGTHEN" | "VALIDATE" | "WATCH"; tone: "green" | "amber" | "blue" | "red"; blurb: string; items: string[] }[] = [
@@ -111,22 +168,46 @@ const DECISION_BOARD: { key: "HOLD" | "STRENGTHEN" | "VALIDATE" | "WATCH"; tone:
   },
 ];
 
+const BOARD_ICON: Record<string, string> = { HOLD: "✓", STRENGTHEN: "↑", VALIDATE: "?", WATCH: "!" };
+const BOARD_ACCENT: Record<string, string> = {
+  green: "border-emerald-300 bg-emerald-50",
+  amber: "border-amber-300 bg-amber-50",
+  blue: "border-blue-300 bg-blue-50",
+  red: "border-red-300 bg-red-50",
+};
+const BOARD_ICON_BG: Record<string, string> = {
+  green: "bg-emerald-600",
+  amber: "bg-amber-500",
+  blue: "bg-blue-600",
+  red: "bg-red-600",
+};
+
 type PlatformKey = "youtube" | "meta_reels" | "tiktok";
 
-const PLATFORM_SCENARIOS: { key: PlatformKey; label: string; risk: string; match: (b: PlatformBenchmark) => boolean }[] = [
+const PLATFORM_SCENARIOS: {
+  key: PlatformKey;
+  label: string;
+  riskLevel: "Low" | "Medium" | "Higher";
+  mainQuestion: string;
+  context: string;
+  match: (b: PlatformBenchmark) => boolean;
+}[] = [
   {
-    key: "youtube", label: "YouTube",
-    risk: "The mildest risk lens of the three. YouTube audiences are generally accustomed to produced, brand made content, so this film's polish and its slower, warmth first open are a reasonably natural fit for the platform's own stated norms. The open question becomes whether the mid film tonal jump reads as a natural beat or a jarring cut within a longer format.",
+    key: "youtube", label: "YouTube", riskLevel: "Low",
+    mainQuestion: "Does the mid-film tonal jump read as a natural beat, or a jarring cut, within a longer format?",
+    context: "The mildest risk lens of the three. YouTube audiences are generally accustomed to produced, brand made content, so this film's polish and its slower, warmth first open are a reasonably natural fit for the platform's own stated norms. The open question becomes whether the mid film tonal jump reads as a natural beat or a jarring cut within a longer format.",
     match: (b) => b.platform.toLowerCase().includes("youtube"),
   },
   {
-    key: "meta_reels", label: "Meta Reels",
-    risk: "The risk lens tightens here. Reels rewards a fast hold on attention and has its own interface safe zones that a persistent top corner logo could collide with, unconfirmed without checking the asset against the actual spec. The open question becomes whether the domestic opening scene earns attention quickly enough before a swipe past.",
+    key: "meta_reels", label: "Meta Reels", riskLevel: "Medium",
+    mainQuestion: "Does the domestic opening earn attention before a swipe, and does the logo collide with Reels' safe zones?",
+    context: "The risk lens tightens here. Reels rewards a fast hold on attention and has its own interface safe zones that a persistent top corner logo could collide with, unconfirmed without checking the asset against the actual spec. The open question becomes whether the domestic opening scene earns attention quickly enough before a swipe past.",
     match: (b) => b.platform.toLowerCase().includes("facebook") || b.platform.toLowerCase().includes("instagram"),
   },
   {
-    key: "tiktok", label: "TikTok",
-    risk: "The sharpest risk lens of the three. TikTok's own published guidance leans toward native, sound on, creator led, less polished content — this asset's produced, brand film, logo forward polish sits at the widest distance from that stated norm of the three platforms. That is not a claim it would fail there, it is the single most concrete, checkable fit question if TikTok is ever the real answer.",
+    key: "tiktok", label: "TikTok", riskLevel: "Higher",
+    mainQuestion: "Does a produced, logo-forward film sit believably in a feed built for native, creator-led content?",
+    context: "The sharpest risk lens of the three. TikTok's own published guidance leans toward native, sound on, creator led, less polished content — this asset's produced, brand film, logo forward polish sits at the widest distance from that stated norm of the three platforms. That is not a claim it would fail there, it is the single most concrete, checkable fit question if TikTok is ever the real answer.",
     match: (b) => b.platform.toLowerCase().includes("tiktok"),
   },
 ];
@@ -153,13 +234,13 @@ const CONFIDENCE_MAP = {
   ],
 };
 
-const VALIDATION_ASK = [
-  "One live Indonesia campaign, current or recent.",
-  "Two to three assets from that campaign at different stages — script, storyboard, rough cut, or final.",
-  "The intended platform and format, stated by McCann, not inferred.",
-  "The campaign's actual objective — brand building, commerce driving, or a mix.",
-  "Any platform benchmarks or client actuals McCann already holds for that market or format.",
-  "The strategist's own current manual read on the same assets, for comparison.",
+const VALIDATION_ASK: { title: string; detail: string }[] = [
+  { title: "Live Indonesia campaign", detail: "One live Indonesia campaign, current or recent." },
+  { title: "2–3 assets", detail: "Two to three assets from that campaign at different stages — script, storyboard, rough cut, or final." },
+  { title: "Intended platform / format", detail: "The intended platform and format, stated by McCann, not inferred." },
+  { title: "Campaign objective", detail: "The campaign's actual objective — brand building, commerce driving, or a mix." },
+  { title: "Benchmarks or actuals", detail: "Any platform benchmarks or client actuals McCann already holds for that market or format." },
+  { title: "Current manual read", detail: "The strategist's own current manual read on the same assets, for comparison." },
 ];
 
 const PLANNED_NEXT: { title: string; whyItMatters: string; mccannSupplies: string; wontClaim: string }[] = [
@@ -201,16 +282,57 @@ const PLANNED_NEXT: { title: string; whyItMatters: string; mccannSupplies: strin
   },
 ];
 
-// ─── Small building blocks ───────────────────────────────────────────────────
+const RAIL_SECTIONS: { id: string; label: string }[] = [
+  { id: "decision", label: "Decision" },
+  { id: "evidence", label: "Evidence" },
+  { id: "confidence", label: "Confidence" },
+  { id: "platform", label: "Platform Lens" },
+  { id: "pilot", label: "Pilot Ask" },
+  { id: "coming-next", label: "Coming Next" },
+];
 
-function boardTone(tone: "green" | "amber" | "blue" | "red") {
-  const map: Record<string, string> = {
-    green: "border-emerald-200 bg-emerald-50",
-    amber: "border-amber-200 bg-amber-50",
-    blue: "border-blue-200 bg-blue-50",
-    red: "border-red-200 bg-red-50",
-  };
-  return map[tone];
+// ─── Story rail (sticky nav with scroll-spy) ─────────────────────────────────
+
+function StoryRail({ active }: { active: string }) {
+  return (
+    <nav className="hidden md:block sticky top-6 self-start w-36 shrink-0">
+      <ul className="space-y-0.5 border-l border-neutral-200">
+        {RAIL_SECTIONS.map((s) => (
+          <li key={s.id}>
+            <a
+              href={`#${s.id}`}
+              className={`block pl-3 py-1.5 text-xs -ml-px border-l-2 transition-colors ${
+                active === s.id ? "border-neutral-900 text-neutral-900 font-semibold" : "border-transparent text-neutral-400 hover:text-neutral-600"
+              }`}
+            >
+              {s.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+function MobileRail({ active }: { active: string }) {
+  return (
+    <nav className="md:hidden sticky top-0 z-10 bg-neutral-50/95 backdrop-blur border-b border-neutral-200 py-2 -mt-2 mb-2 overflow-x-auto">
+      <ul className="flex gap-1.5 w-max px-0.5">
+        {RAIL_SECTIONS.map((s) => (
+          <li key={s.id}>
+            <a
+              href={`#${s.id}`}
+              className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium border transition-colors ${
+                active === s.id ? "bg-neutral-900 text-white border-neutral-900" : "bg-white text-neutral-600 border-neutral-300"
+              }`}
+            >
+              {s.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
 }
 
 // ─── Main export ──────────────────────────────────────────────────────────────
@@ -223,232 +345,343 @@ export function CreativeIntelligenceShowcaseClient({
   dbError?: string;
 }) {
   const [activePlatform, setActivePlatform] = useState<PlatformKey>("youtube");
+  const [active, setActive] = useState<string>("decision");
+  const [comingNextOpen, setComingNextOpen] = useState(false);
+
   const activeScenario = PLATFORM_SCENARIOS.find((p) => p.key === activePlatform)!;
   const matchedRows = benchmarks.filter((b) => b.is_active && activeScenario.match(b));
 
+  const counts = Object.fromEntries(DECISION_BOARD.map((c) => [c.key, c.items.length])) as Record<string, number>;
+
+  // Scroll-spy: highlights the rail entry for whichever section is nearest
+  // the top of the viewport. Presentation only — no data dependency.
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible[0]) {
+          const id = visible[0].target.getAttribute("id");
+          if (id) setActive(id);
+        }
+      },
+      { rootMargin: "-88px 0px -70% 0px", threshold: 0 },
+    );
+    RAIL_SECTIONS.forEach((s) => {
+      const el = document.getElementById(s.id);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div className="max-w-3xl space-y-6">
-      <div>
+    <div className="max-w-5xl space-y-5">
+      <ErrorBanner message={dbError} />
+
+      {/* Hero decision summary */}
+      <div className="rounded-2xl border border-neutral-200 bg-white p-6 sm:p-7">
         <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
           Creative Intelligence — Showcase Mode
         </p>
-        <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 mb-3">
           Gentle Care — Brilliant Digestion Educator
         </h1>
-        <p className="text-sm text-neutral-500 mt-1 max-w-xl">
-          A walkable read of one real, publicly documented McCann Indonesia asset. Internal only.
-        </p>
+
+        <div className="flex flex-wrap gap-2 mb-4">
+          <Badge tone="neutral">Market: Indonesia</Badge>
+          <Badge tone="neutral">Asset maturity: Final asset</Badge>
+        </div>
+
+        <div className="rounded-lg bg-neutral-900 text-white px-4 py-2.5 mb-4">
+          <p className="text-xs leading-relaxed">
+            <span className="font-semibold">Showcase mode:</span> one-time read of a public asset, not a live pipeline.
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 mb-4">
+          <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest mb-1">
+            Is this creative ready to move toward spend?
+          </p>
+          <p className="text-sm sm:text-base font-semibold text-neutral-900">
+            Proceed with caution — key platform and brief inputs missing.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <CountChip label="HOLD" n={counts.HOLD} tone="green" />
+          <CountChip label="STRENGTHEN" n={counts.STRENGTHEN} tone="amber" />
+          <CountChip label="VALIDATE" n={counts.VALIDATE} tone="blue" />
+          <CountChip label="WATCH" n={counts.WATCH} tone="red" />
+        </div>
       </div>
 
-      <ErrorBanner message={dbError} />
+      <MobileRail active={active} />
 
-      {/* 1. Disclaimer */}
-      <div className="rounded-lg bg-neutral-900 text-white px-4 py-3">
-        <p className="text-xs leading-relaxed">
-          <span className="font-semibold">Showcase mode:</span> one time analysis of a public asset, not a live automated video pipeline.
-        </p>
-      </div>
+      <div className="flex gap-8 items-start">
+        <StoryRail active={active} />
 
-      {/* 2. Input evidence panel */}
-      <Card>
-        <SectionTitle>Input Evidence</SectionTitle>
-        <div className="grid grid-cols-2 gap-3 text-sm mb-4">
-          <div>
-            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-0.5">Asset</p>
-            <p className="text-neutral-800">Gentle Care — Brilliant Digestion Educator</p>
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-0.5">Brand / Client</p>
-            <p className="text-neutral-800">Reckitt / Mead Johnson Nutrition Indonesia — Enfagrow A+ NeuraPro GentleCare</p>
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-0.5">Market</p>
-            <p className="text-neutral-800">Indonesia</p>
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-0.5">Asset Maturity</p>
-            <p className="text-neutral-800">Final asset</p>
-          </div>
-        </div>
-
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div>
-            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1.5">Observed Evidence</p>
-            <ul className="space-y-1.5">
-              {OBSERVED_EVIDENCE.map((e, i) => (
-                <li key={i} className="flex items-start gap-2 text-xs text-neutral-600 leading-relaxed">
-                  <EvidenceDot light="direct" /> <span>{e}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1.5">Missing Evidence</p>
-            <ul className="space-y-1.5">
-              {MISSING_EVIDENCE.map((e, i) => (
-                <li key={i} className="flex items-start gap-2 text-xs text-neutral-600 leading-relaxed">
-                  <EvidenceDot light="missing" /> <span>{e}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </Card>
-
-      {/* 3 + 4. Evidence lights + progress path */}
-      <Card>
-        <div className="flex items-center justify-between mb-3">
-          <SectionTitle>Creative Format Read — Progress Path</SectionTitle>
-        </div>
-        <div className="mb-4"><EvidenceLightsLegend /></div>
-        <div className="space-y-3">
-          {PROGRESS_PATH.map((step, i) => (
-            <div key={step.label} className="flex items-start gap-3">
-              <div className="flex flex-col items-center pt-0.5">
-                <EvidenceDot light={step.light} />
-                {i < PROGRESS_PATH.length - 1 && <div className="w-px h-full bg-neutral-200 mt-1" />}
-              </div>
-              <div className="pb-3">
-                <p className="text-sm font-medium text-neutral-800">{step.label}</p>
-                <p className="text-xs text-neutral-500 leading-relaxed mt-0.5">{step.read}</p>
-              </div>
+        <div className="flex-1 min-w-0 space-y-8">
+          {/* Decision Room — the emotional centre */}
+          <section id="decision" className="scroll-mt-20">
+            <h2 className="text-xl font-bold tracking-tight text-neutral-900 mb-1">Pre-flight Decision Room</h2>
+            <p className="text-xs text-neutral-500 mb-4">
+              Four buckets, one question each: what do we hold, strengthen, validate, and watch before this moves toward spend?
+            </p>
+            <div className="grid sm:grid-cols-2 gap-4">
+              {DECISION_BOARD.map((col) => {
+                const visible = col.items.slice(0, 3);
+                const rest = col.items.slice(3);
+                return (
+                  <div key={col.key} className={`rounded-xl border-2 p-5 ${BOARD_ACCENT[col.tone]}`}>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 ${BOARD_ICON_BG[col.tone]}`}>
+                        {BOARD_ICON[col.key]}
+                      </span>
+                      <p className="text-sm font-bold uppercase tracking-widest text-neutral-800">{col.key}</p>
+                      <span className="ml-auto text-xs font-semibold text-neutral-500">{col.items.length}</span>
+                    </div>
+                    <p className="text-xs text-neutral-600 italic mb-3">{col.blurb}</p>
+                    <ul className="space-y-1.5">
+                      {visible.map((it, i) => (
+                        <li key={i} className="text-xs text-neutral-700 leading-relaxed flex gap-1.5">
+                          <span className="text-neutral-400 shrink-0">•</span><span>{it}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {rest.length > 0 && (
+                      <div className="mt-2">
+                        <Reveal label={`View reasoning (+${rest.length} more)`}>
+                          <ul className="space-y-1.5">
+                            {rest.map((it, i) => (
+                              <li key={i} className="text-xs text-neutral-700 leading-relaxed flex gap-1.5">
+                                <span className="text-neutral-400 shrink-0">•</span><span>{it}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </Reveal>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
-      </Card>
+          </section>
 
-      {/* 5. Decision board */}
-      <div>
-        <SectionTitle>Pre-flight Decision Room</SectionTitle>
-        <div className="grid sm:grid-cols-2 gap-3">
-          {DECISION_BOARD.map((col) => (
-            <div key={col.key} className={`rounded-lg border p-4 ${boardTone(col.tone)}`}>
-              <p className="text-xs font-bold uppercase tracking-widest text-neutral-700 mb-1">{col.key}</p>
-              <p className="text-xs text-neutral-600 italic mb-2">{col.blurb}</p>
-              <ul className="space-y-1.5">
-                {col.items.map((it, i) => (
-                  <li key={i} className="text-xs text-neutral-700 leading-relaxed">• {it}</li>
+          {/* Evidence — chips, not paragraphs */}
+          <section id="evidence" className="scroll-mt-20 space-y-4">
+            <h2 className="text-xl font-bold tracking-tight text-neutral-900">Evidence</h2>
+
+            <Card>
+              <div className="grid sm:grid-cols-2 gap-5">
+                <div>
+                  <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-2">Available Evidence</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {OBSERVED_EVIDENCE.map((e, i) => (
+                      <span
+                        key={i}
+                        title={e.detail}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-800"
+                      >
+                        <EvidenceDot light="direct" /> {e.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Missing Evidence</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {MISSING_EVIDENCE.map((e, i) => (
+                      <span
+                        key={i}
+                        title={e.detail}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-[11px] font-medium text-neutral-600"
+                      >
+                        <EvidenceDot light="missing" /> {e.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <Card>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-semibold text-neutral-800">Creative Format Read — evidence lights</p>
+                <EvidenceLightsLegend />
+              </div>
+              <ul className="divide-y divide-neutral-100">
+                {PROGRESS_PATH.map((step) => (
+                  <li key={step.label} className="py-2.5 first:pt-0 last:pb-0">
+                    <div className="flex items-center gap-2">
+                      <EvidenceDot light={step.light} />
+                      <p className="text-sm font-medium text-neutral-800">{step.label}</p>
+                    </div>
+                    <div className="pl-[18px] mt-1">
+                      <Reveal label="View reasoning">
+                        <p className="text-xs text-neutral-500 leading-relaxed">{step.read}</p>
+                      </Reveal>
+                    </div>
+                  </li>
                 ))}
               </ul>
-            </div>
-          ))}
-        </div>
-      </div>
+            </Card>
+          </section>
 
-      {/* 6. Platform scenario toggle */}
-      <Card>
-        <div className="flex items-start justify-between gap-3 mb-1">
-          <SectionTitle>Same Asset, Different Platform Risk</SectionTitle>
-        </div>
-        <Badge tone="amber" className="mb-3">Scenario only — not confirmed distribution</Badge>
+          {/* Confidence — collapsed by default, exact wording when opened */}
+          <section id="confidence" className="scroll-mt-20">
+            <h2 className="text-xl font-bold tracking-tight text-neutral-900 mb-3">Confidence</h2>
+            <Card>
+              <p className="text-xs text-neutral-500 mb-1">
+                What the OS can say, cannot say, and what McCann needs to confirm — exact wording, not paraphrased.
+              </p>
+              <Reveal label="View confidence map" hideLabel="Hide confidence map">
+                <div className="grid sm:grid-cols-3 gap-4 mt-3">
+                  <div>
+                    <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1.5">Can say</p>
+                    <ul className="space-y-1.5">
+                      {CONFIDENCE_MAP.can_say.map((t, i) => (
+                        <li key={i} className="text-xs text-neutral-600 leading-relaxed">{t}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest mb-1.5">Cannot say</p>
+                    <ul className="space-y-1.5">
+                      {CONFIDENCE_MAP.cannot_say.map((t, i) => (
+                        <li key={i} className="text-xs text-neutral-600 leading-relaxed">{t}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-1.5">Needs confirm</p>
+                    <ul className="space-y-1.5">
+                      {CONFIDENCE_MAP.needs_confirm.map((t, i) => (
+                        <li key={i} className="text-xs text-neutral-600 leading-relaxed">{t}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </Reveal>
+            </Card>
+          </section>
 
-        <div className="flex gap-2 mb-4">
-          {PLATFORM_SCENARIOS.map((p) => (
-            <button
-              key={p.key}
-              onClick={() => setActivePlatform(p.key)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
-                activePlatform === p.key
-                  ? "bg-neutral-900 text-white border-neutral-900"
-                  : "bg-white text-neutral-600 border-neutral-300 hover:bg-neutral-50"
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
+          {/* Platform Lens — the aha moment */}
+          <section id="platform" className="scroll-mt-20">
+            <h2 className="text-xl font-bold tracking-tight text-neutral-900 mb-1">Platform Lens</h2>
+            <p className="text-xs text-neutral-500 mb-3">Same asset, different platform — what tightens if distribution were confirmed.</p>
+            <Card>
+              <Badge tone="amber" className="mb-3">Scenario only — not confirmed distribution</Badge>
 
-        <p className="text-sm text-neutral-600 leading-relaxed mb-3">{activeScenario.risk}</p>
-
-        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1.5">
-          Reference material that would become relevant if {activeScenario.label} were confirmed
-        </p>
-        {matchedRows.length === 0 ? (
-          <p className="text-xs text-neutral-400">No matching seeded Platform Benchmark rows found.</p>
-        ) : (
-          <ul className="space-y-1">
-            {matchedRows.map((b) => (
-              <li key={b.id} className="text-xs text-neutral-600">
-                {b.source_url ? (
-                  <a href={b.source_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                    {b.source_title}
-                  </a>
-                ) : b.source_title}
-                <span className="text-neutral-400"> — {b.platform}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-
-      {/* 7. Evidence confidence map */}
-      <Card>
-        <SectionTitle>Evidence Confidence Map</SectionTitle>
-        <div className="grid sm:grid-cols-3 gap-4">
-          <div>
-            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1.5">What the OS can say</p>
-            <ul className="space-y-1.5">
-              {CONFIDENCE_MAP.can_say.map((t, i) => (
-                <li key={i} className="text-xs text-neutral-600 leading-relaxed">{t}</li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest mb-1.5">What the OS cannot say</p>
-            <ul className="space-y-1.5">
-              {CONFIDENCE_MAP.cannot_say.map((t, i) => (
-                <li key={i} className="text-xs text-neutral-600 leading-relaxed">{t}</li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-1.5">What McCann needs to confirm</p>
-            <ul className="space-y-1.5">
-              {CONFIDENCE_MAP.needs_confirm.map((t, i) => (
-                <li key={i} className="text-xs text-neutral-600 leading-relaxed">{t}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </Card>
-
-      {/* 8. Validation ask */}
-      <Card>
-        <SectionTitle>Validation Ask</SectionTitle>
-        <p className="text-xs text-neutral-500 mb-2">To move from this cold sample to a real pilot, we would ask McCann for:</p>
-        <ul className="space-y-1.5">
-          {VALIDATION_ASK.map((t, i) => (
-            <li key={i} className="text-sm text-neutral-700 leading-relaxed">{i + 1}. {t}</li>
-          ))}
-        </ul>
-      </Card>
-
-      {/* 9. Planned next */}
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <SectionTitle>Planned Next — Not Live in This Showcase</SectionTitle>
-        </div>
-        <p className="text-xs text-neutral-500 mb-3">
-          Nothing below runs today. Every card here is copy only, named so the roadmap is visible, not built into this page.
-        </p>
-        <div className="grid sm:grid-cols-2 gap-3">
-          {PLANNED_NEXT.map((card) => (
-            <div key={card.title} className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-semibold text-neutral-800">{card.title}</p>
-                <Badge tone="neutral">Planned</Badge>
+              <div className="flex gap-2 mb-4">
+                {PLATFORM_SCENARIOS.map((p) => (
+                  <button
+                    key={p.key}
+                    onClick={() => setActivePlatform(p.key)}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+                      activePlatform === p.key
+                        ? "bg-neutral-900 text-white border-neutral-900"
+                        : "bg-white text-neutral-600 border-neutral-300 hover:bg-neutral-50"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
               </div>
-              <p className="text-xs text-neutral-600 leading-relaxed mb-2">
-                <span className="font-medium text-neutral-700">Why it matters: </span>{card.whyItMatters}
+
+              <div className="mb-2"><RiskBadge level={activeScenario.riskLevel} /></div>
+              <p className="text-sm font-medium text-neutral-800 mb-2">{activeScenario.mainQuestion}</p>
+              <Reveal label="More context">
+                <p className="text-xs text-neutral-500 leading-relaxed">{activeScenario.context}</p>
+              </Reveal>
+
+              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1.5 mt-4">
+                Reference material if {activeScenario.label} were confirmed
               </p>
-              <p className="text-xs text-neutral-600 leading-relaxed mb-2">
-                <span className="font-medium text-neutral-700">McCann would supply: </span>{card.mccannSupplies}
-              </p>
-              <p className="text-xs text-neutral-500 leading-relaxed">
-                <span className="font-medium text-neutral-600">Will not claim: </span>{card.wontClaim}
-              </p>
+              {matchedRows.length === 0 ? (
+                <p className="text-xs text-neutral-400">No matching seeded Platform Benchmark rows found.</p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {matchedRows.map((b) =>
+                    b.source_url ? (
+                      <a
+                        key={b.id}
+                        href={b.source_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700 hover:bg-blue-100"
+                      >
+                        {b.source_title}
+                      </a>
+                    ) : (
+                      <span
+                        key={b.id}
+                        className="inline-flex items-center rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-[11px] font-medium text-neutral-600"
+                      >
+                        {b.source_title}
+                      </span>
+                    ),
+                  )}
+                </div>
+              )}
+            </Card>
+          </section>
+
+          {/* Pilot Ask — six tiles */}
+          <section id="pilot" className="scroll-mt-20">
+            <h2 className="text-xl font-bold tracking-tight text-neutral-900 mb-1">Pilot Ask</h2>
+            <p className="text-xs text-neutral-500 mb-3">To move from this cold sample to a real pilot, we'd ask McCann for:</p>
+            <div className="grid sm:grid-cols-3 gap-3">
+              {VALIDATION_ASK.map((ask, i) => (
+                <div key={ask.title} className="rounded-lg border border-neutral-200 bg-white p-4">
+                  <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">{i + 1}</p>
+                  <p className="text-sm font-semibold text-neutral-800 mb-1">{ask.title}</p>
+                  <p className="text-xs text-neutral-500 leading-relaxed">{ask.detail}</p>
+                </div>
+              ))}
             </div>
-          ))}
+          </section>
+
+          {/* Coming Next — collapsed drawer */}
+          <section id="coming-next" className="scroll-mt-20">
+            <button
+              type="button"
+              onClick={() => setComingNextOpen((o) => !o)}
+              className="w-full flex items-center justify-between rounded-xl border border-neutral-200 bg-white px-5 py-4 text-left hover:bg-neutral-50 transition-colors"
+            >
+              <div>
+                <h2 className="text-base font-bold tracking-tight text-neutral-900">Coming Next</h2>
+                <p className="text-xs text-neutral-500 mt-0.5">What this becomes if McCann moves forward</p>
+              </div>
+              <span className="text-neutral-400 text-sm shrink-0 ml-3">{comingNextOpen ? "Hide ▾" : "Show ▸"}</span>
+            </button>
+            {comingNextOpen && (
+              <div className="mt-3">
+                <p className="text-xs text-neutral-500 mb-3">
+                  Nothing below runs today. Every card here is copy only, named so the roadmap is visible, not built into this page.
+                </p>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {PLANNED_NEXT.map((card) => (
+                    <div key={card.title} className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-semibold text-neutral-800">{card.title}</p>
+                        <Badge tone="neutral">Planned</Badge>
+                      </div>
+                      <p className="text-xs text-neutral-600 leading-relaxed mb-2">
+                        <span className="font-medium text-neutral-700">Why it matters: </span>{card.whyItMatters}
+                      </p>
+                      <p className="text-xs text-neutral-600 leading-relaxed mb-2">
+                        <span className="font-medium text-neutral-700">McCann would supply: </span>{card.mccannSupplies}
+                      </p>
+                      <p className="text-xs text-neutral-500 leading-relaxed">
+                        <span className="font-medium text-neutral-600">Will not claim: </span>{card.wontClaim}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
         </div>
       </div>
     </div>

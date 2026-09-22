@@ -3,10 +3,12 @@
 //
 // Renders the already-completed Creative Format Read of the Gentle Care /
 // Brilliant Digestion Educator case (McCann x EssenceMediacom, Smarties
-// Indonesia 2024) as a walkable demo: evidence panel, evidence lights,
-// dimension progress path, HOLD / STRENGTHEN / VALIDATE / WATCH decision
-// board, a platform scenario toggle, an evidence confidence map, the
-// validation ask, and a clearly-labeled "planned, not live" roadmap section.
+// Indonesia 2024) as a Pre-flight Creative Decision Console: a hero decision
+// summary, a sticky story rail (Decision / Evidence / Confidence / Platform
+// Lens / Pilot Ask / Coming Next), a HOLD / STRENGTHEN / VALIDATE / WATCH
+// Decision Room as the hero section, evidence as chips + lights, a platform
+// scenario lens with risk-shift badges, six Pilot Ask tiles, and a
+// collapsed "Coming Next" drawer for the planned-roadmap cards.
 //
 // This page makes NO model call. Every word of the Gentle Care read below is
 // the same, already-produced, human-reviewed analysis from this engagement —
