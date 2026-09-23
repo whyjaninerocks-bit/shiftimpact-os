@@ -254,6 +254,7 @@ ${signalsSchemaBlock}
   "ai_visibility_recommendation": "<1 strategic action — specific to how this brand should approach AI eligibility>",
 
   "campaign_phase": <"Demand" | "Conversion" | "Retention">,
+  "priority_context_note": "<null if only one campaign phase and one business objective were provided. Otherwise 1-2 sentences: how the secondary (non-primary) phase(s)/objective(s) show up, or fail to show up, in the observed signals — context only, not a second diagnosis.>",
   "estimated_campaign_week": "<e.g. '4–6' or '7–9' — estimated based on campaign signals>",
   "gate_status": <"Advance" | "Conditional" | "Hold" | "Pivot">,
   "gate_conditions": [
@@ -355,8 +356,9 @@ export async function POST(req: NextRequest) {
         biggest_risk: string;
         questions_worth_asking?: string[];
       } | null;
-      campaign_phase?: string;
-      business_objective?: string;
+      // Ranked (multi) — index 0 is primary/highest priority. See migration 0102.
+      campaign_phases?: string[];
+      business_objectives?: string[];
       channels?: string[];
       budget_range?: string;
       context_text: string;
@@ -369,12 +371,19 @@ export async function POST(req: NextRequest) {
       industry_subcategory,
       country = "Malaysia",
       signal_intelligence,
-      campaign_phase = "Demand",
-      business_objective,
+      campaign_phases = ["Demand"],
+      business_objectives = [],
       channels = [],
       budget_range,
       context_text,
     } = body;
+
+    // Primary is index 0 — the AI's single campaign_phase/effectiveness read
+    // is anchored to this. Secondaries (if any) are passed as ranked context
+    // only, not scored as separate diagnoses (see priority_context_note in
+    // the output schema below).
+    const primaryPhase = campaign_phases[0] ?? "Demand";
+    const primaryObjective = business_objectives[0] ?? undefined;
 
     if (!context_text || context_text.trim().length < 30) {
       return NextResponse.json(
@@ -424,14 +433,15 @@ Brand: ${brand_name}
 Campaign: ${campaign_name}
 Industry: ${industry}
 Market: ${country}
-Current Phase: ${campaign_phase}
-Business Objective: ${business_objective || "Not disclosed"}
+Campaign Phase(s), in priority order: ${campaign_phases.map((p, i) => `${i + 1}. ${p}${i === 0 ? " (primary)" : ""}`).join("; ")}
+Business Objective(s), in priority order: ${business_objectives.length > 0 ? business_objectives.map((o, i) => `${i + 1}. ${o}${i === 0 ? " (primary)" : ""}`).join("; ") : "Not disclosed"}
 Active Channels: ${channels.length > 0 ? channels.join(", ") : "Not specified"}
 Approximate Media Budget: ${budget_range || "Not disclosed"}
 ${signalBlock}
 PUBLIC SIGNAL DATA COLLECTED:
 ${context_text.slice(0, signal_intelligence ? 5000 : 8000)}
 
+${campaign_phases.length > 1 || business_objectives.length > 1 ? `More than one campaign phase and/or business objective was flagged. Anchor your single "campaign_phase" output and overall diagnosis to the PRIMARY (first-listed) phase and objective — do not average or blend them into a muddled read. Then use "priority_context_note" to note, in plain business language, how the secondary phase(s)/objective(s) show up (or fail to show up) in the signals you observed, without producing a second competing diagnosis.` : ""}
 Analyse this campaign across all intelligence dimensions. Apply ${country} market benchmarks, platform dynamics, and consumer behaviour context throughout — every insight must be grounded in ${country} market reality. ${
   categoryFramework
     ? `Score the "category_signals" array exactly as instructed in CATEGORY SIGNAL MODEL above — do not substitute generic social metrics.`
@@ -465,8 +475,12 @@ Analyse this campaign across all intelligence dimensions. Apply ${country} marke
         campaign_name,
         industry,
         industry_subcategory: industry_subcategory || null,
-        campaign_phase,
-        business_objective: business_objective || null,
+        // Legacy scalar columns — kept in sync with the new primary
+        // (index 0) values for any older code path still reading them.
+        campaign_phase: primaryPhase,
+        business_objective: primaryObjective || null,
+        campaign_phases,
+        business_objectives,
         channels: channels.length > 0 ? channels : null,
         context_summary: contextSummary,
         result,

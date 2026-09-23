@@ -89,6 +89,7 @@ type AuditResult = {
   ai_visibility_diagnosis: string;
   ai_visibility_recommendation: string;
   campaign_phase: string;
+  priority_context_note: string | null;
   estimated_campaign_week: string;
   gate_status: string;
   gate_conditions: { condition: string; met: boolean; evidence: string }[];
@@ -118,6 +119,8 @@ type QuickAudit = {
   campaign_name: string;
   industry: string;
   campaign_phase: string | null;
+  campaign_phases: string[] | null;
+  business_objectives: string[] | null;
   channels: string[] | null;
   result: AuditResult;
   created_at: string;
@@ -244,23 +247,41 @@ function ConsumerStateArc({ currentState }: { currentState: number }) {
   );
 }
 
-function PhaseTimeline({ phase, weekRange }: { phase: string; weekRange: string }) {
+// rankedPhases[0] is primary (solid marker); any further entries are
+// secondary priority context (lighter marker) — never a second diagnosis,
+// see priority_context_note for how they read against the primary.
+function PhaseTimeline({ rankedPhases, weekRange }: { rankedPhases: string[]; weekRange: string }) {
   const phases = ["Demand", "Conversion", "Retention"];
-  const idx = phases.indexOf(phase);
+  const primaryIdx = phases.indexOf(rankedPhases[0]);
+  const secondaryIdxs = new Set(
+    rankedPhases.slice(1).map(p => phases.indexOf(p)).filter(i => i !== -1 && i !== primaryIdx)
+  );
   const widths = ["flex-[2]", "flex-[2]", "flex-[1]"];
   return (
     <div className="flex items-start gap-0 mb-4">
-      {phases.map((p, i) => (
-        <div key={p} className={`${widths[i]} flex flex-col`}>
-          <div className={`h-1.5 rounded-sm mr-0.5 ${i === idx ? "bg-slate-900" : i < idx ? "bg-slate-400" : "bg-slate-100"}`} />
-          <div className="flex items-center gap-1 mt-1.5">
-            {i === idx && <span className="w-1.5 h-1.5 rounded-full bg-slate-900 shrink-0" />}
-            <p className={`text-[10px] ${i === idx ? "text-slate-900 font-semibold" : "text-slate-400"}`}>
-              {p}{i === idx && weekRange ? ` · Wk ${weekRange}` : ""}
-            </p>
+      {phases.map((p, i) => {
+        const isPrimary = i === primaryIdx;
+        const isSecondary = secondaryIdxs.has(i);
+        const isBeforePrimary = i < primaryIdx;
+        return (
+          <div key={p} className={`${widths[i]} flex flex-col`}>
+            <div className={`h-1.5 rounded-sm mr-0.5 ${
+              isPrimary ? "bg-slate-900" : isSecondary ? "bg-slate-500" : isBeforePrimary ? "bg-slate-400" : "bg-slate-100"
+            }`} />
+            <div className="flex items-center gap-1 mt-1.5">
+              {isPrimary && <span className="w-1.5 h-1.5 rounded-full bg-slate-900 shrink-0" />}
+              {isSecondary && <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />}
+              <p className={`text-[10px] ${
+                isPrimary ? "text-slate-900 font-semibold" : isSecondary ? "text-slate-500 font-medium" : "text-slate-400"
+              }`}>
+                {p}
+                {isPrimary && weekRange ? ` · Wk ${weekRange}` : ""}
+                {isSecondary ? " (secondary)" : ""}
+              </p>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -451,7 +472,18 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
               <p className="text-slate-400 text-sm">{a.campaign_name} · {a.industry}</p>
             </div>
             <div className="flex flex-row sm:flex-col items-start sm:items-end gap-2 sm:gap-1.5 shrink-0 sm:mt-0.5">
-              <span className="text-xs text-slate-400 font-medium">{r.campaign_phase} Phase · Wk {r.estimated_campaign_week}</span>
+              <span className="text-xs text-slate-400 font-medium text-right">
+                {r.campaign_phase} Phase · Wk {r.estimated_campaign_week}
+                {a.campaign_phases && a.campaign_phases.length > 1 && (
+                  <span className="text-slate-500"> · +{a.campaign_phases.length - 1} secondary</span>
+                )}
+              </span>
+              {a.business_objectives && a.business_objectives.length > 0 && (
+                <span className="text-[10px] text-slate-500 text-right max-w-[220px]">
+                  {a.business_objectives[0]}
+                  {a.business_objectives.length > 1 ? ` +${a.business_objectives.length - 1} more` : ""}
+                </span>
+              )}
               <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${gate.bg} ${gate.text}`}>
                 {gate.label}
               </span>
@@ -776,7 +808,15 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
               header={`${r.gate_status}: ${r.budget_release_recommendation}`}
               body={r.gate_recommendation}
             />
-            <PhaseTimeline phase={r.campaign_phase} weekRange={r.estimated_campaign_week} />
+            <PhaseTimeline
+              rankedPhases={a.campaign_phases && a.campaign_phases.length > 0 ? a.campaign_phases : [r.campaign_phase]}
+              weekRange={r.estimated_campaign_week}
+            />
+            {r.priority_context_note && (
+              <p className="text-xs text-slate-500 italic leading-relaxed -mt-2 mb-4">
+                {r.priority_context_note}
+              </p>
+            )}
           </div>
           <div className="px-6 pt-4 pb-2">
             <div className="flex items-center justify-between mb-2">

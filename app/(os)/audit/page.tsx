@@ -149,14 +149,18 @@ export default function QuickAuditPage() {
   // sub-category picker can show/hide reactively. See INDUSTRY_SUBCATEGORIES.
   const [industry, setIndustry] = useState("FMCG");
   const [subcategory, setSubcategory] = useState("");
+
+  // Ranked (multi) Campaign Phase + Business Objective — click/add order is
+  // the priority rank, index 0 = primary. See migration 0102.
+  const [phases, setPhases] = useState<string[]>(["Demand"]);
+  const [objectives, setObjectives] = useState<string[]>([]);
+  const [objectiveInput, setObjectiveInput] = useState("");
   // Carries forward the Signal's AI intelligence so Snapshot can extend rather than re-derive
   const [signalIntelligence, setSignalIntelligence] = useState<Record<string, unknown> | null>(null);
 
   const brandRef = useRef<HTMLInputElement>(null);
   const campaignRef = useRef<HTMLInputElement>(null);
   const industryRef = useRef<HTMLSelectElement>(null);
-  const phaseRef = useRef<HTMLSelectElement>(null);
-  const objectiveRef = useRef<HTMLInputElement>(null);
   const budgetRef = useRef<HTMLSelectElement>(null);
 
   // Pre-fill form on load from either:
@@ -205,6 +209,35 @@ export default function QuickAuditPage() {
     setSelectedChannels(prev =>
       prev.includes(v) ? prev.filter(c => c !== v) : [...prev, v]
     );
+  }
+
+  // Click order = priority rank (first click = primary / index 0).
+  // Clicking an already-selected phase removes it; the rest keep their order.
+  function togglePhase(v: string) {
+    setPhases(prev =>
+      prev.includes(v) ? prev.filter(p => p !== v) : [...prev, v]
+    );
+  }
+
+  function addObjective() {
+    const val = objectiveInput.trim();
+    if (!val || objectives.includes(val)) { setObjectiveInput(""); return; }
+    setObjectives(prev => [...prev, val]);
+    setObjectiveInput("");
+  }
+
+  function removeObjective(i: number) {
+    setObjectives(prev => prev.filter((_, idx) => idx !== i));
+  }
+
+  function moveObjective(i: number, dir: -1 | 1) {
+    setObjectives(prev => {
+      const next = [...prev];
+      const j = i + dir;
+      if (j < 0 || j >= next.length) return prev;
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
   }
 
   async function handleFetch() {
@@ -282,6 +315,7 @@ export default function QuickAuditPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (phases.length === 0) { setError("Select at least one campaign phase."); return; }
     setLoading(true);
     setError(null);
     try {
@@ -295,8 +329,8 @@ export default function QuickAuditPage() {
           industry_subcategory: subcategory || undefined,
           country,
           signal_intelligence: signalIntelligence ?? undefined,
-          campaign_phase: phaseRef.current?.value,
-          business_objective: objectiveRef.current?.value,
+          campaign_phases: phases,
+          business_objectives: objectives,
           channels: selectedChannels,
           budget_range: budgetRef.current?.value,
           context_text: contextText,
@@ -374,11 +408,36 @@ export default function QuickAuditPage() {
                 <option value="Other">Other</option>
               </select>
             </div>
-            <div>
-              <label className={labelCls}>Campaign Phase</label>
-              <select ref={phaseRef} className={inputCls} defaultValue="Demand">
-                {PHASES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-              </select>
+          </div>
+
+          <div>
+            <label className={labelCls}>
+              Campaign Phase <span className="font-normal text-neutral-400 normal-case">(click to select, in priority order — first click is primary)</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {PHASES.map(p => {
+                const rank = phases.indexOf(p.value);
+                const selected = rank !== -1;
+                return (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => togglePhase(p.value)}
+                    className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-full border transition-colors ${
+                      selected
+                        ? "bg-neutral-900 text-white border-neutral-900"
+                        : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400"
+                    }`}
+                  >
+                    {selected && (
+                      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-white/20 text-[10px] font-bold">
+                        {rank + 1}
+                      </span>
+                    )}
+                    {p.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -396,8 +455,40 @@ export default function QuickAuditPage() {
 
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
-              <label className={labelCls}>Business Objective</label>
-              <input ref={objectiveRef} className={inputCls} placeholder="e.g. Trial purchase, Market share lift" />
+              <label className={labelCls}>
+                Business Objective(s) <span className="font-normal text-neutral-400 normal-case">(add in priority order — first added is primary)</span>
+              </label>
+              <div className="flex gap-2">
+                <input
+                  className={`${inputCls} flex-1`}
+                  value={objectiveInput}
+                  onChange={e => setObjectiveInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addObjective(); } }}
+                  placeholder="e.g. Trial purchase, Market share lift"
+                />
+                <button
+                  type="button"
+                  onClick={addObjective}
+                  className="shrink-0 text-xs font-medium px-3 py-2 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50"
+                >
+                  Add
+                </button>
+              </div>
+              {objectives.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {objectives.map((o, i) => (
+                    <div key={o} className="flex items-center gap-2 text-xs bg-neutral-50 border border-neutral-200 rounded-lg px-2.5 py-1.5">
+                      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-neutral-900 text-white text-[10px] font-bold shrink-0">
+                        {i + 1}
+                      </span>
+                      <span className="flex-1 text-neutral-700">{o}</span>
+                      <button type="button" onClick={() => moveObjective(i, -1)} disabled={i === 0} className="text-neutral-400 hover:text-neutral-700 disabled:opacity-30 px-1">↑</button>
+                      <button type="button" onClick={() => moveObjective(i, 1)} disabled={i === objectives.length - 1} className="text-neutral-400 hover:text-neutral-700 disabled:opacity-30 px-1">↓</button>
+                      <button type="button" onClick={() => removeObjective(i)} className="text-neutral-400 hover:text-red-600 px-1">×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div>
               <label className={labelCls}>Approximate Media Budget</label>
