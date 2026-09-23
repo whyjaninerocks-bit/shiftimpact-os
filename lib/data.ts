@@ -60,6 +60,7 @@ import type {
   // Brand-Commerce Diagnostic v0.1 — migration 0101
   BrandCommerceDiagnostic,
   BrandCommerceDiagnosticSource,
+  SynthesisEvidenceQuality,
 } from "@/lib/types";
 
 export async function getClients(): Promise<ClientWithRollups[]> {
@@ -2196,4 +2197,49 @@ export async function getBrandCommerceDiagnosticSources(
     .order("created_at", { ascending: true });
   if (error) throw error;
   return (data as BrandCommerceDiagnosticSource[]) ?? [];
+}
+
+// ─── Brand-Commerce Signal Read — Agency Intelligence View v0.1 ─────────────
+// Shaped, agency-safe read over the existing Brand-Commerce Diagnostic data.
+// Reuses getBrandCommerceDiagnosticsForCampaign / getBrandCommerceDiagnosticSources
+// under the hood — no new table, no schema change. Deliberately excludes
+// source_note, source_url, source_type, internal diagnostic/source IDs, and
+// any unreviewed (reviewed_at IS NULL) diagnostic row. Mirrors the copy
+// conventions of BrandCommerceSignalReadPreview.tsx (the client-facing
+// component this is the agency-side counterpart of) without importing it.
+export type BrandCommerceSignalReadAgencySafe = {
+  classification: BrandCommerceClassification | null;
+  classification_rationale: string;
+  evidence_confidence: SynthesisEvidenceQuality | null;
+  reviewed_at: string | null;
+  strengthen_next: string[]; // filtered, non-null notes from proof_layer/promotion_pressure/brand_meaning_risk
+  sources: { title: string; evidence_confidence: SynthesisEvidenceQuality | null }[];
+} | null;
+
+export async function getBrandCommerceSignalReadAgencySafe(
+  campaignId: string
+): Promise<BrandCommerceSignalReadAgencySafe> {
+  const diagnostics = await getBrandCommerceDiagnosticsForCampaign(campaignId);
+  const reviewed = diagnostics.find((d) => d.reviewed_at !== null);
+  if (!reviewed) return null;
+
+  const sourceRows = await getBrandCommerceDiagnosticSources(reviewed.id);
+
+  const strengthen_next = [
+    reviewed.proof_layer_notes,
+    reviewed.promotion_pressure_notes,
+    reviewed.brand_meaning_risk_notes,
+  ].filter((n): n is string => !!n && n.trim().length > 0);
+
+  return {
+    classification: reviewed.classification_at_diagnosis,
+    classification_rationale: reviewed.classification_rationale,
+    evidence_confidence: reviewed.evidence_confidence,
+    reviewed_at: reviewed.reviewed_at,
+    strengthen_next,
+    sources: sourceRows.map((s) => ({
+      title: s.source_title,
+      evidence_confidence: s.evidence_confidence,
+    })),
+  };
 }
