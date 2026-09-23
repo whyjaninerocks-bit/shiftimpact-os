@@ -478,20 +478,22 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
               <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wide mb-2.5">
                 {categoryMode ? `${r.category_framework!.category_name} Signals` : "Signal Diagnostic"}
               </p>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 {displaySignals.slice(0, 5).map(({ key, label, sig }) => {
                   const col = signalStatusColor(sig.status);
                   return (
-                    <div key={key} className="flex items-center gap-2">
-                      <span className="text-[9px] text-slate-500 w-14 shrink-0 truncate" title={label}>{label}</span>
-                      <div className="flex-1 h-1.5 rounded-full overflow-hidden"
+                    <div key={key}>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-[9px] text-slate-500 leading-tight">{label}</span>
+                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${col.badge}`}>
+                          {sig.status.split(" ")[0]}
+                        </span>
+                      </div>
+                      <div className="h-1.5 rounded-full overflow-hidden"
                         style={{ background: "rgba(255,255,255,0.1)" }}>
                         <div className={`${col.bar} h-1.5 rounded-full`}
                           style={{ width: `${signalBarWidth(sig.status)}%` }} />
                       </div>
-                      <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${col.badge}`}>
-                        {sig.status.split(" ")[0]}
-                      </span>
                     </div>
                   );
                 })}
