@@ -667,11 +667,17 @@ function ProspectPreviewReportView({ audit }: { audit: QuickAuditProspectPreview
 
         {/* CTA — the hook question and curiosity gap, not a generic pitch */}
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm px-6 py-7 text-center">
-          <p className="text-sm font-semibold text-slate-900 mb-1.5">
-            {r.recommended_first_conversation.hook_question}
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">
+            The Question This Read Can&rsquo;t Answer
           </p>
+          <blockquote className="border-l-[3px] border-slate-900 pl-4 text-left text-sm font-semibold text-slate-900 leading-snug mb-4 max-w-md mx-auto">
+            {r.recommended_first_conversation.hook_question}
+          </blockquote>
           <p className="text-sm text-slate-500 mb-5 max-w-sm mx-auto leading-relaxed">
             {r.recommended_first_conversation.curiosity_gap}
+          </p>
+          <p className="text-[11px] font-semibold text-slate-600 mb-4">
+            Only your own conversion data can close this gap.
           </p>
           <a
             href={`https://wa.me/60122147085?text=${encodeURIComponent("Hi, I reviewed the Brand-Commerce Prospect Read and would like to explore a partnership.")}`}
