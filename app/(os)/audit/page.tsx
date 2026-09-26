@@ -144,6 +144,13 @@ export default function QuickAuditPage() {
   const [fetchAllLoading, setFetchAllLoading] = useState(false);
   const [fetchAllErrors, setFetchAllErrors] = useState<string[]>([]);
 
+  // "brand_commerce" (default) — five-layer Brand-Commerce prospect read.
+  // "general" — the original Campaign Intelligence Preview (effectiveness
+  // score, engine type, gate status, ICS). Not every prospect fits the
+  // Brand-Commerce frame — this toggle picks which /api/audit-analyze
+  // generates. See read_mode in app/api/audit-analyze/route.ts.
+  const [readMode, setReadMode] = useState<"brand_commerce" | "general">("brand_commerce");
+
   const [country, setCountry] = useState("Malaysia");
   // Tracked in state (alongside the uncontrolled industryRef) purely so the
   // sub-category picker can show/hide reactively. See INDUSTRY_SUBCATEGORIES.
@@ -334,6 +341,7 @@ export default function QuickAuditPage() {
           channels: selectedChannels,
           budget_range: budgetRef.current?.value,
           context_text: contextText,
+          read_mode: readMode,
         }),
       });
       const data = await res.json();
@@ -359,6 +367,40 @@ export default function QuickAuditPage() {
         <h1 className="text-2xl font-bold tracking-tight text-neutral-900">Campaign Intelligence Preview</h1>
         <p className="text-sm text-neutral-500 mt-1">
           Enter a prospect&apos;s live campaign. The system runs it through the full ShiftImpact OS intelligence stack using public signals — and shows them what they&apos;re blind to.
+        </p>
+      </div>
+
+      {/* ── Read Mode Toggle ── */}
+      <div className="mb-6 bg-white border border-neutral-100 rounded-xl p-4">
+        <p className={labelCls}>Read Type</p>
+        <div className="flex flex-wrap gap-2 mb-2">
+          <button
+            type="button"
+            onClick={() => setReadMode("brand_commerce")}
+            className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
+              readMode === "brand_commerce"
+                ? "bg-neutral-900 text-white border-neutral-900"
+                : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400"
+            }`}
+          >
+            Brand-Commerce Read
+          </button>
+          <button
+            type="button"
+            onClick={() => setReadMode("general")}
+            className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
+              readMode === "general"
+                ? "bg-neutral-900 text-white border-neutral-900"
+                : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400"
+            }`}
+          >
+            General Campaign Intelligence
+          </button>
+        </div>
+        <p className="text-xs text-neutral-500">
+          {readMode === "brand_commerce"
+            ? "Diagnoses whether demand is being built, borrowed, leaked, or blocked across five layers — leakage pattern, no numeric score. Best when brand and commerce health is the real question."
+            : "The original effectiveness score, engine type, consumer state, and gate status read across the full signal set. Best for a general campaign health snapshot when Brand-Commerce framing isn't the fit."}
         </p>
       </div>
 
@@ -685,7 +727,11 @@ The more context provided, the more precise the intelligence preview.`}
         {loading && (
           <div className="text-center space-y-1">
             <p className="text-xs text-neutral-500">Running full signal stack analysis — typically 20–30 seconds.</p>
-            <p className="text-[10px] text-neutral-400">Evaluating effectiveness · Engine type · Consumer state · Signal health · Gate intelligence</p>
+            <p className="text-[10px] text-neutral-400">
+              {readMode === "brand_commerce"
+                ? "Five-layer diagnostic · Sales-quality read · Leakage pattern · Consumer state"
+                : "Evaluating effectiveness · Engine type · Consumer state · Signal health · Gate intelligence"}
+            </p>
           </div>
         )}
 

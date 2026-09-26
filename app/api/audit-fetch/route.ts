@@ -649,7 +649,7 @@ async function fetchYouTubeChannel(channelUrl: string, brandName: string): Promi
   }
 
   const items = await runApifyActor("streamers~youtube-scraper", {
-    startUrls: [startUrl],
+    startUrls: [{ url: startUrl }],
     maxResults: 15,
   });
 
