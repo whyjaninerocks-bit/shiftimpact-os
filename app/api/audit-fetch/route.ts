@@ -98,66 +98,127 @@ async function fetchTikTokPosts(handle: string) {
 }
 
 // ── KOL / hashtag search (Instagram + TikTok mentions) ───────────────────────
-async function fetchKolHashtag(hashtag: string, platform: "instagram" | "tiktok") {
-  const clean = hashtag.replace(/^#/, "");
+// Accepts one or more hashtags and/or @handles, comma-separated in a single
+// field (e.g. "#CetaphilMY, #MyCetaEra, @ameliath, @tan_kah_pei"). Previously
+// this whole raw string was passed as a single "hashtag" to the scraper,
+// which rejected it — commas/@ handles/multiple #'s fail Apify's pattern
+// validation for a single hashtag. Now split + classify each entry, run
+// hashtag search across all of them at once (Apify accepts an array), and
+// fetch each @handle's own posts separately, then merge everything.
+function parseKolHashtagInput(raw: string): { hashtags: string[]; handles: string[] } {
+  const entries = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const hashtags: string[] = [];
+  const handles: string[] = [];
+  for (const entry of entries) {
+    if (entry.startsWith("@")) {
+      handles.push(entry.slice(1));
+    } else {
+      hashtags.push(entry.replace(/^#/, ""));
+    }
+  }
+  return { hashtags, handles };
+}
+
+async function fetchKolHashtag(rawInput: string, platform: "instagram" | "tiktok") {
+  const { hashtags, handles } = parseKolHashtagInput(rawInput);
+  const sections: string[] = [];
+  let totalCount = 0;
 
   if (platform === "instagram") {
-    const items = await runApifyActor("apify~instagram-hashtag-scraper", {
-      hashtags: [clean],
-      resultsLimit: 20,
-    });
-    if (!Array.isArray(items) || items.length === 0) return { content: "", count: 0 };
-
-    const lines = items.slice(0, 20).map((post: Record<string, unknown>, i) => {
-      const caption = (post.caption || "") as string;
-      const owner = (post.ownerUsername || post.username || "unknown") as string;
-      const likes = post.likesCount ? `Likes: ${post.likesCount}` : "";
-      return `[KOL Post ${i + 1} — @${owner}]\n${caption.slice(0, 400)}${likes ? `\n${likes}` : ""}`;
-    });
-
-    return {
-      content: `=== Instagram KOL posts for #${clean} — ${items.length} results ===\n\n` + lines.join("\n\n---\n\n"),
-      count: items.length,
-    };
+    if (hashtags.length > 0) {
+      const items = await runApifyActor("apify~instagram-hashtag-scraper", {
+        hashtags,
+        resultsLimit: 20,
+      });
+      if (Array.isArray(items) && items.length > 0) {
+        const lines = items.slice(0, 20).map((post: Record<string, unknown>, i) => {
+          const caption = (post.caption || "") as string;
+          const owner = (post.ownerUsername || post.username || "unknown") as string;
+          const likes = post.likesCount ? `Likes: ${post.likesCount}` : "";
+          return `[KOL Post ${i + 1} — @${owner}]\n${caption.slice(0, 400)}${likes ? `\n${likes}` : ""}`;
+        });
+        sections.push(`=== Instagram KOL posts for ${hashtags.map(h => `#${h}`).join(", ")} — ${items.length} results ===\n\n` + lines.join("\n\n---\n\n"));
+        totalCount += items.length;
+      }
+    }
+    for (const handle of handles) {
+      const result = await fetchInstagramPosts(handle);
+      if (result.content) {
+        sections.push(result.content);
+        totalCount += result.count;
+      }
+    }
   } else {
-    // TikTok hashtag
-    const items = await runApifyActor("clockworks~free-tiktok-scraper", {
-      hashtags: [clean],
-      resultsPerPage: 20,
-      shouldDownloadVideos: false,
-    });
-    if (!Array.isArray(items) || items.length === 0) return { content: "", count: 0 };
-
-    const lines = items.slice(0, 20).map((post: Record<string, unknown>, i) => {
-      const desc = (post.text || post.description || "") as string;
-      const author = (post.authorMeta as Record<string, unknown>)?.nickname || post.author || "unknown";
-      const views = post.playCount ? `Views: ${post.playCount}` : "";
-      return `[KOL TikTok ${i + 1} — @${author}]\n${desc.slice(0, 400)}${views ? `\n${views}` : ""}`;
-    });
-
-    return {
-      content: `=== TikTok KOL videos for #${clean} — ${items.length} results ===\n\n` + lines.join("\n\n---\n\n"),
-      count: items.length,
-    };
+    // TikTok
+    if (hashtags.length > 0) {
+      const items = await runApifyActor("clockworks~free-tiktok-scraper", {
+        hashtags,
+        resultsPerPage: 20,
+        shouldDownloadVideos: false,
+      });
+      if (Array.isArray(items) && items.length > 0) {
+        const lines = items.slice(0, 20).map((post: Record<string, unknown>, i) => {
+          const desc = (post.text || post.description || "") as string;
+          const author = (post.authorMeta as Record<string, unknown>)?.nickname || post.author || "unknown";
+          const views = post.playCount ? `Views: ${post.playCount}` : "";
+          return `[KOL TikTok ${i + 1} — @${author}]\n${desc.slice(0, 400)}${views ? `\n${views}` : ""}`;
+        });
+        sections.push(`=== TikTok KOL videos for ${hashtags.map(h => `#${h}`).join(", ")} — ${items.length} results ===\n\n` + lines.join("\n\n---\n\n"));
+        totalCount += items.length;
+      }
+    }
+    for (const handle of handles) {
+      const result = await fetchTikTokPosts(handle);
+      if (result.content) {
+        sections.push(result.content);
+        totalCount += result.count;
+      }
+    }
   }
+
+  if (sections.length === 0) return { content: "", count: 0 };
+  return { content: sections.join("\n\n" + "─".repeat(60) + "\n\n"), count: totalCount };
 }
 
 // ── Press / news coverage ─────────────────────────────────────────────────────
+// Actor: lhotanova/google-news-scraper. Replaces the previous
+// apify~google-news-scraper, which no longer exists on Apify (404 — renamed
+// or removed by its author). Different input/output shape: single "query"
+// string (not a queries array), "language" as one combined region:lang code,
+// "maxItems" instead of "maxResultsPerQuery". Output field names aren't
+// guaranteed here (no confirmed schema), so read defensively across the
+// likely candidates for each field.
+function extractNewsItem(item: Record<string, unknown>) {
+  const title = (item.title || "No title") as string;
+  const source = (item.source || item.publisher || "") as string;
+  const date = (item.pubDate || item.date || item.publishedAt || "") as string;
+  const description = (item.description || item.snippet || "") as string;
+  const url = (item.link || item.url || "") as string;
+  return { title, source, date, description, url };
+}
+
 async function fetchPressCoverage(brandName: string, campaignName?: string) {
   const query = campaignName ? `"${brandName}" "${campaignName}"` : `"${brandName}" campaign marketing`;
 
-  const items = await runApifyActor("apify~google-news-scraper", {
-    queries: [{ query, gl: "MY", hl: "en" }],
-    maxResultsPerQuery: 15,
+  const items = await runApifyActor("lhotanova~google-news-scraper", {
+    query,
+    language: "MY:en",
+    maxItems: 15,
+    fetchArticleDetails: true,
+    proxyConfiguration: { useApifyProxy: true },
   });
 
   if (!Array.isArray(items) || items.length === 0) return { content: "", count: 0 };
 
-  const lines = items.slice(0, 15).map((item: Record<string, unknown>, i) => {
-    const parts = [`[Press ${i + 1}] ${item.title || "No title"}`];
+  const lines = items.slice(0, 15).map((raw: Record<string, unknown>, i) => {
+    const item = extractNewsItem(raw);
+    const parts = [`[Press ${i + 1}] ${item.title}`];
     if (item.source) parts.push(`Source: ${item.source}`);
     if (item.date) parts.push(`Date: ${item.date}`);
-    if (item.description) parts.push(`\n${String(item.description).slice(0, 300)}`);
+    if (item.description) parts.push(`\n${item.description.slice(0, 300)}`);
     if (item.url) parts.push(`URL: ${item.url}`);
     return parts.join("\n");
   });
@@ -172,9 +233,12 @@ async function fetchPressCoverage(brandName: string, campaignName?: string) {
 async function fetchRadioPartnership(brandName: string) {
   const query = `"${brandName}" radio partnership sponsorship`;
 
-  const items = await runApifyActor("apify~google-news-scraper", {
-    queries: [{ query, gl: "MY", hl: "en" }],
-    maxResultsPerQuery: 10,
+  const items = await runApifyActor("lhotanova~google-news-scraper", {
+    query,
+    language: "MY:en",
+    maxItems: 10,
+    fetchArticleDetails: true,
+    proxyConfiguration: { useApifyProxy: true },
   });
 
   if (!Array.isArray(items) || items.length === 0) {
@@ -184,8 +248,9 @@ async function fetchRadioPartnership(brandName: string) {
     };
   }
 
-  const lines = items.slice(0, 10).map((item: Record<string, unknown>, i) => {
-    return `[Partnership ${i + 1}] ${item.title || "No title"}\nSource: ${item.source || "Unknown"}  Date: ${item.date || ""}\n${item.description ? String(item.description).slice(0, 300) : ""}`;
+  const lines = items.slice(0, 10).map((raw: Record<string, unknown>, i) => {
+    const item = extractNewsItem(raw);
+    return `[Partnership ${i + 1}] ${item.title}\nSource: ${item.source || "Unknown"}  Date: ${item.date}\n${item.description.slice(0, 300)}`;
   });
 
   return {
@@ -572,6 +637,9 @@ async function fetchThreads(
 }
 
 // ── YouTube channel ───────────────────────────────────────────────────────────
+// Actor: streamers/youtube-scraper. Replaces the previous
+// bernardo_castilho~youtube-videos-scraper, which no longer exists on Apify
+// (404 — renamed or removed by its author).
 async function fetchYouTubeChannel(channelUrl: string, brandName: string): Promise<{ content: string; count: number }> {
   // Normalise: accept handle, @handle, or full URL
   let startUrl = channelUrl;
@@ -580,10 +648,9 @@ async function fetchYouTubeChannel(channelUrl: string, brandName: string): Promi
     startUrl = `https://www.youtube.com/@${clean}`;
   }
 
-  const items = await runApifyActor("bernardo_castilho~youtube-videos-scraper", {
+  const items = await runApifyActor("streamers~youtube-scraper", {
     startUrls: [startUrl],
     maxResults: 15,
-    proxy: { useApifyProxy: true },
   });
 
   if (!Array.isArray(items) || items.length === 0) {
@@ -592,10 +659,14 @@ async function fetchYouTubeChannel(channelUrl: string, brandName: string): Promi
   }
 
   const lines = items.slice(0, 15).map((v: Record<string, unknown>, i) => {
-    const parts = [`[YouTube Video ${i + 1}] ${v.title || "No title"}`];
-    if (v.description) parts.push(String(v.description).slice(0, 300));
-    if (v.viewCount) parts.push(`Views: ${v.viewCount}`);
-    if (v.uploadDate) parts.push(`Date: ${v.uploadDate}`);
+    const title = (v.title || "No title") as string;
+    const description = (v.description || v.text || "") as string;
+    const views = (v.viewCount || v.viewCountInt || v.views || "") as string | number;
+    const date = (v.uploadDate || v.date || v.publishedAt || "") as string;
+    const parts = [`[YouTube Video ${i + 1}] ${title}`];
+    if (description) parts.push(String(description).slice(0, 300));
+    if (views) parts.push(`Views: ${views}`);
+    if (date) parts.push(`Date: ${date}`);
     return parts.join("\n");
   });
 

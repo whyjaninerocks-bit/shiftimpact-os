@@ -89,7 +89,7 @@ const FETCH_PLATFORMS = [
   { value: "tiktok",           label: "TikTok Posts",         hint: "Brand handle",               field: "handle",      placeholder: "@yeos_official" },
   { value: "youtube",          label: "YouTube Channel",      hint: "Channel handle or URL",      field: "handle",      placeholder: "@YeosMalaysia" },
   { value: "website",          label: "Brand Website",        hint: "Campaign landing page — headless browser when Apify configured", field: "website_url", placeholder: "https://www.yeos.com.my/campaign" },
-  { value: "kol_hashtag",      label: "KOL / Hashtag",        hint: "Campaign hashtag",           field: "hashtag",     placeholder: "#ManisnyaBerbuka" },
+  { value: "kol_hashtag",      label: "KOL / Hashtag",        hint: "One or more hashtags and/or @handles, comma-separated", field: "hashtag",     placeholder: "#ManisnyaBerbuka, @creator1, @creator2" },
   { value: "press",            label: "Google News",          hint: "Mainstream news index — limited trade press coverage", field: "none", placeholder: "" },
 ];
 
