@@ -522,7 +522,15 @@ function ProspectPreviewReportView({ audit }: { audit: QuickAuditProspectPreview
       <div className="bg-slate-950 border-b border-slate-800">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3">
           <span className="text-[11px] text-slate-500">Brand-Commerce Prospect Read</span>
-          <DownloadButton brandName={a.brand_name} contentId="audit-report-content" />
+          <div className="flex items-center gap-2">
+            <a
+              href={`/audit?rerun=${a.id}`}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 border border-white/15 text-white text-xs font-medium hover:bg-white/20 transition-colors"
+            >
+              Rerun this audit
+            </a>
+            <DownloadButton brandName={a.brand_name} contentId="audit-report-content" />
+          </div>
         </div>
       </div>
 
@@ -832,7 +840,15 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
       <div className="bg-slate-950 border-b border-slate-800">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3">
           <span className="text-[11px] text-slate-500">Campaign Intelligence Preview</span>
-          <DownloadButton brandName={a.brand_name} contentId="audit-report-content" />
+          <div className="flex items-center gap-2">
+            <a
+              href={`/audit?rerun=${a.id}`}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 border border-white/15 text-white text-xs font-medium hover:bg-white/20 transition-colors"
+            >
+              Rerun this audit
+            </a>
+            <DownloadButton brandName={a.brand_name} contentId="audit-report-content" />
+          </div>
         </div>
       </div>
 

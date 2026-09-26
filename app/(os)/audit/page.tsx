@@ -46,6 +46,16 @@ const INDUSTRY_SUBCATEGORIES: Record<string, { value: string; label: string }[]>
   ],
 };
 
+const MARKETS = [
+  { value: "Malaysia",    label: "Malaysia" },
+  { value: "Singapore",   label: "Singapore" },
+  { value: "Indonesia",   label: "Indonesia" },
+  { value: "Philippines", label: "Philippines" },
+  { value: "Thailand",    label: "Thailand" },
+  { value: "Vietnam",     label: "Vietnam" },
+  { value: "Other",       label: "Other" },
+];
+
 const PHASES = [
   { value: "Demand",     label: "Demand — Building awareness and reach" },
   { value: "Conversion", label: "Conversion — Driving purchase intent" },
@@ -151,7 +161,14 @@ export default function QuickAuditPage() {
   // generates. See read_mode in app/api/audit-analyze/route.ts.
   const [readMode, setReadMode] = useState<"brand_commerce" | "general">("brand_commerce");
 
-  const [country, setCountry] = useState("Malaysia");
+  // Multiple markets can be selected at once — one full analysis run per
+  // market, since MARKET_PROFILES/benchmarks are market-specific and can't
+  // be blended into a single read. See handleSubmit's multi-market branch.
+  const [countries, setCountries] = useState<string[]>(["Malaysia"]);
+  // Populated only when >1 market was run — shows a "reports generated"
+  // list instead of navigating away, since there's no single result to
+  // redirect to. Cleared on a fresh single-market submit.
+  const [multiResults, setMultiResults] = useState<{ country: string; id?: string; error?: string }[] | null>(null);
   // Tracked in state (alongside the uncontrolled industryRef) purely so the
   // sub-category picker can show/hide reactively. See INDUSTRY_SUBCATEGORIES.
   const [industry, setIndustry] = useState("FMCG");
@@ -170,12 +187,40 @@ export default function QuickAuditPage() {
   const industryRef = useRef<HTMLSelectElement>(null);
   const budgetRef = useRef<HTMLSelectElement>(null);
 
-  // Pre-fill form on load from either:
+  // Pre-fill form on load from any of:
   //   ?signal_id=xxx  → fetch stored context from a Clarity Signal (brand + campaign + full context)
+  //   ?rerun=xxx      → fetch a past audit's full request_snapshot and reload EVERY field
+  //                     (see migration 0103 / app/api/audit-context/[id]/route.ts) — the
+  //                     "Rerun this audit" link on the report page uses this.
   //   ?brand=&campaign=&industry= → simple URL params (manual deep link)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const signalId = params.get("signal_id");
+    const rerunId = params.get("rerun");
+
+    if (rerunId) {
+      fetch(`/api/audit-context/${rerunId}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) { setError(data.error); return; }
+          if (data.brand_name && brandRef.current) brandRef.current.value = data.brand_name;
+          if (data.campaign_name && campaignRef.current) campaignRef.current.value = data.campaign_name;
+          if (data.industry && industryRef.current) { industryRef.current.value = data.industry; setIndustry(data.industry); }
+          if (data.industry_subcategory) setSubcategory(data.industry_subcategory);
+          if (data.country) setCountries([data.country]);
+          if (Array.isArray(data.campaign_phases) && data.campaign_phases.length > 0) setPhases(data.campaign_phases);
+          if (Array.isArray(data.business_objectives)) setObjectives(data.business_objectives);
+          if (Array.isArray(data.channels)) setSelectedChannels(data.channels);
+          if (data.budget_range !== undefined && budgetRef.current) budgetRef.current.value = data.budget_range;
+          if (data.context_text) setContextText(data.context_text);
+          if (data.read_mode) setReadMode(data.read_mode);
+          if (data.signal_intelligence) setSignalIntelligence(data.signal_intelligence);
+        })
+        .catch(() => {
+          setError("Could not load that audit for rerun — please fill the form manually.");
+        });
+      return;
+    }
 
     if (signalId) {
       fetch(`/api/signal-context/${signalId}`)
@@ -184,7 +229,7 @@ export default function QuickAuditPage() {
           if (data.brand_name && brandRef.current) brandRef.current.value = data.brand_name;
           if (data.campaign_name && campaignRef.current) campaignRef.current.value = data.campaign_name;
           if (data.industry && industryRef.current) { industryRef.current.value = data.industry; setIndustry(data.industry); }
-          if (data.country) setCountry(data.country);
+          if (data.country) setCountries([data.country]);
           if (data.context_text) setContextText(data.context_text);
           if (data.signal_intelligence) setSignalIntelligence(data.signal_intelligence);
         })
@@ -216,6 +261,14 @@ export default function QuickAuditPage() {
     setSelectedChannels(prev =>
       prev.includes(v) ? prev.filter(c => c !== v) : [...prev, v]
     );
+  }
+
+  function toggleCountry(v: string) {
+    setCountries(prev => {
+      const next = prev.includes(v) ? prev.filter(c => c !== v) : [...prev, v];
+      // Never allow zero markets selected — falls back to the toggled one.
+      return next.length > 0 ? next : [v];
+    });
   }
 
   // Click order = priority rank (first click = primary / index 0).
@@ -320,38 +373,76 @@ export default function QuickAuditPage() {
     setFetchAllLoading(false);
   }
 
+  // One market's worth of the shared payload — everything except country,
+  // which varies per run in the multi-market loop below.
+  function buildRequestBody(marketCountry: string) {
+    return {
+      brand_name: brandRef.current?.value,
+      campaign_name: campaignRef.current?.value,
+      industry: industryRef.current?.value,
+      industry_subcategory: subcategory || undefined,
+      country: marketCountry,
+      signal_intelligence: signalIntelligence ?? undefined,
+      campaign_phases: phases,
+      business_objectives: objectives,
+      channels: selectedChannels,
+      budget_range: budgetRef.current?.value,
+      context_text: contextText,
+      read_mode: readMode,
+    };
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (phases.length === 0) { setError("Select at least one campaign phase."); return; }
+    if (countries.length === 0) { setError("Select at least one market."); return; }
     setLoading(true);
     setError(null);
-    try {
-      const res = await fetch("/api/audit-analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          brand_name: brandRef.current?.value,
-          campaign_name: campaignRef.current?.value,
-          industry: industryRef.current?.value,
-          industry_subcategory: subcategory || undefined,
-          country,
-          signal_intelligence: signalIntelligence ?? undefined,
-          campaign_phases: phases,
-          business_objectives: objectives,
-          channels: selectedChannels,
-          budget_range: budgetRef.current?.value,
-          context_text: contextText,
-          read_mode: readMode,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Analysis failed."); return; }
-      router.push(`/audit/${data.id}`);
-    } catch {
-      setError("Network error — please try again.");
-    } finally {
-      setLoading(false);
+    setMultiResults(null);
+
+    // Single market — unchanged behaviour: generate, then navigate straight
+    // to the report.
+    if (countries.length === 1) {
+      try {
+        const res = await fetch("/api/audit-analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(buildRequestBody(countries[0])),
+        });
+        const data = await res.json();
+        if (!res.ok) { setError(data.error ?? "Analysis failed."); return; }
+        router.push(`/audit/${data.id}`);
+      } catch {
+        setError("Network error — please try again.");
+      } finally {
+        setLoading(false);
+      }
+      return;
     }
+
+    // Multiple markets — one full analysis run per market (MARKET_PROFILES
+    // and benchmarks are market-specific and can't be blended into a single
+    // read). Run sequentially rather than in parallel to stay well inside
+    // any Anthropic rate limit, and so partial failures are per-market, not
+    // all-or-nothing. There's no single result to redirect to, so list every
+    // market's report link instead of navigating away.
+    const results: { country: string; id?: string; error?: string }[] = [];
+    for (const marketCountry of countries) {
+      try {
+        const res = await fetch("/api/audit-analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(buildRequestBody(marketCountry)),
+        });
+        const data = await res.json();
+        if (!res.ok) { results.push({ country: marketCountry, error: data.error ?? "Analysis failed." }); continue; }
+        results.push({ country: marketCountry, id: data.id });
+      } catch {
+        results.push({ country: marketCountry, error: "Network error." });
+      }
+    }
+    setMultiResults(results);
+    setLoading(false);
   }
 
   const inputCls = "w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm text-neutral-800 bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-300";
@@ -426,30 +517,43 @@ export default function QuickAuditPage() {
             </div>
           </div>
 
-          <div className="grid sm:grid-cols-3 gap-3">
-            <div>
-              <label className={labelCls}>Industry *</label>
-              <select
-                ref={industryRef}
-                className={inputCls}
-                defaultValue="FMCG"
-                onChange={e => { setIndustry(e.target.value); setSubcategory(""); }}
-              >
-                {INDUSTRIES.map(i => <option key={i.value} value={i.value}>{i.label}</option>)}
-              </select>
+          <div>
+            <label className={labelCls}>Industry *</label>
+            <select
+              ref={industryRef}
+              className={inputCls}
+              defaultValue="FMCG"
+              onChange={e => { setIndustry(e.target.value); setSubcategory(""); }}
+            >
+              {INDUSTRIES.map(i => <option key={i.value} value={i.value}>{i.label}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className={labelCls}>
+              Market(s) * <span className="font-normal text-neutral-400 normal-case">(select more than one to run a separate report per market)</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {MARKETS.map(m => (
+                <button
+                  key={m.value}
+                  type="button"
+                  onClick={() => toggleCountry(m.value)}
+                  className={`text-xs font-medium px-2.5 py-1.5 rounded-full border transition-colors ${
+                    countries.includes(m.value)
+                      ? "bg-neutral-900 text-white border-neutral-900"
+                      : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400"
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
             </div>
-            <div>
-              <label className={labelCls}>Market *</label>
-              <select className={inputCls} value={country} onChange={e => setCountry(e.target.value)}>
-                <option value="Malaysia">Malaysia</option>
-                <option value="Singapore">Singapore</option>
-                <option value="Indonesia">Indonesia</option>
-                <option value="Philippines">Philippines</option>
-                <option value="Thailand">Thailand</option>
-                <option value="Vietnam">Vietnam</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
+            {countries.length > 1 && (
+              <p className="text-[10px] text-neutral-400 mt-1.5">
+                {countries.length} markets selected — Generate will run {countries.length} separate reports, one per market, using the same brand/campaign/context/channels for each.
+              </p>
+            )}
           </div>
 
           <div>
@@ -721,17 +825,45 @@ The more context provided, the more precise the intelligence preview.`}
           disabled={loading}
           className="w-full py-3.5 rounded-xl bg-neutral-900 text-white text-sm font-bold hover:bg-neutral-700 disabled:opacity-50 transition-colors"
         >
-          {loading ? "Generating Intelligence Preview…" : "Generate Campaign Intelligence Preview →"}
+          {loading
+            ? (countries.length > 1 ? `Generating ${countries.length} market reports…` : "Generating Intelligence Preview…")
+            : (countries.length > 1 ? `Generate ${countries.length} Market Reports →` : "Generate Campaign Intelligence Preview →")}
         </button>
 
         {loading && (
           <div className="text-center space-y-1">
-            <p className="text-xs text-neutral-500">Running full signal stack analysis — typically 20–30 seconds.</p>
+            <p className="text-xs text-neutral-500">
+              {countries.length > 1
+                ? "Running one full signal stack analysis per market, one at a time — this will take longer than a single-market run."
+                : "Running full signal stack analysis — typically 20–30 seconds."}
+            </p>
             <p className="text-[10px] text-neutral-400">
               {readMode === "brand_commerce"
                 ? "Five-layer diagnostic · Sales-quality read · Leakage pattern · Consumer state"
                 : "Evaluating effectiveness · Engine type · Consumer state · Signal health · Gate intelligence"}
             </p>
+          </div>
+        )}
+
+        {multiResults && (
+          <div className={sectionCls}>
+            <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
+              {multiResults.filter(r => r.id).length} of {multiResults.length} market reports generated
+            </p>
+            <div className="space-y-1.5">
+              {multiResults.map(r => (
+                <div key={r.country} className="flex items-center justify-between text-sm bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2">
+                  <span className="font-medium text-neutral-700">{r.country}</span>
+                  {r.id ? (
+                    <a href={`/audit/${r.id}`} className="text-xs font-semibold text-neutral-900 underline hover:no-underline">
+                      View report →
+                    </a>
+                  ) : (
+                    <span className="text-xs text-red-600">{r.error ?? "Failed"}</span>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

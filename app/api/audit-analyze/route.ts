@@ -651,6 +651,12 @@ ${read_mode === "general"
         channels: channels.length > 0 ? channels : null,
         context_summary: contextSummary,
         result,
+        // Full original request body — country, budget_range, read_mode,
+        // and the FULL context_text (not just the 500-char summary above)
+        // were never persisted before this. Powers the /audit "Rerun this
+        // audit" flow: reload every intake field from a past run without
+        // retyping or re-fetching. See migration 0103.
+        request_snapshot: body,
       })
       .select("id")
       .single();
