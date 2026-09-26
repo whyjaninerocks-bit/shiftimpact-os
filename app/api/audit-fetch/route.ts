@@ -184,11 +184,12 @@ async function fetchKolHashtag(rawInput: string, platform: "instagram" | "tiktok
 }
 
 // ── Press / news coverage ─────────────────────────────────────────────────────
-// Actor: lhotanova/google-news-scraper. Replaces the previous
-// apify~google-news-scraper, which no longer exists on Apify (404 — renamed
-// or removed by its author). Different input/output shape: single "query"
-// string (not a queries array), "language" as one combined region:lang code,
-// "maxItems" instead of "maxResultsPerQuery". Output field names aren't
+// Actor: data_xplorer/google-news-scraper-fast (pay-per-event, no monthly
+// rental). Replaces lhotanova/google-news-scraper, whose free trial expired
+// and now requires a paid $20/mo rental (403 actor-is-not-rented). Input
+// shape: "keywords" as an array of query strings, "region_language" as one
+// combined "CC:lang" code, "maxArticles" (0 = no limit), "extractDescriptions"
+// toggles the (slower) meta-description fetch. Output field names aren't
 // guaranteed here (no confirmed schema), so read defensively across the
 // likely candidates for each field.
 function extractNewsItem(item: Record<string, unknown>) {
@@ -203,11 +204,12 @@ function extractNewsItem(item: Record<string, unknown>) {
 async function fetchPressCoverage(brandName: string, campaignName?: string) {
   const query = campaignName ? `"${brandName}" "${campaignName}"` : `"${brandName}" campaign marketing`;
 
-  const items = await runApifyActor("lhotanova~google-news-scraper", {
-    query,
-    language: "MY:en",
-    maxItems: 15,
-    fetchArticleDetails: true,
+  const items = await runApifyActor("data_xplorer~google-news-scraper-fast", {
+    keywords: [query],
+    region_language: "MY:en",
+    maxArticles: 15,
+    timeframe: "1y",
+    extractDescriptions: true,
     proxyConfiguration: { useApifyProxy: true },
   });
 
@@ -233,11 +235,12 @@ async function fetchPressCoverage(brandName: string, campaignName?: string) {
 async function fetchRadioPartnership(brandName: string) {
   const query = `"${brandName}" radio partnership sponsorship`;
 
-  const items = await runApifyActor("lhotanova~google-news-scraper", {
-    query,
-    language: "MY:en",
-    maxItems: 10,
-    fetchArticleDetails: true,
+  const items = await runApifyActor("data_xplorer~google-news-scraper-fast", {
+    keywords: [query],
+    region_language: "MY:en",
+    maxArticles: 10,
+    timeframe: "1y",
+    extractDescriptions: true,
     proxyConfiguration: { useApifyProxy: true },
   });
 
