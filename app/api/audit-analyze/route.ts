@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCategoryFrameworkByIndustry, type AuditCategoryFramework } from "@/lib/data";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -81,127 +80,7 @@ const MARKET_PROFILES: Record<string, string> = {
 - Youth digital culture is very forward-leaning — Gen Z Vietnamese consumers are among the most digitally active in SEA; short video and live commerce adoption is accelerating rapidly`,
 };
 
-// Builds the "signals" portion of the JSON schema. When a category
-// framework was resolved from the intake industry (+ sub-category), the
-// fixed generic 9-signal block is replaced with a "category_signals" array
-// scored against that category's real leading/conversion/lagging signal set
-// from category_attributes — the same behaviour-chain model the client
-// portal's Category Signal journey card uses (lib/data.ts
-// getCategorySignalFramework), so a prospect sees the same signal language
-// a real client eventually would, not a generic vanity-metric list.
-// Falls back to the original fixed block verbatim when no category is
-// resolved (industry = "Other", or an as-yet-unmapped value) — zero change
-// in behaviour for that path, and for every audit generated before this.
-function buildSignalsInstructions(framework: AuditCategoryFramework | null): { instructions: string; schemaBlock: string } {
-  if (!framework) {
-    return {
-      instructions: "",
-      schemaBlock: `  "signals": {
-    "sov": {
-      "status": <"Strong" | "Elevated" | "On Par" | "Below Category" | "Weak" | "Not Detected">,
-      "direction": <"up" | "flat" | "down" | "unknown">,
-      "value_label": "<what was observed in plain business language — not a social metric>",
-      "benchmark_context": "<local market category benchmark reference for the campaign country — e.g. category noise floor benchmark for the Demand phase in this market>",
-      "efficiency_read": "<1 sentence connecting this signal directly to media spend efficiency>"
-    },
-    "save_rate": {
-      "status": <"Strong" | "Above Floor" | "At Floor" | "Below Floor" | "Not Detected">,
-      "direction": <"up" | "flat" | "down" | "unknown">,
-      "value_label": "<observable pattern in intent-to-return signal>",
-      "benchmark_context": "<local market category benchmark — Instagram or TikTok save rate floor for this category in the campaign country>",
-      "efficiency_read": "<1 sentence on what this means for conversion phase budget readiness>"
-    },
-    "share_rate": {
-      "status": <"Strong" | "Active" | "Passive" | "Weak" | "Not Detected">,
-      "direction": <"up" | "flat" | "down" | "unknown">,
-      "value_label": "<observable amplification signal>",
-      "benchmark_context": "<TikTok or primary short-video platform share rate benchmark for this category in the campaign country>",
-      "efficiency_read": "<1 sentence on organic amplification efficiency vs paid distribution cost>"
-    },
-    "branded_search": {
-      "status": <"Lifting" | "Stable" | "Declining" | "Not Detected">,
-      "direction": <"up" | "flat" | "down" | "unknown">,
-      "value_label": "<what Google Trends or search signal shows for brand keyword>",
-      "benchmark_context": "<branded search lift benchmark for this campaign phase and category in the campaign country>",
-      "efficiency_read": "<1 sentence on whether media spend is translating to active brand intent>"
-    },
-    "vcr": {
-      "status": <"Above Benchmark" | "At Benchmark" | "Below Benchmark" | "Not Applicable" | "Not Detected">,
-      "direction": <"up" | "flat" | "down" | "unknown">,
-      "value_label": "<video creative retention signal or benchmark reference>",
-      "benchmark_context": "<TikTok or Meta video completion rate benchmark for this category in the campaign country>",
-      "efficiency_read": "<1 sentence on CPM efficiency risk if VCR is below floor>",
-      "include": <true | false>
-    },
-    "kol_earned": {
-      "status": <"Strong" | "Active" | "Moderate" | "Weak" | "Not Detected">,
-      "direction": <"up" | "flat" | "down" | "unknown">,
-      "value_label": "<KOL/influencer amplification signal observed>",
-      "benchmark_context": "<KOL earned amplification benchmark for this tier and category in the campaign country>",
-      "efficiency_read": "<1 sentence on earned vs paid efficiency ratio>"
-    },
-    "pr_earned": {
-      "status": <"Strong" | "Active" | "Minimal" | "Not Detected">,
-      "direction": <"up" | "flat" | "down" | "unknown">,
-      "value_label": "<press/earned media signal observed>",
-      "benchmark_context": "<earned media value benchmark for campaign category in the campaign country>",
-      "efficiency_read": "<1 sentence on PR amplification of paid campaign investment>",
-      "include": <true | false>
-    },
-    "review_platform": {
-      "status": <"Strong" | "Solid" | "Needs Attention" | "Risk" | "Not Applicable" | "Not Detected">,
-      "direction": <"up" | "flat" | "down" | "unknown">,
-      "value_label": "<review score or reputation signal observed>",
-      "benchmark_context": "<review platform benchmark for Hospitality/F&B/Retail in the campaign country — reference the dominant local review platform and the category floor score>",
-      "efficiency_read": "<1 sentence on how review score affects campaign conversion efficiency>",
-      "include": <true | false>,
-      "score_proxy": <null | number>
-    },
-    "retail_signal": {
-      "status": <"Strong" | "Active" | "Weak" | "Not Detected" | "Not Applicable">,
-      "direction": <"up" | "flat" | "down" | "unknown">,
-      "value_label": "<in-store or e-commerce retail signal observed>",
-      "benchmark_context": "<retail or FMCG sell-through benchmark for the campaign country — reference the dominant e-commerce platform in that market>",
-      "efficiency_read": "<1 sentence on last-mile conversion signal relative to campaign investment>",
-      "include": <true | false>
-    }
-  },`,
-    };
-  }
-
-  const allSignals = [
-    ...framework.leading_signals.map((s) => ({ ...s, tier: "Leading" as const })),
-    ...framework.conversion_signals.map((s) => ({ ...s, tier: "Conversion" as const })),
-    ...framework.lagging_signals.map((s) => ({ ...s, tier: "Lagging" as const })),
-  ];
-
-  const signalList = allSignals
-    .map((s, i) => `${i + 1}. key: "${s.key}" — label: "${s.label}" — tier: ${s.tier}`)
-    .join("\n");
-
-  const instructions = `
-CATEGORY SIGNAL MODEL:
-This campaign's industry (${framework.category_name}) has a defined behaviour chain and signal set in ShiftImpact OS: ${framework.behaviour_chain.join(" → ")}.
-Score EXACTLY these ${allSignals.length} signals, in this exact order, for the "category_signals" array below — do not add, remove, rename, or reorder them, and do not fall back to generic social metrics (sov/save_rate/etc.) for this campaign:
-${signalList}
-`;
-
-  const schemaBlock = `  "category_framework": {
-    "category_name": "${framework.category_name}",
-    "behaviour_chain": ${JSON.stringify(framework.behaviour_chain)},
-    "business_outcome_label": "${framework.business_outcome_label}",
-    "behaviour_chain_read": "<2 sentences — of the ${framework.behaviour_chain.join(" → ")} journey, where is this campaign's public signal evidence strongest, and where is it weakest or entirely unobservable right now?>"
-  },
-  "category_signals": [
-    // one object per signal listed in CATEGORY SIGNAL MODEL above, in that exact order
-    { "key": "<key from the list>", "label": "<label from the list>", "tier": "<Leading|Conversion|Lagging from the list>", "status": <"Strong" | "Active" | "Moderate" | "Weak" | "Not Detected">, "direction": <"up" | "flat" | "down" | "unknown">, "value_label": "<observed pattern in plain business language>", "benchmark_context": "<local market category benchmark for this signal in the campaign country>", "efficiency_read": "<1 sentence connecting this signal to media spend efficiency>" }
-  ],`;
-
-  return { instructions, schemaBlock };
-}
-
-function getSystemPrompt(country: string, framework: AuditCategoryFramework | null): string {
-  const { instructions: signalInstructions, schemaBlock: signalsSchemaBlock } = buildSignalsInstructions(framework);
+function getSystemPrompt(country: string): string {
   const profile = MARKET_PROFILES[country] ?? `You are deeply fluent in ${country} market dynamics and consumer behaviour patterns, including the dominant digital platforms, key festive and cultural calendar windows, local e-commerce infrastructure, price sensitivity dynamics, and influencer and KOL ecosystem specific to ${country}.`;
 
   return `You are the Chief Marketing Business Analyst at ShiftImpact OS — a seasoned intelligence practitioner with 30 years of strategic experience across global FMCG, QSR, Retail, Hospitality, Financial Services, and Telco sectors. Your career spans tenures with world-renowned organisations including Unilever, Nestlé, McDonald's, Marriott International, and regional powerhouses across Asia-Pacific.
@@ -210,132 +89,127 @@ ${profile}
 
 Your analysis is delivered exclusively at decision-maker level. You connect every observation to budget efficiency, consumer behaviour change, and business outcome progression. You never treat engagement rates, follower counts, or reach as outcomes. These are inputs. What matters is whether consumer behaviour is changing and whether media budget is working efficiently.
 
-You are delivering a Campaign Intelligence Preview to a prospective brand partner. Your role: demonstrate what ShiftImpact OS sees in their live campaign using only public signals — and illuminate the intelligence blind spots they are currently operating without.
+You are delivering a prospect-stage Brand-Commerce read to a prospective brand partner using only public signals. This is not a score. You are diagnosing five layers — Brand Power, Product Conviction, Commerce Capture, Competitor Capture, Promotion Dependency — using only public signals, then naming where in the sequence from brand interest to repeat purchase, commercial value appears to break down. Your role: demonstrate what ShiftImpact OS sees in their live campaign, and illuminate the intelligence blind spots they are currently operating without.
 
 CRITICAL OUTPUT RULES:
-1. Every recommendation must be actionable at leadership level — a budget decision, a phase call, a creative pivot directive, or a channel reallocation
-2. Market-specific context for the campaign's country must be visible in your reasoning — reference local consumer behaviour, cultural calendar sensitivity, platform dynamics, and market-specific benchmarks. Never default to a different country's context.
-3. Never use social media vanity metric language ("engagement", "likes", "followers") as a measure of success — always connect to business outcomes
-4. The intelligence gaps section is the most important commercial asset — it must clearly articulate what ShiftImpact OS clients see weekly that this preview cannot surface
-5. Recommendations must be sharp, specific, and confident — not hedged. A seasoned CMBA does not say "consider possibly reviewing" — they say "before releasing the next tranche, you need X"
-${signalInstructions}
+1. Because this is a prospect with no client data yet, most layers will honestly land at inference, public_nonvisibility, or insufficient_evidence for evidence_confidence. That is correct behaviour, not a weak result. A confident-sounding rating built on thin public signals is a worse failure than an honest, specific, low-confidence read stated with conviction in its own diagnosis.
+2. Market-specific context for the campaign's country must be visible in your reasoning — reference local consumer behaviour, cultural calendar sensitivity, and platform dynamics. Never default to a different country's context.
+3. Never use social media vanity metric language ("engagement", "likes", "followers") as evidence for any layer — connect every observation to demand, conviction, access, or competitive interception.
+4. Recommendations and diagnosis language must be sharp, specific, and confident — not hedged. A seasoned CMBA does not say "consider possibly reviewing" — they say "before releasing budget, you need X." Confidence applies to your diagnosis, never to invented statistics.
+5. BENCHMARK DISCIPLINE — never write a specific percentage, range, or uplift figure for any layer, the provisional_ics estimate, or the prospect_gate_indicator, unless you can name exactly where that figure comes from. If no defensible public figure exists, say so plainly rather than inventing one.
+6. EVIDENCE_CONFIDENCE — use exactly one of direct_evidence, public_proxy, inference, public_nonvisibility, insufficient_evidence, everywhere this field appears. direct_evidence means you observed the thing itself publicly. public_proxy means you observed something that reliably stands in for it. inference means you are reasoning from adjacent evidence, not observing the thing directly. public_nonvisibility means you specifically looked for public evidence of this and did not find any — this is a real, decision-useful finding; never treat the absence of visible evidence as proof the thing does not exist, state it as public_nonvisibility, not as a negative claim. insufficient_evidence means you had no meaningful way to check this publicly at all. Never collapse public_nonvisibility into insufficient_evidence — they mean different things and the reader needs to know which one you mean.
+
+PER LAYER INSTRUCTIONS:
+Brand Power: rate strong, moderate, weak, or unclear based on visible awareness, consideration, and trust signals, distinct from anything commerce related.
+Product Conviction: rate whether, once someone is brand aware, the public trail shows they believe this specific product solves their specific problem, distinct from general category interest.
+Commerce Capture: rate whether a convinced buyer has an available, frictionless route to purchase — distribution, price accessibility, platform presence. This is capability, not behaviour — ask whether the door exists, not whether people walk through it.
+Competitor Capture: rate whether, at any point in the sequence, a named competitor appears to be intercepting demand this brand itself generated — owning the decision cue, shelf position, or retargeting moment. Never assert this as fact, only as what the public trail suggests, and always pair with evidence_confidence.
+Promotion Dependency: rate unproven, low, moderate, or high based on how much of any observed sales activity appears tied to discounting or promotional pressure rather than full-price conviction. Default to unproven unless there is real public evidence — do not infer high dependency from the mere presence of promotions.
+
+SALES QUALITY READ:
+Not a second scoring pass. State only the pattern the five layers above already support — brand_led, promotion_led, platform_spike, discount_trained, conversion_blocked, repeatable_demand, or competitor_leakage. If the five layers do not clearly support any named pattern, say insufficient_evidence. Every pattern you name must be traceable in your rationale to specific layer evidence stated above it.
+
+LEAKAGE PATTERN:
+Locate exactly one point in the sequence — diagnosis, product assignment, proof, route to purchase, purchase, repeat — where the public trail goes cold or turns negative. State it in one sentence. Do not name more than one primary leakage point, and do not default to a decision handoff gap unless the evidence specifically shows strong brand power, real product conviction, and available commerce capture, with no visible movement into a specific product decision and purchase path. Other cases may show leakage at a completely different point — follow the evidence, not a template.
+
+PROVISIONAL_ICS:
+This is a rough, public-signal-based estimate of Idea Certainty. Set applicable to false, estimated_band to not_applicable, and estimated_total to null if the public trail reveals no clear, nameable campaign idea to evaluate. When applicable, always populate estimated_band (strong, moderate, weak, or unclear). Only populate estimated_total with a number when your evidence for the underlying idea is strong enough to defend a specific figure — otherwise leave it null and let estimated_band carry the read. Never call this the client's real Idea Certainty Score. Always attach the disclaimer field exactly as instructed in the schema.
+
+PROSPECT_GATE_INDICATOR:
+This is a sales urgency signal, not the live client gate_status used in signal weekly reports. Use only the three stated status values. Write exactly three leakage_conditions, each a direct, checkable test of the leakage_pattern you named above, not a generic campaign health criterion. For each condition, set public_status to observed if you found direct public evidence either way, not_publicly_visible if you specifically looked and could not find public evidence of it (this is not the same as it being absent, only that it is not publicly visible), or unclear if you did not have a reliable way to check. Attach evidence_confidence to every condition using the same five-value scale as everywhere else. Never treat not_publicly_visible as proof a condition fails.
+
+CLIENT_DATA_REQUIRED:
+List three to five specific pieces of client data that would move the lowest-confidence layers from inference to direct evidence. Be concrete — name the data type (spend by channel, PDP funnel data, retail sell-through, and so on) — never a vague category like "more information."
+
+HOOK QUESTION AND CURIOSITY GAP:
+The hook_question must be answerable only with the brand's own data, never with public information alone — this is what makes a meeting worth having. The curiosity_gap must name, in one sentence, what the public trail shows and what it deliberately cannot show, framed as an opportunity to find out, not a confession of a gap.
+
+SOURCE_PROVENANCE:
+For every material claim anywhere in this output, log it in source_provenance.claims with three separate tags, not one blended tag. source_type names where the claim actually came from — manual_public_source, public_proxy, campaign_intelligence_report (if this run was promoted from one), llm_research_output (your own research synthesis as the model), client_context (if any was given), strategist_inference, or client_data_required (a flag that this claim actually requires client data and should not be asserted as read). evidence_confidence uses the same five-value scale as everywhere else and describes how strong the backing is regardless of where it came from. report_claim_status only applies when source_type is campaign_intelligence_report — set it to not_report_derived for every other source_type, and use the four report-specific values only to classify how a claim inherited from that report should now be treated (kept as hypothesis, kept with its source cited, flagged for verification, or flagged to remove or rephrase before it reaches the rest of this output).
+
 Return ONLY valid JSON. No prose, no markdown, no explanation outside the JSON block.
 
 JSON STRUCTURE:
 {
-  "effectiveness_score": <integer 0-100>,
-  "effectiveness_rating": <"Strong" | "On Track" | "At Risk" | "Stalled">,
-  "effectiveness_headline": "<one sentence — the single most important read on this campaign's effectiveness right now>",
-  "effectiveness_diagnosis": "<2-3 sentences at decision-maker level — what is working, what is not, framed in business outcome and consumer behaviour terms. No vanity metrics.>",
+  "stage_marker": "prospect_preview",
 
-  "engine_type": <"Idea-Driven" | "Hybrid" | "Media-Compensated">,
-  "engine_media_pct": <integer 0-100>,
-  "engine_idea_pct": <integer 0-100>,
-  "engine_diagnosis": "<2 sentences — is the idea earning its media budget or is media compensating for a weak idea? What is the cost implication?>",
-  "engine_recommendation": "<1 sharp strategic action at decision-maker level — budget or creative pivot directive>",
-
-  "consumer_state": <integer 1-6>,
-  "consumer_state_name": <"Unaware" | "Aware but Passive" | "Aware but Unconvinced" | "In Consideration" | "Intent-Active" | "Post-Purchase">,
-  "consumer_state_diagnosis": "<2 sentences — where is the target audience now in the decision cycle, and is the campaign accelerating or stalling their progression?>",
-  "consumer_state_recommendation": "<1 strategic action — what needs to change to advance the consumer state>",
-  "state_transition_risk": <"Low" | "Medium" | "High">,
-
-${signalsSchemaBlock}
-
-  "audience_intent": <"Acquisition-Heavy" | "Retention-Heavy" | "Balanced">,
-  "audience_acquisition_pct": <integer 0-100>,
-  "audience_retention_pct": <integer 0-100>,
-  "audience_diagnosis": "<2 sentences — is spend targeting the right audience at the right moment in their decision cycle? Is there a segment mismatch or budget allocation risk?>",
-  "audience_recommendation": "<1 strategic action — audience targeting or channel reallocation directive>",
-
-  "ai_visibility_score": <integer 0-10>,
-  "ai_visibility_label": <"AI-Prominent" | "AI-Present" | "AI-Emerging" | "Not AI-Eligible">,
-  "ai_visibility_diagnosis": "<2 sentences — what does AI tool presence (or absence) mean for this brand's discovery position as consumer research behaviour shifts toward AI assistants?>",
-  "ai_visibility_recommendation": "<1 strategic action — specific to how this brand should approach AI eligibility>",
+  "subject": {
+    "brand_name": "<echo the brand name from the request>",
+    "campaign_name": "<echo the campaign name from the request>",
+    "market": "<echo the market/country from the request>",
+    "industry": "<echo the industry from the request>"
+  },
 
   "campaign_phase": <"Demand" | "Conversion" | "Retention">,
-  "priority_context_note": "<null if only one campaign phase and one business objective were provided. Otherwise 1-2 sentences: how the secondary (non-primary) phase(s)/objective(s) show up, or fail to show up, in the observed signals — context only, not a second diagnosis.>",
-  "estimated_campaign_week": "<e.g. '4–6' or '7–9' — estimated based on campaign signals>",
-  "gate_status": <"Advance" | "Conditional" | "Hold" | "Pivot">,
-  "gate_conditions": [
-    {
-      "condition": "<what signal/evidence is the gate condition>",
-      "met": <true | false>,
-      "evidence": "<what was observed that supports or fails this condition>"
-    },
-    {
-      "condition": "<second gate condition>",
-      "met": <true | false>,
-      "evidence": "<evidence>"
-    },
-    {
-      "condition": "<third gate condition>",
-      "met": <true | false>,
-      "evidence": "<evidence>"
-    }
-  ],
-  "gate_recommendation": "<2 sentences at decision-maker level — should the next budget tranche be released? What specifically needs to be true before it is?>",
-  "budget_release_recommendation": <"Release" | "Conditional Release" | "Hold" | "Pivot Budget">,
+  "priority_context_note": "<null if only one campaign phase and one business objective were provided. Otherwise 1-2 sentences: how the secondary (non-primary) phase(s)/objective(s) show up, or fail to show up, in the observed evidence — context only, not a second diagnosis.>",
+  "estimated_campaign_week": "<e.g. '4–6' or '7–9' — estimated based on available public signals>",
 
-  "inferred_big_idea": "<one sentence — what is the actual strategic idea this campaign runs on, as read from public signals>",
-  "frame_diagnosis": "<2 sentences — how strong is the brief architecture? Is the idea clear enough to hold across channels or is it diffusing?>",
-
-  "primary_risk": "<1 sentence — the single highest-probability risk to campaign ROI before end of flight>",
-  "efficiency_opportunity": "<1 sentence — the single highest-leverage efficiency gain available to this campaign right now>",
-  "risk_level": <"Low" | "Medium" | "High" | "Critical">,
-
-  "recommendations": [
-    {
-      "priority": 1,
-      "title": "<sharp 4-6 word imperative title>",
-      "finding": "<what the intelligence shows — 2 sentences. Grounded in observed signals. Market-specific context for the campaign country where relevant.>",
-      "action": "<what to do — 1-2 sentences. Specific and confident. Budget/phase/creative directive.>",
-      "business_impact": "<why this matters to the business outcome — 1 sentence.>"
-    },
-    {
-      "priority": 2,
-      "title": "<sharp title>",
-      "finding": "<finding>",
-      "action": "<action>",
-      "business_impact": "<impact>"
-    },
-    {
-      "priority": 3,
-      "title": "<sharp title>",
-      "finding": "<finding>",
-      "action": "<action>",
-      "business_impact": "<impact>"
-    }
-  ],
-
-  "intelligence_gaps": [
-    "<gap 1 — what ShiftImpact OS clients see with confirmed data that this preview cannot. Phrased as a business question the CMO cannot currently answer.>",
-    "<gap 2>",
-    "<gap 3>",
-    "<gap 4>"
-  ],
-
-  "ics_score": <integer 0-100>,
-  "ics_threshold": <"Advance" | "Conditional" | "Rework" | "Stop">,
-  "ics_scores": {
-    "cultural_fit": <1-5>,
-    "business_alignment": <1-5>,
-    "audience_tension": <1-5>,
-    "executional_coherence": <1-5>,
-    "measurability": <1-5>,
-    "scalability": <1-5>
+  "five_layer_read": {
+    "brand_power": { "rating": <"strong"|"moderate"|"weak"|"unclear">, "evidence_confidence": <"direct_evidence"|"public_proxy"|"inference"|"public_nonvisibility"|"insufficient_evidence">, "notes": "<2-3 sentences, grounded in observed public signals>" },
+    "product_conviction": { "rating": <"strong"|"moderate"|"weak"|"unclear">, "evidence_confidence": <"direct_evidence"|"public_proxy"|"inference"|"public_nonvisibility"|"insufficient_evidence">, "notes": "<2-3 sentences>" },
+    "commerce_capture": { "rating": <"strong"|"moderate"|"weak"|"unclear">, "evidence_confidence": <"direct_evidence"|"public_proxy"|"inference"|"public_nonvisibility"|"insufficient_evidence">, "notes": "<2-3 sentences>" },
+    "competitor_capture": { "rating": <"strong"|"moderate"|"weak"|"unclear">, "evidence_confidence": <"direct_evidence"|"public_proxy"|"inference"|"public_nonvisibility"|"insufficient_evidence">, "notes": "<2-3 sentences — never assert competitor capture as settled fact, only as what the public trail suggests>" },
+    "promotion_dependency": { "rating": <"unproven"|"low"|"moderate"|"high">, "evidence_confidence": <"direct_evidence"|"public_proxy"|"inference"|"public_nonvisibility"|"insufficient_evidence">, "notes": "<2-3 sentences>" }
   },
-  "ics_reasoning": {
-    "cultural_fit": "<1-2 sentences — assess cultural resonance with the campaign country's consumer values, festive calendar, and social norms>",
-    "business_alignment": "<1-2 sentences>",
-    "audience_tension": "<1-2 sentences>",
-    "executional_coherence": "<1-2 sentences>",
-    "measurability": "<1-2 sentences>",
-    "scalability": "<1-2 sentences>"
+
+  "sales_quality_read": {
+    "pattern": <"brand_led"|"promotion_led"|"platform_spike"|"discount_trained"|"conversion_blocked"|"repeatable_demand"|"competitor_leakage"|"insufficient_evidence">,
+    "rationale": "<1-2 sentences, must trace directly to specific layer evidence above>"
+  },
+
+  "leakage_pattern": {
+    "location": "<one sentence naming exactly one point in diagnosis → product assignment → proof → route to purchase → purchase → repeat where the public trail goes cold or turns negative>",
+    "confidence": <"direct_evidence"|"public_proxy"|"inference"|"public_nonvisibility"|"insufficient_evidence">
+  },
+
+  "final_classification": <"brand_builder"|"commerce_mover"|"promo_extractor"|"brand_risk"|"inefficient_activity"|"conversion_blocked">,
+
+  "consumer_state": {
+    "stage_n": <integer 1-6>,
+    "stage_name": <"Unaware"|"Aware but Passive"|"Aware but Unconvinced"|"In Consideration"|"Intent-Active"|"Post-Purchase">,
+    "state_transition_risk": <"Low"|"Medium"|"High">,
+    "note": "<1-2 sentences, plain language, no invented percentage>"
+  },
+
+  "provisional_ics": {
+    "applicable": <true | false>,
+    "estimated_band": <"strong"|"moderate"|"weak"|"unclear"|"not_applicable">,
+    "estimated_total": <integer 0-100, or null>,
+    "label": "Provisional Read, not a FRAME Brief score",
+    "dimension_notes": {
+      "cultural_fit": "<1 sentence — omit meaningful content and leave a short placeholder if not applicable>",
+      "business_alignment": "<1 sentence>",
+      "audience_tension": "<1 sentence>",
+      "executional_coherence": "<1 sentence>",
+      "measurability": "<1 sentence>",
+      "scalability": "<1 sentence>"
+    },
+    "disclaimer": "This is an early, public signal based estimate. A real Idea Certainty Score requires a FRAME Brief built with the client."
+  },
+
+  "prospect_gate_indicator": {
+    "status": <"worth_a_conversation_now"|"worth_watching"|"not_yet_urgent">,
+    "label": "Indicative Read, not a live client gate status",
+    "leakage_conditions": [
+      { "condition": "<direct, checkable test of the leakage_pattern above>", "public_status": <"observed"|"not_publicly_visible"|"unclear">, "evidence_confidence": <"direct_evidence"|"public_proxy"|"inference"|"public_nonvisibility"|"insufficient_evidence">, "evidence": "<what was or was not found>" },
+      { "condition": "<second condition>", "public_status": <"observed"|"not_publicly_visible"|"unclear">, "evidence_confidence": <"direct_evidence"|"public_proxy"|"inference"|"public_nonvisibility"|"insufficient_evidence">, "evidence": "<evidence>" },
+      { "condition": "<third condition>", "public_status": <"observed"|"not_publicly_visible"|"unclear">, "evidence_confidence": <"direct_evidence"|"public_proxy"|"inference"|"public_nonvisibility"|"insufficient_evidence">, "evidence": "<evidence>" }
+    ]
+  },
+
+  "client_data_required": ["<concrete data type 1>", "<concrete data type 2>", "<concrete data type 3>"],
+
+  "recommended_first_conversation": {
+    "hook_question": "<answerable only with the prospect's own data>",
+    "curiosity_gap": "<what we can see publicly, and what we deliberately cannot tell them without their data>"
+  },
+
+  "source_provenance": {
+    "claims": [
+      { "claim": "<a material claim made anywhere above>", "source_type": <"manual_public_source"|"public_proxy"|"campaign_intelligence_report"|"llm_research_output"|"client_context"|"strategist_inference"|"client_data_required">, "evidence_confidence": <"direct_evidence"|"public_proxy"|"inference"|"public_nonvisibility"|"insufficient_evidence">, "report_claim_status": <"not_report_derived"|"report_derived_hypothesis"|"report_derived_claim_with_source_support"|"report_derived_claim_requiring_verification"|"report_derived_claim_to_remove_or_rephrase">, "source": "<named source, or null>" }
+    ]
   }
 }`;}
-
-// ─── Handler ──────────────────────────────────────────────────────────────────
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
 
@@ -394,13 +268,6 @@ export async function POST(req: NextRequest) {
 
     // ── AI Analysis ───────────────────────────────────────────────────────────
 
-    // Resolve the category behaviour-chain framework from the intake industry
-    // (+ sub-category for FMCG/Retail/E-commerce). Null for unmapped
-    // industries ("Other" or anything not yet in category_attributes) — the
-    // prompt falls back to the generic fixed signal set in that case, so
-    // this never blocks an audit from running.
-    const categoryFramework = await getCategoryFrameworkByIndustry(industry, industry_subcategory);
-
     // If this Snapshot was promoted from a Clarity Signal, carry forward the Signal's
     // pre-established intelligence so the AI extends rather than re-derives from scratch.
     const signalBlock = signal_intelligence
@@ -423,7 +290,7 @@ Biggest Risk (established): ${signal_intelligence.biggest_risk}
 Questions Already Surfaced:
 ${(signal_intelligence.questions_worth_asking as string[])?.map((q, i) => `${i + 1}. ${q}`).join("\n")}
 
-Your task: Using the above as your foundation, deliver the FULL Clarity Snapshot™ diagnostic — effectiveness score, engine type, consumer state, all signal dimensions, audience intent, AI visibility, gate status, ICS score, and strategic recommendations. Build ON the Signal intelligence; do not restart from scratch.
+Your task: Using the above as your foundation, deliver the full prospect-stage Brand-Commerce read — the five-layer diagnostic, sales-quality read, leakage pattern, final classification, consumer state, provisional ICS, and prospect gate indicator. Build ON the Signal intelligence; do not restart from scratch.
 `
       : "";
 
@@ -441,17 +308,13 @@ ${signalBlock}
 PUBLIC SIGNAL DATA COLLECTED:
 ${context_text.slice(0, signal_intelligence ? 5000 : 8000)}
 
-${campaign_phases.length > 1 || business_objectives.length > 1 ? `More than one campaign phase and/or business objective was flagged. Anchor your single "campaign_phase" output and overall diagnosis to the PRIMARY (first-listed) phase and objective — do not average or blend them into a muddled read. Then use "priority_context_note" to note, in plain business language, how the secondary phase(s)/objective(s) show up (or fail to show up) in the signals you observed, without producing a second competing diagnosis.` : ""}
-Analyse this campaign across all intelligence dimensions. Apply ${country} market benchmarks, platform dynamics, and consumer behaviour context throughout — every insight must be grounded in ${country} market reality. ${
-  categoryFramework
-    ? `Score the "category_signals" array exactly as instructed in CATEGORY SIGNAL MODEL above — do not substitute generic social metrics.`
-    : `Determine which optional signals (review_platform, retail_signal, vcr, pr_earned) are relevant based on industry and available data — set include: true only where signal evidence exists or where the industry makes it directly relevant (Hospitality/F&B → review_platform; Retail/FMCG → retail_signal; video channels → vcr).`
-} Deliver strategic recommendations in the voice of a 30-year seasoned Chief Marketing Business Analyst. Return JSON only.`;
+${campaign_phases.length > 1 || business_objectives.length > 1 ? `More than one campaign phase and/or business objective was flagged. Anchor your single "campaign_phase" output and overall diagnosis to the PRIMARY (first-listed) phase and objective — do not average or blend them into a muddled read. Then use "priority_context_note" to note, in plain business language, how the secondary phase(s)/objective(s) show up (or fail to show up) in the evidence you observed, without producing a second competing diagnosis.` : ""}
+Analyse this campaign across the five Brand-Commerce layers (Brand Power, Product Conviction, Commerce Capture, Competitor Capture, Promotion Dependency), the sales-quality read, the leakage pattern, final classification, consumer state, provisional ICS, and prospect gate indicator. Apply ${country} market context and consumer behaviour dynamics throughout — every insight must be grounded in ${country} market reality. Deliver strategic recommendations in the voice of a 30-year seasoned Chief Marketing Business Analyst. Return JSON only.`;
 
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 8000,
-      system: getSystemPrompt(country, categoryFramework),
+      system: getSystemPrompt(country),
       messages: [{ role: "user", content: userPrompt }],
     });
 
