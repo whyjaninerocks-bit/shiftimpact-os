@@ -666,7 +666,7 @@ function ProspectPreviewReportView({ audit }: { audit: QuickAuditProspectPreview
         )}
 
         {/* CTA — the hook question and curiosity gap, not a generic pitch */}
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm px-6 py-7 text-center">
+        <div data-pdf-break="before" className="rounded-xl border border-slate-200 bg-white shadow-sm px-6 py-7 text-center">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">
             The Question This Read Can&rsquo;t Answer
           </p>
@@ -700,7 +700,7 @@ function ProspectPreviewReportView({ audit }: { audit: QuickAuditProspectPreview
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+        <div data-pdf-break="before" className="rounded-xl border border-slate-200 bg-slate-50 p-5">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">
             Data Sourcing and Limitations
           </p>

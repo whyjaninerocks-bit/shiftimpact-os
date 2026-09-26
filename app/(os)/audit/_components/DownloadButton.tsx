@@ -73,8 +73,17 @@ export function DownloadButton({ brandName, contentId }: { brandName: string; co
       // blurry at normal PDF zoom. 1.5 restores sharp text; file size still
       // stays well short of email attachment limits even on long reports.
       const SCALE = 1.5;
+      // bgcolor: paints an opaque base under the capture before the DOM is
+      // composited onto it. Without this, any region dom-to-image-more fails
+      // to fully paint (common on tall, off-screen-scaled captures) stays
+      // transparent in the PNG; canvas.toDataURL("image/jpeg") — used below,
+      // per page slice — has no alpha channel and silently composites
+      // transparent pixels as solid BLACK, which is what produced the large
+      // black bars under content on exported pages. #f8fafc matches the
+      // report body's own bg-slate-50, so a correctly-painted capture looks
+      // identical either way.
       const dataUrl = await (domtoimage as { toPng: (node: HTMLElement, opts: object) => Promise<string> })
-        .toPng(content, { scale: SCALE });
+        .toPng(content, { scale: SCALE, bgcolor: "#f8fafc" });
 
       const A4_W      = 210;
       const A4_H      = 297;
