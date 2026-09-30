@@ -24,6 +24,7 @@ import {
   getSocialCurrencyScore,
   getAiBrandVisibilityScore,
   getCulturalSignalReadClientSafe,
+  getBrandCommerceDiagnosticClientSafe,
 } from "@/lib/data";
 import { Badge, Card, ragTone } from "@/app/_components/ui";
 import type { CampaignPhase, IndustryProfile } from "@/lib/types";
@@ -44,6 +45,9 @@ import { ComingSoonSection } from "./_components/ComingSoonSection";
 import { SectionHeading, ReportHero, CampaignHealthCard, POSTURE_DOT, StrategicBetSection } from "./_components/reportUi";
 import { PortalNav, type NavSection, type NavWeek } from "./_components/PortalNav";
 import { Collapse } from "../_components/Collapse";
+import { BrandCommerceClientSection } from "./_components/BrandCommerceClientSection";
+import { verifyPortalToken } from "@/lib/portal/access-token";
+import { hasInternalSession } from "@/lib/auth/require-session";
 
 type PortalView = "brand" | "agency" | "partner";
 
@@ -126,6 +130,21 @@ export default async function ClientPortalPage({
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!UUID_RE.test(id)) notFound();
 
+  // ── Page-level access gate (Phase 3 security correction) ──────────────────
+  // Before this fix, knowledge of the campaign UUID alone was enough to render
+  // the full portal page — verifyPortalToken existed but was only ever wired
+  // into the portal-chat and portal-notify API routes, never the page itself.
+  // This closes that gap using the SAME contract those two routes already
+  // use (tokenValid OR hasInternalSession), so an internal ShiftImpact
+  // session can still preview a portal with no token minted yet, exactly as
+  // it implicitly could before. Applies regardless of ?view= — the view
+  // param only ever changes below this point, so it cannot bypass this gate.
+  // No sensitive fetch runs before this check.
+  const tokenValid = await verifyPortalToken(id, portalToken);
+  if (!tokenValid && !(await hasInternalSession())) {
+    notFound();
+  }
+
   const campaign = await getCampaign(id);
   if (!campaign) notFound();
 
@@ -193,6 +212,12 @@ export default async function ClientPortalPage({
   // unreleased draft the agency is still writing a narrative for.
   const releasedReport = await getLatestReleasedCampaignReport(id);
 
+  // Brand-Commerce (Phase 3) — fetched only on this branch, never for
+  // view=agency (AgencyPortalView stays unwired to Brand-Commerce this
+  // phase, per the architecture review). Returns null unless a reviewed,
+  // non-drifted diagnostic exists — see getBrandCommerceDiagnosticClientSafe.
+  const brandCommerceDiagnostic = await getBrandCommerceDiagnosticClientSafe(id);
+
   const latest = dashboards[0] ?? null;
   const latestSignalWeek = signalReports[0]?.week_number ?? null;
   const activeChannels: string[] = frame?.active_channels ?? [];
@@ -233,6 +258,7 @@ export default async function ClientPortalPage({
     ...(showSignalHealth ? [{ id: "signal-health", label: "Signal health", group: "This week" }] : []),
     ...(showChannels ? [{ id: "channels", label: "Channels", group: "This week" }] : []),
     ...(brandMomentum ? [{ id: "brand-momentum", label: "Brand momentum", group: "This week" }] : []),
+    ...(brandCommerceDiagnostic ? [{ id: "brand-commerce", label: "Brand-Commerce", group: "This week" }] : []),
     ...(complianceRecord ? [{ id: "compliance", label: "Brief compliance", group: "This week" }] : []),
     ...(showReportHistory ? [{ id: "report-history", label: "Report history", group: "History & trust" }] : []),
     ...(reportVisible ? [{ id: "weekly-report", label: "Weekly report", group: "History & trust" }] : []),
@@ -394,6 +420,11 @@ export default async function ClientPortalPage({
           <div id="brand-momentum" className="scroll-mt-20">
             <BrandMomentumSection momentum={brandMomentum} />
           </div>
+
+          {/* ── Brand-Commerce — reviewed decision/test/validation only.
+               Renders nothing when no reviewed, non-drifted diagnostic
+               exists (see getBrandCommerceDiagnosticClientSafe). ── */}
+          <BrandCommerceClientSection diagnostic={brandCommerceDiagnostic} />
 
         {/* ── Channel health — falls back to a plain list of channel names
              when weekly channel metrics haven't started yet for this

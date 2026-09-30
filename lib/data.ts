@@ -61,6 +61,8 @@ import type {
   BrandCommerceDiagnostic,
   BrandCommerceDiagnosticSource,
   SynthesisEvidenceQuality,
+  // Brand-Commerce client-stage bridge — migration 0104 (Phase 2/3)
+  BrandCommerceValidationStatus,
 } from "@/lib/types";
 
 export async function getClients(): Promise<ClientWithRollups[]> {
@@ -2241,5 +2243,123 @@ export async function getBrandCommerceSignalReadAgencySafe(
       title: s.source_title,
       evidence_confidence: s.evidence_confidence,
     })),
+  };
+}
+
+// ─── Client-facing subset — Brand-Commerce Diagnostic (Phase 3 portal) ──────
+// ACCESS RULES (see Phase 3 architecture review): client sees only the
+// strategist-REVIEWED decision/test/validation content of the single latest
+// reviewed diagnostic for this campaign — never prospect_hypothesis_snapshot,
+// source_audit_id, hypothesis_tension, competitor_decision_contrast,
+// classification_rationale, commerce_mechanic_description,
+// promotion_pressure_notes, proof_layer_notes, brand_meaning_risk_notes,
+// evidence_confidence, reviewed_by, created_by, outcome_evidence, or any
+// diagnostic_sources row. Only named columns are ever selected — never
+// select("*") — so an internal-only field can never leak by being fetched
+// and merely left off a type; it is never in the query result at all.
+//
+// classification_label is deliberately sourced from classification_at_diagnosis
+// (the snapshot taken when THIS diagnostic was written), not the live
+// campaign_signal_maps.classification — matching the governance intent
+// already encoded in BrandCommerceSignalReadPreview.tsx (the internal
+// "Agency Preview" rehearsal of this same content), which treats a diagnosis
+// that no longer matches the live classification as stale and not safe to
+// show externally. If the two have drifted, this function returns null
+// rather than showing a warning banner externally — the fix for drift is an
+// internal re-review, not client-facing copy.
+export type BrandCommerceDiagnosticClientSafe = {
+  classification_label: string | null;
+  decision_implication: string | null;
+  intervention: string | null;
+  test: {
+    hypothesis: string | null;
+    plan: string | null;
+    evidence_required: string | null;
+    success_signal: string | null;
+    failure_signal: string | null;
+    decision_rule: string | null;
+  } | null;
+  validation: {
+    status: BrandCommerceValidationStatus | null;
+    outcome_summary: string | null;
+    next_decision: string | null;
+    outcome_captured_at: string | null;
+  } | null;
+  reviewed_at: string;
+} | null;
+
+export async function getBrandCommerceDiagnosticClientSafe(
+  campaignId: string
+): Promise<BrandCommerceDiagnosticClientSafe> {
+  const supabase = createAdminClient();
+
+  const { data: rows, error } = await supabase
+    .from("brand_commerce_diagnostic")
+    .select(
+      "classification_at_diagnosis, reviewed_at, reviewed_decision_implication, reviewed_intervention, reviewed_test_hypothesis, reviewed_test_plan, reviewed_test_evidence_required, reviewed_test_success_signal, reviewed_test_failure_signal, reviewed_test_decision_rule, validation_status, outcome_summary, next_decision, outcome_captured_at"
+    )
+    .eq("campaign_id", campaignId)
+    .order("created_at", { ascending: false });
+  if (error || !rows) return null;
+
+  const reviewed = rows.find((d) => d.reviewed_at !== null);
+  if (!reviewed) return null;
+
+  // Live classification comparison — the drift/exposure gate.
+  const { data: map } = await supabase
+    .from("campaign_signal_maps")
+    .select("classification")
+    .eq("campaign_id", campaignId)
+    .eq("is_active", true)
+    .maybeSingle();
+  const liveClassification = (map?.classification as BrandCommerceClassification | null) ?? null;
+
+  if (liveClassification !== null && reviewed.classification_at_diagnosis !== liveClassification) {
+    return null; // drifted — require internal re-review before client exposure
+  }
+
+  const rawClassification = reviewed.classification_at_diagnosis as BrandCommerceClassification | null;
+  const classification_label =
+    rawClassification && rawClassification !== "not_classified"
+      ? BRAND_COMMERCE_CLASSIFICATION_LABELS[rawClassification]
+      : null;
+
+  const hasTest =
+    !!reviewed.reviewed_test_hypothesis ||
+    !!reviewed.reviewed_test_plan ||
+    !!reviewed.reviewed_test_evidence_required ||
+    !!reviewed.reviewed_test_success_signal ||
+    !!reviewed.reviewed_test_failure_signal ||
+    !!reviewed.reviewed_test_decision_rule;
+
+  const hasValidation =
+    !!reviewed.validation_status ||
+    !!reviewed.outcome_summary ||
+    !!reviewed.next_decision ||
+    !!reviewed.outcome_captured_at;
+
+  return {
+    classification_label,
+    decision_implication: reviewed.reviewed_decision_implication,
+    intervention: reviewed.reviewed_intervention,
+    test: hasTest
+      ? {
+          hypothesis: reviewed.reviewed_test_hypothesis,
+          plan: reviewed.reviewed_test_plan,
+          evidence_required: reviewed.reviewed_test_evidence_required,
+          success_signal: reviewed.reviewed_test_success_signal,
+          failure_signal: reviewed.reviewed_test_failure_signal,
+          decision_rule: reviewed.reviewed_test_decision_rule,
+        }
+      : null,
+    validation: hasValidation
+      ? {
+          status: reviewed.validation_status as BrandCommerceValidationStatus | null,
+          outcome_summary: reviewed.outcome_summary,
+          next_decision: reviewed.next_decision,
+          outcome_captured_at: reviewed.outcome_captured_at,
+        }
+      : null,
+    reviewed_at: reviewed.reviewed_at as string,
   };
 }
