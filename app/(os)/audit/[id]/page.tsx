@@ -410,6 +410,20 @@ type ProspectPreviewResult = {
     label: string;
     leakage_conditions: { condition: string; public_status: string; evidence_confidence: EvidenceConfidence; evidence: string }[];
   };
+  hypothesis_tension: { supports: string; complicates: string | null };
+  decision_implication: string;
+  recommended_commercial_intervention: {
+    primary_intervention: { target: string; action: string; evidence_basis: string };
+    supporting_interventions: { target: string; action: string }[];
+  };
+  first_commercial_test: {
+    hypothesis: string;
+    test: string;
+    evidence_required: string;
+    success_signal: string;
+    failure_signal: string;
+    decision_rule: string;
+  };
   client_data_required: string[];
   recommended_first_conversation: { hook_question: string; curiosity_gap: string };
   source_provenance: {
@@ -624,6 +638,103 @@ function ProspectPreviewReportView({ audit }: { audit: QuickAuditProspectPreview
           <p className="text-sm text-slate-700 leading-relaxed">{r.sales_quality_read.rationale}</p>
         </div>
 
+        {/* ── Hypothesis Tension ── */}
+        <div data-pdf-break="before" className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="px-6 pt-5 pb-4 border-b border-slate-100">
+            <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">What Supports vs. Complicates This Read</p>
+            <p className="text-[10px] text-slate-400 mt-1 italic">Prospect-stage hypothesis — not a confirmed finding</p>
+          </div>
+          <div className="px-6 py-5 space-y-3">
+            <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3">
+              <p className="text-[9px] font-bold text-emerald-700 uppercase tracking-wide mb-1">Supports</p>
+              <p className="text-xs text-slate-700 leading-relaxed">{r.hypothesis_tension.supports}</p>
+            </div>
+            {r.hypothesis_tension.complicates ? (
+              <div className="rounded-lg border border-amber-100 bg-amber-50 px-4 py-3">
+                <p className="text-[9px] font-bold text-amber-700 uppercase tracking-wide mb-1">Complicates</p>
+                <p className="text-xs text-slate-700 leading-relaxed">{r.hypothesis_tension.complicates}</p>
+              </div>
+            ) : (
+              <p className="text-[10px] text-slate-400 italic">No genuine alternative explanation is evidenced from public signals.</p>
+            )}
+          </div>
+        </div>
+
+        {/* ── Decision Implication ── */}
+        <div data-pdf-break="before" className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="px-6 pt-5 pb-4 border-b border-slate-100">
+            <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">What Decision This Affects</p>
+            <p className="text-[10px] text-slate-400 mt-1 italic">Prospect-stage hypothesis — not a confirmed finding</p>
+          </div>
+          <div className="px-6 py-5">
+            <p className="text-sm text-slate-700 leading-relaxed">{r.decision_implication}</p>
+          </div>
+        </div>
+
+        {/* ── Recommended Commercial Intervention ── */}
+        <div data-pdf-break="before" className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="px-6 pt-5 pb-4 border-b border-slate-100">
+            <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Recommended Commercial Intervention</p>
+            <p className="text-[10px] text-slate-400 mt-1 italic">Prospect-stage hypothesis — not strategist-reviewed</p>
+          </div>
+          <div className="px-6 py-5 space-y-3">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                {r.recommended_commercial_intervention.primary_intervention.target}
+              </p>
+              <p className="text-xs font-semibold text-slate-900 leading-relaxed mb-1.5">
+                {r.recommended_commercial_intervention.primary_intervention.action}
+              </p>
+              <p className="text-[10px] text-slate-500 leading-relaxed">
+                Basis: {r.recommended_commercial_intervention.primary_intervention.evidence_basis}
+              </p>
+            </div>
+            {r.recommended_commercial_intervention.supporting_interventions.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Supporting</p>
+                {r.recommended_commercial_intervention.supporting_interventions.map((s, i) => (
+                  <div key={i} className="rounded-lg border border-slate-100 px-4 py-2.5">
+                    <p className="text-[10px] font-semibold text-slate-600">{s.target}</p>
+                    <p className="text-xs text-slate-600 leading-relaxed mt-0.5">{s.action}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── First Commercial Test ── */}
+        <div data-pdf-break="before" className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="px-6 pt-5 pb-4 border-b border-slate-100">
+            <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">First Commercial Test</p>
+            <p className="text-[10px] text-slate-400 mt-1 italic">Prospect-stage hypothesis — not strategist-reviewed</p>
+          </div>
+          <div className="px-6 py-5 space-y-3">
+            <blockquote className="border-l-[3px] border-slate-900 pl-4 text-sm font-semibold text-slate-900 leading-snug">
+              {r.first_commercial_test.hypothesis}
+            </blockquote>
+            <p className="text-xs text-slate-700 leading-relaxed">{r.first_commercial_test.test}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <div className="rounded-lg border border-slate-100 px-3 py-2.5">
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">Evidence Required</p>
+                <p className="text-[11px] text-slate-600 leading-relaxed">{r.first_commercial_test.evidence_required}</p>
+              </div>
+              <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2.5">
+                <p className="text-[9px] font-bold text-emerald-700 uppercase tracking-wide mb-0.5">Success Signal</p>
+                <p className="text-[11px] text-slate-700 leading-relaxed">{r.first_commercial_test.success_signal}</p>
+              </div>
+              <div className="rounded-lg border border-red-100 bg-red-50 px-3 py-2.5">
+                <p className="text-[9px] font-bold text-red-600 uppercase tracking-wide mb-0.5">Failure Signal</p>
+                <p className="text-[11px] text-slate-700 leading-relaxed">{r.first_commercial_test.failure_signal}</p>
+              </div>
+              <div className="rounded-lg border border-slate-100 px-3 py-2.5">
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">Decision Rule</p>
+                <p className="text-[11px] text-slate-600 leading-relaxed">{r.first_commercial_test.decision_rule}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div data-pdf-break="before" className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-6 pt-5 pb-4 border-b border-slate-100">
             <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">What Would Need To Be True</p>
@@ -670,6 +781,23 @@ function ProspectPreviewReportView({ audit }: { audit: QuickAuditProspectPreview
               </span>
               <p className="text-xs text-slate-400 mt-3 italic leading-relaxed">{r.provisional_ics.disclaimer}</p>
             </div>
+          </div>
+        )}
+
+        {r.client_data_required && r.client_data_required.length > 0 && (
+          <div data-pdf-break="before" className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="px-6 pt-5 pb-4 border-b border-slate-100">
+              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Client Data That Would Strengthen This Read</p>
+              <p className="text-[10px] text-slate-400 mt-1">Broader evidence menu — separate from the first commercial test above</p>
+            </div>
+            <ul className="px-6 py-5 space-y-2">
+              {r.client_data_required.map((d, i) => (
+                <li key={i} className="flex items-start gap-2.5 text-xs text-slate-700 leading-relaxed">
+                  <span className="text-slate-300 mt-0.5">—</span>
+                  <span>{d}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 
