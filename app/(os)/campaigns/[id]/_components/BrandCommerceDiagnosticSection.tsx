@@ -348,7 +348,9 @@ function ClientStageBridgeSection1({ diagnostic }: { diagnostic: BrandCommerceDi
         </span>
       </div>
       <p className="text-[10px] text-neutral-400">
-        Source audit: <span className="font-mono">{diagnostic.source_audit_id}</span>
+        <a href={`/audit/${diagnostic.source_audit_id}`} className="underline hover:text-neutral-600">
+          View source prospect read →
+        </a>
         {" · "}Original classification: {BRAND_COMMERCE_CLASSIFICATION_LABELS[snap.final_classification as BrandCommerceClassification] ?? snap.final_classification}
       </p>
       <div>
@@ -388,7 +390,12 @@ function ClientStageBridgeSection1({ diagnostic }: { diagnostic: BrandCommerceDi
       {!!snap.competitor_decision_contrast && (
         <div>
           <p className="text-[10px] font-medium text-neutral-400 mb-0.5">Competitor decision contrast (from prospect read)</p>
-          <p className="text-xs text-neutral-500 italic">Present on the source audit — see /audit/{diagnostic.source_audit_id} for full detail.</p>
+          <p className="text-xs text-neutral-500 italic">
+            Present on the source prospect read — see the{" "}
+            <a href={`/audit/${diagnostic.source_audit_id}`} className="underline hover:text-neutral-700">
+              full detail
+            </a>.
+          </p>
         </div>
       )}
       {snap.client_data_required.length > 0 && (
