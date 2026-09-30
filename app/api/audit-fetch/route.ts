@@ -513,6 +513,34 @@ async function fetchTradePressDeep(brandName: string, campaignName?: string): Pr
   };
 }
 
+// ── Generic need-state / category search (Phase 1.5) ──────────────────────────
+// Unlike every other fetcher above, this one does NOT wrap the query in a
+// brand name — it exists specifically so a need-state query ("ceramide
+// barrier repair Malaysia") is searched as-is, not as "<brand> <query>".
+// Reuses the same rag-web-browser actor already used by
+// fetchTradePressDeep — no new external dependency.
+async function fetchNeedStateSearch(query: string): Promise<{ content: string; count: number }> {
+  const items = await runApifyActor("apify~rag-web-browser", { query, maxResults: 8 }, 90);
+
+  if (!Array.isArray(items) || items.length === 0) return { content: "", count: 0 };
+
+  const lines = items.slice(0, 8).map((item: Record<string, unknown>, i) => {
+    const sr = (item.searchResult as Record<string, unknown>) ?? {};
+    const title = ((sr.title || item.title || `Result ${i + 1}`) as string);
+    const url = ((sr.url || item.url || "") as string);
+    const body = ((item.markdown || item.text || sr.description || "") as string).slice(0, 1200);
+    const parts = [`[Need-State Result ${i + 1}] ${title}`];
+    if (url) parts.push(`URL: ${url}`);
+    if (body) parts.push(body);
+    return parts.join("\n");
+  });
+
+  return {
+    content: `=== Generic Need-State Search — "${query}" — ${items.length} results ===\n\n` + lines.join("\n\n---\n\n"),
+    count: items.length,
+  };
+}
+
 // ── Article URL deep scraper ──────────────────────────────────────────────────
 // User pastes a specific article URL (e.g. from Marketing Interactive).
 // Uses Apify headless browser for full JS rendering.
@@ -692,9 +720,12 @@ export async function POST(req: NextRequest) {
       hashtag?: string;
       kol_platform?: "instagram" | "tiktok";
       threads_handle?: string;
+      // Phase 1.5 — raw generic query for platform "need_state_search" only.
+      // Never wrapped in a brand name — see fetchNeedStateSearch above.
+      query?: string;
     };
 
-    const { platform, handle, brand_name, campaign_name, page_url, website_url, hashtag, kol_platform, threads_handle } = body;
+    const { platform, handle, brand_name, campaign_name, page_url, website_url, hashtag, kol_platform, threads_handle, query } = body;
 
     // Website scraping: tries Apify crawler first (handles JS), falls back to plain fetch
     if (platform === "website") {
@@ -763,6 +794,10 @@ export async function POST(req: NextRequest) {
         break;
       case "threads":
         result = await fetchThreads(brand_name ?? "", threads_handle ?? handle, campaign_name);
+        break;
+      case "need_state_search":
+        if (!query) return NextResponse.json({ error: "Need-state query required." }, { status: 400 });
+        result = await fetchNeedStateSearch(query);
         break;
       default:
         return NextResponse.json({ error: "Unknown platform." }, { status: 400 });

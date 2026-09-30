@@ -425,9 +425,30 @@ type ProspectPreviewResult = {
     decision_rule: string;
   };
   client_data_required: string[];
+  // Phase 1.5 — Competitor Decision Contrast. Optional/nullable: absent or
+  // null on every audit that didn't supply a competitor_name at intake.
+  competitor_decision_contrast?: {
+    competitor_name: string;
+    primary_brand_decision_architecture: {
+      problem_cue: string | null;
+      proof_cue: string | null;
+      product_selection_cue: string | null;
+      retail_survival: string | null;
+    };
+    competitor_decision_architecture: {
+      problem_cue: string | null;
+      proof_cue: string | null;
+      product_selection_cue: string | null;
+      retail_survival: string | null;
+    };
+    decision_shortcut_difference: string;
+    directly_evidenced: string;
+    inferred_only: string | null;
+    implication_for_primary_hypothesis: string;
+  } | null;
   recommended_first_conversation: { hook_question: string; curiosity_gap: string };
   source_provenance: {
-    claims: { claim: string; source_type: string; evidence_confidence: EvidenceConfidence; report_claim_status: string; source: string | null }[];
+    claims: { claim: string; source_type: string; evidence_confidence: EvidenceConfidence; report_claim_status: string; source: string | null; subject?: "primary_brand" | "competitor" | "category_or_need_state" }[];
   };
 };
 
@@ -659,6 +680,62 @@ function ProspectPreviewReportView({ audit }: { audit: QuickAuditProspectPreview
             )}
           </div>
         </div>
+
+        {/* ── Competitor Decision Contrast (Phase 1.5 — optional) ── */}
+        {r.competitor_decision_contrast && (
+          <div data-pdf-break="before" className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="px-6 pt-5 pb-4 border-b border-slate-100">
+              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Competitor Decision Contrast</p>
+              <p className="text-[10px] text-slate-400 mt-1 italic">Public-signal comparison — not proof of switching or superior performance</p>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="rounded-lg border border-slate-100 bg-slate-50 px-4 py-3">
+                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wide mb-2">{a.brand_name}</p>
+                  <dl className="space-y-1.5 text-xs text-slate-700">
+                    <div><dt className="inline font-semibold text-slate-500">Problem cue: </dt><dd className="inline">{r.competitor_decision_contrast.primary_brand_decision_architecture.problem_cue ?? "Not established from public signals"}</dd></div>
+                    <div><dt className="inline font-semibold text-slate-500">Proof cue: </dt><dd className="inline">{r.competitor_decision_contrast.primary_brand_decision_architecture.proof_cue ?? "Not established from public signals"}</dd></div>
+                    <div><dt className="inline font-semibold text-slate-500">Product-selection cue: </dt><dd className="inline">{r.competitor_decision_contrast.primary_brand_decision_architecture.product_selection_cue ?? "Not established from public signals"}</dd></div>
+                    <div><dt className="inline font-semibold text-slate-500">Retail survival: </dt><dd className="inline">{r.competitor_decision_contrast.primary_brand_decision_architecture.retail_survival ?? "Not established from public signals"}</dd></div>
+                  </dl>
+                </div>
+                <div className="rounded-lg border border-slate-100 bg-slate-50 px-4 py-3">
+                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wide mb-2">{r.competitor_decision_contrast.competitor_name}</p>
+                  <dl className="space-y-1.5 text-xs text-slate-700">
+                    <div><dt className="inline font-semibold text-slate-500">Problem cue: </dt><dd className="inline">{r.competitor_decision_contrast.competitor_decision_architecture.problem_cue ?? "Not established from public signals"}</dd></div>
+                    <div><dt className="inline font-semibold text-slate-500">Proof cue: </dt><dd className="inline">{r.competitor_decision_contrast.competitor_decision_architecture.proof_cue ?? "Not established from public signals"}</dd></div>
+                    <div><dt className="inline font-semibold text-slate-500">Product-selection cue: </dt><dd className="inline">{r.competitor_decision_contrast.competitor_decision_architecture.product_selection_cue ?? "Not established from public signals"}</dd></div>
+                    <div><dt className="inline font-semibold text-slate-500">Retail survival: </dt><dd className="inline">{r.competitor_decision_contrast.competitor_decision_architecture.retail_survival ?? "Not established from public signals"}</dd></div>
+                  </dl>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wide mb-1">Decision Shortcut Difference</p>
+                <p className="text-xs text-slate-700 leading-relaxed">{r.competitor_decision_contrast.decision_shortcut_difference}</p>
+              </div>
+
+              <div className="rounded-lg border border-sky-100 bg-sky-50 px-4 py-3">
+                <p className="text-[9px] font-bold text-sky-700 uppercase tracking-wide mb-1">Directly Evidenced</p>
+                <p className="text-xs text-slate-700 leading-relaxed">{r.competitor_decision_contrast.directly_evidenced}</p>
+              </div>
+
+              {r.competitor_decision_contrast.inferred_only ? (
+                <div className="rounded-lg border border-amber-100 bg-amber-50 px-4 py-3">
+                  <p className="text-[9px] font-bold text-amber-700 uppercase tracking-wide mb-1">Inferred Only</p>
+                  <p className="text-xs text-slate-700 leading-relaxed">{r.competitor_decision_contrast.inferred_only}</p>
+                </div>
+              ) : (
+                <p className="text-[10px] text-slate-400 italic">No inference beyond directly evidenced content.</p>
+              )}
+
+              <div>
+                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wide mb-1">Implication For Primary Hypothesis</p>
+                <p className="text-xs text-slate-700 leading-relaxed">{r.competitor_decision_contrast.implication_for_primary_hypothesis}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Decision Implication ── */}
         <div data-pdf-break="before" className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">

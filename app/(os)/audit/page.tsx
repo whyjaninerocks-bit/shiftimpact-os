@@ -161,6 +161,19 @@ export default function QuickAuditPage() {
   // generates. See read_mode in app/api/audit-analyze/route.ts.
   const [readMode, setReadMode] = useState<"brand_commerce" | "general">("brand_commerce");
 
+  // Phase 1.5 — Competitor Decision Contrast. All optional; kept in
+  // separate state (never merged into contextText) so the server can
+  // partition primary/competitor/need-state evidence explicitly rather
+  // than guessing where one ends and the other begins. See buildRequestBody.
+  const [competitorName, setCompetitorName] = useState("");
+  const [competitorWebsiteUrl, setCompetitorWebsiteUrl] = useState("");
+  const [competitorContextText, setCompetitorContextText] = useState("");
+  const [needStateQuery, setNeedStateQuery] = useState("");
+  const [needStateContextText, setNeedStateContextText] = useState("");
+  const [competitorFetching, setCompetitorFetching] = useState(false);
+  const [competitorFetchError, setCompetitorFetchError] = useState<string | null>(null);
+  const [needStateFetching, setNeedStateFetching] = useState(false);
+
   // Multiple markets can be selected at once — one full analysis run per
   // market, since MARKET_PROFILES/benchmarks are market-specific and can't
   // be blended into a single read. See handleSubmit's multi-market branch.
@@ -215,6 +228,13 @@ export default function QuickAuditPage() {
           if (data.context_text) setContextText(data.context_text);
           if (data.read_mode) setReadMode(data.read_mode);
           if (data.signal_intelligence) setSignalIntelligence(data.signal_intelligence);
+          // Phase 1.5 rerun-prefill fix — request_snapshot already retains
+          // these (it stores the raw POST body verbatim), but the JSON keys
+          // must be explicitly read into state like every field above, or
+          // a competitor audit silently loses its competitor on rerun.
+          if (data.competitor_name) setCompetitorName(data.competitor_name);
+          if (data.competitor_context_text) setCompetitorContextText(data.competitor_context_text);
+          if (data.need_state_context_text) setNeedStateContextText(data.need_state_context_text);
         })
         .catch(() => {
           setError("Could not load that audit for rerun — please fill the form manually.");
@@ -389,7 +409,75 @@ export default function QuickAuditPage() {
       budget_range: budgetRef.current?.value,
       context_text: contextText,
       read_mode: readMode,
+      // Phase 1.5 — omitted entirely (undefined) when competitorName is
+      // blank, so a no-competitor audit posts an identical body to before
+      // this feature existed.
+      competitor_name: competitorName.trim() || undefined,
+      competitor_context_text: competitorContextText || undefined,
+      need_state_context_text: needStateContextText || undefined,
     };
+  }
+
+  // Phase 1.5 — bounded competitor fetch: at most 3 calls (website only if
+  // a URL was given, plus press and trade press), never the full primary
+  // channel matrix. Results accumulate into competitorContextText, kept
+  // separate from contextText so the server can partition evidence
+  // explicitly (see evidenceBlock in audit-analyze/route.ts).
+  async function handleFetchCompetitor() {
+    const name = competitorName.trim();
+    if (!name) { setCompetitorFetchError("Enter a competitor name first."); return; }
+    setCompetitorFetching(true);
+    setCompetitorFetchError(null);
+    const errors: string[] = [];
+    const calls: { platform: string; body: Record<string, unknown> }[] = [];
+    if (competitorWebsiteUrl.trim()) {
+      calls.push({ platform: "website", body: { platform: "website", website_url: competitorWebsiteUrl.trim() } });
+    }
+    calls.push({ platform: "press", body: { platform: "press", brand_name: name } });
+    calls.push({ platform: "trade_press_deep", body: { platform: "trade_press_deep", brand_name: name } });
+
+    for (const c of calls) {
+      try {
+        const res = await fetch("/api/audit-fetch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(c.body),
+        });
+        const data = await res.json();
+        if (data.setup_required) { errors.push(`${c.platform}: Apify not configured`); continue; }
+        if (!res.ok || data.error) { errors.push(`${c.platform}: ${data.error ?? "fetch failed"}`); continue; }
+        if (data.content) {
+          setCompetitorContextText(prev => prev ? `${prev}\n\n${data.content}` : data.content);
+        }
+      } catch {
+        errors.push(`${c.platform}: network error`);
+      }
+    }
+    setCompetitorFetchError(errors.length > 0 ? errors.join(" · ") : null);
+    setCompetitorFetching(false);
+  }
+
+  // Phase 1.5 — one bounded call: the generic need-state query, never
+  // wrapped in a brand name. Optional, only runs if the strategist supplies
+  // a query (e.g. "ceramide barrier repair Malaysia").
+  async function handleFetchNeedState() {
+    const q = needStateQuery.trim();
+    if (!q) { setCompetitorFetchError("Enter a need-state query first."); return; }
+    setNeedStateFetching(true);
+    try {
+      const res = await fetch("/api/audit-fetch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platform: "need_state_search", query: q }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) { setCompetitorFetchError(data.error ?? "Need-state fetch failed."); return; }
+      if (data.content) setNeedStateContextText(data.content);
+    } catch {
+      setCompetitorFetchError("Network error fetching need-state signals.");
+    } finally {
+      setNeedStateFetching(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -817,6 +905,70 @@ export default function QuickAuditPage() {
 The more context provided, the more precise the intelligence preview.`}
               required
             />
+          </div>
+
+          {/* ── Phase 1.5 — Competitor Decision Contrast (optional) ── */}
+          <div className="rounded-xl border border-neutral-200 bg-neutral-50/50 p-4 space-y-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-neutral-500">Competitor Decision Contrast <span className="font-normal text-neutral-400 normal-case">(optional — leave blank to skip entirely)</span></p>
+              <p className="text-[10px] text-neutral-400 mt-0.5">Public-signal comparison only — not proof of switching or superior performance. Omitted from the report unless a competitor is named here.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input
+                className={inputCls}
+                type="text"
+                value={competitorName}
+                onChange={e => setCompetitorName(e.target.value)}
+                placeholder="Competitor brand name (e.g. CeraVe)"
+              />
+              <input
+                className={inputCls}
+                type="url"
+                value={competitorWebsiteUrl}
+                onChange={e => setCompetitorWebsiteUrl(e.target.value)}
+                placeholder="Competitor website URL (optional)"
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleFetchCompetitor}
+                disabled={competitorFetching || !competitorName.trim()}
+                className="text-sm font-medium px-3 py-1.5 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 disabled:opacity-50"
+              >
+                {competitorFetching ? "Fetching competitor signals…" : "Fetch Competitor Signals →"}
+              </button>
+              <span className="text-[10px] text-neutral-400">Bounded to a few sources — not the full channel matrix</span>
+            </div>
+            {competitorContextText && (
+              <p className="text-[10px] text-emerald-600">✓ Competitor signals collected ({competitorContextText.length.toLocaleString()} chars)</p>
+            )}
+
+            <div className="pt-2 border-t border-neutral-200">
+              <p className="text-[10px] text-neutral-400 mb-2">Generic need-state search (optional) — what decision architecture appears when a consumer searches the underlying problem, not either brand</p>
+              <div className="flex items-center gap-2">
+                <input
+                  className={`${inputCls} flex-1`}
+                  type="text"
+                  value={needStateQuery}
+                  onChange={e => setNeedStateQuery(e.target.value)}
+                  placeholder="e.g. ceramide barrier repair Malaysia"
+                />
+                <button
+                  type="button"
+                  onClick={handleFetchNeedState}
+                  disabled={needStateFetching || !needStateQuery.trim()}
+                  className="text-sm font-medium px-3 py-1.5 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 disabled:opacity-50 whitespace-nowrap"
+                >
+                  {needStateFetching ? "Fetching…" : "Fetch →"}
+                </button>
+              </div>
+              {needStateContextText && (
+                <p className="text-[10px] text-emerald-600 mt-1.5">✓ Need-state signals collected ({needStateContextText.length.toLocaleString()} chars)</p>
+              )}
+            </div>
+
+            {competitorFetchError && <p className="text-[10px] text-red-500">{competitorFetchError}</p>}
           </div>
         </div>
 

@@ -445,7 +445,16 @@ The hook_question must be answerable only with the brand's own data, never with 
 When the read surfaces a Premium Leakage Defence pattern above, the hook_question should target that specific tension rather than a generic purchase-path question — draw on whichever fits the evidence, for example: "Are you losing only price-only shoppers, or also shoppers who would pay more if the premium were clearer?"; "At the shelf, what makes the branded product worth choosing over a cheaper imported alternative?"; "Which stores, packs, or channels show the highest switching to cheaper alternatives?"; "Does premium justification at shelf improve full-price conversion?"; "Are cheaper alternatives resetting the price expectation for the category?"; "What share of shoppers who search or pick up the branded product end up buying a cheaper alternative instead?"; "Do official-store trust cues, warranty proof, ingredient proof, taste proof, safety proof, or authenticity proof improve conversion without discounting?" Do not reduce a premium-leakage case to "customers want cheap" — ask whether the brand is losing to price, or losing because its premium is no longer obvious at the moment of choice.
 
 SOURCE_PROVENANCE:
-For every material claim anywhere in this output, log it in source_provenance.claims with three separate tags, not one blended tag. source_type names where the claim actually came from — manual_public_source, public_proxy, campaign_intelligence_report (if this run was promoted from one), llm_research_output (your own research synthesis as the model), client_context (if any was given), strategist_inference, or client_data_required (a flag that this claim actually requires client data and should not be asserted as read). evidence_confidence uses the same five-value scale as everywhere else and describes how strong the backing is regardless of where it came from. report_claim_status only applies when source_type is campaign_intelligence_report — set it to not_report_derived for every other source_type, and use the four report-specific values only to classify how a claim inherited from that report should now be treated (kept as hypothesis, kept with its source cited, flagged for verification, or flagged to remove or rephrase before it reaches the rest of this output).
+For every material claim anywhere in this output, log it in source_provenance.claims with three separate tags, not one blended tag. source_type names where the claim actually came from — manual_public_source, public_proxy, campaign_intelligence_report (if this run was promoted from one), llm_research_output (your own research synthesis as the model), client_context (if any was given), strategist_inference, or client_data_required (a flag that this claim actually requires client data and should not be asserted as read). evidence_confidence uses the same five-value scale as everywhere else and describes how strong the backing is regardless of where it came from. report_claim_status only applies when source_type is campaign_intelligence_report — set it to not_report_derived for every other source_type, and use the four report-specific values only to classify how a claim inherited from that report should now be treated (kept as hypothesis, kept with its source cited, flagged for verification, or flagged to remove or rephrase before it reaches the rest of this output). Every claim object may also carry an optional subject tag — primary_brand, competitor, or category_or_need_state — naming which evidence block below the claim came from; omit it (or set it to primary_brand) for ordinary primary-brand claims, and use it only when competitor_decision_contrast is populated, so competitor and need-state claims stay distinguishable from primary-brand claims in the trail.
+
+COMPETITOR_DECISION_CONTRAST — CONDITIONAL, NOT A SECOND AUDIT:
+competitor_decision_contrast must be null unless the evidence below contains a section explicitly headed "=== COMPETITOR PUBLIC SIGNALS". Never populate this field from general knowledge about a named competitor when no such section is present in the evidence provided, and never invent or assume a competitor to compare against — the competitor must be the one named in that section's own heading.
+When that section IS present, this field answers one question only: how does the named competitor make the SAME consumer decision — the one already under diagnosis for the primary brand — easier or harder to complete, based on what is actually fetched. It is NOT a second Brand-Commerce audit: do not produce a second five_layer_read, a second evidence_confidence-rated layer set, or a second final_classification for the competitor. It is NOT a performance judgment: never write or imply "winner," "loser," "better brand," "superior product," "higher conversion," "captures more sales," "steals customers," "owns the market," "outperforms," or any switching or market-share claim, unless client or market data explicitly supplied in this request proves it — public signals alone never support these.
+primary_brand_decision_architecture and competitor_decision_architecture each read the same four cues from their own respective evidence section only — problem_cue (what consumer problem the brand's public content names or implies), proof_cue (what makes the brand's claim believable), product_selection_cue (what helps the consumer land on one specific product, not just the category), retail_survival (whether that same cue structure is still visible at the retail/marketplace listing, or only on the brand's own site). Any of the four may be null when the evidence genuinely does not show it — null is a valid, honest answer here exactly as it is elsewhere in this output, never force a value.
+OBSERVED VS INTERPRETATION — apply the identical discipline already governing hypothesis_tension (rule 12) to directly_evidenced and implication_for_primary_hypothesis: directly_evidenced states only what the fetched public content actually shows, in both the primary and competitor sections — a specific claim, a repeated ingredient/technology name, a specific proof point, a specific retail listing detail. implication_for_primary_hypothesis is the separate, explicitly-labeled interpretation of what that observed difference may mean for the primary brand's own hypothesis_tension/decision_implication above — phrase it as "may," "could," or "appears to," never as a settled fact. inferred_only carries any reasonable reading of the evidence that is not itself directly observed — for example, inferring that a clearer problem-to-product cue improves recall at the shelf; if no such inference is warranted beyond what is already directly_evidenced, set inferred_only to null rather than manufacturing one.
+GENERIC NEED-STATE EVIDENCE, if a "=== GENERIC NEED-STATE SIGNALS" section is also present, may inform problem_cue/proof_cue for either brand and may inform directly_evidenced/inferred_only, but it answers a narrower question than the brand-vs-brand contrast: what decision architecture appears when a consumer searches the underlying problem rather than either brand name. Never translate need-state visibility into a sales-capture, switching, or conversion claim — it is category/retrieval-structure context only.
+decision_shortcut_difference is one to two sentences stating the single clearest, evidence-backed difference in decision architecture between the two brands — not a list of every difference found, the one that most plausibly bears on the primary brand's own unresolved hypothesis.
+This field may inform Competitor Capture, hypothesis_tension, leakage_pattern reasoning, and decision_implication as additional context, but it must never automatically change final_classification — the existing evidence_confidence and FINAL_CLASSIFICATION situation-(A)/(B) rules remain fully controlling and are not superseded or overridden by anything in this field.
 
 Return ONLY valid JSON. No prose, no markdown, no explanation outside the JSON block.
 
@@ -547,6 +556,18 @@ JSON STRUCTURE:
 
   "client_data_required": ["<concrete data type 1>", "<concrete data type 2>", "<concrete data type 3>"],
 
+  "competitor_decision_contrast": null,
+  // Replace the null above with the object below ONLY if a "=== COMPETITOR PUBLIC SIGNALS" section is present in the evidence. Otherwise leave it exactly as null — do not omit the key, and do not populate it from general knowledge.
+  // {
+  //   "competitor_name": "<echo the competitor name from the evidence section heading>",
+  //   "primary_brand_decision_architecture": { "problem_cue": "<string or null>", "proof_cue": "<string or null>", "product_selection_cue": "<string or null>", "retail_survival": "<string or null>" },
+  //   "competitor_decision_architecture": { "problem_cue": "<string or null>", "proof_cue": "<string or null>", "product_selection_cue": "<string or null>", "retail_survival": "<string or null>" },
+  //   "decision_shortcut_difference": "<1-2 sentences — the single clearest evidenced difference in decision architecture>",
+  //   "directly_evidenced": "<what the fetched public content actually shows, for both brands>",
+  //   "inferred_only": "<a reasonable reading beyond what is directly evidenced, or null>",
+  //   "implication_for_primary_hypothesis": "<how this may bear on the primary brand's own hypothesis_tension/decision_implication above — 'may'/'could'/'appears to' language only>"
+  // }
+
   "recommended_first_conversation": {
     "hook_question": "<answerable only with the prospect's own data>",
     "curiosity_gap": "<what we can see publicly, and what we deliberately cannot tell them without their data>"
@@ -590,6 +611,17 @@ export async function POST(req: NextRequest) {
       // Brand-Commerce frame — this is the intake toggle for that case. See
       // getGeneralSystemPrompt vs getBrandCommerceSystemPrompt above.
       read_mode?: "brand_commerce" | "general";
+      // Phase 1.5 — Competitor Decision Contrast. All three optional and
+      // additive. When competitor_name is absent, none of this is used and
+      // context_text is processed exactly as before (see evidenceBlock below)
+      // — this is what keeps a no-competitor audit byte-for-byte unchanged.
+      // competitor_context_text and need_state_context_text are built
+      // client-side from separate, bounded /api/audit-fetch calls (never
+      // merged into context_text) so the server never has to guess where
+      // primary evidence ends and competitor evidence begins.
+      competitor_name?: string;
+      competitor_context_text?: string;
+      need_state_context_text?: string;
     };
 
     const {
@@ -605,6 +637,9 @@ export async function POST(req: NextRequest) {
       budget_range,
       context_text,
       read_mode = "brand_commerce",
+      competitor_name,
+      competitor_context_text,
+      need_state_context_text,
     } = body;
 
     // Primary is index 0 — the AI's single campaign_phase/effectiveness read
@@ -658,6 +693,26 @@ Your task: Using the above as your foundation, deliver ${read_mode === "general"
 `
       : "";
 
+    // Phase 1.5 — Competitor Decision Contrast evidence partitioning.
+    // hasCompetitor is the single gate: when false, evidenceBlock is built
+    // EXACTLY as before this change (same cap, no headers, no branching) —
+    // this is what guarantees a no-competitor audit is byte-for-byte
+    // unchanged. When true, primary evidence gets a protected floor (6000
+    // chars) that competitor/need-state content can never displace, each
+    // section capped independently rather than sharing one truncation pool.
+    const hasCompetitor = Boolean(competitor_name && competitor_name.trim());
+    const evidenceBlock = hasCompetitor
+      ? [
+          `=== PRIMARY BRAND PUBLIC SIGNALS ===\n\n${context_text.slice(0, 6000)}`,
+          competitor_context_text?.trim()
+            ? `=== COMPETITOR PUBLIC SIGNALS: ${competitor_name!.trim()} ===\n\n${competitor_context_text.slice(0, 2500)}`
+            : null,
+          need_state_context_text?.trim()
+            ? `=== GENERIC NEED-STATE SIGNALS ===\n\n${need_state_context_text.slice(0, 1000)}`
+            : null,
+        ].filter(Boolean).join("\n\n")
+      : context_text.slice(0, signal_intelligence ? 5000 : 8000);
+
     const userPrompt = `CAMPAIGN INTELLIGENCE PREVIEW REQUEST
 
 Brand: ${brand_name}
@@ -670,7 +725,7 @@ Active Channels: ${channels.length > 0 ? channels.join(", ") : "Not specified"}
 Approximate Media Budget: ${budget_range || "Not disclosed"}
 ${signalBlock}
 PUBLIC SIGNAL DATA COLLECTED:
-${context_text.slice(0, signal_intelligence ? 5000 : 8000)}
+${evidenceBlock}
 
 ${campaign_phases.length > 1 || business_objectives.length > 1 ? `More than one campaign phase and/or business objective was flagged. Anchor your single "campaign_phase" output and overall diagnosis to the PRIMARY (first-listed) phase and objective — do not average or blend them into a muddled read. Then use "priority_context_note" to note, in plain business language, how the secondary phase(s)/objective(s) show up (or fail to show up) in the evidence you observed, without producing a second competing diagnosis.` : ""}
 ${read_mode === "general"
