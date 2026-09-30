@@ -33,19 +33,27 @@ import {
   addBrandCommerceDiagnosticSource,
   removeBrandCommerceDiagnosticSource,
   markBrandCommerceDiagnosticReviewed,
+  updateBrandCommerceDiagnosticReview,
+  updateBrandCommerceDiagnosticOutcome,
 } from "@/lib/actions";
 import type {
   BrandCommerceClassification,
   BrandCommerceDiagnostic,
   BrandCommerceDiagnosticSource,
   BrandCommerceDiagnosticSourceType,
+  BrandCommerceValidationStatus,
 } from "@/lib/types";
 import {
   BRAND_COMMERCE_CLASSIFICATION_LABELS,
   BRAND_COMMERCE_DIAGNOSTIC_SOURCE_TYPE_LABELS,
+  BRAND_COMMERCE_VALIDATION_STATUS_LABELS,
 } from "@/lib/types";
 import type { StrategicBasisSource } from "@/lib/types";
 import { Badge, Card, SectionTitle, buttonClass, buttonSecondaryClass, inputClass, labelClass } from "@/app/_components/ui";
+
+const VALIDATION_STATUS_OPTIONS: { value: BrandCommerceValidationStatus; label: string }[] = (
+  Object.keys(BRAND_COMMERCE_VALIDATION_STATUS_LABELS) as BrandCommerceValidationStatus[]
+).map((v) => ({ value: v, label: BRAND_COMMERCE_VALIDATION_STATUS_LABELS[v] }));
 
 const EVIDENCE_CONFIDENCE_OPTIONS: { value: "direct_evidence" | "inference" | "insufficient_evidence"; label: string }[] = [
   { value: "direct_evidence", label: "Direct evidence" },
@@ -310,6 +318,281 @@ function AddSourceForm({
   );
 }
 
+// ─── Phase 2 client-stage bridge (migration 0104) ──────────────────────────
+//
+// Only rendered for diagnostics created via "Promote to Client Diagnostic"
+// on /audit/[id] (i.e. source_audit_id is set). A diagnostic written the
+// old way (no source_audit_id) has none of these fields and shows none of
+// this UI — this is purely additive.
+//
+// Section 1: read-only prospect starting hypothesis (prospect_hypothesis_
+// snapshot, written once at promotion, never edited here).
+// Section 2/3: strategist-reviewed decision/intervention + test fields,
+// editable via updateBrandCommerceDiagnosticReview while reviewed_at is
+// null, frozen (read-only) once reviewed_at is set.
+// Section 4: validation/outcome capture, via updateBrandCommerceDiagnostic
+// Outcome — always editable regardless of review state, since outcome
+// capture is a distinct, later stage.
+
+function ClientStageBridgeSection1({ diagnostic }: { diagnostic: BrandCommerceDiagnostic }) {
+  const snap = diagnostic.prospect_hypothesis_snapshot;
+  if (!snap) return null;
+  return (
+    <div className="pt-3 border-t border-neutral-100 space-y-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <p className="text-[10px] font-medium text-neutral-400 uppercase tracking-wide">
+          Prospect starting hypothesis
+        </p>
+        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 uppercase tracking-wide">
+          AI-generated prospect hypothesis — not client-approved
+        </span>
+      </div>
+      <p className="text-[10px] text-neutral-400">
+        Source audit: <span className="font-mono">{diagnostic.source_audit_id}</span>
+        {" · "}Original classification: {BRAND_COMMERCE_CLASSIFICATION_LABELS[snap.final_classification as BrandCommerceClassification] ?? snap.final_classification}
+      </p>
+      <div>
+        <p className="text-[10px] font-medium text-neutral-400 mb-0.5">Hypothesis tension</p>
+        <p className="text-xs text-neutral-700 leading-relaxed whitespace-pre-wrap">
+          Supports: {snap.hypothesis_tension.supports}
+        </p>
+        {snap.hypothesis_tension.complicates && (
+          <p className="text-xs text-neutral-700 leading-relaxed whitespace-pre-wrap">
+            Complicates: {snap.hypothesis_tension.complicates}
+          </p>
+        )}
+      </div>
+      <div>
+        <p className="text-[10px] font-medium text-neutral-400 mb-0.5">Original decision implication</p>
+        <p className="text-xs text-neutral-700 leading-relaxed whitespace-pre-wrap">{snap.decision_implication}</p>
+      </div>
+      <div>
+        <p className="text-[10px] font-medium text-neutral-400 mb-0.5">Original recommended intervention</p>
+        <p className="text-xs text-neutral-700 leading-relaxed whitespace-pre-wrap">
+          {snap.recommended_commercial_intervention.primary_intervention.target}: {snap.recommended_commercial_intervention.primary_intervention.action}
+        </p>
+        {snap.recommended_commercial_intervention.supporting_interventions.length > 0 && (
+          <ul className="list-disc list-inside text-xs text-neutral-600 mt-1">
+            {snap.recommended_commercial_intervention.supporting_interventions.map((s, i) => (
+              <li key={i}>{s.target}: {s.action}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <div>
+        <p className="text-[10px] font-medium text-neutral-400 mb-0.5">Original first commercial test</p>
+        <p className="text-xs text-neutral-700 leading-relaxed whitespace-pre-wrap">
+          {snap.first_commercial_test.test} — evidence required: {snap.first_commercial_test.evidence_required}
+        </p>
+      </div>
+      {!!snap.competitor_decision_contrast && (
+        <div>
+          <p className="text-[10px] font-medium text-neutral-400 mb-0.5">Competitor decision contrast (from prospect read)</p>
+          <p className="text-xs text-neutral-500 italic">Present on the source audit — see /audit/{diagnostic.source_audit_id} for full detail.</p>
+        </div>
+      )}
+      {snap.client_data_required.length > 0 && (
+        <div>
+          <p className="text-[10px] font-medium text-neutral-400 mb-0.5">Client data required (from prospect read)</p>
+          <ul className="list-disc list-inside text-xs text-neutral-600">
+            {snap.client_data_required.map((c, i) => <li key={i}>{c}</li>)}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ClientStageBridgeSections23({
+  campaignId,
+  diagnostic,
+  onSaved,
+}: {
+  campaignId: string;
+  diagnostic: BrandCommerceDiagnostic;
+  onSaved: (patch: Partial<BrandCommerceDiagnostic>) => void;
+}) {
+  const frozen = !!diagnostic.reviewed_at;
+  const [decisionImplication, setDecisionImplication] = useState(diagnostic.reviewed_decision_implication ?? "");
+  const [intervention, setIntervention] = useState(diagnostic.reviewed_intervention ?? "");
+  const [testHypothesis, setTestHypothesis] = useState(diagnostic.reviewed_test_hypothesis ?? "");
+  const [testPlan, setTestPlan] = useState(diagnostic.reviewed_test_plan ?? "");
+  const [testEvidenceRequired, setTestEvidenceRequired] = useState(diagnostic.reviewed_test_evidence_required ?? "");
+  const [testSuccessSignal, setTestSuccessSignal] = useState(diagnostic.reviewed_test_success_signal ?? "");
+  const [testFailureSignal, setTestFailureSignal] = useState(diagnostic.reviewed_test_failure_signal ?? "");
+  const [testDecisionRule, setTestDecisionRule] = useState(diagnostic.reviewed_test_decision_rule ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  function handleSave() {
+    setError(null);
+    setSaved(false);
+    const patch = {
+      reviewed_decision_implication: decisionImplication || null,
+      reviewed_intervention: intervention || null,
+      reviewed_test_hypothesis: testHypothesis || null,
+      reviewed_test_plan: testPlan || null,
+      reviewed_test_evidence_required: testEvidenceRequired || null,
+      reviewed_test_success_signal: testSuccessSignal || null,
+      reviewed_test_failure_signal: testFailureSignal || null,
+      reviewed_test_decision_rule: testDecisionRule || null,
+    };
+    startTransition(async () => {
+      try {
+        await updateBrandCommerceDiagnosticReview(campaignId, diagnostic.id, patch);
+        onSaved(patch);
+        setSaved(true);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not save.");
+      }
+    });
+  }
+
+  return (
+    <div className="pt-3 border-t border-neutral-100 space-y-3">
+      <p className="text-[10px] font-medium text-neutral-400 uppercase tracking-wide">
+        Strategist-reviewed decision, intervention &amp; test
+        {frozen && <span className="ml-1.5 text-emerald-700 normal-case">— reviewed, frozen</span>}
+      </p>
+
+      <div>
+        <label className={labelClass}>Reviewed decision implication</label>
+        <textarea
+          className={inputClass}
+          rows={2}
+          value={decisionImplication}
+          disabled={frozen}
+          onChange={(e) => setDecisionImplication(e.target.value)}
+        />
+      </div>
+      <div>
+        <label className={labelClass}>Reviewed intervention</label>
+        <textarea
+          className={inputClass}
+          rows={2}
+          value={intervention}
+          disabled={frozen}
+          onChange={(e) => setIntervention(e.target.value)}
+        />
+      </div>
+      <div>
+        <label className={labelClass}>Reviewed test hypothesis</label>
+        <textarea className={inputClass} rows={2} value={testHypothesis} disabled={frozen} onChange={(e) => setTestHypothesis(e.target.value)} />
+      </div>
+      <div>
+        <label className={labelClass}>Reviewed test plan</label>
+        <textarea className={inputClass} rows={2} value={testPlan} disabled={frozen} onChange={(e) => setTestPlan(e.target.value)} />
+      </div>
+      <div>
+        <label className={labelClass}>Reviewed test evidence required</label>
+        <textarea className={inputClass} rows={2} value={testEvidenceRequired} disabled={frozen} onChange={(e) => setTestEvidenceRequired(e.target.value)} />
+      </div>
+      <div>
+        <label className={labelClass}>Reviewed test success signal</label>
+        <textarea className={inputClass} rows={2} value={testSuccessSignal} disabled={frozen} onChange={(e) => setTestSuccessSignal(e.target.value)} />
+      </div>
+      <div>
+        <label className={labelClass}>Reviewed test failure signal</label>
+        <textarea className={inputClass} rows={2} value={testFailureSignal} disabled={frozen} onChange={(e) => setTestFailureSignal(e.target.value)} />
+      </div>
+      <div>
+        <label className={labelClass}>Reviewed test decision rule</label>
+        <textarea className={inputClass} rows={2} value={testDecisionRule} disabled={frozen} onChange={(e) => setTestDecisionRule(e.target.value)} />
+      </div>
+
+      {!frozen && (
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={handleSave} disabled={pending} className={buttonSecondaryClass}>
+            {pending ? "Saving…" : "Save review"}
+          </button>
+          {saved && <span className="text-xs text-emerald-700">Saved.</span>}
+        </div>
+      )}
+      {error && <p className="text-xs text-red-600">{error}</p>}
+    </div>
+  );
+}
+
+function ClientStageBridgeSection4({
+  campaignId,
+  diagnostic,
+  onSaved,
+}: {
+  campaignId: string;
+  diagnostic: BrandCommerceDiagnostic;
+  onSaved: (patch: Partial<BrandCommerceDiagnostic>) => void;
+}) {
+  const [validationStatus, setValidationStatus] = useState(diagnostic.validation_status ?? "");
+  const [outcomeSummary, setOutcomeSummary] = useState(diagnostic.outcome_summary ?? "");
+  const [outcomeEvidence, setOutcomeEvidence] = useState(diagnostic.outcome_evidence ?? "");
+  const [nextDecision, setNextDecision] = useState(diagnostic.next_decision ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  function handleSave() {
+    setError(null);
+    setSaved(false);
+    const patch = {
+      validation_status: (validationStatus || null) as BrandCommerceValidationStatus | null,
+      outcome_summary: outcomeSummary || null,
+      outcome_evidence: outcomeEvidence || null,
+      next_decision: nextDecision || null,
+    };
+    startTransition(async () => {
+      try {
+        await updateBrandCommerceDiagnosticOutcome(campaignId, diagnostic.id, patch);
+        onSaved({ ...patch, outcome_captured_at: new Date().toISOString() });
+        setSaved(true);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not save outcome.");
+      }
+    });
+  }
+
+  return (
+    <div className="pt-3 border-t border-neutral-100 space-y-3">
+      <p className="text-[10px] font-medium text-neutral-400 uppercase tracking-wide">Validation outcome &amp; next decision</p>
+
+      <div>
+        <label className={labelClass}>Validation status</label>
+        <select className={inputClass} value={validationStatus} onChange={(e) => setValidationStatus(e.target.value)}>
+          <option value="">Not set</option>
+          {VALIDATION_STATUS_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className={labelClass}>Outcome summary</label>
+        <textarea className={inputClass} rows={2} value={outcomeSummary} onChange={(e) => setOutcomeSummary(e.target.value)} />
+      </div>
+      <div>
+        <label className={labelClass}>Outcome evidence</label>
+        <textarea className={inputClass} rows={2} value={outcomeEvidence} onChange={(e) => setOutcomeEvidence(e.target.value)} />
+      </div>
+      <div>
+        <label className={labelClass}>Next decision</label>
+        <textarea className={inputClass} rows={2} value={nextDecision} onChange={(e) => setNextDecision(e.target.value)} />
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={handleSave} disabled={pending} className={buttonSecondaryClass}>
+          {pending ? "Saving…" : "Save outcome"}
+        </button>
+        {saved && <span className="text-xs text-emerald-700">Saved.</span>}
+        {diagnostic.outcome_captured_at && (
+          <span className="text-[10px] text-neutral-400" suppressHydrationWarning>
+            Last captured {new Date(diagnostic.outcome_captured_at).toLocaleDateString()}
+          </span>
+        )}
+      </div>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+    </div>
+  );
+}
+
 function DiagnosticCard({
   campaignId,
   diagnostic,
@@ -320,6 +603,7 @@ function DiagnosticCard({
   onSourceAdded,
   onSourceRemoved,
   onReviewed,
+  onBridgeUpdate,
 }: {
   campaignId: string;
   diagnostic: BrandCommerceDiagnostic;
@@ -330,6 +614,7 @@ function DiagnosticCard({
   onSourceAdded: (s: BrandCommerceDiagnosticSource) => void;
   onSourceRemoved: (id: string) => void;
   onReviewed: () => void;
+  onBridgeUpdate: (patch: Partial<BrandCommerceDiagnostic>) => void;
 }) {
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [reviewPending, startReviewTransition] = useTransition();
@@ -424,6 +709,14 @@ function DiagnosticCard({
         )}
       </div>
       {reviewError && <p className="text-xs text-red-600">{reviewError}</p>}
+
+      {diagnostic.source_audit_id && (
+        <>
+          <ClientStageBridgeSection1 diagnostic={diagnostic} />
+          <ClientStageBridgeSections23 campaignId={campaignId} diagnostic={diagnostic} onSaved={onBridgeUpdate} />
+          <ClientStageBridgeSection4 campaignId={campaignId} diagnostic={diagnostic} onSaved={onBridgeUpdate} />
+        </>
+      )}
 
       <div className="pt-2 border-t border-neutral-100 space-y-2">
         <p className="text-[10px] font-medium text-neutral-400 uppercase tracking-wide">Evidence sources</p>
@@ -612,6 +905,11 @@ export function BrandCommerceDiagnosticSection({
             onReviewed={() =>
               setDiagnostics((prev) =>
                 prev.map((d) => (d.id === latest.id ? { ...d, reviewed_at: new Date().toISOString() } : d))
+              )
+            }
+            onBridgeUpdate={(patch) =>
+              setDiagnostics((prev) =>
+                prev.map((d) => (d.id === latest.id ? { ...d, ...patch } : d))
               )
             }
           />

@@ -14,7 +14,9 @@
 
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getCampaignsOverview } from "@/lib/data";
 import { DownloadButton } from "../_components/DownloadButton";
+import { PromoteToClientDiagnostic, type CampaignPickerOption } from "../_components/PromoteToClientDiagnostic";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -534,7 +536,13 @@ function icsBandBadge(band: string) {
   return "bg-slate-100 border-slate-200 text-slate-500";
 }
 
-function ProspectPreviewReportView({ audit }: { audit: QuickAuditProspectPreview }) {
+function ProspectPreviewReportView({
+  audit,
+  campaignOptions,
+}: {
+  audit: QuickAuditProspectPreview;
+  campaignOptions: CampaignPickerOption[];
+}) {
   const a = audit;
   const r = audit.result;
   const generatedDate = new Date(a.created_at).toLocaleDateString("en-MY", {
@@ -565,6 +573,7 @@ function ProspectPreviewReportView({ audit }: { audit: QuickAuditProspectPreview
               Rerun this audit
             </a>
             <DownloadButton brandName={a.brand_name} contentId="audit-report-content" />
+            <PromoteToClientDiagnostic auditId={a.id} campaignOptions={campaignOptions} />
           </div>
         </div>
       </div>
@@ -976,7 +985,15 @@ export default async function AuditReportPage({ params }: { params: Promise<{ id
       result: sanitise(raw.result as unknown as ProspectPreviewResult),
       created_at: raw.created_at,
     };
-    return <ProspectPreviewReportView audit={prospectAudit} />;
+    // Phase 2 bridge: campaign list for the "Promote to Client Diagnostic"
+    // selector. Internal-only — this page has no login wall, but the
+    // selector itself does not expose any client data, only campaign names.
+    const campaignsOverview = await getCampaignsOverview();
+    const campaignOptions: CampaignPickerOption[] = campaignsOverview.map((c) => ({
+      id: c.id,
+      label: `${c.client_name} — ${c.name}`,
+    }));
+    return <ProspectPreviewReportView audit={prospectAudit} campaignOptions={campaignOptions} />;
   }
 
   const a = raw as unknown as QuickAudit;

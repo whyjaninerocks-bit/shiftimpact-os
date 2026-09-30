@@ -1178,6 +1178,49 @@ export type CampaignSignalMapWithContext = CampaignSignalMap & {
 // writes a new diagnostic rather than editing an old one. evidence_confidence
 // reuses SynthesisEvidenceQuality verbatim, same vocabulary already live in
 // Strategic Synthesis and Creative Format Read.
+// Phase 2 — client-stage bridge (migration 0104). Immutable snapshot of the
+// four Phase 1 prospect fields plus competitor_decision_contrast and
+// client_data_required, taken once at promotion time. Never the full
+// prospect_preview result — only the fields that matter for the bridge.
+// Field shapes deliberately loose (not the full app/api/audit-analyze
+// schema) so this type doesn't need to track that route's internals; the
+// snapshot is stored/read as opaque JSON everywhere except the one render
+// site, which narrows as needed.
+export type ProspectHypothesisSnapshot = {
+  final_classification: string;
+  hypothesis_tension: { supports: string; complicates: string | null };
+  decision_implication: string;
+  recommended_commercial_intervention: {
+    primary_intervention: { target: string; action: string; evidence_basis: string };
+    supporting_interventions: { target: string; action: string }[];
+  };
+  first_commercial_test: {
+    hypothesis: string;
+    test: string;
+    evidence_required: string;
+    success_signal: string;
+    failure_signal: string;
+    decision_rule: string;
+  };
+  competitor_decision_contrast: unknown | null;
+  client_data_required: string[];
+};
+
+export type BrandCommerceValidationStatus =
+  | "not_tested"
+  | "supported"
+  | "partially_supported"
+  | "not_supported"
+  | "inconclusive";
+
+export const BRAND_COMMERCE_VALIDATION_STATUS_LABELS: Record<BrandCommerceValidationStatus, string> = {
+  not_tested: "Not Tested",
+  supported: "Supported",
+  partially_supported: "Partially Supported",
+  not_supported: "Not Supported",
+  inconclusive: "Inconclusive",
+};
+
 export type BrandCommerceDiagnostic = {
   id: string;
   campaign_id: string;
@@ -1194,6 +1237,25 @@ export type BrandCommerceDiagnostic = {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  // Phase 2 — client-stage bridge (migration 0104). All nullable/additive.
+  // source_audit_id is a soft reference to quick_audits.id — no FK, see
+  // migration 0104 header comment. prospect_hypothesis_snapshot is written
+  // once, only by promoteProspectAuditToDiagnostic, and never touched again.
+  source_audit_id: string | null;
+  prospect_hypothesis_snapshot: ProspectHypothesisSnapshot | null;
+  reviewed_decision_implication: string | null;
+  reviewed_intervention: string | null;
+  reviewed_test_hypothesis: string | null;
+  reviewed_test_plan: string | null;
+  reviewed_test_evidence_required: string | null;
+  reviewed_test_success_signal: string | null;
+  reviewed_test_failure_signal: string | null;
+  reviewed_test_decision_rule: string | null;
+  validation_status: BrandCommerceValidationStatus | null;
+  outcome_summary: string | null;
+  outcome_evidence: string | null;
+  next_decision: string | null;
+  outcome_captured_at: string | null;
 };
 
 export type BrandCommerceDiagnosticSourceType =

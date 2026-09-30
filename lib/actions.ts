@@ -28,6 +28,8 @@ import type {
   BrandCommerceDiagnosticSource,
   BrandCommerceDiagnosticSourceType,
   SynthesisEvidenceQuality,
+  ProspectHypothesisSnapshot,
+  BrandCommerceValidationStatus,
 } from "@/lib/types";
 
 const BRAND_COMMERCE_CLASSIFICATION_VALUES: BrandCommerceClassification[] = [
@@ -2756,6 +2758,269 @@ export async function markBrandCommerceDiagnosticReviewed(
   const { error } = await supabase
     .from("brand_commerce_diagnostic")
     .update({ reviewed_by: reviewedBy ?? null, reviewed_at: new Date().toISOString() })
+    .eq("id", diagnosticId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/campaigns/${campaignId}`);
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Phase 2 — Brand-Commerce client-stage bridge (migration 0104).
+// PROSPECT AI READ → PROSPECT HYPOTHESIS SNAPSHOT → STRATEGIST REVIEW →
+// REVIEWED DECISION/INTERVENTION/TEST → CLIENT/CAMPAIGN EVIDENCE →
+// VALIDATION STATUS → OUTCOME SUMMARY → NEXT DECISION.
+//
+// Same no-session-gate posture as the diagnostic actions above, for the
+// same reason (campaign page has no login wall in v1) — campaign_id /
+// row-ownership checks are the real access check here too.
+//
+// Governance: prospect_hypothesis_snapshot is written exactly once, only
+// by promoteProspectAuditToDiagnostic, and no other action here ever
+// updates that column — that is the entire immutability mechanism (there
+// is no database-level lock on it, matching how classification_rationale
+// etc. have "never editable after insert" enforced purely by which actions
+// exist, not a trigger). updateBrandCommerceDiagnosticReview refuses to
+// write once reviewed_at is set — the reviewed record is frozen; a
+// materially changed strategist read after review must become a NEW
+// diagnostic (via createBrandCommerceDiagnostic or another promotion),
+// never an edit to this one. updateBrandCommerceDiagnosticOutcome is NOT
+// subject to that freeze — validation/outcome capture is a later stage of
+// the same record that, by definition, only happens after a test has
+// actually run, which is after review; blocking it post-review would make
+// outcome capture impossible.
+// ───────────────────────────────────────────────────────────────────────
+
+export type PromoteProspectAuditInput = {
+  audit_id: string;
+  campaign_id: string;
+  created_by?: string | null;
+};
+
+export async function promoteProspectAuditToDiagnostic(
+  input: PromoteProspectAuditInput
+): Promise<BrandCommerceDiagnostic> {
+  const supabase = createAdminClient();
+
+  // Duplicate-promotion guard, application-level pre-check for a clear
+  // error message — the real guard is the partial unique index added in
+  // migration 0104 (campaign_id, source_audit_id) WHERE source_audit_id IS
+  // NOT NULL, so this stays correct even under a race.
+  const { data: existing } = await supabase
+    .from("brand_commerce_diagnostic")
+    .select("id")
+    .eq("campaign_id", input.campaign_id)
+    .eq("source_audit_id", input.audit_id)
+    .maybeSingle();
+  if (existing) {
+    throw new Error("This prospect audit has already been promoted to a diagnostic for this campaign.");
+  }
+
+  const { data: auditRow, error: auditErr } = await supabase
+    .from("quick_audits")
+    .select("id, brand_name, result")
+    .eq("id", input.audit_id)
+    .maybeSingle();
+  if (auditErr) throw new Error(auditErr.message);
+  if (!auditRow) throw new Error("Prospect audit not found.");
+
+  const result = (auditRow as { result: Record<string, unknown> }).result;
+  if (!result || result.stage_marker !== "prospect_preview") {
+    throw new Error(
+      "This audit is not a Phase 1 Brand-Commerce prospect read — nothing to promote."
+    );
+  }
+
+  // Only the fields the bridge actually needs — never the full result blob
+  // (no five_layer_read/sales_quality_read/source_provenance/etc. copied
+  // in here; those stay on quick_audits, reachable only via source_audit_id
+  // if a strategist genuinely needs to go look at the original read).
+  const snapshot: ProspectHypothesisSnapshot = {
+    final_classification: (result.final_classification as string) ?? "",
+    hypothesis_tension: (result.hypothesis_tension as ProspectHypothesisSnapshot["hypothesis_tension"]) ?? {
+      supports: "",
+      complicates: null,
+    },
+    decision_implication: (result.decision_implication as string) ?? "",
+    recommended_commercial_intervention:
+      (result.recommended_commercial_intervention as ProspectHypothesisSnapshot["recommended_commercial_intervention"]) ?? {
+        primary_intervention: { target: "", action: "", evidence_basis: "" },
+        supporting_interventions: [],
+      },
+    first_commercial_test: (result.first_commercial_test as ProspectHypothesisSnapshot["first_commercial_test"]) ?? {
+      hypothesis: "",
+      test: "",
+      evidence_required: "",
+      success_signal: "",
+      failure_signal: "",
+      decision_rule: "",
+    },
+    competitor_decision_contrast: (result.competitor_decision_contrast as unknown) ?? null,
+    client_data_required: (result.client_data_required as string[]) ?? [],
+  };
+
+  // classification_at_diagnosis snapshots the LIVE campaign_signal_map
+  // classification, exactly like createBrandCommerceDiagnostic above —
+  // never the prospect's own final_classification. The prospect read is a
+  // starting hypothesis, not an authoritative classification; the two
+  // stay visibly separate (snapshot.final_classification vs this field).
+  const { data: signalMap } = await supabase
+    .from("campaign_signal_maps")
+    .select("id, classification")
+    .eq("campaign_id", input.campaign_id)
+    .eq("is_active", true)
+    .maybeSingle();
+  const map = signalMap as { id: string; classification: BrandCommerceClassification | null } | null;
+
+  const primary = snapshot.recommended_commercial_intervention.primary_intervention;
+  const test = snapshot.first_commercial_test;
+
+  const { data: inserted, error } = await supabase
+    .from("brand_commerce_diagnostic")
+    .insert({
+      campaign_id: input.campaign_id,
+      campaign_signal_map_id: map?.id ?? null,
+      classification_at_diagnosis: map?.classification ?? null,
+      classification_rationale:
+        "Promoted from a prospect Brand-Commerce audit — see the AI-generated prospect hypothesis below. " +
+        "A strategist has not yet written an independent classification rationale for this campaign.",
+      evidence_confidence: null,
+      created_by: input.created_by ?? null,
+      source_audit_id: input.audit_id,
+      prospect_hypothesis_snapshot: snapshot,
+      // Prefilled only — editable, unreviewed. PREFILL ≠ REVIEW ≠ APPROVAL.
+      reviewed_decision_implication: snapshot.decision_implication || null,
+      reviewed_intervention: primary.action
+        ? `${primary.target ? `${primary.target}: ` : ""}${primary.action}`
+        : null,
+      reviewed_test_hypothesis: test.hypothesis || null,
+      reviewed_test_plan: test.test || null,
+      reviewed_test_evidence_required: test.evidence_required || null,
+      reviewed_test_success_signal: test.success_signal || null,
+      reviewed_test_failure_signal: test.failure_signal || null,
+      reviewed_test_decision_rule: test.decision_rule || null,
+      // reviewed_by / reviewed_at / validation_status / outcome_* all stay
+      // null — this row is not reviewed, not tested, and has no outcome yet.
+    })
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/campaigns/${input.campaign_id}`);
+  revalidatePath(`/audit/${input.audit_id}`);
+  return inserted as BrandCommerceDiagnostic;
+}
+
+export type UpdateBrandCommerceDiagnosticReviewInput = {
+  reviewed_decision_implication?: string | null;
+  reviewed_intervention?: string | null;
+  reviewed_test_hypothesis?: string | null;
+  reviewed_test_plan?: string | null;
+  reviewed_test_evidence_required?: string | null;
+  reviewed_test_success_signal?: string | null;
+  reviewed_test_failure_signal?: string | null;
+  reviewed_test_decision_rule?: string | null;
+};
+
+/**
+ * Edits the strategist-owned decision/intervention/test fields. Refuses to
+ * write once reviewed_at is set on this diagnostic — the reviewed record
+ * is frozen (see file-section comment above). Callers should call this
+ * BEFORE markBrandCommerceDiagnosticReviewed, not after.
+ */
+export async function updateBrandCommerceDiagnosticReview(
+  campaignId: string,
+  diagnosticId: string,
+  input: UpdateBrandCommerceDiagnosticReviewInput
+): Promise<void> {
+  const supabase = createAdminClient();
+
+  const { data: existing, error: fetchError } = await supabase
+    .from("brand_commerce_diagnostic")
+    .select("id, campaign_id, reviewed_at")
+    .eq("id", diagnosticId)
+    .maybeSingle();
+  if (fetchError) throw new Error(fetchError.message);
+  if (!existing) throw new Error("Diagnostic not found.");
+  const row = existing as { campaign_id: string; reviewed_at: string | null };
+  if (row.campaign_id !== campaignId) {
+    throw new Error("This diagnostic does not belong to the specified campaign.");
+  }
+  if (row.reviewed_at) {
+    throw new Error(
+      "This diagnostic has already been reviewed and is frozen. Write a new diagnostic if the strategist's interpretation has materially changed."
+    );
+  }
+
+  const { error } = await supabase
+    .from("brand_commerce_diagnostic")
+    .update({
+      reviewed_decision_implication: input.reviewed_decision_implication?.trim() || null,
+      reviewed_intervention: input.reviewed_intervention?.trim() || null,
+      reviewed_test_hypothesis: input.reviewed_test_hypothesis?.trim() || null,
+      reviewed_test_plan: input.reviewed_test_plan?.trim() || null,
+      reviewed_test_evidence_required: input.reviewed_test_evidence_required?.trim() || null,
+      reviewed_test_success_signal: input.reviewed_test_success_signal?.trim() || null,
+      reviewed_test_failure_signal: input.reviewed_test_failure_signal?.trim() || null,
+      reviewed_test_decision_rule: input.reviewed_test_decision_rule?.trim() || null,
+    })
+    .eq("id", diagnosticId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/campaigns/${campaignId}`);
+}
+
+export type UpdateBrandCommerceDiagnosticOutcomeInput = {
+  validation_status?: BrandCommerceValidationStatus | null;
+  outcome_summary?: string | null;
+  outcome_evidence?: string | null;
+  next_decision?: string | null;
+};
+
+const VALIDATION_STATUS_VALUES: BrandCommerceValidationStatus[] = [
+  "not_tested",
+  "supported",
+  "partially_supported",
+  "not_supported",
+  "inconclusive",
+];
+
+/**
+ * Captures the validation/outcome stage — always available, not gated by
+ * reviewed_at, since a test can only be run and its outcome captured AFTER
+ * a diagnostic has been reviewed. This is a distinct later stage of the
+ * same record, not a re-edit of the reviewed decision/test content.
+ */
+export async function updateBrandCommerceDiagnosticOutcome(
+  campaignId: string,
+  diagnosticId: string,
+  input: UpdateBrandCommerceDiagnosticOutcomeInput
+): Promise<void> {
+  if (input.validation_status && !VALIDATION_STATUS_VALUES.includes(input.validation_status)) {
+    throw new Error(`Invalid validation_status: ${input.validation_status}`);
+  }
+
+  const supabase = createAdminClient();
+
+  const { data: existing, error: fetchError } = await supabase
+    .from("brand_commerce_diagnostic")
+    .select("id, campaign_id")
+    .eq("id", diagnosticId)
+    .maybeSingle();
+  if (fetchError) throw new Error(fetchError.message);
+  if (!existing) throw new Error("Diagnostic not found.");
+  if ((existing as { campaign_id: string }).campaign_id !== campaignId) {
+    throw new Error("This diagnostic does not belong to the specified campaign.");
+  }
+
+  const { error } = await supabase
+    .from("brand_commerce_diagnostic")
+    .update({
+      validation_status: input.validation_status ?? null,
+      outcome_summary: input.outcome_summary?.trim() || null,
+      outcome_evidence: input.outcome_evidence?.trim() || null,
+      next_decision: input.next_decision?.trim() || null,
+      outcome_captured_at: new Date().toISOString(),
+    })
     .eq("id", diagnosticId);
   if (error) throw new Error(error.message);
 
