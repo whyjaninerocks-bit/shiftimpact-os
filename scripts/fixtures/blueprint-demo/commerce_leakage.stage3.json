@@ -1,0 +1,113 @@
+{
+  "test": {
+    "role": "resolve",
+    "design": "matched_comparison",
+    "design_rationale": "Randomising visitors within a page is not available: the client can change page content only on a bounded set of SKUs and can nominate a matched set of untreated SKUs with similar traffic and price band, and only indexed or aggregated figures will be shared. A matched comparison is the strongest design these constraints allow; it carries medium evidence at best, and the evidence does not separate page content from traffic mix, which is unknown [ev_10]. A before/after read would be directional only and would be exposed to the traffic and calendar changes already seen [ev_1, ev_2]. The test is also bounded, so no SKU that currently converts is stripped of anything across the whole business.",
+    "treatment": "On a bounded set of client-nominated test SKUs, change the product-page decision-point proof so that usage, the brand's own approved claim/mechanism and an authority source are carried high on the page, above the purchase action. The marketplace listing for the same SKUs mirrors the proof as far as the marketplace allows, and the execution owner flags any restriction. Price, discount depth, targeting, media weight and stock allocation on test SKUs do not change.",
+    "comparison": "A client-nominated matched set of untreated SKUs with similar traffic and price band, read over the same window, with price and discount likewise unchanged. Comparison is on PDP-to-purchase conversion expressed as an index against each group's own prior 4 weeks.",
+    "duration_weeks": 4,
+    "calendar_confounds": [
+      {
+        "event": "Marketplace 11.11 sale (around 11 Nov; exact marketplace calendar to be confirmed)",
+        "risk": "Platform-wide discounting and a traffic surge would swamp a product-page proof test and distort conversion comparisons.",
+        "mitigation": "Complete the full read window before the sale ramp begins, and exclude any days affected by pre-sale promotion. Confirm the exact marketplace calendar with the client before fixing start and end dates. If the window cannot be completed in time, move the start to after the event rather than reading across it."
+      },
+      {
+        "event": "Marketplace 12.12 / Harbolnas (around 12 Dec; exact marketplace calendar to be confirmed)",
+        "risk": "Promotion-driven traffic distorts conversion comparisons in the same way.",
+        "mitigation": "Do not run or read the test across this event. Confirm exact dates and keep the read window clear of them."
+      },
+      {
+        "event": "Marketplace and campaign calendar beyond the two supplied events",
+        "risk": "Other marketplace-run promotions or brand campaigns that fall inside the window could affect test and matched SKUs unevenly. These are not supplied, so they must be confirmed.",
+        "mitigation": "Ask the client to confirm the full marketplace and campaign calendar before the start date. Any additional event inside the window is logged and either excluded from the read or the result is marked inconclusive."
+      }
+    ],
+    "held_constant": [
+      {
+        "item": "Price on test and matched SKUs",
+        "how_verified": "Client commerce team confirms from the pricing log that list price is unchanged for every day of the window on both groups."
+      },
+      {
+        "item": "Discount depth on test SKUs",
+        "how_verified": "Client commerce team supplies the pricing/promo log as an index against the prior 4 weeks for test and matched SKUs; any change is flagged before the read."
+      },
+      {
+        "item": "Audience targeting",
+        "how_verified": "Client e-commerce team confirms in writing that targeting settings on test SKUs were not altered during the window."
+      },
+      {
+        "item": "Media weight on test SKUs",
+        "how_verified": "Client e-commerce team supplies aggregated media weight on test SKUs as an index against the prior 4 weeks; the read is marked inconclusive if it moves outside a range agreed before the start."
+      },
+      {
+        "item": "Stock allocation on test SKUs",
+        "how_verified": "Client commerce team confirms allocation was unchanged and supplies SKU-level availability as pass/fail for each week of the window."
+      }
+    ]
+  },
+  "measures": [
+    {
+      "key": "pdp_to_purchase_vs_matched",
+      "role": "primary",
+      "label": "PDP-to-purchase conversion, test SKUs vs matched set",
+      "definition": "Relative difference between the change in PDP-to-purchase conversion index on test SKUs and the change on the matched set over the same window, each indexed to its own prior 4 weeks. Reported as a percentage difference. The proposed threshold of a +5 percent relative difference is a proposal to be agreed with the client before the test: it is set to be large enough to read as more than ordinary week-to-week movement in indexed figures, is not a prediction, and is not a finding.",
+      "unit": "pct_change",
+      "baseline": null,
+      "baseline_source": null,
+      "comparator": "gte",
+      "threshold": 5,
+      "threshold_status": "proposed",
+      "failure_condition": "Test SKUs show a relative difference below +5 percent against the matched set, including no difference or a lower result. This is the falsification condition for the proof-gap explanation set out in Stage 1."
+    },
+    {
+      "key": "discount_depth_index",
+      "role": "guardrail",
+      "label": "Average discount depth on test SKUs (index)",
+      "definition": "Average discount depth index on test SKUs over the window against the prior 4 weeks = 100. The objective is conversion without further discounting, so the index must not rise above its current evidence baseline of 102 [ev_5].",
+      "unit": "index",
+      "baseline": 102,
+      "baseline_source": "ev_5",
+      "comparator": "lte",
+      "threshold": 102,
+      "threshold_status": "proposed",
+      "failure_condition": "Discount depth index on test SKUs rises above 102 at any point in the window, in which case any conversion difference cannot be read as achieved without extra discounting."
+    },
+    {
+      "key": "pdp_visits_retained_vs_matched",
+      "role": "guardrail",
+      "label": "PDP visit volume retained, test SKUs vs matched set",
+      "definition": "Relative difference between the change in PDP visits index on test SKUs and the change on the matched set. Checks that a conversion difference is not the result of a changed visitor volume or mix reaching the test pages. A fall of no more than 10 percent relative to the matched set is proposed as the tolerance, to be agreed with the client before the test.",
+      "unit": "pct_change",
+      "baseline": null,
+      "baseline_source": null,
+      "comparator": "gte",
+      "threshold": -10,
+      "threshold_status": "proposed",
+      "failure_condition": "Test SKU PDP visits fall more than 10 percent relative to the matched set, or rise by a margin that suggests a change in who reaches the page. In either case the conversion comparison is not like for like."
+    },
+    {
+      "key": "test_sku_stock_availability",
+      "role": "guardrail",
+      "label": "Test and matched SKUs in stock throughout the window",
+      "definition": "Pass/fail check, supplied by the client commerce team, that every test and matched SKU was available for purchase on every day of the window. Availability could affect conversion independently of content [ev_9].",
+      "unit": "pass_fail",
+      "baseline": null,
+      "baseline_source": null,
+      "comparator": "gte",
+      "threshold": 1,
+      "threshold_status": "proposed",
+      "failure_condition": "Any test or matched SKU was out of stock for a material part of the window, so conversion on that SKU cannot be attributed to page content."
+    }
+  ],
+  "signals": {
+    "success": "PDP-to-purchase conversion on test SKUs is at least 5 percent higher, relative to the matched set, than the proposed threshold requires, discount depth index stays at or below 102, PDP visit volume is retained within tolerance, all SKUs stay in stock, all held-constants are verified and the treatment was delivered as specified. This would be consistent with the proof-gap explanation but does not separate it from other factors.",
+    "failure": "Test SKUs show no difference from, or a lower result than, the matched set on PDP-to-purchase conversion while held-constants are verified and the treatment was delivered. This suggests the proof change alone does not move decision-point conversion, and the evidence would point back towards the other Stage 1 explanations.",
+    "inconclusive": "The matched set is not similar enough to the test SKUs in traffic or price band, volume is too small for the indexed difference to be read, a held-constant is breached (price, discount depth, targeting, media weight or stock allocation), a marketplace or campaign event falls inside the window, the marketplace restricts the proof content so the treatment was only partly delivered, or the primary measure and a guardrail point in opposite directions. In each case the answer is to retest with the cause corrected, not to treat the result as a pass or a fail."
+  },
+  "decision_rule": {
+    "statement": "A clean pass requires the primary measure to meet its threshold AND every guardrail to hold AND all held-constants to be verified AND the treatment to have been delivered as specified. If any of these is missing the result is not a clean pass and is treated as inconclusive or as a fail according to the signals above. A pass is consistent with, but does not establish, a product-page proof gap, and is read as directional-to-medium evidence only.",
+    "on_pass": "scale",
+    "on_fail": "shift"
+  }
+}

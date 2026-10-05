@@ -1,0 +1,93 @@
+{
+  "evidence_read": {
+    "known": [
+      {"text": "GMV is indexed at 128 against a prior-quarter base of 100, and affiliate-attributed orders at 140, so affiliate-attributed orders moved by more than GMV in the indexed readings.", "evidence_ids": ["ev_1", "ev_2"]},
+      {"text": "Discount intensity is indexed at 118 while gross margin is indexed at 93, so margin weakened in the same quarter that discounting deepened.", "evidence_ids": ["ev_3", "ev_5"]},
+      {"text": "Repeat purchase rate is indexed at 101, essentially flat against the prior quarter.", "evidence_ids": ["ev_4"]},
+      {"text": "The client states affiliate incentives are largely tied to discount-led offers.", "evidence_ids": ["ev_7"]},
+      {"text": "The client states the typical category re-purchase cycle is roughly a quarter or more, so a flat repeat reading over one quarter may be partly timing.", "evidence_ids": ["ev_6"]}
+    ],
+    "inferred": [
+      {"text": "Inference: because affiliate incentives are tied to discount-led offers [ev_7], the affiliate-attributed order growth [ev_2] and the deeper discounting [ev_3] may be the same movement seen in two reports; the supplied data does not separate them.", "evidence_ids": ["ev_2", "ev_3", "ev_7"]},
+      {"text": "Inference: the combination of GMV growth, weaker margin and flat repeat is consistent with growth that is price-led rather than loyalty-led, but the flat repeat reading is also consistent with category timing.", "evidence_ids": ["ev_1", "ev_4", "ev_5", "ev_6"]}
+    ],
+    "unknown": [
+      {"text": "The split of orders between promotion and full price is not supplied.", "evidence_ids": ["ev_8"]},
+      {"text": "The new versus repeat customer split of the growth is not supplied.", "evidence_ids": ["ev_9"]},
+      {"text": "The overlap between affiliate-attributed orders and demand that would have arrived anyway (organic or branded) is not measurable from the supplied data.", "evidence_ids": ["ev_10"]}
+    ],
+    "test_required": [
+      {"text": "Whether volume holds when promotion depth is reduced on a bounded set of products can only be settled by a bounded comparison, not from existing data.", "evidence_ids": ["ev_11"]}
+    ]
+  },
+  "explanations": [
+    {
+      "id": "E1",
+      "statement": "Growth is largely discount-led: affiliate incentives tied to discount-led offers are associated with deeper promotion, higher affiliate-attributed orders and weaker margin, with little movement in repeat behaviour.",
+      "primary": true,
+      "supports": [
+        {"evidence_id": "ev_7", "why": "Client states affiliate incentives are largely tied to discount-led offers, linking the affiliate lever to promotion depth."},
+        {"evidence_id": "ev_3", "why": "Discount intensity at 118 is consistent with price-led pull in the same quarter as the growth."},
+        {"evidence_id": "ev_5", "why": "Gross margin at 93 is what would be expected if growth was bought with deeper discounts."},
+        {"evidence_id": "ev_2", "why": "Affiliate-attributed orders at 140 exceed GMV at 128, suggesting the discount-linked channel is carrying a large share of the movement."},
+        {"evidence_id": "ev_4", "why": "Repeat rate at 101 shows no visible strengthening of repeat behaviour alongside the growth."}
+      ],
+      "contradicts": [
+        {"evidence_id": "ev_6", "why": "A long re-purchase cycle means the flat repeat reading may be timing rather than a sign of low-quality demand."}
+      ],
+      "falsified_if": "On a bounded comparison set where offer depth is reduced, order volume on the reduced-depth products stays within normal variation of the matched products that keep current depth, while margin per order improves.",
+      "basis": "evidenced"
+    },
+    {
+      "id": "E2",
+      "statement": "A meaningful share of affiliate-attributed orders is demand that would have arrived anyway (organic or branded), so attribution is capturing existing demand rather than adding to it.",
+      "primary": false,
+      "supports": [
+        {"evidence_id": "ev_2", "why": "Affiliate-attributed orders growing faster than GMV is a pattern that would be expected if attribution were absorbing orders from other sources, though it does not separate this from true incremental orders."}
+      ],
+      "contradicts": [],
+      "falsified_if": "On a bounded set where affiliate offer depth is reduced or the affiliate offer is held out, total orders (all channels) on that set fall by about the same amount as the affiliate-attributed orders lost, relative to the matched comparison set.",
+      "basis": "hypothesis"
+    },
+    {
+      "id": "E3",
+      "statement": "Growth reflects genuine new-customer acquisition whose repeat benefit has not yet appeared because the category re-purchase cycle is longer than the one-quarter reading window.",
+      "primary": false,
+      "supports": [
+        {"evidence_id": "ev_6", "why": "Client states the re-purchase cycle is roughly a quarter or more, so flat repeat over one quarter is what would be expected under this explanation."},
+        {"evidence_id": "ev_4", "why": "Repeat rate at 101 is consistent with a timing lag, though it is equally consistent with no repeat benefit."}
+      ],
+      "contradicts": [
+        {"evidence_id": "ev_3", "why": "Deeper discounting alongside the growth is consistent with price-led pull rather than brand-led acquisition."},
+        {"evidence_id": "ev_5", "why": "Weaker margin is consistent with growth being bought through promotion, which this explanation does not require."}
+      ],
+      "falsified_if": "Customers acquired in the current quarter on discount-led offers show no repeat purchase after one full re-purchase cycle, at a rate no higher than customers acquired at full price or shallower depth.",
+      "basis": "hypothesis"
+    }
+  ],
+  "test_role": "resolve",
+  "decision": {
+    "move": "strengthen",
+    "headline": "Strengthen the quality of affiliate demand on a bounded set before scaling affiliate budget next quarter.",
+    "rationale": "GMV is indexed at 128 and affiliate-attributed orders at 140 [ev_1][ev_2], but discount intensity is 118 and gross margin is 93 [ev_3][ev_5], and affiliate incentives are largely tied to discount-led offers [ev_7]. Repeat is flat at 101 [ev_4], though the long re-purchase cycle means this may be partly timing [ev_6]. Together this is consistent with growth that is at least partly promotion-led, but the evidence does not separate it from incremental or organic demand [ev_10] and the promotion versus full-price mix and new versus repeat split are not supplied [ev_8][ev_9]. Scaling the budget as currently structured would add spend behind an element whose quality is unresolved, so the weak element is reinforced first and tested on a bounded set [ev_11].",
+    "confidence": "directional",
+    "what_changes": [
+      "The board request to scale affiliate budget is held as a conditional commitment pending a bounded comparison read, rather than approved as currently structured.",
+      "Offer depth is varied on a nominated comparison set of similar products or regions, with a matched set kept at current depth.",
+      "The Commercial Director asks for the promotion versus full-price mix, the new versus repeat split and any available organic or branded overlap cut as indexed or aggregated inputs."
+    ],
+    "what_stays": [
+      "The affiliate programme continues business-wide; it is not paused.",
+      "Media weight, price list, stock and creator roster are held constant.",
+      "Marketplace-run sale events continue and are treated as periods that would distort the comparison."
+    ],
+    "cannot_conclude": [
+      "That the affiliate programme is or is not incremental; overlap with organic or branded demand is not measurable from the supplied data [ev_10].",
+      "That discounting caused the margin movement or the order growth; the indexed figures show co-movement only.",
+      "Anything about customer-level or segment-level behaviour, including new versus repeat composition of the growth [ev_9].",
+      "That repeat behaviour is weak; one quarter of flat repeat may be partly timing given the stated re-purchase cycle [ev_6].",
+      "The share of orders that are promotion-led versus full price [ev_8].",
+      "That volume would hold if promotion depth is reduced; only a bounded comparison can settle this [ev_11]."
+    ]
+  }
+}

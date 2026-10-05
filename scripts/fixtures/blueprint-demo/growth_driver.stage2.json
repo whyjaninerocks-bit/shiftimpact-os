@@ -1,0 +1,116 @@
+{
+  "behavioural_job": {
+    "primary": "reduce_price_dependence",
+    "secondary": ["increase_conviction", "strengthen_repeat"],
+    "statement": "Give a marketplace shopper who arrives through the affiliate programme a reason to choose this brand that does not rest only on the depth of the discount, so that purchase on the bounded test set is not decided by price alone and the read on whether volume holds at lower promotion depth is interpretable.",
+    "basis": "evidenced",
+    "evidence_ids": ["ev_3", "ev_5", "ev_7"]
+  },
+  "intervention": {
+    "statement": "On a client-nominated bounded comparison set of similar products or regions, vary the depth of the discount-led affiliate offer while the affiliate programme keeps running business-wide, and compare volume and margin against a matched set kept at current depth. The affiliate content carries the same non-price reason to choose on both sets, so only offer depth differs.",
+    "controlled_variable": "Depth of the discount-led affiliate offer on the nominated comparison set versus the matched set at current depth",
+    "preservation_constraints": [
+      {"item": "Media weight", "why": "The client can hold it constant; a change in media weight on either set would give a second explanation for any volume difference, so the offer-depth read would not be separable."},
+      {"item": "Price list", "why": "The client can hold it constant; list-price movement would blur whether volume responded to affiliate offer depth or to shelf price."},
+      {"item": "Stock", "why": "The client can hold it constant; a stock shortfall on one set would lower volume for reasons unrelated to offer depth and would look like a promotion effect."},
+      {"item": "Creator roster", "why": "The client can hold it constant; a different mix of creators between sets would change who is delivering the offer and confound the comparison."},
+      {"item": "Content asset and non-price proof used on both sets", "why": "Design logic: if content differs between sets, any volume difference could come from the content rather than offer depth."},
+      {"item": "Affiliate programme running business-wide", "why": "Client cannot pause it; the test is a bounded variation inside a live programme, so the comparison set is the only place the offer changes."}
+    ],
+    "basis": "evidenced",
+    "evidence_ids": ["ev_7", "ev_3", "ev_11"]
+  },
+  "content_roles": [
+    {"role": "offer", "job": "Carry the affiliate offer at the depth assigned to each set and present it as the reason to act now only to the extent the assigned depth allows, without adding extra incentives on either set.", "basis": "evidenced", "evidence_ids": ["ev_7"]},
+    {"role": "product_proof", "job": "Make visible the brand's own approved claim or mechanism, so the shopper has a reason to choose that does not rest only on the discount.", "basis": "hypothesis", "evidence_ids": []},
+    {"role": "reminder", "job": "Give a buyer a reason to come back at the point the category re-purchase cycle makes a second purchase plausible, so repeat is not left entirely to discounting.", "basis": "hypothesis", "evidence_ids": ["ev_6"]}
+  ],
+  "proof_required": [
+    {"proof": "claim_credibility", "must_show": "That the shopper can conclude the brand's own approved claim or mechanism is believable, with the basis for that belief visible to the viewer.", "basis": "hypothesis", "evidence_ids": []},
+    {"proof": "usage", "must_show": "How the product is used in a real household by a real user and what result to expect, with the basis for that expectation visible, so the shopper can judge value without reference to the discount.", "basis": "hypothesis", "evidence_ids": []},
+    {"proof": "product_assignment", "must_show": "Which product on the marketplace listing the shopper should choose for their need, so the choice at the point of purchase does not default to whichever item is cheapest.", "basis": "hypothesis", "evidence_ids": []}
+  ],
+  "creator_role": {
+    "applicable": true,
+    "role": "peer_reassurance",
+    "not_role": "conversion",
+    "job": "Existing affiliates on the held-constant roster reassure a shopper from the position of a comparable household buyer that the product is a considered choice, rather than acting purely as a channel for the discount-led offer. This is a hypothesis: no evidence supplied describes shopper objections or what affiliates currently say.",
+    "selection_criteria": [
+      "Already on the held-constant roster, since the client can hold the creator roster constant and changing it would confound the read",
+      "Credible as a household buyer of this category rather than as a deal-aggregator",
+      "Willing to carry the same non-price reason to choose on both the test set and the matched set"
+    ],
+    "basis": "hypothesis"
+  },
+  "asset_architecture": {
+    "beats": [
+      {"beat": "problem", "job": "Establish the household need the product addresses so the shopper recognises their own situation before any price is mentioned."},
+      {"beat": "usage", "job": "Show the product being used in an ordinary household and the result the shopper should expect."},
+      {"beat": "reason_to_believe", "job": "Make the brand's own approved claim or mechanism visible and credible, with its basis shown."},
+      {"beat": "product_choice", "job": "Tell the shopper which listing fits their need so the choice is by fit rather than lowest price."},
+      {"beat": "objection_resolution", "job": "Address the most likely reason a shopper hesitates when the discount is shallower; the objection itself is not known and must be confirmed with the client."},
+      {"beat": "cta", "job": "Hand the shopper to the marketplace listing carrying the offer at the depth assigned to their set."}
+    ],
+    "rationale": "The job is to reduce dependence on price, so the order builds a non-price reason to choose before the offer appears and places the offer last, where its depth is the only element that differs between sets."
+  },
+  "platform_roles": [
+    {"environment": "Affiliate creator content", "role": "compressed_proof", "job": "Carry the non-price reason to choose to the shopper in a short form and send them to the listing; it connects to the marketplace listing through the affiliate link."},
+    {"environment": "Marketplace product listing", "role": "product_evaluation", "job": "Let the shopper confirm the fit and the approved claim on the page and complete the purchase at the assigned offer depth; the listing is where the offer depth actually applies."},
+    {"environment": "Client CRM follow-up", "role": "retention", "job": "Reach buyers acquired on the test and matched sets around the stated re-purchase cycle so repeat can be observed later; it connects back to the listing for the next purchase."}
+  ],
+  "commerce_roles": [
+    {"role": "offer", "job": "Set the affiliate offer depth on the nominated comparison set and keep the matched set at current depth, with no additional incentives on either.", "controlled_by": "Client commerce team"},
+    {"role": "full_price_choice", "job": "Keep a shopper able to choose the product at the list price on the listing so that the share choosing without a deep offer is observable.", "controlled_by": "Client commerce team"},
+    {"role": "handoff_to_purchase", "job": "Carry the shopper from creator content to the correct listing for their set without a change of destination or incentive.", "controlled_by": "Execution owner, within the marketplace and affiliate platform mechanics"},
+    {"role": "repeat", "job": "Follow buyers from both sets through the stated re-purchase cycle so repeat can be compared after the cycle has elapsed.", "controlled_by": "Client CRM team"}
+  ],
+  "execution_choices": [
+    {
+      "question": "Should the affiliate offer still appear on the reduced-depth set, or be removed there entirely?",
+      "recommended": "Keep an offer on the test set at a reduced depth rather than removing it",
+      "why": "The client cannot pause the affiliate programme business-wide and the test stance is to vary depth on a bounded set, not to remove what works; removal would also be a larger change than the single variable being tested.",
+      "alternative_not_chosen": "Remove the offer entirely on the test set",
+      "basis": "hypothesis",
+      "evidence_ids": []
+    },
+    {
+      "question": "Should the content be identical on the test set and the matched set, or tailored to each depth?",
+      "recommended": "Identical non-price content on both sets; only the offer depth differs",
+      "why": "Design logic: a content difference between sets would give a second explanation for any volume difference, so the offer-depth read would not be clean.",
+      "alternative_not_chosen": "Tailor the content to each set's offer depth",
+      "basis": "hypothesis",
+      "evidence_ids": []
+    },
+    {
+      "question": "Should the creators present as peer reassurance or as deal-led promoters of the offer?",
+      "recommended": "Peer reassurance from a comparable household buyer",
+      "why": "Client states incentives are largely tied to discount-led offers [ev_7], so the current role is likely closer to deal promotion; this is a hypothesis that a non-price reason to choose is what reduces price dependence, with no evidence yet on shopper objections.",
+      "alternative_not_chosen": "Deal-led promotion of the offer",
+      "basis": "hypothesis",
+      "evidence_ids": ["ev_7"]
+    },
+    {
+      "question": "Should an expert be used to raise credibility of the product claim?",
+      "recommended": "No expert on this test; rely on the brand's own approved claim or mechanism shown credibly",
+      "why": "Nothing in the supplied evidence shows that claim credibility is a barrier [ev_8, ev_9, ev_10 are gaps], and adding an expert would add a second variable and a product fact the brief does not supply.",
+      "alternative_not_chosen": "Add an expert to carry authority",
+      "basis": "hypothesis",
+      "evidence_ids": []
+    },
+    {
+      "question": "Should the first test window avoid marketplace-run sale events?",
+      "recommended": "Yes, run the comparison outside marketplace-run sale events and confirm the exact calendar with the client",
+      "why": "The client cannot hold marketplace-run sale events constant and the calendar notes that platform-wide promotion would swamp a promotion-reduction test.",
+      "alternative_not_chosen": "Run the comparison through a marketplace-run sale event",
+      "basis": "evidenced",
+      "evidence_ids": ["ev_11"]
+    }
+  ],
+  "execution_owner_asks": [
+    "Confirm with the client commerce team the nominated comparison set and the matched set, with the basis on which the two sets are judged similar.",
+    "Obtain the brand's own approved claim or mechanism from the client and confirm what may be shown; do not supply any product fact beyond it.",
+    "Confirm the exact marketplace sale calendar and the test window that avoids it.",
+    "Deliver a single non-price content asset used identically on the test set and the matched set, and confirm which creators from the held-constant roster carry it.",
+    "Confirm the affiliate incentive terms on the test set so the creator reward does not itself change between sets beyond the assigned offer depth."
+  ]
+}

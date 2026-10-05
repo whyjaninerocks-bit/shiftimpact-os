@@ -1,0 +1,109 @@
+{
+  "test": {
+    "role": "resolve",
+    "design": "matched_comparison",
+    "design_rationale": "The client cannot pause the affiliate programme business-wide and can only vary offer depth on a bounded subset, so a holdout of the whole programme is not available. Order-level data is not shared, which rules out randomising at shopper level. The client can nominate a comparison set of similar products or regions, which allows a matched comparison: the strongest design these constraints honestly allow. It carries medium evidence at best and only if the sets are genuinely matched.",
+    "treatment": "On the client-nominated bounded set of products or regions, reduce the depth of the discount-led affiliate offer, with the same non-price reason to choose carried in affiliate content and no additional incentive. Full-price purchase remains available on the listing. The affiliate programme keeps running business-wide.",
+    "comparison": "A matched set of similar products or regions nominated by the client, kept at current affiliate offer depth, with the same content asset, creator roster, media weight, price list and stock position.",
+    "duration_weeks": 4,
+    "calendar_confounds": [
+      {
+        "event": "Marketplace 11.11 sale (around 11 Nov; exact marketplace calendar to be confirmed)",
+        "risk": "Platform-wide promotion would swamp a promotion-reduction test and the client cannot hold it constant, so any volume difference inside the sale window would not be readable as an offer-depth effect.",
+        "mitigation": "Confirm the marketplace calendar first. Schedule the read window to finish before the sale period begins; any days that overlap the sale are excluded from the primary read and the test is flagged for retest if too few clean days remain."
+      },
+      {
+        "event": "Marketplace 12.12 / Harbolnas (around 12 Dec; exact marketplace calendar to be confirmed)",
+        "risk": "Promotion-driven demand distorts the comparison in the same way, and the client cannot hold marketplace-run sale events constant.",
+        "mitigation": "Exclude the sale period from the read window. If the test cannot complete before 11.11, hold the start until after 12.12 rather than reading through either event."
+      },
+      {
+        "event": "Marketplace and campaign calendar beyond the two supplied events",
+        "risk": "Other marketplace-run campaigns or vouchers may exist that were not supplied and could affect the two sets unevenly.",
+        "mitigation": "The client commerce team confirms the full marketplace and campaign calendar for the test window before launch, and any additional event is logged and treated as a confound."
+      }
+    ],
+    "held_constant": [
+      {
+        "item": "Media weight on both sets",
+        "how_verified": "Client commerce team supplies a media plan comparison for both sets before launch and a spend check at the end of the test."
+      },
+      {
+        "item": "Price list on both sets",
+        "how_verified": "Client pricing log is checked for list-price changes on either set across the test window."
+      },
+      {
+        "item": "Stock availability on both sets",
+        "how_verified": "Client confirms stock position at launch and flags any stock-out on either set during the test."
+      },
+      {
+        "item": "Creator roster and content asset used on both sets",
+        "how_verified": "Execution owner confirms the creators and the content asset in use on each set at launch and at the close of the test."
+      }
+    ]
+  },
+  "measures": [
+    {
+      "key": "orders_vs_matched_set",
+      "role": "primary",
+      "label": "Order volume on the reduced-depth set relative to the matched set",
+      "definition": "Percentage difference in total orders (all channels, not only affiliate-attributed) on the reduced-depth set versus the matched set kept at current depth, over the clean read window. Total orders are used because overlap with organic or branded demand is not measurable from existing data. Proposed threshold: volume on the reduced-depth set retains no less than 90 percent of the matched set, i.e. a difference of no worse than -10 percent. This is a proposal to be agreed with the client before the test, not a prediction.",
+      "unit": "pct_change",
+      "baseline": null,
+      "baseline_source": null,
+      "comparator": "gte",
+      "threshold": -10,
+      "threshold_status": "proposed",
+      "failure_condition": "Total orders on the reduced-depth set fall more than 10 percent below the matched set, which would be consistent with volume depending on offer depth rather than holding at lower promotion depth."
+    },
+    {
+      "key": "margin_vs_matched_set",
+      "role": "guardrail",
+      "label": "Gross margin on the reduced-depth set relative to the matched set",
+      "definition": "Difference in gross margin, in points, between the reduced-depth set and the matched set over the clean read window. Gross margin is indexed at 93 against a prior-quarter base of 100 in the supplied evidence. Proposed threshold: the reduced-depth set must not show lower margin than the matched set, i.e. a difference of at least 0 points. Proposal to be agreed with the client.",
+      "unit": "pct_points",
+      "baseline": null,
+      "baseline_source": null,
+      "comparator": "gte",
+      "threshold": 0,
+      "threshold_status": "proposed",
+      "failure_condition": "Margin on the reduced-depth set is lower than on the matched set, so any volume retained is not accompanied by a margin benefit."
+    },
+    {
+      "key": "discount_intensity_index",
+      "role": "guardrail",
+      "label": "Discount intensity on the reduced-depth set",
+      "definition": "Discount intensity index on the reduced-depth set, measured on the same indexed basis as the client pricing and promo log. It must not rise above its current evidenced level of 118, which confirms the treatment reduced depth rather than leaving it unchanged or deeper. Proposed threshold: at most 118. Proposal to be agreed with the client.",
+      "unit": "index",
+      "baseline": 118,
+      "baseline_source": "ev_3",
+      "comparator": "lte",
+      "threshold": 118,
+      "threshold_status": "proposed",
+      "failure_condition": "Discount intensity on the reduced-depth set is above 118, so the treatment was not delivered as a reduction and the volume read cannot be interpreted."
+    },
+    {
+      "key": "repeat_rate_vs_matched_set",
+      "role": "guardrail",
+      "label": "Repeat purchase rate of buyers on the reduced-depth set relative to the matched set",
+      "definition": "Percentage difference in repeat purchase rate between buyers acquired on the reduced-depth set and buyers on the matched set, read only after the stated re-purchase cycle has elapsed and before it is read, the test result is provisional. Given the long category cycle, this reading is expected after the test window closes. Proposed threshold: no worse than -5 percent versus the matched set. Proposal to be agreed with the client.",
+      "unit": "pct_change",
+      "baseline": null,
+      "baseline_source": null,
+      "comparator": "gte",
+      "threshold": -5,
+      "threshold_status": "proposed",
+      "failure_condition": "Repeat rate on the reduced-depth set is more than 5 percent below the matched set once the re-purchase cycle has elapsed, which would be consistent with reduced depth harming repeat behaviour."
+    }
+  ],
+  "signals": {
+    "success": "Total orders on the reduced-depth set stay within the proposed tolerance of the matched set, margin on the reduced-depth set is not lower than on the matched set, discount intensity on the set is confirmed as not above its current level, and the held-constants are verified. This would be consistent with volume holding at lower promotion depth on this bounded set; it would not separate the result from set-specific effects.",
+    "failure": "Total orders on the reduced-depth set fall below the proposed tolerance relative to the matched set, or margin does not improve against the matched set. This would be consistent with volume depending on offer depth on this bounded set.",
+    "inconclusive": "The matched set is not demonstrably similar to the reduced-depth set before launch; volume on either set is too small to read; a held-constant (media weight, price list, stock, creator roster, content asset) is breached; a marketplace-run sale event or an unlogged campaign falls inside the read window; or the treatment was not delivered as specified (offer depth not reduced, or an extra incentive added). In any of these cases the answer is retest, not pass or fail. Repeat behaviour read before the re-purchase cycle has elapsed is also provisional."
+  },
+  "decision_rule": {
+    "statement": "A clean pass requires the primary measure AND every guardrail to hold, AND the held-constants verified, AND the treatment delivered as specified. If any of these is missing the result is not a clean pass. On a clean pass, the case for reshaping affiliate offer depth beyond the bounded set is strengthened and the budget decision is taken with that result in hand; on a fail, the board request to scale affiliate budget is not supported as currently structured.",
+    "on_pass": "strengthen",
+    "on_fail": "stop"
+  }
+}

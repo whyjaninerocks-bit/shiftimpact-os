@@ -1,0 +1,117 @@
+{
+  "behavioural_job": {
+    "primary": "increase_conviction",
+    "secondary": ["reduce_uncertainty", "convert_discovery_to_choice"],
+    "statement": "Make a shopper who has already arrived on the product page able to see, without leaving the page, what the product does, how it is used and why the brand's own claim is credible, so that the choice to buy is not left hanging at the decision point and does not depend on a deeper discount.",
+    "basis": "evidenced",
+    "evidence_ids": ["ev_3", "ev_4", "ev_5"]
+  },
+  "intervention": {
+    "statement": "On a bounded set of test SKUs, change what the product page makes visible at the decision point so that usage, the brand's own approved claim/mechanism and an authority source are carried high on the page, and compare the result against a client-nominated matched set of untreated SKUs.",
+    "controlled_variable": "proof architecture at the product-page decision point (what proof is present, and in what order, above the purchase action)",
+    "preservation_constraints": [
+      {"item": "Price on test and matched SKUs", "why": "A price change would be read as a conversion change; holding it keeps the proof change as the only varied element."},
+      {"item": "Discount depth on test SKUs", "why": "The objective is conversion without extra discounting, and discount depth moves conversion by itself, so it must not change during the read."},
+      {"item": "Audience targeting", "why": "Traffic source mix is unknown [ev_10]; fixing targeting limits the chance that a different visitor mix is read as a page effect."},
+      {"item": "Media weight on test SKUs", "why": "A change in traffic volume to test SKUs would alter who reaches the page and blur the comparison against the matched set."},
+      {"item": "Stock allocation on test SKUs", "why": "Availability could affect conversion independently of content [ev_9]; holding allocation removes that route as far as the client can control it."}
+    ],
+    "basis": "hypothesis",
+    "evidence_ids": []
+  },
+  "content_roles": [
+    {"role": "product_proof", "job": "Carry the proof the shopper needs to choose this product, in the page's decision zone, so that the claim is visible alongside something that makes it believable.", "basis": "hypothesis", "evidence_ids": ["ev_7"]},
+    {"role": "demonstration", "job": "Make visible how the serum is used by a real user and what result a user should expect, with the basis for that expectation shown.", "basis": "hypothesis", "evidence_ids": ["ev_7"]},
+    {"role": "expert_reassurance", "job": "Give the shopper an authority source for the brand's own approved claim/mechanism, so credibility does not rest on the brand's say-so alone.", "basis": "hypothesis", "evidence_ids": ["ev_7"]}
+  ],
+  "proof_required": [
+    {"proof": "usage", "must_show": "The viewer can see how the serum is used in a real routine and can conclude what a user should expect from that use, with the basis for the expectation visible.", "basis": "hypothesis", "evidence_ids": ["ev_7"]},
+    {"proof": "claim_credibility", "must_show": "The viewer can see that the brand's own approved claim/mechanism is credible to a shopper, with the substantiation the brand already holds made visible next to the claim.", "basis": "hypothesis", "evidence_ids": ["ev_7"]},
+    {"proof": "authority", "must_show": "The viewer can identify who is vouching for the approved claim and why that source is qualified to do so, using only an endorsement the brand can substantiate.", "basis": "hypothesis", "evidence_ids": ["ev_7"]},
+    {"proof": "product_assignment", "must_show": "The viewer can tell which product on the page the proof applies to and can reach the purchase action for that product without re-searching.", "basis": "hypothesis", "evidence_ids": ["ev_4"]}
+  ],
+  "creator_role": {
+    "applicable": true,
+    "role": "credible_demonstration",
+    "not_role": "distribution",
+    "job": "If creator material is used on the page, its job is to show real use and the expected result credibly at the decision point, not to bring more traffic to the page. Traffic is already up [ev_1, ev_2] and interest content is reported as healthy [ev_6], so the creator is not needed for reach.",
+    "selection_criteria": [
+      "Can show use on their own skin and routine in a way a shopper can recognise as real use",
+      "Credibility on skincare use that the brand can substantiate, rather than breadth of audience",
+      "Willing to stay within the brand's own approved claim/mechanism and not add claims of their own"
+    ],
+    "basis": "hypothesis"
+  },
+  "asset_architecture": {
+    "beats": [
+      {"beat": "reason_to_believe", "job": "Establish early why the approved claim is worth believing, so the shopper is not asked to accept it on assertion."},
+      {"beat": "usage", "job": "Make visible how the serum is used so the shopper can picture doing it themselves."},
+      {"beat": "proof", "job": "Show the result a user should expect and the basis for expecting it."},
+      {"beat": "objection_resolution", "job": "Address the hesitation the test is meant to locate. Until shopper objections are known [ev_8], hold this beat open and fill it from the objection read the execution owner is asked to bring."},
+      {"beat": "product_choice", "job": "Tie the proof to the specific product and variant on the page so the shopper knows what to choose."},
+      {"beat": "cta", "job": "Hand the shopper to the existing purchase action at the unchanged price."}
+    ],
+    "rationale": "The order puts credibility and use before the purchase action because the weaker movement sits at the page-to-purchase step [ev_4], and it ends on product choice and purchase so that proof is met immediately before the decision rather than earlier in the journey."
+  },
+  "platform_roles": [
+    {"environment": "Product page on the brand site (test SKUs)", "role": "product_evaluation", "job": "Carry the proof at the decision point and hand directly to purchase. This is the environment where the test variable is changed."},
+    {"environment": "Marketplace listing (test SKUs)", "role": "product_assignment", "job": "Mirror the same proof content as far as the marketplace allows, so a shopper arriving there meets the same proof, and keep listing price and discount unchanged. If the marketplace restricts page content, the execution owner flags it so the read is not confounded."},
+    {"environment": "Existing owned and creator content", "role": "short_form_discovery", "job": "Keep doing the discovery job it already does [ev_6] and send shoppers to the test SKUs' pages, with targeting and media weight on those SKUs unchanged."}
+  ],
+  "commerce_roles": [
+    {"role": "pdp_proof", "job": "Change the proof on the product page for the bounded set of test SKUs only.", "controlled_by": "Client e-commerce team, with the execution owner supplying the proof content"},
+    {"role": "full_price_choice", "job": "Keep test SKUs at the current price and discount depth so the choice is read at the existing commercial terms.", "controlled_by": "Client commerce team"},
+    {"role": "handoff_to_purchase", "job": "Keep the path from proof to purchase action unchanged in structure so conversion is compared like for like with the matched set.", "controlled_by": "Client e-commerce team"},
+    {"role": "offer", "job": "No new offer is introduced on test or matched SKUs during the read.", "controlled_by": "Client commerce team"}
+  ],
+  "execution_choices": [
+    {
+      "question": "Should the proof be a named expert, a peer testimonial, or both?",
+      "recommended": "Lead with demonstrated use and the brand's own approved claim/mechanism made credible, with a named expert endorsement carried alongside it as a second layer if the brand can substantiate one.",
+      "why": "Both competitor pages place a usage demonstration and a named expert endorsement high on the page [ev_7]. No shopper evidence says which of the two matters to the shopper [ev_8], so this is a hypothesis that the pair is needed.",
+      "alternative_not_chosen": "Peer testimonial alone, or expert endorsement alone",
+      "basis": "hypothesis",
+      "evidence_ids": ["ev_7"]
+    },
+    {
+      "question": "Should usage be shown or only implied?",
+      "recommended": "Shown, so the viewer can see how the serum is used and what a user should expect.",
+      "why": "Both competitor pages show a usage demonstration [ev_7] and this brand's page leads with a hero image and claim text, which makes use visible less directly. The effect on shoppers is untested [ev_11].",
+      "alternative_not_chosen": "Implied use through a hero image and claim text, as on the current page",
+      "basis": "hypothesis",
+      "evidence_ids": ["ev_7", "ev_11"]
+    },
+    {
+      "question": "Should the offer appear in the proof content or on the page during the test?",
+      "recommended": "No offer on test or matched SKUs; the proof is read at full price and current discount depth.",
+      "why": "This follows from the test design and the objective of raising conversion without relying on additional discounting. An added offer would be a second varied element, so this is design logic and not evidence.",
+      "alternative_not_chosen": "Adding an offer to support the proof",
+      "basis": "hypothesis",
+      "evidence_ids": []
+    },
+    {
+      "question": "What should the product page do versus what the video must do?",
+      "recommended": "The page carries the decision-point proof and the purchase action; any video is a part of the page's proof, not a separate traffic asset.",
+      "why": "Conversion fell more at the page-to-purchase step than at add-to-cart [ev_3, ev_4], and engagement is reported as healthy [ev_6], so the job that appears under-served is at the page rather than upstream.",
+      "alternative_not_chosen": "Adding more upstream video to build interest before the page",
+      "basis": "evidenced",
+      "evidence_ids": ["ev_3", "ev_4", "ev_6"]
+    },
+    {
+      "question": "When should the test run relative to marketplace sale events?",
+      "recommended": "Outside the marketplace 11.11 and 12.12 / Harbolnas windows, with the exact marketplace calendar confirmed by the client.",
+      "why": "Platform-wide discounting and traffic surges would swamp a product-page proof test, and the client cannot hold marketplace-run sale events constant.",
+      "alternative_not_chosen": "Running the test through the sale events to catch the higher traffic",
+      "basis": "hypothesis",
+      "evidence_ids": []
+    }
+  ],
+  "execution_owner_asks": [
+    "Confirm with the client which approved claim/mechanism and substantiation the brand holds, and what expert endorsement, if any, can be used and substantiated. Do not introduce claims beyond these.",
+    "Deliver the proof content for the test SKUs' pages as a set of jobs mapped to the beats above, for client approval before it goes live.",
+    "Ask the client for any available review themes, support-ticket themes or shopper research [ev_8] and use them to fill the objection_resolution beat before the test is locked.",
+    "Request from the client the SKU-level stock availability [ev_9] and traffic source mix [ev_10], at an aggregated or indexed level, so these can be checked as alternative explanations.",
+    "Confirm with the client the matched set of untreated SKUs with similar traffic and price band, and the comparison window, avoiding the marketplace sale events.",
+    "Flag any marketplace listing content restriction that stops the proof from being mirrored there."
+  ]
+}

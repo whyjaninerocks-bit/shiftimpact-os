@@ -1,0 +1,100 @@
+{
+  "evidence_read": {
+    "known": [
+      {"text": "Site traffic index is 130 against a prior-4-week base of 100, and product-page visits index is 125. Upstream volume has risen (indexed, illustrative).", "evidence_ids": ["ev_1", "ev_2"]},
+      {"text": "Add-to-cart rate index is 96, a small dip, while PDP-to-purchase conversion index is 84, a larger dip. The weaker movement sits later in the path than the add-to-cart step.", "evidence_ids": ["ev_3", "ev_4"]},
+      {"text": "Average discount depth index is 102, so discounting is roughly flat to slightly deeper than the prior period.", "evidence_ids": ["ev_5"]},
+      {"text": "The client brand team states content engagement on owned and creator posts is at or above prior-period levels. No figures were supplied, so this is a client statement only.", "evidence_ids": ["ev_6"]},
+      {"text": "Public observation: both of the two closest competitor pages show a usage demonstration and a named expert endorsement high on the page, while this brand's page leads with a hero image and claim text. Not verified with the competitors.", "evidence_ids": ["ev_7"]}
+    ],
+    "inferred": [
+      {"text": "Inference: PDP visits (125) rose by less than traffic (130) and PDP-to-purchase (84) fell by more than add-to-cart (96), which is consistent with the weaker point being at or after the product page rather than at the point of interest. Indexed figures cannot give absolute sizes.", "evidence_ids": ["ev_1", "ev_2", "ev_3", "ev_4"]},
+      {"text": "Inference: with discount depth near flat (102) and engagement reported as healthy, extra discounting does not look like the lever behind the conversion dip, though the evidence does not separate this from other factors.", "evidence_ids": ["ev_5", "ev_6"]},
+      {"text": "Inference: the proof-architecture difference against the two competitor pages is a candidate explanation for hesitation at the decision point. It rests on one public observation and no shopper evidence.", "evidence_ids": ["ev_7"]}
+    ],
+    "unknown": [
+      {"text": "Why shoppers hesitate: no review analysis, support-ticket themes or shopper research were supplied.", "evidence_ids": ["ev_8"]},
+      {"text": "Whether SKU-level stock availability moved during the period and affected conversion independently of content.", "evidence_ids": ["ev_9"]},
+      {"text": "Whether the traffic source mix changed, so a change in traffic quality cannot be ruled in or out.", "evidence_ids": ["ev_10"]}
+    ],
+    "test_required": [
+      {"text": "Whether changing the proof a shopper meets at the product page changes decision-point conversion with price and discount held constant. This needs a comparison against a matched set of untreated SKUs.", "evidence_ids": ["ev_11"]}
+    ]
+  },
+  "explanations": [
+    {
+      "id": "E1",
+      "statement": "The product page does not make the brand's own approved claim and mechanism visible at the decision point, so interested shoppers have less to choose on than they would on competitor pages that lead with a usage demonstration and named expert endorsement.",
+      "primary": true,
+      "supports": [
+        {"evidence_id": "ev_7", "why": "Both competitor pages put a usage demonstration and named expert endorsement high on the page, while this brand's page leads with a hero image and claim text. This is consistent with a proof gap."},
+        {"evidence_id": "ev_4", "why": "PDP-to-purchase conversion (84) fell more than add-to-cart (96), which would be expected if hesitation sits at the page rather than earlier."}
+      ],
+      "contradicts": [
+        {"evidence_id": "ev_8", "why": "No shopper objection evidence was supplied, so the page-proof reading has no direct shopper-side support."},
+        {"evidence_id": "ev_10", "why": "Traffic mix is unknown, so a conversion dip from different visitors cannot be separated from a page-proof gap."}
+      ],
+      "falsified_if": "On a matched set of untreated SKUs, test SKUs with revised proof placement show PDP-to-purchase conversion no different from, or lower than, the matched set over the same window with price and discount held constant.",
+      "basis": "hypothesis"
+    },
+    {
+      "id": "E2",
+      "statement": "Traffic quality has shifted: the added traffic includes visitors with lower purchase intent, so PDP-to-purchase conversion fell even though the page itself has not changed in effect.",
+      "primary": false,
+      "supports": [
+        {"evidence_id": "ev_1", "why": "Traffic rose (130) faster than PDP visits (125), which would be expected if some added traffic did not reach the product page."},
+        {"evidence_id": "ev_4", "why": "A conversion fall alongside a traffic rise is consistent with a dilution of intent, though it does not separate it from other factors."}
+      ],
+      "contradicts": [
+        {"evidence_id": "ev_3", "why": "Add-to-cart rate index is only 96, a small dip, which is less than would be expected if a large share of added visitors had low intent."}
+      ],
+      "falsified_if": "A cut of PDP-to-purchase conversion by traffic source shows conversion for each source is unchanged versus the prior 4 weeks, so the fall is not explained by mix.",
+      "basis": "hypothesis"
+    },
+    {
+      "id": "E3",
+      "statement": "Availability or stock gaps on key SKUs reduced purchase completion independently of content, so the conversion dip reflects supply rather than shopper choice.",
+      "primary": false,
+      "supports": [],
+      "contradicts": [],
+      "falsified_if": "SKU-level stock data shows the SKUs driving PDP visits were in stock throughout the period, and conversion on those SKUs still fell.",
+      "basis": "hypothesis"
+    },
+    {
+      "id": "E4",
+      "statement": "Shoppers are hesitating on price or value rather than on proof, and flat-to-slightly-deeper discounting (102) is not offsetting that hesitation.",
+      "primary": false,
+      "supports": [
+        {"evidence_id": "ev_5", "why": "Discount depth index of 102 shows discounting is present and slightly deeper while conversion index is 84, which is consistent with price not being resolved by discounting alone."}
+      ],
+      "contradicts": [
+        {"evidence_id": "ev_6", "why": "Reported engagement at or above prior levels suggests interest is intact, which sits less easily with a price-driven break, though no figures were supplied."}
+      ],
+      "falsified_if": "Conversion on matched SKUs with deeper discount shows no difference from conversion on SKUs with unchanged discount, while proof placement changes alone move conversion.",
+      "basis": "hypothesis"
+    }
+  ],
+  "test_role": "resolve",
+  "decision": {
+    "move": "strengthen",
+    "headline": "Strengthen the product page's decision-point proof on a bounded set of SKUs before buying more traffic or cutting brand spend.",
+    "rationale": "Traffic [ev_1] and PDP visits [ev_2] rose while PDP-to-purchase conversion fell more than add-to-cart [ev_3, ev_4], which is consistent with the weak point sitting at or after the page. Discount depth is near flat [ev_5] and engagement is reported as healthy [ev_6], so the evidence does not point to more discounting or to interest being lost upstream. The competitor page difference [ev_7] is a candidate explanation only; shopper objections, stock and traffic mix are unknown [ev_8, ev_9, ev_10], so the move is to reinforce the existing element and compare it on a matched set [ev_11].",
+    "confidence": "directional",
+    "what_changes": [
+      "Vary the proof the shopper meets at the product-page decision point on a bounded set of test SKUs, using the brand's own approved claim and mechanism (hypothesis).",
+      "Compare test SKUs against a client-nominated matched set of untreated SKUs with similar traffic and price band."
+    ],
+    "what_stays": [
+      "Price and discount depth on test SKUs.",
+      "Audience targeting and media weight on test SKUs.",
+      "Stock allocation on test SKUs."
+    ],
+    "cannot_conclude": [
+      "That the product page caused the conversion fall; the indexed data does not separate page content from traffic mix, stock or other factors.",
+      "That competitor proof architecture explains competitor performance; the page review is public observation and was not verified with the competitors.",
+      "Anything about shopper objections or segment-level behaviour; no shopper research or row-level data was supplied.",
+      "That cutting or keeping brand spend is right or wrong; incrementality of traffic investment cannot be assessed from these indexed figures.",
+      "Absolute sizes of any change; all figures are indexed against a prior-4-week base and are illustrative."
+    ]
+  }
+}
