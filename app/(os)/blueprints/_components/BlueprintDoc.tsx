@@ -28,14 +28,24 @@ function Basis({ basis }: { basis: "evidenced" | "hypothesis" }) {
   );
 }
 
-function Ids({ ids }: { ids?: string[] }) {
+/** Executor view: remove evidence-id references (the executor does not see the evidence table). */
+function scrub<T>(v: T): T {
+  if (typeof v === "string")
+    return v.replace(/\s*\[ev_\d+(?:\s*,\s*ev_\d+)*\]/g, "").replace(/\s*\(ev_\d+(?:\s*,\s*ev_\d+)*\)/g, "") as unknown as T;
+  if (Array.isArray(v)) return v.map(scrub) as unknown as T;
+  if (v && typeof v === "object")
+    return Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, scrub(x)])) as T;
+  return v;
+}
+
+function IdsBase({ ids }: { ids?: string[] }) {
   if (!ids || ids.length === 0) return null;
   return <span className="ml-1 text-[10px] text-neutral-400">[{ids.join(", ")}]</span>;
 }
 
 function Section({ title, children, note }: { title: string; children: React.ReactNode; note?: string }) {
   return (
-    <section className="mt-6 break-inside-avoid-page">
+    <section className="mt-6">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">{title}</h2>
       {note && <p className="mt-0.5 text-xs text-neutral-400">{note}</p>}
       <div className="mt-2 rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-800 space-y-2">
@@ -74,7 +84,9 @@ function fmtThreshold(m: Measure): string {
 export function BlueprintDoc({ row, variant }: { row: BlueprintRow; variant: Variant }) {
   const parsed = InputsV.parse(row.inputs);
   const inputs: Inputs | null = parsed.ok ? parsed.value : null;
-  const c = row.content ?? {};
+  const executor = variant === "executor";
+  const c = executor ? scrub(row.content ?? {}) : (row.content ?? {});
+  const Ids = ({ ids }: { ids?: string[] }) => (executor ? null : <IdsBase ids={ids} />);
   const s1 = c.stage1;
   const s2 = c.stage2;
   const s3 = c.stage3;
@@ -83,7 +95,6 @@ export function BlueprintDoc({ row, variant }: { row: BlueprintRow; variant: Var
   const rec = s3 && out ? reconcile(s3, out) : null;
   const territory = inputs ? TERRITORY_TEMPLATES[inputs.territory as Territory] : null;
   const internal = variant === "internal";
-  const executor = variant === "executor";
   const receipt = variant === "receipt";
 
   const viewLabel = internal ? "Internal workspace" : executor ? "Executor view" : "Decision Evidence Receipt";
@@ -94,9 +105,12 @@ export function BlueprintDoc({ row, variant }: { row: BlueprintRow; variant: Var
         @media print {
           body * { visibility: hidden; }
           .bp-print, .bp-print * { visibility: visible; }
-          .bp-print { position: absolute; left: 0; top: 0; width: 100%; padding: 0 12mm; }
+          .bp-print { position: absolute; left: 0; top: 0; width: 100%; padding: 0; font-size: 10.5px; line-height: 1.35; }
+          .bp-print section { margin-top: 12px !important; }
+          .bp-print section > div { padding: 8px 10px !important; }
+          .bp-print table, .bp-print .bp-card { break-inside: avoid; }
           .bp-noprint { display: none !important; }
-          .break-inside-avoid-page { break-inside: avoid-page; }
+          @page { size: A4; margin: 12mm; }
         }
       `}</style>
 
@@ -202,7 +216,7 @@ export function BlueprintDoc({ row, variant }: { row: BlueprintRow; variant: Var
 
           <Section title="Competing explanations">
             {s1.explanations.map((e) => (
-              <div key={e.id} className="rounded border border-neutral-100 p-3 space-y-1">
+              <div key={e.id} className="bp-card rounded border border-neutral-100 p-3 space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-xs text-neutral-500">{e.id}</span>
                   {e.primary && (
@@ -371,7 +385,7 @@ export function BlueprintDoc({ row, variant }: { row: BlueprintRow; variant: Var
             note="Each picks a side and names the alternative not chosen."
           >
             {s2.execution_choices.map((x, i) => (
-              <div key={i} className="rounded border border-neutral-100 p-3 space-y-1">
+              <div key={i} className="bp-card rounded border border-neutral-100 p-3 space-y-1">
                 <p className="font-medium">{x.question}</p>
                 <p>
                   <strong>Recommended:</strong> {x.recommended} <Basis basis={x.basis} />
