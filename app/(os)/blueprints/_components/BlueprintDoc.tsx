@@ -31,7 +31,7 @@ function Basis({ basis }: { basis: "evidenced" | "hypothesis" }) {
 /** Executor view: remove evidence-id references (the executor does not see the evidence table). */
 function scrub<T>(v: T): T {
   if (typeof v === "string")
-    return v.replace(/\s*\[ev_\d+(?:\s*,\s*ev_\d+)*\]/g, "").replace(/\s*\(ev_\d+(?:\s*,\s*ev_\d+)*\)/g, "") as unknown as T;
+    return v.replace(/\s*\[[^\]]*\bev_\d+[^\]]*\]/g, "").replace(/\s*\(ev_\d+(?:\s*,\s*ev_\d+)*\)/g, "") as unknown as T;
   if (Array.isArray(v)) return v.map(scrub) as unknown as T;
   if (v && typeof v === "object")
     return Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, scrub(x)])) as T;
