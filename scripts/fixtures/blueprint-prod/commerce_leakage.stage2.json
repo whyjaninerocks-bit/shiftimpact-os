@@ -1,0 +1,485 @@
+{
+  "behavioural_job": {
+    "primary": "increase_conviction",
+    "secondary": [
+      "reduce_uncertainty"
+    ],
+    "statement": "Move a PDP visitor who has arrived with interest — evidenced by stable engagement and rising traffic — past the specific moment of hesitation where they currently stop short of adding to cart or completing purchase, by giving them the type of proof that resolves evaluation-stage doubt without requiring a price incentive to do so.",
+    "basis": "evidenced",
+    "evidence_ids": [
+      "ev_3",
+      "ev_4",
+      "ev_5",
+      "ev_6",
+      "ev_7"
+    ]
+  },
+  "intervention": {
+    "statement": "Replace the hero-image-and-claim-text proof architecture on a bounded set of test SKUs with a proof architecture that places usage demonstration and credible expert or clinical endorsement high on the product page, using the brand's own approved claims and mechanisms, and compare PDP-to-purchase conversion against a matched untreated SKU set with all commercial variables held constant.",
+    "controlled_variable": "Proof architecture at the PDP decision point — specifically the type, position and sequence of proof elements the shopper meets before the purchase action.",
+    "preservation_constraints": [
+      {
+        "item": "Price and discount depth on test SKUs held constant throughout the test period.",
+        "why": "Discount depth is currently flat at index 102 [ev_5]; any change would introduce a commercial variable that could independently shift conversion and make the proof-architecture effect unreadable."
+      },
+      {
+        "item": "Audience targeting parameters and media weight on test SKUs held constant.",
+        "why": "Traffic source mix is already an unresolved confounder [ev_10]; changing targeting or weight during the test would add a second uncontrolled variable and prevent attribution of any conversion change to the proof architecture."
+      },
+      {
+        "item": "Stock allocation to test SKUs held constant where operationally possible.",
+        "why": "Stock availability is an unresolved confounder [ev_9]; a stock change during the test period could suppress or inflate conversion independently of the proof change."
+      },
+      {
+        "item": "Traffic investment level not increased until the test produces a readable result.",
+        "why": "The approved decision is to resolve the decision-point conversion problem before buying more traffic; increasing traffic during the test would change the audience composition and potentially the intent level of visitors, confounding the result."
+      }
+    ],
+    "basis": "evidenced",
+    "evidence_ids": [
+      "ev_4",
+      "ev_5",
+      "ev_7",
+      "ev_9",
+      "ev_10",
+      "ev_11"
+    ]
+  },
+  "content_roles": [
+    {
+      "role": "demonstration",
+      "job": "Show the shopper how the product is actually used — the application method, the quantity, the moment in a routine — so that a visitor who has arrived with interest but not yet with confidence in how to use the product can picture themselves using it correctly and reach a purchase decision without needing to seek that information elsewhere.",
+      "basis": "evidenced",
+      "evidence_ids": [
+        "ev_7",
+        "ev_4"
+      ]
+    },
+    {
+      "role": "expert_reassurance",
+      "job": "Carry a credible expert or clinical endorsement — using the brand's own approved claims and mechanisms — placed high on the page so that a shopper who is evaluating whether the product will work for their situation encounters a credibility signal before they reach the purchase action, matching the proof standard both competitors already set.",
+      "basis": "evidenced",
+      "evidence_ids": [
+        "ev_7",
+        "ev_4"
+      ]
+    },
+    {
+      "role": "product_proof",
+      "job": "Make the brand's own approved mechanism or claim observable rather than asserted, so the shopper can form a judgement about whether the product is right for their situation rather than being asked to accept a text claim on trust — addressing the gap between claim-led page structure and the proof-led structure competitors use.",
+      "basis": "evidenced",
+      "evidence_ids": [
+        "ev_7",
+        "ev_4",
+        "ev_6"
+      ]
+    }
+  ],
+  "proof_required": [
+    {
+      "proof": "usage",
+      "must_show": "What the shopper must be able to see or conclude: that the product has a specific, learnable application method that a real user can follow, and that the result a user should expect is visible or inferable from the demonstration — not merely stated in text alongside a product image.",
+      "basis": "evidenced",
+      "evidence_ids": [
+        "ev_7"
+      ]
+    },
+    {
+      "proof": "authority",
+      "must_show": "What the shopper must be able to see or conclude: that a named expert or clinical source has assessed or endorsed the product using the brand's own approved claims, and that this endorsement is placed where the shopper encounters it before the purchase action — not buried below the fold.",
+      "basis": "evidenced",
+      "evidence_ids": [
+        "ev_7"
+      ]
+    },
+    {
+      "proof": "mechanism",
+      "must_show": "What the shopper must be able to see or conclude: the basis on which the product's approved claim holds — the brand's own approved mechanism — stated in a way the shopper can follow, so belief comes from understanding rather than from being told.",
+      "basis": "hypothesis",
+      "evidence_ids": []
+    },
+    {
+      "proof": "claim_credibility",
+      "must_show": "What the shopper must be able to see or conclude: that the brand's headline claim is substantiated by something checkable — an expert statement, a clinical reference or a usage outcome consistent with the brand's approved claims — rather than standing alone as assertion.",
+      "basis": "hypothesis",
+      "evidence_ids": []
+    },
+    {
+      "proof": "objection_removal",
+      "must_show": "What the shopper must be able to see or conclude: that the most common hesitation a shopper in this category has at the point of purchase is named and addressed — however, because no shopper objection data has been supplied [ev_8], the specific objection to address is unknown and must be identified before production.",
+      "basis": "hypothesis",
+      "evidence_ids": [
+        "ev_8"
+      ]
+    }
+  ],
+  "creator_role": {
+    "applicable": true,
+    "role": "credible_demonstration",
+    "not_role": "distribution",
+    "job": "The creator's job is to make the usage demonstration credible and followable — showing the product being used in a real, recognisable context so the shopper can conclude that the application method is accessible and the expected result is achievable. The creator must not function as a reach or distribution vehicle; their presence on the product page or in proof content is justified only if it makes the demonstration more believable than a brand-produced asset would. The creator is not the authority signal — that role belongs to the expert or clinical endorsement — so the creator must not be positioned as an expert unless they hold a relevant credential the brand can substantiate.",
+    "selection_criteria": [
+      "Demonstrates the product in a way that is recognisable to the target shopper's own routine and context — not a studio or aspirational setting that distances the viewer from the usage.",
+      "Has a track record of natural, unrehearsed product use rather than polished brand-aligned presentation, so the demonstration reads as genuine evaluation rather than promotion.",
+      "Has no visible conflict of interest that would undermine the credibility of the demonstration at the decision point.",
+      "Is not selected for follower count or platform reach — selection is based on the quality and believability of the demonstration they can provide."
+    ],
+    "basis": "hypothesis"
+  },
+  "asset_architecture": {
+    "beats": [
+      {
+        "beat": "problem",
+        "job": "Establish the specific skin concern or situation the product addresses — using the brand's own approved framing — so the shopper immediately recognises whether this product is relevant to their situation before investing attention in the rest of the proof."
+      },
+      {
+        "beat": "mechanism",
+        "job": "Make the brand's own approved mechanism visible and followable, so the shopper understands the basis on which the product works rather than being asked to accept a claim on trust."
+      },
+      {
+        "beat": "usage",
+        "job": "Show the product being applied in a real, recognisable context — the method, the quantity, the placement in a routine — so the shopper can conclude that they could use it correctly and that the application is not complicated or unfamiliar."
+      },
+      {
+        "beat": "proof",
+        "job": "Carry the expert or clinical endorsement using the brand's own approved claims, placed so the shopper encounters it while still in evaluation mode — not after the purchase decision has already been made or abandoned."
+      },
+      {
+        "beat": "objection_resolution",
+        "job": "Address the most likely hesitation at the decision point — to be determined once shopper objection data [ev_8] is supplied — so the shopper does not leave the page to seek reassurance elsewhere. This beat is a placeholder until objection data is available; its content is a hypothesis."
+      },
+      {
+        "beat": "reason_to_believe",
+        "job": "Consolidate the proof — mechanism, usage, authority — into a single conclusion the shopper can hold: that the product is right for their situation and that the claim is substantiated, not merely stated."
+      },
+      {
+        "beat": "product_choice",
+        "job": "Make the path to purchase clear and unambiguous at the moment the shopper has reached conviction, so the decision is not interrupted by navigation friction or uncertainty about which SKU to choose."
+      }
+    ],
+    "rationale": "The sequence moves from relevance (problem) through understanding (mechanism, usage) to credibility (proof, objection_resolution) to consolidation (reason_to_believe) and finally to action (product_choice), because the evidence suggests the shopper arrives with interest intact [ev_6] but leaves without purchasing [ev_4] — meaning the job is to build conviction during evaluation, not to generate awareness or create urgency. The authority proof is placed after usage rather than first, because the usage demonstration establishes what the expert is endorsing; reversing the order would ask the shopper to trust a name before they understand what is being claimed."
+  },
+  "platform_roles": [
+    {
+      "environment": "Short-form social video (owned and creator)",
+      "role": "short_form_discovery",
+      "job": "Carry the interest signal that is already working [ev_6] — engagement is stable — and hand the shopper to the product page with a specific reason to evaluate the product rather than a generic brand impression. This environment is held constant — not varied in the test; the proof change is on the product page only."
+    },
+    {
+      "environment": "Product detail page (brand site and marketplace listing) — test SKUs",
+      "role": "conversion",
+      "job": "This is the environment being varied. It must carry the usage demonstration and expert or clinical endorsement high on the page — above the fold or within the first scroll — so the shopper meets proof before they meet the purchase action. The job of this environment is to resolve the hesitation that is currently associated with PDP-to-purchase conversion falling to index 84 [ev_4], using the brand's own approved claims and mechanisms."
+    },
+    {
+      "environment": "Product detail page — matched untreated SKUs",
+      "role": "product_evaluation",
+      "job": "Held constant — not varied. Carries the existing hero-image-and-claim-text architecture throughout the test period, providing the comparison baseline against which the treated SKUs' conversion is read."
+    },
+    {
+      "environment": "Retargeting environments",
+      "role": "reassurance",
+      "job": "Held constant — not varied. Any retargeting running against PDP visitors should not be changed during the test period, as a change in retargeting proof or offer would confound the product-page proof effect."
+    }
+  ],
+  "commerce_roles": [
+    {
+      "role": "pdp_proof",
+      "job": "Place usage demonstration and expert or clinical endorsement high on the product page of test SKUs, using the brand's own approved claims — this is the treatment being tested.",
+      "controlled_by": "Client commerce team (page content) and execution owner (proof assets)"
+    },
+    {
+      "role": "full_price_choice",
+      "job": "Hold price and discount depth constant on test SKUs throughout the test period, so any conversion change is attributable to proof architecture rather than price incentive.",
+      "controlled_by": "Client commerce team"
+    },
+    {
+      "role": "product_assignment",
+      "job": "Nominate the bounded set of test SKUs and the matched untreated SKU set, ensuring both groups have similar prior-period traffic volume and price band so the comparison is readable.",
+      "controlled_by": "Client commerce team"
+    },
+    {
+      "role": "handoff_to_purchase",
+      "job": "Ensure the path from proof to purchase action on the treated product page is unambiguous — no navigation friction, no missing SKU options, no stock-state uncertainty — so the proof change is not undermined by a broken purchase path.",
+      "controlled_by": "Client commerce team"
+    }
+  ],
+  "execution_choices": [
+    {
+      "question": "Should the proof asset on the product page use an identifiable real-user testimonial, a generic user-style demonstration, or a named expert authority?",
+      "recommended": "A named expert or clinical endorsement combined with an identifiable real-user usage demonstration — two distinct proof elements, not one.",
+      "why": "Both competitors place a named expert endorsement and a usage demonstration high on their pages [ev_7]. A generic user-style demonstration without expert credibility would not reach the proof standard competitors already set. A named expert alone, without usage, would not show the shopper how to use the product. The combination is the minimum required to match the competitor proof architecture; whether it is sufficient to shift conversion is what the test will determine [ev_11].",
+      "alternative_not_chosen": "Generic user-style demonstration only, without expert endorsement.",
+      "basis": "evidenced",
+      "evidence_ids": [
+        "ev_7",
+        "ev_11"
+      ]
+    },
+    {
+      "question": "Should usage be shown explicitly in the proof asset, or is it sufficient to imply usage through product imagery and claim text?",
+      "recommended": "Usage must be shown explicitly — the application method, the quantity and the placement in a routine must be visible or inferable by the shopper.",
+      "why": "The competitor pages observed publicly both show a usage demonstration [ev_7], and the brand's current page does not. The test is specifically designed to vary proof architecture including usage demonstration [ev_11]. Implying usage through product imagery is what the current page already does, and PDP-to-purchase conversion has fallen to index 84 [ev_4]; repeating the current approach would not constitute a treatment.",
+      "alternative_not_chosen": "Implied usage through product imagery and claim text (the current approach).",
+      "basis": "evidenced",
+      "evidence_ids": [
+        "ev_7",
+        "ev_4",
+        "ev_11"
+      ]
+    },
+    {
+      "question": "Should the expert endorsement be a credential-only signal (a name and title beside the claim) or should the expert do explanatory work — stating what they assessed and why the claim holds?",
+      "recommended": "The expert should do explanatory work: state what was assessed and why the brand's approved claim holds, so the shopper can follow the reasoning rather than being asked to trust a name.",
+      "why": "The public page review observed that competitors carry a named expert endorsement but did not code the depth of that endorsement (credential-only vs claim endorsement vs mechanism explanation) [ev_7]. A credential-only signal would reach parity at best; an expert who explains the basis of the claim would go beyond what the evidence shows competitors currently do — however, this is a hypothesis because the competitor depth has not been coded. The execution owner must validate competitor expert content depth before production (see execution_owner_asks).",
+      "alternative_not_chosen": "Credential-only expert signal (name and title beside the claim, no explanatory content).",
+      "basis": "hypothesis",
+      "evidence_ids": [
+        "ev_7"
+      ]
+    },
+    {
+      "question": "What format and approximate duration should the proof asset take — short video, static image set, or GIF?",
+      "recommended": "Short video, in the range of 30–60 seconds, for the usage demonstration component; a static or text-supported panel for the expert endorsement, placed adjacently on the page.",
+      "why": "Usage demonstration requires showing a sequence of steps — application method, quantity, routine placement — which a static image or GIF cannot convey with sufficient clarity. A short video in the 30–60 second band is long enough to show the method and the expected result but short enough to be watched on a product page without requiring the shopper to commit significant time. The expert endorsement does not require video; a static panel with the expert's statement and credential placed high on the page matches the observed competitor format [ev_7]. The duration band is a format specification and is a hypothesis about what is sufficient; the test will reveal whether it is.",
+      "alternative_not_chosen": "Static image set only, with no video component.",
+      "basis": "hypothesis",
+      "evidence_ids": [
+        "ev_7"
+      ]
+    },
+    {
+      "question": "Should the proof assets address specific shopper objections, and if so, which objections?",
+      "recommended": "The proof architecture should include an objection-resolution element, but the specific objection to address cannot be determined from the supplied evidence. The execution owner must not invent objections; the client must supply review analysis, support-ticket themes or shopper research before this element is produced.",
+      "why": "No shopper objection data has been supplied [ev_8]. Including a generic category objection (price, safety, results) that the shopper did not raise would be weak and potentially misdirected. The objection-resolution beat is held as a placeholder in the asset architecture until the client supplies objection data.",
+      "alternative_not_chosen": "Include a generic objection-resolution element based on assumed category norms.",
+      "basis": "hypothesis",
+      "evidence_ids": [
+        "ev_8"
+      ]
+    },
+    {
+      "question": "Should the proof assets be placed above the fold (within the first visible screen on the product page) or distributed across the full page?",
+      "recommended": "Usage demonstration and expert endorsement must be placed above the fold or within the first scroll — high on the page — so the shopper encounters proof before the purchase action.",
+      "why": "Both competitor pages place usage demonstration and named expert endorsement high on the page [ev_7]. The brand's current page leads with hero image and claim text [ev_7], meaning proof is either absent or placed lower. The test is designed to vary proof architecture at the decision point [ev_11]; placing new proof below the fold would not constitute a meaningful treatment and would not test the hypothesis.",
+      "alternative_not_chosen": "Distribute proof elements across the full page, with some proof below the fold.",
+      "basis": "evidenced",
+      "evidence_ids": [
+        "ev_7",
+        "ev_11"
+      ]
+    }
+  ],
+  "execution_owner_asks": [
+    "Deliver a short video asset (30–60 seconds) showing explicit usage demonstration — application method, quantity, routine placement — using the brand's own approved claims and mechanisms, suitable for placement high on the product page of test SKUs. This is the primary treatment asset.",
+    "Deliver a static or text-supported expert endorsement panel — using the brand's own approved claims — that names the expert or clinical source, states what was assessed, and explains why the claim holds; suitable for placement high on the product page adjacent to or immediately following the usage demonstration.",
+    "Before production of the expert endorsement panel, review the two competitor product pages identified in [ev_7] and code the depth of their expert content using the following codes: credential-only / claim endorsement / mechanism explanation / decision guidance. If competitors already carry mechanism explanation or decision guidance, the explanatory expert approach is parity, not an edge, and the brief must be updated accordingly.",
+    "Confirm with the client commerce team which specific SKUs are nominated as test SKUs and which are the matched untreated comparison SKUs, and confirm that both groups have similar prior-period traffic volume and price band before assets are produced.",
+    "Confirm with the client commerce team that the test window is scheduled outside the 11.11 and 12.12 marketplace sale periods, and that price, discount depth, targeting, media weight and stock allocation on test SKUs will be held constant for the duration of the test.",
+    "Request from the client commerce team any available shopper objection data — review analysis, support-ticket themes or shopper research — before finalising the objection-resolution beat in the asset architecture; do not produce that element until the data is supplied or the client confirms it is unavailable."
+  ],
+  "push_the_brief": {
+    "category_hygiene": [
+      "Place the primary proof elements (usage demonstration and expert endorsement) above the fold or within the first scroll on the product page — not below the purchase button.",
+      "Ensure the usage demonstration uses the brand's own approved claims and does not make results claims the brand cannot substantiate.",
+      "Ensure the expert endorsement names the expert or clinical source and states the basis of the endorsement, not just a title beside the claim.",
+      "Ensure the product page purchase path (SKU selection, add-to-cart, stock state) is functional and unambiguous on all test SKUs before the proof treatment goes live."
+    ],
+    "parity_catchup": [
+      {
+        "item": "Place a usage demonstration high on the product page — both closest competitors already do this and the brand's current page does not.",
+        "evidence_ids": [
+          "ev_7"
+        ]
+      },
+      {
+        "item": "Place a named expert or clinical endorsement high on the product page — both closest competitors already do this and the brand's current page does not.",
+        "evidence_ids": [
+          "ev_7"
+        ]
+      }
+    ],
+    "strategic_edge": [
+      {
+        "edge": "Make the expert endorsement do explanatory work — not just credential the claim but walk the shopper through the reasoning behind it, using the brand's own approved mechanism, so the shopper can follow and check the logic rather than being asked to trust a name.",
+        "beyond_parity": "Both competitors carry a named expert endorsement [ev_7], but the public page review did not code the depth of that endorsement. If competitors carry credential-only or claim-endorsement depth, an explanatory expert element would go beyond what they show. If competitors already carry mechanism explanation, this is parity and must be moved to parity_catchup. Validation is required before production (see execution_owner_asks).",
+        "why_stronger": "A shopper who can follow the reasoning behind a claim is in a materially different position than one who has been told to trust a credential. The explanatory format converts the authority signal from a reassurance badge into a decision input — consistent with the passive_proof_to_decision_utility move — and is harder for a competitor to match without equivalent substantiation.",
+        "basis": "hypothesis",
+        "evidence_ids": [
+          "ev_7"
+        ]
+      },
+      {
+        "edge": "Structure the usage demonstration so the shopper can assess whether the product is right for their specific situation — not just see that it works in general — by making the application context and the expected result specific enough that the shopper can place themselves in the demonstration.",
+        "beyond_parity": "Both competitors show a usage demonstration [ev_7], but the public page review did not assess whether those demonstrations are generic (showing the product works) or situation-specific (helping the shopper judge fit for their own case). If competitors show generic usage, a situation-specific demonstration would go beyond their standard. If competitors already do this, the edge collapses to parity. Validation is required.",
+        "why_stronger": "A demonstration that helps the shopper conclude 'this is right for my situation' does more decision work than one that shows 'this product is used this way'. It converts proof from passive reassurance into a personal fit judgement — consistent with the proof_into_diagnosis move — which a claim or endorsement cannot replicate.",
+        "basis": "hypothesis",
+        "evidence_ids": [
+          "ev_7",
+          "ev_4"
+        ]
+      }
+    ],
+    "strategic_move": {
+      "seeds_used": [
+        "passive_proof_to_decision_utility",
+        "proof_into_diagnosis"
+      ],
+      "seeds_rejected": [
+        {
+          "seed_id": "parity_to_superiority",
+          "why_less_appropriate": "Reaching parity with competitors on usage demonstration and expert endorsement is the immediate task [ev_7]; the evidence does not yet show what competitors fail to show, so a superiority move cannot be grounded — it is a hypothesis at best and is better held as a stretch territory than as the core move."
+        },
+        {
+          "seed_id": "compress_proof_around_tension",
+          "why_less_appropriate": "The brand's current page has less proof than competitors, not more [ev_7]; compression is the wrong direction when the problem is a proof deficit. Compression would be appropriate if the page were already proof-heavy and conversion were still falling."
+        },
+        {
+          "seed_id": "expose_decision_gap",
+          "why_less_appropriate": "This move requires knowing what specific hesitation shoppers have at the decision point [ev_8]; that data has not been supplied. Without objection data, naming the gap is a guess, and the move cannot be executed honestly."
+        },
+        {
+          "seed_id": "reframe_decision_criteria",
+          "why_less_appropriate": "No evidence has been supplied about what criterion shoppers currently use to decide, or whether the brand has a genuine strength on a different criterion. A reframe without that evidence is invention."
+        }
+      ],
+      "adapted_statement": "Every proof element placed on the product page must answer a question the shopper is actually asking at the moment of evaluation — not sit as reassurance — and the usage demonstration must be specific enough that the shopper can judge whether the product is right for their own situation, not just confirm that it works in general.",
+      "how_adapted": "passive_proof_to_decision_utility is adapted by combining it with proof_into_diagnosis: rather than simply tying each proof element to a decision it must settle (the seed's generic form), the move is sharpened to require that the usage demonstration specifically enables a personal fit judgement. This is necessary because the evidence shows interest is intact [ev_6] but purchase is not completing [ev_4], which is the pattern where fit-related hesitation — not awareness or price — is the candidate explanation. The combination means the proof must do two jobs simultaneously: settle a specific doubt (decision utility) and help the shopper conclude the product is right for them (diagnosis).",
+      "evidence_for_choosing": "Traffic and PDP visits are rising [ev_1, ev_2] while PDP-to-purchase conversion falls [ev_4] and discount depth is flat [ev_5] and engagement is stable [ev_6] — the pattern consistent with interest intact but hesitation at evaluation. The brand's page carries only claim text where competitors carry usage and authority [ev_7], suggesting the proof present is not doing decision work.",
+      "cannot_solve": "A genuine product-market gap; hesitation driven by price or availability [ev_9]; audience quality degradation [ev_10]; or specific objections the brand has no data on [ev_8]. The move also cannot solve the test design — it describes what the proof must do, not whether the test will confirm it works.",
+      "basis": "hypothesis",
+      "evidence_ids": [
+        "ev_4",
+        "ev_5",
+        "ev_6",
+        "ev_7"
+      ]
+    },
+    "proof_mechanic": {
+      "mechanic": "diagnostic_explanation",
+      "secondary": [
+        "make_invisible_visible"
+      ],
+      "statement": "Use the usage demonstration and expert explanation together as a diagnostic device: the demonstration shows the shopper what using the product looks like in a real context, and the expert explanation shows the shopper the basis on which the claim holds — so the shopper can reach a personal fit conclusion rather than accepting an assertion.",
+      "what_it_makes_visible": "The brand's approved mechanism and the application context become observable rather than asserted — the shopper can see how the product is used and follow the reasoning behind the claim, which claim text alone cannot give them. This makes the purchase decision a conclusion the shopper reaches rather than a trust they are asked to extend.",
+      "limit": "This mechanic does not address specific objections the shopper has not yet named [ev_8], and it cannot make a weak or unsubstantiated claim credible — it only makes a substantiated claim more followable. It also cannot compensate for a broken purchase path or stock availability issues [ev_9].",
+      "basis": "hypothesis",
+      "evidence_ids": [
+        "ev_7",
+        "ev_4"
+      ]
+    },
+    "creative_challenge": "How can the product page make a shopper who has already decided they are interested conclude — without being told — that this product is specifically right for their situation and not just right in general?",
+    "avoid": [
+      {
+        "default": "A hero image with claim text as the primary proof element.",
+        "why_weak": "This is the brand's current approach [ev_7] and is associated with a PDP-to-purchase conversion of index 84 [ev_4]; repeating it in the treatment would not constitute a change and would not test the hypothesis."
+      },
+      {
+        "default": "A credential-only expert signal — a name and title placed beside the claim with no statement of what was assessed or concluded.",
+        "why_weak": "It signals approval without resolving any specific doubt; the shopper is asked to trust a name rather than follow a reason. It is the weakest form of authority proof and may already be what competitors do [ev_7], making it parity at best."
+      },
+      {
+        "default": "A usage demonstration that shows the product being applied in a studio or aspirational setting with no connection to the shopper's own routine.",
+        "why_weak": "It shows the product works in an idealised context but does not help the shopper conclude it will work in their own context — it fails the diagnostic job and delivers only passive reassurance."
+      },
+      {
+        "default": "A generic testimonial that states the product worked without specifying the situation, the application or the basis for the result.",
+        "why_weak": "Without specificity about situation and mechanism, a testimonial is social proof that the product has users, not proof that it is right for this shopper's situation. It does not do the decision work the intervention requires."
+      },
+      {
+        "default": "A proof stack that places all proof elements — usage, expert, testimonial, badges — on the page without prioritising or sequencing them by the decision they must settle.",
+        "why_weak": "A comprehensive but unsequenced proof set asks the shopper to do the work of connecting proof to their decision; it is the passive_proof failure mode the strategic move is designed to avoid."
+      },
+      {
+        "default": "Addressing a generic category objection (price, safety, results) that the shopper has not been evidenced to raise.",
+        "why_weak": "No shopper objection data has been supplied [ev_8]; a generic objection-resolution element is a guess that may not correspond to what is actually causing hesitation, and may waste the limited attention the shopper gives to the page."
+      }
+    ],
+    "stretch_territories": [
+      {
+        "name": "Criterion Before Claim",
+        "direction": "Reframe what the shopper uses to evaluate this product at the decision point — away from the claim-text assertion the current page leads with [ev_7] and toward a criterion the shopper can apply to their own situation — so that the brand's approved mechanism becomes the basis of the shopper's judgement rather than a statement they are asked to accept. The page's job shifts from presenting proof to helping the shopper establish the criterion on which the product should be judged, before the claim is made.",
+        "locus": "decision_criteria",
+        "tension": "The brand's page leads with a hero image and claim text [ev_7], which asks the shopper to accept an assertion at the moment when PDP-to-purchase conversion has fallen to index 84 [ev_4] and discount depth is flat at index 102 [ev_5] — ruling out price as the lever. The shopper is being asked to decide on the brand's terms (accept the claim) rather than on a criterion they can verify, at the precise point where the funnel is breaking. This tension is specific to a page that leads with assertion while competitors lead with demonstration [ev_7] and conversion is falling without a price explanation [ev_4, ev_5].",
+        "beyond_parity": "Both competitors lead with usage demonstration and expert endorsement [ev_7] — proof-first, but still on the brand's chosen criterion. A criterion-reframe goes beyond proof-first by changing what the shopper is asked to evaluate, not just adding more evidence for the existing claim. Whether competitors already do this is not evidenced; this is a hypothesis.",
+        "built_from": [
+          "reframe_decision_criteria",
+          "proof_into_diagnosis"
+        ],
+        "must_be_true": [
+          "The brand holds a genuine, substantiated basis — grounded in its own approved claims and mechanism — for a criterion that is different from the one the current claim text asserts, and that criterion is one the shopper can apply to their own situation.",
+          "The client can confirm, from review or search data, that the current claim-text criterion is not the primary basis on which satisfied purchasers report choosing the product — otherwise the reframe has no foundation.",
+          "The reframe does not require making claims the brand cannot substantiate; the criterion must be checkable by the shopper using information the page can honestly provide.",
+          "This territory acts on decision_criteria, which is a different lever from proof_sequence; it does not require reordering the asset_architecture beats but does require that the problem beat establishes the criterion before the mechanism beat makes the claim."
+        ],
+        "cannot_solve": "A product with no genuine basis for a different criterion; hesitation driven by price [ev_5] or stock availability [ev_9]; or a criterion the shopper does not care about. Also cannot solve the traffic source mix question [ev_10].",
+        "differs_from_edges": "The strategic edges act on the content and depth of proof elements — what the expert says, how specific the usage demonstration is. This territory acts on what the shopper is asked to use as their basis for deciding, which is a materially different lever: the same proof elements, reframed around a different criterion, would constitute this territory without changing any proof content or sequence.",
+        "differs_from_others": "The second territory (Comparison Anchor) acts on comparison_context — the competitor frame the shopper brings. The third territory (Source-to-Page Continuity) acts on journey_continuity — the match between pre-page and on-page proof. This territory acts on decision_criteria — what the shopper uses to decide — which neither other territory addresses.",
+        "why_not_hygiene": "Hygiene adds proof for the existing claim on the existing criterion. This territory requires identifying a different criterion and restructuring the page around it — a strategic choice that depends on this case's specific tension between claim-led page structure [ev_7] and falling conversion without a price explanation [ev_4, ev_5], and that a competent execution would not make by default.",
+        "basis": "hypothesis",
+        "evidence_ids": [
+          "ev_4",
+          "ev_5",
+          "ev_7"
+        ]
+      },
+      {
+        "name": "Comparison Anchor",
+        "direction": "Acknowledge that a shopper arriving at this product page — after site traffic has risen to index 130 [ev_1] and PDP visits to index 125 [ev_2] while conversion has fallen to index 84 [ev_4] — is likely evaluating this product alongside at least one competitor whose page already carries structured proof [ev_7]. Structure the proof on this page to help the shopper make that specific comparison on the criterion on which this product genuinely differs, using the brand's own approved claims, rather than leaving the comparison to happen off-page on a criterion the brand does not control.",
+        "locus": "comparison_context",
+        "tension": "Both competitors have product pages with usage demonstration and expert endorsement [ev_7], meaning a shopper who visits this brand's page — which leads with hero image and claim text [ev_7] — has likely already seen or will see a structurally stronger proof architecture elsewhere. The brand's current page does not engage with that comparison; it presents proof in isolation while PDP-to-purchase conversion falls to index 84 [ev_4] and discount depth stays flat at index 102 [ev_5], suggesting the shopper is not being given a basis to choose this product over what they have already seen.",
+        "beyond_parity": "Competitors carry usage and authority proof [ev_7] but the public page review did not assess whether either competitor page helps the shopper compare on a specific criterion or simply presents proof in isolation. If competitors present proof without comparison structure, a comparison-anchored proof architecture would go beyond their standard. This is a hypothesis because competitor comparison structure was not coded.",
+        "built_from": [
+          "comparison_decision_useful"
+        ],
+        "must_be_true": [
+          "The brand has a genuine, substantiated difference from its closest competitors on at least one criterion that the brand's approved claims permit it to state.",
+          "The client commerce team can confirm what criterion shoppers most commonly use to compare in this category — ideally from review or search data — before the comparison anchor is designed.",
+          "The comparison does not require the brand to make claims about competitors that it cannot substantiate.",
+          "This territory would require the proof content to include a comparison element, which may change the asset architecture beats; if so, a comparison beat must be added between mechanism and proof."
+        ],
+        "cannot_solve": "A product with no genuine, substantiated difference from competitors; hesitation driven by price [ev_9] or availability [ev_9]; or a shopper who is not comparing alternatives (which is unknown without shopper research [ev_8]).",
+        "differs_from_edges": "The strategic edges act on the depth and specificity of the brand's own proof (expert explanation depth; usage demonstration specificity). This territory acts on the comparison context — it introduces the competitor comparison as a structural element of the proof, which neither edge does. It is a different strategic move (comparison_decision_useful) not used in the core strategic_move.",
+        "differs_from_others": "The first territory (Criterion Before Claim) acts on decision_criteria — what the shopper uses to decide. The third territory (Source-to-Page Continuity) acts on journey_continuity — the match between pre-page and on-page proof. This territory acts on comparison_context — the competitor frame the shopper is already using — which neither other territory addresses.",
+        "why_not_hygiene": "Hygiene presents the brand's own proof. This territory requires the brand to actively engage with the comparison the shopper is already making — given that both competitors already carry structured proof [ev_7] and conversion has fallen to index 84 [ev_4] — and structure proof around the criterion that decides it. A competent execution would not make this choice by default.",
+        "basis": "hypothesis",
+        "evidence_ids": [
+          "ev_1",
+          "ev_2",
+          "ev_4",
+          "ev_5",
+          "ev_7"
+        ]
+      },
+      {
+        "name": "Source-to-Page Continuity",
+        "direction": "Ensure that the proof the shopper meets on the product page is continuous with the proof that brought them to the page — so a shopper who arrived because of a usage demonstration in a creator post meets usage demonstration on the page, and a shopper who arrived because of an expert reference meets expert explanation on the page — rather than a page that resets to claim text regardless of what the shopper just saw.",
+        "locus": "journey_continuity",
+        "tension": "Content engagement is reported at or above prior-period levels [ev_6], meaning something in the top-of-funnel content is working well enough to sustain interest as traffic rises to index 130 [ev_1] and PDP visits to index 125 [ev_2]. Yet PDP-to-purchase conversion has fallen to index 84 [ev_4] while discount depth is flat at index 102 [ev_5]. The gap between stable top-of-funnel engagement and falling decision-point conversion — without a price explanation — is consistent with a discontinuity between what the shopper found compelling enough to click and what they find on the page, though this cannot be confirmed without traffic source data [ev_10].",
+        "beyond_parity": "The public page review assessed competitor page proof architecture [ev_7] but did not assess whether either competitor matches their page proof to their traffic sources. If competitors do not do this, continuity-matched proof would go beyond their standard. This is a hypothesis; no evidence codes competitor journey continuity.",
+        "built_from": [
+          "passive_proof_to_decision_utility"
+        ],
+        "must_be_true": [
+          "Traffic source mix data [ev_10] is supplied so the execution owner can identify which proof type (usage, expert, social) is driving the majority of PDP arrivals.",
+          "The client commerce team can operationally serve different proof configurations to different traffic sources, or can identify the dominant source and optimise the page for it.",
+          "The brand's approved claims and mechanism are consistent across the top-of-funnel content and the product page, so continuity does not require making claims the page cannot substantiate.",
+          "This territory may require traffic source segmentation that is outside the current test design; if so, must_be_true includes confirmation that the test can be run with source-level segmentation without breaking the matched-SKU comparison."
+        ],
+        "cannot_solve": "A proof gap that exists regardless of source continuity — if the page proof is weak for all traffic sources, continuity alone will not address it. Also cannot solve audience quality degradation [ev_10] or stock availability issues [ev_9].",
+        "differs_from_edges": "The strategic edges act on the content and depth of proof elements on the page. This territory acts on the match between the proof that drove the click and the proof the page carries — a journey-level lever that operates across the funnel boundary, not within the page. It is materially different from improving what the page says.",
+        "differs_from_others": "The first territory (Criterion Before Claim) acts on decision_criteria. The second territory (Comparison Anchor) acts on comparison_context. This territory acts on journey_continuity — the match between what the shopper saw before the page and what the page then shows — a different dimension that neither other territory addresses.",
+        "why_not_hygiene": "Hygiene ensures the page has proof. This territory requires matching the type of proof on the page to the type of proof that drove the visit — a source-aware proof architecture that depends on the specific tension between stable top-of-funnel engagement [ev_6] and falling decision-point conversion [ev_4] in this case, and that requires traffic source data [ev_10] the brand has not yet supplied. A competent execution would not produce this by default.",
+        "basis": "hypothesis",
+        "evidence_ids": [
+          "ev_1",
+          "ev_2",
+          "ev_4",
+          "ev_5",
+          "ev_6",
+          "ev_10"
+        ]
+      }
+    ]
+  }
+}

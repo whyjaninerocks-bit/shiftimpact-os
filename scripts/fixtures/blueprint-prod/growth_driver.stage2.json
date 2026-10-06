@@ -1,0 +1,474 @@
+{
+  "behavioural_job": {
+    "primary": "reduce_uncertainty",
+    "secondary": [
+      "reduce_price_dependence"
+    ],
+    "statement": "Give the Commercial Director a structured read on whether affiliate-driven volume holds when promotion depth is reduced on a bounded comparison set — so the scale-vs-hold decision is made on observed demand elasticity rather than on a pattern that is consistent with price dependency but not yet confirmed as such.",
+    "basis": "evidenced",
+    "evidence_ids": [
+      "ev_2",
+      "ev_3",
+      "ev_5",
+      "ev_7",
+      "ev_11"
+    ]
+  },
+  "intervention": {
+    "statement": "Run a bounded promotion-depth reduction test on a client-nominated comparison set of products or regions, scheduled outside the 11.11 and 12.12 platform sale windows, while holding affiliate budget, media weight, price list, stock and creator roster constant — so the single variable of offer depth can be read cleanly against volume, margin and repeat behaviour.",
+    "controlled_variable": "Promotion depth (discount intensity) on the affiliate-attributed comparison set",
+    "preservation_constraints": [
+      {
+        "item": "Affiliate budget held at current level business-wide",
+        "why": "The client cannot pause the programme across the whole business; varying budget alongside offer depth would mean any volume change is consistent with either reduced incentive or reduced spend — the two cannot be separated."
+      },
+      {
+        "item": "Media weight held constant",
+        "why": "A change in paid media weight would alter traffic composition and volume independently of promotion depth, making the test result unreadable."
+      },
+      {
+        "item": "Price list held constant",
+        "why": "A list-price change during the test would conflate price-point sensitivity with promotion-depth sensitivity, preventing isolation of the discount variable."
+      },
+      {
+        "item": "Stock held constant",
+        "why": "A stock constraint on the comparison set would suppress volume for a reason unrelated to promotion depth, producing a false read of demand elasticity."
+      },
+      {
+        "item": "Creator roster held constant",
+        "why": "Changing which affiliates or creators are active on the comparison set would introduce a reach and audience-quality variable alongside the offer-depth variable, making the result unattributable."
+      },
+      {
+        "item": "Test window scheduled outside 11.11 and 12.12 / Harbolnas platform sale periods",
+        "why": "Platform-wide promotion events generate demand distortion that would swamp any promotion-reduction signal on the comparison set, rendering the test result unreadable."
+      }
+    ],
+    "basis": "evidenced",
+    "evidence_ids": [
+      "ev_7",
+      "ev_11",
+      "ev_3",
+      "ev_5"
+    ]
+  },
+  "content_roles": [
+    {
+      "role": "conversion",
+      "job": "Within the test comparison set, affiliate-linked content must carry the product to a purchase decision without relying on a deepened discount signal as the primary reason to act — so the test can observe whether demand holds on product or brand grounds when the offer is shallower.",
+      "basis": "evidenced",
+      "evidence_ids": [
+        "ev_7",
+        "ev_11"
+      ]
+    },
+    {
+      "role": "product_proof",
+      "job": "Affiliate content on the comparison set must make the product's value case visible on grounds other than price — so that if volume holds at reduced discount depth, the test result can be attributed to product pull rather than residual offer attractiveness.",
+      "basis": "hypothesis",
+      "evidence_ids": [
+        "ev_7"
+      ]
+    },
+    {
+      "role": "education",
+      "job": "Where the category re-purchase cycle is long, affiliate content must give a first-time buyer a reason to return that is grounded in product use or outcome — so that the CRM tracking layer of the test can begin to distinguish loyalty-building acquisition from discount-triggered one-off purchase.",
+      "basis": "evidenced",
+      "evidence_ids": [
+        "ev_4",
+        "ev_6"
+      ]
+    }
+  ],
+  "proof_required": [
+    {
+      "proof": "usage",
+      "must_show": "How the product is used in a recognisable household context, so a buyer can conclude the product fits their routine without a discount being the deciding factor — making it possible to observe whether that conclusion alone sustains purchase at reduced offer depth.",
+      "basis": "hypothesis",
+      "evidence_ids": [
+        "ev_7"
+      ]
+    },
+    {
+      "proof": "visible_result",
+      "must_show": "The outcome a buyer should expect from using the product, stated in terms the brand's own approved claims permit — so the viewer can evaluate product value independently of the price signal, which is what the test requires.",
+      "basis": "hypothesis",
+      "evidence_ids": [
+        "ev_11"
+      ]
+    },
+    {
+      "proof": "claim_credibility",
+      "must_show": "A basis for believing the product delivers its stated outcome that the viewer can assess themselves — not a credential alone — so that credibility is carried by the content rather than by the depth of the discount.",
+      "basis": "hypothesis",
+      "evidence_ids": [
+        "ev_7",
+        "ev_11"
+      ]
+    },
+    {
+      "proof": "objection_removal",
+      "must_show": "An answer to the most likely reason a buyer at reduced discount depth would hesitate — what that objection is must be confirmed by the client before production, as no objection-level data is supplied.",
+      "basis": "hypothesis",
+      "evidence_ids": [
+        "ev_8",
+        "ev_9"
+      ]
+    }
+  ],
+  "creator_role": {
+    "applicable": true,
+    "role": "credible_demonstration",
+    "not_role": "distribution",
+    "job": "On the comparison set, the affiliate creator's job is to make the product's value case credible through natural, recognisable use — not to amplify reach or deliver a discount code as the primary call to action. The creator must carry enough of the conversion job that the offer depth can be reduced without the content losing its persuasive function. This is the condition the test requires: if the creator is only functioning as a discount-code delivery mechanism, reducing the discount will mean volume declines regardless of content quality, and the test will not separate demand elasticity from content failure.",
+    "selection_criteria": [
+      "Demonstrated history of content that generates purchase consideration on product grounds, not solely on promotional offers",
+      "Audience composition consistent with the household-care category's buyer profile as stated by the client — not inferred from platform demographics",
+      "Willingness to produce content that shows natural product use without a deepened discount as the primary reason to act",
+      "No current contractual requirement to lead with a specific discount depth that would prevent the test condition being met"
+    ],
+    "basis": "hypothesis"
+  },
+  "asset_architecture": {
+    "beats": [
+      {
+        "beat": "problem",
+        "job": "Establish the household situation or outcome the product addresses — so the viewer's attention is anchored to a need, not to a price signal, from the outset."
+      },
+      {
+        "beat": "usage",
+        "job": "Show the product being used in a recognisable household context in a way the viewer can map to their own routine — making the product's fit with daily life the primary reason to consider it."
+      },
+      {
+        "beat": "mechanism",
+        "job": "Make visible the basis on which the product delivers its outcome, using the brand's own approved claim or mechanism — so the viewer can form a belief about product value that does not depend on the offer."
+      },
+      {
+        "beat": "proof",
+        "job": "Carry the visible result or outcome the brand's approved claims permit showing — giving the viewer something they can evaluate, not just accept."
+      },
+      {
+        "beat": "objection_resolution",
+        "job": "Address the most likely hesitation a buyer would have at reduced discount depth — what that hesitation is must be confirmed from client data before this beat is specified further."
+      },
+      {
+        "beat": "reason_to_believe",
+        "job": "Consolidate the case for the product on grounds other than price — so the viewer reaches the purchase point having formed a product-based conviction, which is the condition the test needs to observe."
+      },
+      {
+        "beat": "product_choice",
+        "job": "Make the specific product on the comparison set identifiable and selectable — connecting the content to the marketplace listing without the offer depth being the final deciding signal."
+      },
+      {
+        "beat": "cta",
+        "job": "Direct the viewer to the product page at the reduced offer depth — so the test can observe whether the content-built conviction converts without the deeper discount."
+      }
+    ],
+    "rationale": "The beat order moves from need to product value to conviction before the offer appears, because the test requires observing whether conviction built on product grounds sustains purchase when the discount is shallower. Placing the offer signal late — rather than leading with it, as a discount-led affiliate mechanic typically does — is the structural change the test condition demands."
+  },
+  "platform_roles": [
+    {
+      "environment": "Short-form affiliate video (comparison set only)",
+      "role": "short_form_discovery",
+      "job": "Carry the product-value case to a buyer who has not yet decided to purchase — at reduced offer depth. This environment is VARIED in the test: the offer depth embedded in or linked from this content is the treatment condition. The job is to observe whether this environment can sustain conversion without a deepened discount as the primary signal."
+    },
+    {
+      "environment": "Marketplace product listing page (comparison set)",
+      "role": "product_evaluation",
+      "job": "Receive the buyer arriving from the affiliate content and carry the product-value case through to purchase at the reduced offer price. This environment is held constant — not varied — except for the offer depth displayed, which reflects the test condition. No new proof elements are added here during the test, to avoid confounding the read."
+    },
+    {
+      "environment": "CRM / repeat-purchase tracking layer",
+      "role": "retention",
+      "job": "Track whether buyers acquired through the comparison set at reduced discount depth show different repeat behaviour over the subsequent quarter — so the test can begin to distinguish loyalty-building acquisition from discount-triggered one-off purchase. This environment is held constant — not varied — and is an observation layer, not a treatment."
+    },
+    {
+      "environment": "Affiliate programme (business-wide, outside comparison set)",
+      "role": "conversion",
+      "job": "Continue operating at current discount depth and incentive structure — held constant — so that the test comparison set can be read against a stable baseline and the business does not lose volume while the test runs."
+    }
+  ],
+  "commerce_roles": [
+    {
+      "role": "product_assignment",
+      "job": "Nominate the specific products or regions that form the comparison set — so the test has a defined and stable scope.",
+      "controlled_by": "Client commerce team"
+    },
+    {
+      "role": "full_price_choice",
+      "job": "Set the reduced offer depth on the comparison set — the specific discount level to test must be determined by the client finance and commerce teams against a margin recovery target, not by the execution owner.",
+      "controlled_by": "Client finance and commerce team"
+    },
+    {
+      "role": "pdp_proof",
+      "job": "Ensure the marketplace listing for the comparison set carries the product-value proof that the affiliate content builds toward — so the handoff from content to purchase does not drop the conviction the content established.",
+      "controlled_by": "Client commerce team"
+    },
+    {
+      "role": "handoff_to_purchase",
+      "job": "The affiliate link or code on the comparison set must route the buyer to the correct listing at the test offer depth — any routing error would corrupt the test result.",
+      "controlled_by": "Execution owner (affiliate tracking) and client commerce team (listing)"
+    },
+    {
+      "role": "retention",
+      "job": "Tag comparison-set buyers in the CRM so that repeat behaviour can be tracked separately from the business-wide affiliate cohort over the subsequent quarter.",
+      "controlled_by": "Client CRM team"
+    }
+  ],
+  "execution_choices": [
+    {
+      "question": "Should the affiliate content on the comparison set lead with the offer or lead with the product-value case?",
+      "recommended": "Lead with the product-value case; place the offer signal at or near the end of the asset",
+      "why": "The test is designed to observe whether volume holds when promotion depth is reduced. If the content leads with the offer, a volume decline at reduced depth cannot be separated from content failure — the content was never doing a product-value job. Leading with product value is the structural condition that makes the test result readable.",
+      "alternative_not_chosen": "Lead with the offer as current affiliate mechanics do",
+      "basis": "evidenced",
+      "evidence_ids": [
+        "ev_7",
+        "ev_11"
+      ]
+    },
+    {
+      "question": "Should the creator proof format be an identifiable real-user testimonial, a generic user-style demonstration, or an expert authority endorsement?",
+      "recommended": "Identifiable real-user demonstrating natural product use — not a rehearsed testimonial and not an expert authority",
+      "why": "The test needs to isolate whether product-value content sustains conversion at reduced discount depth. An expert authority signal introduces a credibility variable that is not the controlled variable; a generic user-style format without identifiable use reduces the conviction the content can build. A real user showing natural use in a recognisable household context is the format most likely to carry product-value conviction without adding an uncontrolled variable. This is a hypothesis: no objection or format-preference data is supplied.",
+      "alternative_not_chosen": "Expert authority endorsement",
+      "basis": "hypothesis",
+      "evidence_ids": [
+        "ev_7"
+      ]
+    },
+    {
+      "question": "Should product usage be shown explicitly or only implied?",
+      "recommended": "Usage shown explicitly in a recognisable household context",
+      "why": "If usage is only implied, the content cannot carry the product-fit conviction the test requires — a buyer at reduced discount depth has less price-based reason to act and needs a stronger product-based reason. Explicit usage is the minimum condition for the content to do a product-value job. This is a hypothesis: no data on what level of usage demonstration shifts conviction in this category is supplied.",
+      "alternative_not_chosen": "Usage implied through product appearance or outcome claim alone",
+      "basis": "hypothesis",
+      "evidence_ids": [
+        "ev_11"
+      ]
+    },
+    {
+      "question": "What format and approximate duration should the affiliate asset take on the comparison set?",
+      "recommended": "Short-form video, 30–60 seconds, sufficient to complete the problem–usage–mechanism–proof–cta beat sequence without compression that drops the proof beats",
+      "why": "The asset must complete a product-value job that current discount-led affiliate content does not need to do. A static or image-set format cannot show usage or mechanism in the way the test condition requires. A duration shorter than 30 seconds risks compressing the beat sequence to the point where proof beats are dropped and the content reverts to claim-only. A duration beyond 60 seconds is a hypothesis about what the platform environment and audience will sustain — no attention or completion data is supplied. The 30–60 second band is a format specification, not a beat-by-beat content plan.",
+      "alternative_not_chosen": "Static image or GIF format",
+      "basis": "hypothesis",
+      "evidence_ids": [
+        "ev_11"
+      ]
+    },
+    {
+      "question": "Should the comparison set test a single reduced discount depth or multiple depths simultaneously?",
+      "recommended": "A single reduced discount depth on the comparison set, chosen by the client finance team against a margin recovery target",
+      "why": "Testing multiple discount depths simultaneously would require splitting the comparison set further, reducing the volume in each cell and making the result harder to read from aggregated indexed data — which is the only data format the client can share. A single depth keeps the test readable within the client's data constraints. The specific depth is a client finance decision, not an execution decision.",
+      "alternative_not_chosen": "Multiple discount depths tested simultaneously across sub-sets",
+      "basis": "evidenced",
+      "evidence_ids": [
+        "ev_11",
+        "ev_8"
+      ]
+    },
+    {
+      "question": "Should the execution owner restructure the affiliate incentive mechanic on the comparison set (e.g. shift from discount-led to volume or full-price commission) or only reduce the discount depth within the existing mechanic?",
+      "recommended": "Reduce discount depth within the existing mechanic for this test; do not restructure the incentive mechanic simultaneously",
+      "why": "Restructuring the incentive mechanic and reducing discount depth at the same time would introduce two variables — creator motivation and offer depth — making it impossible to read which change drove any volume or margin outcome. The incentive structure review identified in the approved Stage 1 decision should be conducted in parallel as a planning exercise, with any restructure applied in a subsequent test phase after the depth-reduction result is known.",
+      "alternative_not_chosen": "Simultaneously shift to a full-price or lower-discount commission structure on the comparison set",
+      "basis": "evidenced",
+      "evidence_ids": [
+        "ev_7",
+        "ev_11"
+      ]
+    }
+  ],
+  "execution_owner_asks": [
+    "Confirm the client-nominated comparison set (specific products or regions) and the reduced offer depth the client finance team has approved for the test — the execution owner cannot determine either of these and must not proceed without them.",
+    "Confirm the test window dates are clear of the 11.11 and 12.12 / Harbolnas platform sale periods — obtain the exact marketplace calendar dates and document that the test window does not overlap with either event.",
+    "Confirm that affiliate tracking on the comparison set is configured to tag buyers separately from the business-wide affiliate cohort, so the CRM team can track repeat behaviour on the test group independently.",
+    "Confirm that the creators active on the comparison set during the test period do not have existing contractual commitments to a specific discount depth that would prevent the test condition being met — flag any such constraint to the client before production begins.",
+    "Deliver the affiliate content assets for the comparison set with the offer signal placed at or near the end of the beat sequence, and confirm with the client commerce team that the marketplace listing for the comparison set reflects the test offer depth before the test goes live.",
+    "Obtain from the client commerce and CRM teams the promo-versus-full-price order mix [ev_8] and new-versus-repeat customer split [ev_9] before the test launches — these are required to interpret the test result and the execution owner should flag if they are not supplied in time."
+  ],
+  "push_the_brief": {
+    "category_hygiene": [
+      "Include the product name and category clearly identifiable within the first few seconds of the asset, so a viewer who has not seen the brand before can orient to what is being shown.",
+      "Ensure the marketplace listing the affiliate link routes to is live, correctly priced at the test offer depth, and in stock before the test window opens.",
+      "Ensure the affiliate tracking link on the comparison set is correctly attributed and does not share a tracking parameter with the business-wide affiliate cohort.",
+      "Ensure the asset is produced at the aspect ratio and file specification required by the marketplace and affiliate platform environments in use."
+    ],
+    "parity_catchup": [
+      {
+        "item": "Affiliate content that shows product usage in a household context rather than product appearance alone — the evidence shows current affiliate incentives are structured around discount-led offers [ev_7], suggesting content may be leading with the offer rather than with usage; showing usage is the minimum standard for product-value content in this category.",
+        "evidence_ids": [
+          "ev_7"
+        ]
+      },
+      {
+        "item": "A product-value case that is visible in the affiliate content independently of the discount signal — the structural link between affiliate incentives and discount-led offers [ev_7] suggests this is not currently the norm in the programme, making it a catch-up requirement for the test condition.",
+        "evidence_ids": [
+          "ev_7",
+          "ev_11"
+        ]
+      }
+    ],
+    "strategic_edge": [
+      {
+        "edge": "Make the product's value case carry a specific, checkable basis — not a claim the viewer is asked to accept, but an outcome or mechanism the viewer can assess from what they see — so that conviction at reduced discount depth comes from observation rather than trust in the offer.",
+        "beyond_parity": "Parity in this category, as suggested by the discount-led affiliate incentive structure [ev_7], is content that leads with or relies on the offer as the primary reason to act. The edge is content in which the product-value case is independently legible — the viewer can reach a conclusion about product fit before the offer appears. The evidence does not show what competitors' affiliate content does beyond the incentive structure, so whether this exceeds competitor content specifically is a hypothesis; what it exceeds is the current programme's own standard.",
+        "why_stronger": "If the test shows volume holds at reduced discount depth, the result is ambiguous unless the content was doing a product-value job independently of the offer. Content that makes the value case observable — not just asserted — is the condition that makes a positive test result attributable to product pull rather than residual offer attractiveness. This is the difference between a test that resolves the decision question and one that does not.",
+        "basis": "hypothesis",
+        "evidence_ids": [
+          "ev_7",
+          "ev_11"
+        ]
+      }
+    ],
+    "strategic_move": {
+      "seeds_used": [
+        "assertion_to_observable"
+      ],
+      "seeds_rejected": [
+        {
+          "seed_id": "proof_into_diagnosis",
+          "why_less_appropriate": "This move is most useful when hesitation is about personal fit or suitability. The decision question here is about demand elasticity to discount depth, not about whether the product fits the buyer's situation. There is no evidence that fit-related hesitation is the barrier; the barrier is unknown and the test is designed to surface it."
+        },
+        {
+          "seed_id": "expose_decision_gap",
+          "why_less_appropriate": "This move requires locating the specific gap between interest and purchase at a step level. The supplied evidence is aggregated at portfolio level [ev_1 through ev_5] and no step-level funnel or objection data is supplied. The gap cannot be located with the available evidence, making this move a hypothesis without a foundation to build on."
+        },
+        {
+          "seed_id": "compress_proof_around_tension",
+          "why_less_appropriate": "This move is most useful when the decisive tension is known and proof needs to be concentrated around it. The decisive tension in this case — what sustains purchase when the discount is reduced — is precisely what the test is designed to discover. Compressing proof around a tension that has not yet been identified would require inventing the tension, which the evidence does not support."
+        },
+        {
+          "seed_id": "comparison_decision_useful",
+          "why_less_appropriate": "This move requires a documented basis on which the product genuinely differs from alternatives, and evidence that shoppers are comparing at the moment of choice. Neither is supplied. Introducing a comparison frame into the test content would add a variable — the comparison context — that is not the controlled variable and would make the test result harder to read."
+        }
+      ],
+      "adapted_statement": "Make the product-value case in the affiliate content something the viewer can observe and assess for themselves — not a claim they are asked to accept on the basis of the offer depth — so that if volume holds at reduced discount depth, the result can be attributed to product pull rather than residual price attractiveness.",
+      "how_adapted": "The seed's core move is turning assertion into something observable. In this case, the adaptation is specific to the test condition: the observable must be legible independently of the discount signal, because the test requires separating product-pull demand from price-triggered demand. The seed is applied not as a general proof improvement but as the structural requirement that makes the test result interpretable.",
+      "evidence_for_choosing": "Affiliate incentives are structurally tied to discount-led offers [ev_7], which is consistent with current content leading with the offer rather than with an observable product-value case. The test [ev_11] requires content that can carry conversion without the deeper discount; assertion-to-observable is the move that creates that condition.",
+      "cannot_solve": "Whether the product's approved claims permit showing a result that is genuinely observable and compelling — that depends on the brand's own claim substantiation, which is not supplied. If the approved claims are weak or abstract, the move cannot be executed in a form that is meaningfully more observable than the current content.",
+      "basis": "hypothesis",
+      "evidence_ids": [
+        "ev_7",
+        "ev_11"
+      ]
+    },
+    "proof_mechanic": {
+      "mechanic": "make_invisible_visible",
+      "secondary": [
+        "diagnostic_explanation"
+      ],
+      "statement": "Surface the product's mechanism or outcome in a form the viewer can observe within the content — making visible what the product does in use, which a discount signal or claim text cannot show — so the viewer's reason to purchase is grounded in something they have seen rather than something they have been told.",
+      "what_it_makes_visible": "The specific outcome or mechanism the product delivers in a real household context, assessed by the viewer from what they observe rather than from the depth of the offer — which is the condition the test requires to separate product-pull demand from price-triggered demand.",
+      "limit": "This mechanic cannot make visible an outcome the brand's approved claims do not permit showing, and it cannot resolve hesitation that is about price sensitivity rather than product-value uncertainty — if buyers at reduced discount depth are simply unwilling to pay more regardless of what they see, the mechanic will not hold volume.",
+      "basis": "hypothesis",
+      "evidence_ids": [
+        "ev_7",
+        "ev_11"
+      ]
+    },
+    "creative_challenge": "How can a buyer who has never paid full price for this product be shown something in the content that makes the product worth the reduced-discount price before the offer appears?",
+    "avoid": [
+      {
+        "default": "Leading the affiliate asset with the discount or offer code as the primary reason to act",
+        "why_weak": "This replicates the current mechanic that the test is designed to move away from. If the content leads with the offer, a volume decline at reduced depth cannot be separated from content failure — the test result becomes unreadable and the decision question remains unresolved."
+      },
+      {
+        "default": "A product appearance or texture presentation with no usage or outcome shown",
+        "why_weak": "This carries no decision value for a buyer who is being asked to act on a shallower discount. It asserts product quality without giving the viewer any basis to assess it, which is the opposite of what the test condition requires."
+      },
+      {
+        "default": "A generic testimonial that states satisfaction without showing the basis for it",
+        "why_weak": "A satisfaction statement without an observable basis asks the viewer to trust the speaker rather than to assess the product. At reduced discount depth, trust in a claim is a weaker conversion lever than an observable outcome — and the test cannot attribute a positive result to product pull if the content only asserts it."
+      },
+      {
+        "default": "A credentialled authority signal placed beside the product claim with no explanation of what was assessed",
+        "why_weak": "A credential alone does not resolve the specific doubt a buyer has at reduced discount depth — it signals approval without answering the question of whether the product is worth the price without the deeper offer. It is also an uncontrolled variable that would make the test result harder to attribute."
+      },
+      {
+        "default": "Proof elements added to the marketplace listing during the test window that are not present on the business-wide listing",
+        "why_weak": "Adding proof to the listing on the comparison set introduces a second variable alongside offer depth. If volume holds, the result cannot be attributed to offer-depth reduction alone — the test becomes unreadable."
+      },
+      {
+        "default": "Content that addresses generic category objections (safety, value for money, brand trust) without grounding them in this product's specific approved claims",
+        "why_weak": "Generic objection handling does not give the viewer a product-specific reason to act and does not advance the test's ability to observe whether product pull — rather than category reassurance — sustains conversion at reduced discount depth."
+      }
+    ],
+    "stretch_territories": [
+      {
+        "name": "The re-purchase horizon frame",
+        "direction": "Because the category re-purchase cycle is long, the affiliate content's job is not only to convert the first purchase but to give the buyer a reason to return that is grounded in product use — so that the CRM tracking layer of the test can begin to distinguish buyers acquired on product grounds from buyers acquired on discount grounds. The opportunity is to use the long cycle as a frame: a buyer who understands when and why they will need the product again represents a different kind of acquisition than one who bought because the price was low.",
+        "locus": "decision_criteria",
+        "tension": "Repeat rate is flat at index 101 [ev_4], but the long re-purchase cycle [ev_6] means one quarter is insufficient to observe a full cycle. The tension is that the test will generate a volume and margin read within the test window, but the loyalty read — whether buyers acquired at reduced discount depth return — will not be visible within the same window. The risk is that the test is read as a volume-and-margin result only, and the loyalty question remains unresolved. This territory acts on the decision criteria the buyer uses at first purchase, to make the loyalty signal more likely to appear in the subsequent quarter's CRM data.",
+        "beyond_parity": "Parity in a discount-led affiliate programme is content that optimises for first-purchase conversion. This territory goes beyond parity by treating the first-purchase content as the beginning of a re-purchase cycle — giving the buyer a frame for when and why they will return, which is a criterion that discount-led content does not address. The evidence does not show what competitor affiliate content does on this dimension, so the claim of superiority over competitors is a hypothesis.",
+        "built_from": [
+          "passive_proof_to_decision_utility"
+        ],
+        "must_be_true": [
+          "The brand's approved claims or product use pattern provide a genuine basis for communicating a re-purchase horizon — if the product has no clear use cycle or the claims do not support it, this frame cannot be built honestly.",
+          "The CRM team can tag comparison-set buyers separately and track their repeat behaviour over the subsequent quarter — without this, the loyalty signal the territory is designed to surface cannot be observed.",
+          "The re-purchase frame does not require a specific discount or offer to be credible — if the frame only works when paired with a deep discount, it does not advance the test's ability to separate product-pull from price-pull acquisition."
+        ],
+        "cannot_solve": "The immediate volume question — whether buyers at reduced discount depth convert at all. This territory acts on the quality of the acquisition, not the rate of the first conversion. It also cannot solve a genuinely low-loyalty product where the re-purchase cycle is long because buyers do not return, not because the cycle is slow.",
+        "differs_from_edges": "The strategic edge acts on the observability of the proof — making the product-value case something the viewer can assess. This territory acts on the decision criteria the buyer uses — specifically, whether the buyer is deciding on the basis of the immediate offer or on the basis of a product that fits a recurring need. These are materially different: the edge changes what the proof shows; this territory changes what the buyer is deciding about.",
+        "differs_from_others": "The second territory acts on comparison context — what the buyer is comparing the product against at the moment of choice. The third territory acts on journey continuity — whether the content the buyer arrives from is consistent with what the listing then asks them to do. This territory acts on decision criteria — what the buyer is using to decide — which is a different strategic lever from either.",
+        "why_not_hygiene": "Hygiene ensures the product is shown and the offer is present. This territory requires the content to give the buyer a frame for re-purchase — a criterion that is not present in discount-led affiliate content and that is specifically needed to make the CRM tracking layer of the test interpretable over the subsequent quarter.",
+        "basis": "hypothesis",
+        "evidence_ids": [
+          "ev_4",
+          "ev_6",
+          "ev_11"
+        ]
+      },
+      {
+        "name": "The full-price reference point",
+        "direction": "The buyer arriving at the comparison set listing at reduced discount depth is implicitly comparing the current offer to the deeper discount they may have seen before or expect from the category. The opportunity is to shift the comparison the buyer is making — from 'this discount versus a deeper discount' to 'this product versus the alternative of not solving the problem' — so that the purchase decision is grounded in product value rather than in relative offer depth.",
+        "locus": "comparison_context",
+        "tension": "Discount intensity has risen to index 118 [ev_3] and affiliate incentives are structurally tied to discount-led offers [ev_7]. A buyer who has been recruited into the category through progressively deeper discounts may have calibrated their reference price downward. When the test reduces discount depth on the comparison set [ev_11], the buyer is not comparing the product to a competitor — they may be comparing the current offer to a deeper offer they have seen or expect. This is a different comparison than the one the content is typically designed to address, and it is the specific comparison context the test creates.",
+        "beyond_parity": "Parity in a discount-led affiliate programme is content that presents the current offer as worthwhile relative to the list price. This territory goes beyond parity by shifting the comparison frame entirely — away from offer-versus-offer and toward product-versus-no-solution. The evidence does not show what competitor affiliate content does on this dimension, so the claim of superiority over competitors is a hypothesis. What it exceeds is the current programme's implicit comparison frame, which is supported by [ev_3] and [ev_7].",
+        "built_from": [
+          "reframe_decision_criteria"
+        ],
+        "must_be_true": [
+          "The product's approved claims provide a genuine basis for framing the purchase as a solution to a problem the buyer has — if the product benefit is weak or abstract, the reframe cannot be made credibly.",
+          "The client commerce team confirms that the comparison set listing does not display a crossed-out higher price or a 'limited time' offer signal that would anchor the buyer to the discount frame regardless of what the content does — if the listing itself anchors to discount, the content reframe is undermined.",
+          "No objection data is supplied [ev_8, ev_9], so whether buyers at reduced discount depth are actually making an offer-versus-offer comparison is a hypothesis — this territory depends on that being the operative comparison, which must be confirmed or tested."
+        ],
+        "cannot_solve": "Absolute price sensitivity — if buyers at reduced discount depth are unwilling to pay more regardless of the comparison frame, reframing the comparison will not hold volume. It also cannot solve a listing environment that anchors the buyer to the discount frame through its own design, which is outside the execution owner's control.",
+        "differs_from_edges": "The strategic edge acts on the observability of the proof — making the product-value case something the viewer can assess. This territory acts on the comparison context — what the buyer is comparing the product against at the moment of choice. These are materially different: the edge changes what the proof shows; this territory changes the implicit comparison the buyer is making.",
+        "differs_from_others": "The first territory acts on decision criteria — what the buyer is deciding about (one-time purchase versus recurring need). The third territory acts on journey continuity — whether the content the buyer arrives from is consistent with what the listing then asks them to do. This territory acts on comparison context — what the buyer is comparing the product against — which is a different strategic lever from either.",
+        "why_not_hygiene": "Hygiene presents the current offer in a way that supports purchase. This territory requires the content to shift the comparison the buyer is making — away from offer-depth comparison and toward product-value comparison — which is a strategic move that most discount-led affiliate content does not make and that is specifically needed when the test reduces the offer depth the buyer may have been conditioned to expect.",
+        "basis": "hypothesis",
+        "evidence_ids": [
+          "ev_3",
+          "ev_7",
+          "ev_11"
+        ]
+      },
+      {
+        "name": "The arrival consistency test",
+        "direction": "A buyer who arrives at the comparison set listing from affiliate content that led with a discount signal will encounter a product-value case on the listing that the content did not prepare them for — creating a discontinuity between what brought them there and what the listing asks them to do. The opportunity is to ensure the product-value case the listing carries is consistent with the product-value case the affiliate content established, so the buyer's journey from content to purchase does not require them to re-evaluate on different grounds at the listing stage.",
+        "locus": "journey_continuity",
+        "tension": "Affiliate incentives are structurally tied to discount-led offers [ev_7], which is consistent with current content and listing environments both being organised around the discount signal. The test reduces the discount on the comparison set [ev_11] but holds the listing constant except for the offer depth. If the content shifts to a product-value frame but the listing continues to organise around the offer, the buyer encounters a discontinuity — the content built one kind of conviction and the listing asks them to complete a different kind of decision. This tension is specific to the test condition and does not exist in the current programme where content and listing are both discount-led.",
+        "beyond_parity": "Parity in a discount-led affiliate programme is a listing that reflects the offer the content promoted. This territory goes beyond parity by requiring the product-value case established in the content to be carried through consistently to the listing — so the buyer's conviction is not interrupted at the handoff point. The evidence does not show what competitor programmes do on journey continuity, so the claim of superiority over competitors is a hypothesis; what it exceeds is the current programme's implicit assumption that the listing only needs to reflect the offer.",
+        "built_from": [
+          "parity_to_superiority"
+        ],
+        "must_be_true": [
+          "The client commerce team can confirm that the product-value elements on the comparison set listing are consistent with the product-value case the affiliate content establishes — if the listing is controlled by the marketplace platform and cannot be adjusted, this territory cannot be executed.",
+          "The execution owner has visibility of both the affiliate content and the listing environment during the test window, so discontinuities can be identified and flagged before the test goes live.",
+          "The product-value case the content establishes is specific enough to have a corresponding element on the listing — if the content makes a general claim and the listing carries no supporting proof, the continuity the territory requires does not exist."
+        ],
+        "cannot_solve": "A listing environment that is entirely controlled by the marketplace platform and cannot be adjusted to reflect the content's product-value frame. It also cannot solve a content-to-listing discontinuity that is structural to the marketplace format — if the platform's listing template does not permit the proof elements the content established, the journey continuity this territory requires cannot be achieved.",
+        "differs_from_edges": "The strategic edge acts on the observability of the proof within the content asset. This territory acts on the continuity between the content environment and the listing environment — whether the conviction the content builds is carried through to the purchase point without interruption. These are materially different: the edge changes what the proof shows; this territory changes whether the proof survives the handoff from content to listing.",
+        "differs_from_others": "The first territory acts on decision criteria — what the buyer is deciding about. The second territory acts on comparison context — what the buyer is comparing the product against. This territory acts on journey continuity — whether the product-value case established in the content is consistent with what the buyer encounters at the listing. These are three different strategic levers on three different aspects of the decision.",
+        "why_not_hygiene": "Hygiene ensures the affiliate link routes to the correct listing. This territory requires the product-value case the content establishes to be carried through consistently to the listing — a condition that does not arise in a discount-led programme where content and listing are both organised around the offer, and that is specifically created by the test condition of shifting the content to a product-value frame while the listing is held largely constant.",
+        "basis": "hypothesis",
+        "evidence_ids": [
+          "ev_7",
+          "ev_11"
+        ]
+      }
+    ]
+  }
+}

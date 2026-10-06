@@ -103,7 +103,7 @@ export const EXAMPLES: Record<
     primaryActual: number;
     /** Primary actual chosen by regex on the generated primary measure; falls back to primaryActual. */
     primaryActuals: { match: RegExp; value: number }[];
-    guardrailActuals: { match: RegExp; value: number }[];
+    guardrailActuals: { match: RegExp; value: number; byUnit?: Partial<Record<string, number>> }[];
     interpretation: string;
     next: Next;
   }
@@ -145,8 +145,11 @@ export const EXAMPLES: Record<
     guardrailActuals: [
       { match: /margin/i, value: 4.1 },
       { match: /volume|order/i, value: -9 },
-      { match: /discount/i, value: 109 },
-      { match: /repeat/i, value: -1 },
+      // The drafted measure may be an absolute index OR a relative difference vs the
+      // matched comparison (pct_change / pct_points); the authored actual must use the
+      // same unit, otherwise a unit mismatch reads as a false guardrail breach.
+      { match: /discount/i, value: 109, byUnit: { pct_change: -6, pct_points: -6 } },
+      { match: /repeat/i, value: 99, byUnit: { pct_change: 1, pct_points: 1 } },
       { match: /new.?customer|customer/i, value: 0 },
       { match: /brand|search|demand/i, value: 0 },
     ],
@@ -193,7 +196,7 @@ export function buildIllustrativeOutcome(
       return { measure_key: m.key, value: p ? p.value : ex.primaryActual, passed: null };
     }
     const hit = ex.guardrailActuals.find((g) => g.match.test(`${m.key} ${m.label}`));
-    if (hit) return { measure_key: m.key, value: hit.value, passed: null };
+    if (hit) return { measure_key: m.key, value: hit.byUnit?.[m.unit] ?? hit.value, passed: null };
     notes.push(`No authored actual matched guardrail "${m.key}" — set at threshold; review it.`);
     return { measure_key: m.key, value: m.threshold, passed: null };
   });
