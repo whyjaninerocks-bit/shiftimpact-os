@@ -72,6 +72,10 @@ ok("seed both used and rejected is rejected", has(lintPush(overlap, inputs), /bo
 // ── 5. unsupported market facts in hygiene ──
 const mf = mk({ ...common, category_hygiene: ["Ensure the proof asset is watchable without audio given autoplay norms in the marketplace", "A named authority signal on the page"], strategic_edge: [edge], strategic_move: move(["proof_into_diagnosis"]), stretch_territories: [tCompress, tContinuity, tCompare] });
 ok("unsupported market/platform norm in hygiene rejected", has(lintPush(mf, inputs), /market\/platform norm/));
+const snd = mk({ ...common, category_hygiene: ["Ensure all proof assets are legible without sound, as product pages are frequently browsed where audio is not available", "A named authority signal on the page"], strategic_edge: [edge], strategic_move: move(["proof_into_diagnosis"]), stretch_territories: [tCompress, tContinuity, tCompare] });
+ok("'legible without sound, as pages are frequently browsed…' rejected", has(lintPush(snd, inputs), /market\/platform norm/));
+const ev = mk({ ...common, strategic_edge: [edge], strategic_move: { ...move(["proof_into_diagnosis"]), basis: "evidenced" }, stretch_territories: [tCompress, tContinuity, tCompare] });
+ok("strategic_move tagged evidenced is rejected", has(lintPush(ev, inputs), /hypothesis to test/));
 const dup = mk({ ...common, category_hygiene: ["Place a usage demonstration and an expert endorsement high on the product page", "A named authority signal on the page"], strategic_edge: [edge], strategic_move: move(["proof_into_diagnosis"]), stretch_territories: [tCompress, tContinuity, tCompare] });
 ok("hygiene duplicating parity_catchup rejected", has(lintPush(dup, inputs), /duplicates a parity_catchup/));
 

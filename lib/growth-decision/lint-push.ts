@@ -82,7 +82,9 @@ export function caseAnchors(text: string, vocab: Set<string>, inputs: Inputs): {
 }
 
 const STOCK_TERRITORY = /(doubt test|decision shortcut|proof you can see|make the invisible visible|mechanism made visible|show the difference|invisible visible)/i;
-const MARKET_FACT = /\b(auto-?play|norms?|without audio|sound[- ]?off|muted|mobile[- ]first|most shoppers|typically|commonly)\b/i;
+// Hygiene must state an ACTION. Justification clauses about how a market/platform/audience
+// behaves ("as pages are browsed without sound", "given norms", "frequently", "often") are rejected.
+const MARKET_FACT = /(,\s*as\b|\bbecause\b|\bsince\b|\bgiven\b|\bfrequently\b|\boften\b|\btypically\b|\bcommonly\b|\bmost shoppers\b|\bauto-?play\b|\bnorms?\b|\bwithout (audio|sound)\b|\bsound[- ]?off\b|\bmuted\b|\bmobile[- ]first\b|\bbrowsed\b)/i;
 const PHYSICAL = /\b(skin ?tone|complexion|ethnic(ity)?|age group|young (woman|women|man|men)|attractive|slim|fair[- ]skinned|dark[- ]skinned)\b/i;
 
 export function lintPush(stage2: Stage2, inputs: Inputs): Violation[] {
@@ -168,6 +170,10 @@ export function lintPush(stage2: Stage2, inputs: Inputs): Violation[] {
         add(`${base}.direction`, "too close to a strategic_edge — a territory must introduce a materially different strategic move, not rephrase the edge");
     }
   });
+
+  // 3d0. A move is a judgement about what to try, not a finding.
+  if (p.strategic_move.basis === "evidenced")
+    add("push_the_brief.strategic_move.basis", "the chosen strategic move is a hypothesis to test unless a supplied evidence item directly tests that move — tag it hypothesis");
 
   // 3d. Hygiene must not contain parity, nor unsupported market/platform facts.
   p.category_hygiene.forEach((h, i) => {
