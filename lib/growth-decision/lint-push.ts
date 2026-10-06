@@ -82,7 +82,7 @@ export function caseAnchors(text: string, vocab: Set<string>, inputs: Inputs): {
 }
 
 const STOCK_TERRITORY = /(doubt test|decision shortcut|proof you can see|make the invisible visible|mechanism made visible|show the difference|invisible visible)/i;
-const MARKET_FACT = /\b(auto-?play|norms?)\b/i;
+const MARKET_FACT = /\b(auto-?play|norms?|without audio|sound[- ]?off|muted|mobile[- ]first|most shoppers|typically|commonly)\b/i;
 const PHYSICAL = /\b(skin ?tone|complexion|ethnic(ity)?|age group|young (woman|women|man|men)|attractive|slim|fair[- ]skinned|dark[- ]skinned)\b/i;
 
 export function lintPush(stage2: Stage2, inputs: Inputs): Violation[] {
@@ -173,8 +173,9 @@ export function lintPush(stage2: Stage2, inputs: Inputs): Violation[] {
   p.category_hygiene.forEach((h, i) => {
     if (p.parity_catchup.some((x) => jaccard(h, x.item) > 0.45))
       add(`push_the_brief.category_hygiene[${i}]`, "duplicates a parity_catchup item — keep competitor-evidenced standards in parity_catchup only");
-    if (MARKET_FACT.test(h))
-      add(`push_the_brief.category_hygiene[${i}]`, "asserts a market/platform norm that is not in the supplied evidence — remove it or mark it 'to be confirmed with the client'");
+    const mf = h.match(MARKET_FACT);
+    if (mf)
+      add(`push_the_brief.category_hygiene[${i}]`, `contains "${mf[0]}", which asserts a market/platform norm that is not in the supplied evidence — hygiene must state an ACTION, not a claim about how the market or platform behaves; delete the justification clause or the whole line`);
   });
 
   // 3e. Seeds that are only an EDGE if a competitor fact holds → owner ask + downgrade rule.

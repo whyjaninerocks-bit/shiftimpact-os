@@ -252,7 +252,7 @@ export const Stage2V = obj({
         job: str({ min: 10 }),
         controlled_by: str({ min: 2 }),
       }),
-      { max: 4 },
+      { max: 6 },
     ),
     [] as { role: (typeof COMMERCE_ROLES)[number]; job: string; controlled_by: string }[],
   ),
