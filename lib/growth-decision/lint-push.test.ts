@@ -76,6 +76,12 @@ const snd = mk({ ...common, category_hygiene: ["Ensure all proof assets are legi
 ok("'legible without sound, as pages are frequently browsed…' rejected", has(lintPush(snd, inputs), /market\/platform norm/));
 const ev = mk({ ...common, strategic_edge: [edge], strategic_move: { ...move(["proof_into_diagnosis"]), basis: "evidenced" }, stretch_territories: [tCompress, tContinuity, tCompare] });
 ok("strategic_move tagged evidenced is rejected", has(lintPush(ev, inputs), /hypothesis to test/));
+const reopen = mk({ ...common, strategic_edge: [edge], strategic_move: move(["proof_into_diagnosis"]), stretch_territories: [tCompress, tContinuity, T({ ...tCompare, built_from: ["reframe_decision_criteria"], must_be_true: ["The brand has an approved claim that is stronger than the competitors'"] })] });
+ok("rejected seed used without stating evidence to reopen it is rejected", has(lintPush(reopen, inputs), /required to reopen/));
+const reopenOk = mk({ ...common, strategic_edge: [edge], strategic_move: move(["proof_into_diagnosis"]), stretch_territories: [tCompress, tContinuity, T({ ...tCompare, built_from: ["reframe_decision_criteria"], must_be_true: ["Evidence is supplied that shoppers judge on a different criterion [ev_8]"] })] });
+ok("rejected seed with reopen evidence stated passes that check", !has(lintPush(reopenOk, inputs), /required to reopen/));
+const two = mk({ ...common, strategic_edge: [edge], strategic_move: move(["proof_into_diagnosis"]), stretch_territories: [tContinuity, tCompare] });
+ok("two strong territories are accepted", lintPush(two, inputs).length === 0);
 const dup = mk({ ...common, category_hygiene: ["Place a usage demonstration and an expert endorsement high on the product page", "A named authority signal on the page"], strategic_edge: [edge], strategic_move: move(["proof_into_diagnosis"]), stretch_territories: [tCompress, tContinuity, tCompare] });
 ok("hygiene duplicating parity_catchup rejected", has(lintPush(dup, inputs), /duplicates a parity_catchup/));
 

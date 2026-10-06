@@ -149,6 +149,14 @@ export function lintPush(stage2: Stage2, inputs: Inputs): Violation[] {
       add(`push_the_brief.strategic_move.seeds_rejected[${i}]`, `"${r.seed_id}" is both used and rejected`);
   });
 
+  // 3b2. A rejected seed may back a stretch territory ONLY if must_be_true names the evidence/data that would reopen it.
+  const rejectedIds = new Set(rej.map((r) => r.seed_id as string));
+  p.stretch_territories.forEach((t, i) => {
+    const reopened = t.built_from.filter((id) => rejectedIds.has(id));
+    if (reopened.length && !t.must_be_true.some((m) => /\b(evidence|data|supplied|confirm\w*|research|analytics)\b/i.test(m)))
+      add(`push_the_brief.stretch_territories[${i}].must_be_true`, `built from rejected seed(s) ${reopened.join(", ")}: must_be_true must state the evidence or data required to reopen it`);
+  });
+
   // 3c. Territories must diverge from the edges, not restate them.
   const terr = p.stretch_territories;
   const usesUnselected = terr.some((t) => t.built_from.some((id) => !used.has(id)));
