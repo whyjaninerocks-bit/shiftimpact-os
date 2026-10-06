@@ -47,6 +47,7 @@ import {
   TEST_ROLES,
   UNITS,
 } from "./taxonomy";
+import { STRATEGIC_MOVE_IDS } from "./strategic-moves";
 
 const ids = () => optional(arr(str({ min: 1 })), [] as string[]);
 
@@ -131,21 +132,42 @@ export const Stage1V = obj({
 // owner creates the expression. Nothing here is a concept, script, storyboard,
 // casting, visual idea or copy.
 export const PushTheBriefV = obj({
+  // What a competent execution in this category does anyway.
   category_hygiene: arr(str({ min: 15 }), { min: 2, max: 5 }),
+  // What competitors are EVIDENCED to do that this brand must match. Parity is
+  // catch-up, never an edge.
+  parity_catchup: optional(
+    arr(obj({ item: str({ min: 15 }), evidence_ids: ids() }), { max: 4 }),
+    [] as { item: string; evidence_ids: string[] }[],
+  ),
+  // Only moves that go BEYOND parity.
   strategic_edge: arr(
     obj({
       edge: str({ min: 20 }),
+      beyond_parity: str({ min: 20 }),
       why_stronger: str({ min: 20 }),
       basis: oneOf(BASIS),
       evidence_ids: ids(),
     }),
     { min: 1, max: 3 },
   ),
+  // Selected / adapted / combined from the curated seed library
+  // (strategic-moves.ts). Never the seed label unchanged.
+  strategic_move: obj({
+    seeds_used: arr(oneOf(STRATEGIC_MOVE_IDS), { min: 1, max: 2 }),
+    adapted_statement: str({ min: 30 }),
+    how_adapted: str({ min: 30 }),
+    evidence_for_choosing: str({ min: 20 }),
+    cannot_solve: str({ min: 15 }),
+    basis: oneOf(BASIS),
+    evidence_ids: ids(),
+  }),
   proof_mechanic: obj({
     mechanic: oneOf(PROOF_MECHANICS),
     secondary: optional(arr(oneOf(PROOF_MECHANICS), { max: 2 }), [] as (typeof PROOF_MECHANICS)[number][]),
     statement: str({ min: 25 }),
     what_it_makes_visible: str({ min: 15 }),
+    limit: str({ min: 10 }),
     basis: oneOf(BASIS),
     evidence_ids: ids(),
   }),
@@ -155,7 +177,13 @@ export const PushTheBriefV = obj({
     obj({
       name: str({ min: 3, max: 60 }),
       direction: str({ min: 25 }),
-      why_it_pushes: str({ min: 15 }),
+      tension: str({ min: 25 }), // the specific tension in THIS case that generated it
+      beyond_parity: str({ min: 20 }),
+      built_from: arr(oneOf(STRATEGIC_MOVE_IDS), { min: 1, max: 2 }),
+      must_be_true: arr(str({ min: 10 }), { min: 1, max: 4 }),
+      cannot_solve: str({ min: 15 }),
+      differs_from_others: str({ min: 20 }),
+      why_not_hygiene: str({ min: 25 }),
       basis: oneOf(BASIS),
       evidence_ids: ids(),
     }),

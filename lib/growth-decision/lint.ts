@@ -10,7 +10,7 @@
 
 import type { Inputs, Stage1, Stage2 } from "./schema";
 
-export type Violation = { kind: "causal" | "creative" | "invented_number"; path: string; detail: string };
+export type Violation = { kind: "causal" | "creative" | "invented_number" | "push"; path: string; detail: string };
 
 const CAUSAL: RegExp[] = [
   /\bproves?\b/i,

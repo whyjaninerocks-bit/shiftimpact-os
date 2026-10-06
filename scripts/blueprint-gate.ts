@@ -114,13 +114,14 @@ async function main() {
       const p = s2.value.push_the_brief;
       console.log(JSON.stringify(p, null, 2));
       if (p) {
-        const tagged = [...p.strategic_edge, p.proof_mechanic, ...p.stretch_territories];
+        const tagged = [...p.strategic_edge, p.strategic_move, p.proof_mechanic, ...p.stretch_territories];
         const hyp = tagged.filter((x) => x.basis === "hypothesis").length;
         console.log("\n── Push the Brief checks ──");
-        console.log(`  hygiene items: ${p.category_hygiene.length} | edges: ${p.strategic_edge.length} | avoid: ${p.avoid.length} | territories: ${p.stretch_territories.length}`);
-        console.log(`  mechanic: ${p.proof_mechanic.mechanic}${p.proof_mechanic.secondary.length ? " + " + p.proof_mechanic.secondary.join(", ") : ""}`);
-        console.log(`  edge/mechanic/territory basis: ${tagged.length - hyp} evidenced / ${hyp} hypothesis`);
-        console.log(`  territory names: ${p.stretch_territories.map((t) => t.name).join(" | ")}`);
+        console.log(`  hygiene: ${p.category_hygiene.length} | parity catch-up: ${p.parity_catchup.length} | edges: ${p.strategic_edge.length} | avoid: ${p.avoid.length} | territories: ${p.stretch_territories.length}`);
+        console.log(`  strategic move seeds: ${p.strategic_move.seeds_used.join(" + ")}`);
+        console.log(`  proof mechanic: ${p.proof_mechanic.mechanic}${p.proof_mechanic.secondary.length ? " + " + p.proof_mechanic.secondary.join(", ") : ""}`);
+        console.log(`  edge/move/mechanic/territory basis: ${tagged.length - hyp} evidenced / ${hyp} hypothesis`);
+        p.stretch_territories.forEach((t, i) => console.log(`  territory ${i + 1}: "${t.name}" — built from ${t.built_from.join(" + ")}`));
         console.log(`  attempts: ${s2.meta.attempts}; downgraded to hypothesis: ${s2.meta.downgraded_to_hypothesis.length}`);
       }
       console.log("\n(stopped after Stage 2 — --push-only; nothing persisted)");

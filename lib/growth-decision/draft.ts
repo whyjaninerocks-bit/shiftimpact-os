@@ -15,6 +15,7 @@ import {
   type StageMeta,
 } from "./schema";
 import { enforceBasis, lintCausalAndCreative, lintStage1Or2, type Violation } from "./lint";
+import { lintPush } from "./lint-push";
 import {
   stage1System,
   stage1User,
@@ -164,9 +165,9 @@ export async function draftStage2(
         return { ok: false, issues: [{ path: "push_the_brief.creative_challenge", message: "must be a single question ending in '?'" }] };
       return r;
     },
-    lint: (v) => lintStage1Or2(v, inputs),
+    lint: (v) => [...lintStage1Or2(v, inputs), ...lintPush(v, inputs)],
     inputs,
-    maxTokens: 10000,
+    maxTokens: 12000,
   });
 }
 
