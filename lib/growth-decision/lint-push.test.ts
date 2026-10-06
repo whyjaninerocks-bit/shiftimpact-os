@@ -82,6 +82,10 @@ const reopenOk = mk({ ...common, strategic_edge: [edge], strategic_move: move(["
 ok("rejected seed with reopen evidence stated passes that check", !has(lintPush(reopenOk, inputs), /required to reopen/));
 const two = mk({ ...common, strategic_edge: [edge], strategic_move: move(["proof_into_diagnosis"]), stretch_territories: [tContinuity, tCompare] });
 ok("two strong territories are accepted", lintPush(two, inputs).length === 0);
+const sharedSeed = mk({ ...common, strategic_edge: [edge], strategic_move: move(["proof_into_diagnosis"]), stretch_territories: [tContinuity, tCompare, T({ ...tCompare, name: "Another comparison", locus: "decision_criteria", built_from: ["comparison_decision_useful"], tension: "Both closest competitors lead with demonstration and named expert [ev_7] while conversion on rising visits fell to index 84 [ev_4], so shoppers may lack a basis to prefer this page", direction: "Help the shopper judge on a different criterion than the two competitor pages [ev_7] compete on, so the choice does not rest on the same dimensions" })] });
+ok("two territories sharing an unselected seed are rejected (omit the weaker)", has(lintPush(sharedSeed, inputs), /near-duplicates; omit the weaker/));
+const plat = mk({ ...common, strategic_edge: [edge], strategic_move: move(["proof_into_diagnosis"]), stretch_territories: [tContinuity, tCompare] }, [...base.execution_owner_asks.slice(0, 4), "Confirm content control on Tokopedia and Shopee listings for the test SKUs before scoping a marketplace test."]);
+ok("platform names not in inputs are rejected", has(lintPush(plat, inputs), /not in the supplied inputs/));
 const dup = mk({ ...common, category_hygiene: ["Place a usage demonstration and an expert endorsement high on the product page", "A named authority signal on the page"], strategic_edge: [edge], strategic_move: move(["proof_into_diagnosis"]), stretch_territories: [tCompress, tContinuity, tCompare] });
 ok("hygiene duplicating parity_catchup rejected", has(lintPush(dup, inputs), /duplicates a parity_catchup/));
 

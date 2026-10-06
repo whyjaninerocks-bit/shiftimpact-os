@@ -158,6 +158,16 @@ async function main() {
     throw e;
   }
 
+  if (process.argv.includes("--persist") || arg("--save-dir")) {
+    // Keep exactly what was drafted, so what was reviewed is what can be re-persisted.
+    const dir = arg("--save-dir") ?? "scripts/fixtures/blueprint-prod";
+    fs.mkdirSync(dir, { recursive: true });
+    for (const [n, v] of [[1, content.stage1], [2, content.stage2], [3, content.stage3]] as const) {
+      if (v) fs.writeFileSync(`${dir}/${key}.stage${n}.json`, JSON.stringify(v, null, 2));
+    }
+    console.log(`\n(saved drafted stages to ${dir}/${key}.stage{1,2,3}.json)`);
+  }
+
   if (process.argv.includes("--persist")) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const sk = process.env.SUPABASE_SERVICE_ROLE_KEY;

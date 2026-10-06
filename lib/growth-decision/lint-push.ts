@@ -85,6 +85,7 @@ const STOCK_TERRITORY = /(doubt test|decision shortcut|proof you can see|make th
 // Hygiene must state an ACTION. Justification clauses about how a market/platform/audience
 // behaves ("as pages are browsed without sound", "given norms", "frequently", "often") are rejected.
 const MARKET_FACT = /(,\s*as\b|\bbecause\b|\bsince\b|\bgiven\b|\bfrequently\b|\boften\b|\btypically\b|\bcommonly\b|\bmost shoppers\b|\bauto-?play\b|\bnorms?\b|\bwithout (audio|sound)\b|\bsound[- ]?off\b|\bmuted\b|\bmobile[- ]first\b|\bbrowsed\b)/i;
+const PLATFORM_NAMES = ["tokopedia", "shopee", "lazada", "blibli", "tiktok shop", "amazon", "whatsapp", "facebook", "instagram", "youtube"];
 const PHYSICAL = /\b(skin ?tone|complexion|ethnic(ity)?|age group|young (woman|women|man|men)|attractive|slim|fair[- ]skinned|dark[- ]skinned)\b/i;
 
 export function lintPush(stage2: Stage2, inputs: Inputs): Violation[] {
@@ -178,6 +179,28 @@ export function lintPush(stage2: Stage2, inputs: Inputs): Violation[] {
         add(`${base}.direction`, "too close to a strategic_edge — a territory must introduce a materially different strategic move, not rephrase the edge");
     }
   });
+
+  // 3c2. Two territories built on the same unselected seed are near-duplicates: omit the weaker one.
+  for (let i = 0; i < terr.length; i++) {
+    for (let j = i + 1; j < terr.length; j++) {
+      const shared = terr[j].built_from.filter((id) => terr[i].built_from.includes(id) && !used.has(id));
+      if (shared.length)
+        add(`push_the_brief.stretch_territories[${j}]`, `shares the seed "${shared[0]}" with territory ${i + 1} — two territories built on the same unselected seed are near-duplicates; omit the weaker one (two strong territories beat three) or build it from a different strategic move`);
+    }
+  }
+
+  // 3c3. No platform/marketplace names that the supplied inputs do not contain.
+  const inputsText = JSON.stringify(inputs).toLowerCase();
+  const allText: string[] = [];
+  collectStrings(p, allText);
+  collectStrings(stage2.execution_owner_asks, allText);
+  const joined = allText.join(" \n ").toLowerCase();
+  for (const name of PLATFORM_NAMES) {
+    if (joined.includes(name) && !inputsText.includes(name)) {
+      add("push_the_brief", `names "${name}", which is not in the supplied inputs — refer to "the marketplace listing" or "the brand site" unless the client has named the platform`);
+      break;
+    }
+  }
 
   // 3d0. A move is a judgement about what to try, not a finding.
   if (p.strategic_move.basis === "evidenced")
