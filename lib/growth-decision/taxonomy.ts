@@ -115,6 +115,23 @@ export const TEST_DESIGNS = [
 export const CONFIDENCE = ["high", "medium", "directional"] as const;
 export const BASIS = ["evidenced", "hypothesis"] as const;
 
+/**
+ * "Push the Brief" — the MECHANIC that makes proof more convincing than hygiene.
+ * A mechanic is a strategic device, not an idea: ShiftImpact names the device and
+ * the opportunity; the execution owner creates the expression.
+ */
+export const PROOF_MECHANICS = [
+  "reveal",
+  "contrast",
+  "side_by_side",
+  "stress_test",
+  "diagnostic_explanation",
+  "proof_stack",
+  "before_after_logic",
+  "decision_shortcut",
+  "make_invisible_visible",
+] as const;
+
 export const EVIDENCE_CLASS = ["known", "unknown", "test_required"] as const;
 export const EVIDENCE_MODES = [
   "indexed",

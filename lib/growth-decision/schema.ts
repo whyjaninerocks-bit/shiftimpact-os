@@ -40,6 +40,7 @@ import {
   MOVES,
   OUTCOME_MOVES,
   PLATFORM_ROLES,
+  PROOF_MECHANICS,
   PROOF_TYPES,
   TERRITORIES,
   TEST_DESIGNS,
@@ -125,6 +126,43 @@ export const Stage1V = obj({
 
 // ─── Stage 2 — the Activation Blueprint ─────────────────────────────────────
 
+// "Push the Brief": where the execution can create an ADVANTAGE beyond category
+// hygiene. ShiftImpact defines the opportunity for distinctiveness; the execution
+// owner creates the expression. Nothing here is a concept, script, storyboard,
+// casting, visual idea or copy.
+export const PushTheBriefV = obj({
+  category_hygiene: arr(str({ min: 15 }), { min: 2, max: 5 }),
+  strategic_edge: arr(
+    obj({
+      edge: str({ min: 20 }),
+      why_stronger: str({ min: 20 }),
+      basis: oneOf(BASIS),
+      evidence_ids: ids(),
+    }),
+    { min: 1, max: 3 },
+  ),
+  proof_mechanic: obj({
+    mechanic: oneOf(PROOF_MECHANICS),
+    secondary: optional(arr(oneOf(PROOF_MECHANICS), { max: 2 }), [] as (typeof PROOF_MECHANICS)[number][]),
+    statement: str({ min: 25 }),
+    what_it_makes_visible: str({ min: 15 }),
+    basis: oneOf(BASIS),
+    evidence_ids: ids(),
+  }),
+  creative_challenge: str({ min: 25 }),
+  avoid: arr(obj({ default: str({ min: 5 }), why_weak: str({ min: 15 }) }), { min: 3, max: 6 }),
+  stretch_territories: arr(
+    obj({
+      name: str({ min: 3, max: 60 }),
+      direction: str({ min: 25 }),
+      why_it_pushes: str({ min: 15 }),
+      basis: oneOf(BASIS),
+      evidence_ids: ids(),
+    }),
+    { min: 2, max: 3 },
+  ),
+});
+
 export const Stage2V = obj({
   behavioural_job: obj({
     primary: oneOf(BEHAVIOURAL_JOBS),
@@ -199,6 +237,9 @@ export const Stage2V = obj({
     { min: 3, max: 6 },
   ),
   execution_owner_asks: arr(str({ min: 10 }), { min: 2, max: 6 }),
+  // Optional at parse time so rows drafted before this layer still load; the
+  // drafting route (draft.ts) REQUIRES it for any newly drafted Stage 2.
+  push_the_brief: nullable(PushTheBriefV),
 });
 
 // ─── Stage 3 — test design, structured measures, decision rule ──────────────

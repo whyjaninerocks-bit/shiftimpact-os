@@ -115,6 +115,7 @@ export const EXAMPLES: Record<
     primaryActuals: [],
     guardrailActuals: [
       { match: /margin/i, value: -0.5 },
+      { match: /volume.*(retain|share)|(retain|share).*volume/i, value: 0.93 },
       { match: /discount/i, value: 101 },
       { match: /visit|traffic/i, value: -2 },
       { match: /add.?to.?cart|atc/i, value: 1 },

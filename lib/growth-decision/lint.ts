@@ -45,6 +45,13 @@ const CREATIVE: RegExp[] = [
   /\bopen(s|ing)? (on|with) a (shot|close-up)\b/i,
   /\bcamera\b/i,
   /\bB-roll\b/i,
+  /\bvisual concept\b/i,
+  /\bkey visual\b/i,
+  /\bmood ?board\b/i,
+  /\bthe (big )?idea is\b/i,
+  /\bcampaign (line|idea|concept)\b/i,
+  /\bfinal (idea|concept|copy)\b/i,
+  /\bopen(s|ing)? (on|with) (a|an) /i,
 ];
 
 function walkStrings(v: unknown, path: string, out: { path: string; text: string }[]): void {
@@ -59,6 +66,7 @@ const ENUM_KEYS = new Set([
   "role", "primary", "secondary", "proof", "beat", "move", "confidence", "basis",
   "design", "test_role", "unit", "comparator", "threshold_status", "id", "key",
   "evidence_id", "evidence_ids", "on_pass", "on_fail", "type", "status", "measure_key",
+  "mechanic",
 ]);
 
 function proseStrings(v: unknown): { path: string; text: string }[] {

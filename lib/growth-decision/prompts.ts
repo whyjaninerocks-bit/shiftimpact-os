@@ -22,6 +22,7 @@ import {
   CONTENT_ROLES,
   CREATOR_ROLES,
   PLATFORM_ROLES,
+  PROOF_MECHANICS,
   PROOF_TYPES,
   TERRITORY_TEMPLATES,
   TEST_DESIGNS,
@@ -153,6 +154,7 @@ behavioural_job: ${BEHAVIOURAL_JOBS.join(" | ")}
 content role: ${CONTENT_ROLES.join(" | ")}
 proof: ${PROOF_TYPES.join(" | ")}
 creator role: ${CREATOR_ROLES.join(" | ")}
+proof mechanic: ${PROOF_MECHANICS.join(" | ")}
 asset beat: ${ASSET_BEATS.join(" | ")}
 platform role: ${PLATFORM_ROLES.join(" | ")}
 commerce role: ${COMMERCE_ROLES.join(" | ")}
@@ -175,7 +177,18 @@ OUTPUT JSON SHAPE
   "platform_roles": [{"environment": string, "role": <platform role>, "job": string}],   // the JOB of the environment, not just its name
   "commerce_roles": [{"role": <commerce role>, "job": string, "controlled_by": string}], // who actually controls this lever (client commerce team / platform / execution owner)
   "execution_choices": [{"question": string, "recommended": string, "why": string, "alternative_not_chosen": string, "basis": ..., "evidence_ids": [string]}],  // 3–6; each picks a side
-  "execution_owner_asks": [string]   // 2–6 concrete things the execution owner must deliver or confirm (outputs and dependencies, not creative)
+  "execution_owner_asks": [string],   // 2–6 concrete things the execution owner must deliver or confirm (outputs and dependencies, not creative)
+  "push_the_brief": {                 // REQUIRED. Where the execution can create an ADVANTAGE beyond hygiene — without concepting.
+     "category_hygiene": [string],    // 2–5: what a competent execution in this category would do anyway (table stakes). Not the edge.
+     "strategic_edge": [{"edge": string, "why_stronger": string, "basis": ..., "evidence_ids": [string]}],   // 1–3: what would make this materially stronger / more persuasive / more distinctive than hygiene
+     "proof_mechanic": {"mechanic": <proof mechanic>, "secondary": [<proof mechanic>] (0–2),
+        "statement": string,          // the mechanism that makes the proof more convincing, stated as a strategic device
+        "what_it_makes_visible": string,   // what the shopper can now see or conclude that claim text alone cannot give them
+        "basis": ..., "evidence_ids": [string]},
+     "creative_challenge": string,    // ONE question the execution owner must solve creatively; ends with "?"; contains no solution
+     "avoid": [{"default": string, "why_weak": string}],   // 3–6 category clichés or technically-correct executions that would still be weak HERE; why_weak is tied to the behavioural job / decision value
+     "stretch_territories": [{"name": string, "direction": string, "why_it_pushes": string, "basis": ..., "evidence_ids": [string]}]   // 2–3 strategic directions that push the brief further — NOT concepts
+  }
 }
 
 ${STAGE2_EXEMPLAR}
@@ -185,12 +198,25 @@ QUALITY RULES
 2. Product facts you do not have (mechanism, ingredients, results, claim substantiation) must be referred to as "the brand's own approved mechanism / claim", never invented. Whether the claim is credible to the shopper is itself something to prove.
 3. execution_choices: each entry resolves a real fork the agency would otherwise raise (testimonial vs generic UGC; usage shown vs implied; expert vs peer authority; what the product page must do vs what the video must do; whether the offer appears at all). Each MUST pick a side and name the alternative it rejected, with a reason tied to evidence or flagged hypothesis. If a creator role is applicable, at least one choice MUST resolve the FORMAT of the creator proof (e.g. identifiable real-user testimonial vs generic user-style content vs expert authority) and one MUST resolve whether usage is shown or only implied.
 4. Where there is no evidence about shopper objections or barriers (check the unknown / test_required items), the content/proof/creator choices are hypotheses. Say so. Do not dress guesses as findings. A blueprint in which every item is "evidenced" on thin evidence is wrong.
+   Evidence about a DIFFERENT object than the choice does not make the choice evidenced. Example: competitor pages carry a named expert → supports "a credibility gap exists", NOT "a named real-user demonstrator is the right format" (hypothesis). Evidence that a gap exists can be "evidenced" for the behavioural job; the specific format/person/position that would close it is a hypothesis unless the evidence tests that exact choice. Do not cite evidence ids only to justify test-design logic.
+   execution_choices must also resolve the FORMAT and rough length of the proof asset (e.g. short video vs static/GIF/image set; a duration band such as under 30 seconds) as a specification of the job — never as a script — and tag it honestly.
 5. asset_architecture is a sequence of jobs (e.g. problem → explanation → mechanism → usage → proof → objection_resolution → product_choice), chosen because of the behavioural job. Explain in "rationale" why this order, in one or two sentences. It is not a script.
 6. creator_role: name the job (authority? credible demonstration? peer reassurance? distribution?) AND the role it must NOT be (not_role), when that distinction matters (e.g. not pure distribution). Selection criteria are about credibility traits, never named people.
-7. platform_roles: for each environment (e.g. short-form video, product page, marketplace listing, retargeting) state the job it does in this decision, and how it connects to the next environment. Commerce roles must respect what the client said it can and cannot hold constant.
+7. platform_roles: for each environment (e.g. short-form video, product page, marketplace listing, retargeting) state the job it does in this decision, and how it connects to the next environment. Commerce roles must respect what the client said it can and cannot hold constant. Also state explicitly which environments the test VARIES (the treatment) and which are left unchanged; mark unchanged ones "held constant — not varied". Do not ask an environment that is not varied to carry the new proof.
 8. preservation_constraints: include everything the client can hold constant that would otherwise confound the read (price, discount, audience, stock, media weight, as applicable) and say why each must hold.
 9. Numbers: do not introduce any number that is not in the supplied evidence.
-10. Honour the TERRITORY test stance and the client's stated constraints.`;
+10. Honour the TERRITORY test stance and the client's stated constraints.
+
+PUSH THE BRIEF (the push_the_brief object) — read carefully
+The rest of this Blueprint is execution hygiene: it tells the agency what must be true. push_the_brief tells them where this execution can WIN. The boundary is firm: ShiftImpact defines the OPPORTUNITY FOR DISTINCTIVENESS; the execution owner creates the EXPRESSION. So you may write "make the purchase uncertainty visible and resolve it through a diagnostic reveal". You must NOT write the idea, a script, a storyboard, casting, a visual concept, a headline/line, or copy. Names of territories are working labels for a direction (2–5 words), never a campaign line.
+P1. category_hygiene = what any competent execution in this category already does (e.g. clear application, an authority signal, honest claims). If your "strategic_edge" could be said of every competent execution, it is hygiene — move it down.
+P2. strategic_edge = what would make THIS intervention materially stronger, more persuasive or more distinctive than hygiene, in terms of the shopper's decision at this point. It must sit INSIDE the controlled variable and the preservation constraints: no new offer, price, targeting or media change.
+P3. proof_mechanic = the device that makes the proof convincing (reveal, contrast, side_by_side, stress_test, diagnostic_explanation, proof_stack, before_after_logic, decision_shortcut, make_invisible_visible). Choose the one that fits the evidenced decision problem, say what it makes visible that claim text cannot, and say why a shopper would find it more convincing than being told. before_after_logic only where the brand's approved claims permit a result to be shown; otherwise do not choose it.
+P4. creative_challenge = one question McCann must solve creatively, phrased so the answer is an idea, not a format. Example of the right register (different case): "How can a shopper see the reason to believe instead of hearing another claim?" Do not answer it.
+P5. avoid = the clichés and technically-correct-but-weak defaults for THIS decision (e.g. generic application shots, decorative expert endorsement, texture shots with no decision value, a generic testimonial, a creator used only for reach, claim repetition without proof — choose the ones that genuinely apply and add case-specific ones). Each why_weak must say what decision value it fails to deliver.
+P6. stretch_territories = 2–3 distinct strategic directions that push the brief further (for example: proof you can see; the doubt test; decision shortcut; make the invisible visible; show the difference the claim text cannot). Each "direction" states the opportunity and the shopper conclusion it aims at; "why_it_pushes" says what it adds beyond hygiene. They must differ from each other in the proof mechanic or the shopper conclusion, not just in wording.
+P7. EVIDENCE DISCIPLINE: tag every strategic_edge, the proof_mechanic and every stretch_territory evidenced | hypothesis. A category or competitor gap supports "stronger proof is needed here"; it does NOT show that a particular mechanic or territory works or is distinctive. Unless a supplied evidence item directly tests that mechanic, the proof_mechanic and every stretch_territory are hypotheses. Never say a mechanic is proven, differentiated or ownable unless evidence shows competitors do not do it. If you use competitor evidence, say what it shows (competitors carry X) and keep what you infer separate.
+P8. No invented facts about the product, the audience or the competitors; reuse only what the supplied evidence and framing state. "The brand's own approved claim / mechanism" remains the only way to refer to product substance.`;
 }
 
 export function stage2User(inputs: Inputs, stage1: Stage1): string {
@@ -245,6 +271,9 @@ RULES
 - Guardrails protect the things a "win" could silently damage (margin, discount depth, stock, volume retained, customer mix). Choose guardrails that bear on THIS decision.
 - decision_rule.statement: must say that a pass requires the primary measure AND every guardrail to hold AND held-constants verified AND treatment delivered as specified — otherwise the result is not a clean pass.
 - signals.inconclusive must describe when the answer is retest rather than pass/fail (e.g. comparison group not matched, volume too small, a held-constant breached, treatment not delivered).
+- treatment must name exactly the environments Stage 2 says are varied, and the proof elements/format Stage 2 chose (no extra elements, none missing).
+- Units: use pct_change (relative difference, say "percent") for relative differences vs the comparison group; use pct_points only for absolute differences in a rate. Do not mix "percentage points" wording with a pct_change unit. A baseline that is an index value belongs in baseline/baseline_source; do not present it as if it were the unit of the threshold.
+- A guardrail must be one-sided in its comparator. If you describe a two-sided tolerance, split it into two guardrails or describe only the side that comparator checks. The definition, failure_condition and comparator must say the same thing.
 - No causal language; no invented numbers in prose.`;
 }
 

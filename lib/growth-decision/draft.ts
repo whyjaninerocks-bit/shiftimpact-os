@@ -155,10 +155,18 @@ export async function draftStage2(
     call,
     system: stage2System(),
     user: stage2User(inputs, stage1),
-    validate: (v) => Stage2V.parse(v),
+    validate: (v) => {
+      const r = Stage2V.parse(v);
+      if (!r.ok) return r;
+      const p = r.value.push_the_brief;
+      if (!p) return { ok: false, issues: [{ path: "push_the_brief", message: "required: category_hygiene, strategic_edge, proof_mechanic, creative_challenge, avoid, stretch_territories" }] };
+      if (!p.creative_challenge.trim().endsWith("?"))
+        return { ok: false, issues: [{ path: "push_the_brief.creative_challenge", message: "must be a single question ending in '?'" }] };
+      return r;
+    },
     lint: (v) => lintStage1Or2(v, inputs),
     inputs,
-    maxTokens: 7000,
+    maxTokens: 10000,
   });
 }
 

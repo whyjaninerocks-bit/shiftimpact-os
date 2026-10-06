@@ -11,7 +11,8 @@
 //   npx tsx --env-file=.env.local scripts/blueprint-gate.ts commerce_leakage            # run stages 1–3, print, DO NOT persist
 //   npx tsx --env-file=.env.local scripts/blueprint-gate.ts commerce_leakage --persist  # also upsert the demo row (+ authored outcome/next)
 //   npx tsx --env-file=.env.local scripts/blueprint-gate.ts growth_driver --persist
-//   npx tsx scripts/blueprint-gate.ts commerce_leakage --emit 1                         # print Stage 1 prompt only (no API call)
+//   npx tsx --env-file=.env.local scripts/blueprint-gate.ts commerce_leakage --push-only    # Stage 1+2, print ONLY push_the_brief, stop
+//   npx tsx scripts/blueprint-gate.ts commerce_leakage --emit 1                       # print Stage 1 prompt only (no API call)
 //   npx tsx scripts/blueprint-gate.ts commerce_leakage --emit 2 --s1 stage1.json
 //   npx tsx scripts/blueprint-gate.ts commerce_leakage --emit 3 --s1 stage1.json --s2 stage2.json
 //
@@ -108,6 +109,23 @@ async function main() {
     const s2 = await draftStage2(inputs, s1.value, anthropicCall);
     content.stage2 = s2.value;
     stages.stage2 = s2.meta;
+    if (process.argv.includes("--push-only")) {
+      // Show ONLY the Push the Brief layer (for review before anything else).
+      const p = s2.value.push_the_brief;
+      console.log(JSON.stringify(p, null, 2));
+      if (p) {
+        const tagged = [...p.strategic_edge, p.proof_mechanic, ...p.stretch_territories];
+        const hyp = tagged.filter((x) => x.basis === "hypothesis").length;
+        console.log("\n── Push the Brief checks ──");
+        console.log(`  hygiene items: ${p.category_hygiene.length} | edges: ${p.strategic_edge.length} | avoid: ${p.avoid.length} | territories: ${p.stretch_territories.length}`);
+        console.log(`  mechanic: ${p.proof_mechanic.mechanic}${p.proof_mechanic.secondary.length ? " + " + p.proof_mechanic.secondary.join(", ") : ""}`);
+        console.log(`  edge/mechanic/territory basis: ${tagged.length - hyp} evidenced / ${hyp} hypothesis`);
+        console.log(`  territory names: ${p.stretch_territories.map((t) => t.name).join(" | ")}`);
+        console.log(`  attempts: ${s2.meta.attempts}; downgraded to hypothesis: ${s2.meta.downgraded_to_hypothesis.length}`);
+      }
+      console.log("\n(stopped after Stage 2 — --push-only; nothing persisted)");
+      return;
+    }
     console.log(JSON.stringify(s2.value, null, 2));
     const rep = specificityReport(s2.value);
     console.log("\n── Stage 2 specificity checks (heuristic; the real gate is a cold human read) ──");
