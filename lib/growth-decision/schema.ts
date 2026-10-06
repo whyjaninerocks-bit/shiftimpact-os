@@ -42,6 +42,7 @@ import {
   PLATFORM_ROLES,
   PROOF_MECHANICS,
   PROOF_TYPES,
+  TERRITORY_LOCI,
   TERRITORIES,
   TEST_DESIGNS,
   TEST_ROLES,
@@ -155,6 +156,8 @@ export const PushTheBriefV = obj({
   // (strategic-moves.ts). Never the seed label unchanged.
   strategic_move: obj({
     seeds_used: arr(oneOf(STRATEGIC_MOVE_IDS), { min: 1, max: 2 }),
+    // The judgement, made visible: seeds considered and set aside, and why.
+    seeds_rejected: arr(obj({ seed_id: oneOf(STRATEGIC_MOVE_IDS), why_less_appropriate: str({ min: 15 }) }), { min: 2, max: 4 }),
     adapted_statement: str({ min: 30 }),
     how_adapted: str({ min: 30 }),
     evidence_for_choosing: str({ min: 20 }),
@@ -177,11 +180,13 @@ export const PushTheBriefV = obj({
     obj({
       name: str({ min: 3, max: 60 }),
       direction: str({ min: 25 }),
+      locus: oneOf(TERRITORY_LOCI), // what the territory ACTS ON
       tension: str({ min: 25 }), // the specific tension in THIS case that generated it
       beyond_parity: str({ min: 20 }),
       built_from: arr(oneOf(STRATEGIC_MOVE_IDS), { min: 1, max: 2 }),
       must_be_true: arr(str({ min: 10 }), { min: 1, max: 4 }),
       cannot_solve: str({ min: 15 }),
+      differs_from_edges: str({ min: 20 }), // how this is a materially different strategic move from every strategic_edge
       differs_from_others: str({ min: 20 }),
       why_not_hygiene: str({ min: 25 }),
       basis: oneOf(BASIS),

@@ -11,7 +11,8 @@
 
 import type { Inputs, Stage2 } from "./schema";
 import type { Violation } from "./lint";
-import { STRATEGIC_MOVE_SEEDS } from "./strategic-moves";
+import { STRATEGIC_MOVE_SEEDS, type StrategicMoveSeed } from "./strategic-moves";
+import { FRAME_CHALLENGING_LOCI } from "./taxonomy";
 
 const STOP = new Set(
   (
@@ -81,6 +82,7 @@ export function caseAnchors(text: string, vocab: Set<string>, inputs: Inputs): {
 }
 
 const STOCK_TERRITORY = /(doubt test|decision shortcut|proof you can see|make the invisible visible|mechanism made visible|show the difference|invisible visible)/i;
+const MARKET_FACT = /\b(auto-?play|norms?)\b/i;
 const PHYSICAL = /\b(skin ?tone|complexion|ethnic(ity)?|age group|young (woman|women|man|men)|attractive|slim|fair[- ]skinned|dark[- ]skinned)\b/i;
 
 export function lintPush(stage2: Stage2, inputs: Inputs): Violation[] {
@@ -133,6 +135,61 @@ export function lintPush(stage2: Stage2, inputs: Inputs): Violation[] {
       if (jaccard(a.tension, b.tension) > 0.5 || (sameMoves && jaccard(a.direction, b.direction) > 0.4))
         add(`push_the_brief.stretch_territories[${j}]`, `not meaningfully different from territory ${i + 1} — vary the tension, shopper conclusion or strategic move`);
     }
+  }
+
+  // 3b. seeds_rejected: judgement made visible; rejected seeds cannot also be used.
+  const used = new Set<string>(p.strategic_move.seeds_used as readonly string[]);
+  const rej = p.strategic_move.seeds_rejected;
+  if (new Set(rej.map((r) => r.seed_id)).size !== rej.length)
+    add("push_the_brief.strategic_move.seeds_rejected", "each rejected seed must be a different seed");
+  rej.forEach((r, i) => {
+    if (used.has(r.seed_id))
+      add(`push_the_brief.strategic_move.seeds_rejected[${i}]`, `"${r.seed_id}" is both used and rejected`);
+  });
+
+  // 3c. Territories must diverge from the edges, not restate them.
+  const terr = p.stretch_territories;
+  const usesUnselected = terr.some((t) => t.built_from.some((id) => !used.has(id)));
+  if (!usesUnselected)
+    add("push_the_brief.stretch_territories", "at least one territory must be built from a strategic seed that was NOT selected in strategic_move");
+  const loci = terr.map((t) => t.locus);
+  if (new Set(loci).size !== loci.length)
+    add("push_the_brief.stretch_territories", "territories must act on different things (distinct locus values)");
+  if (!terr.some((t) => (FRAME_CHALLENGING_LOCI as readonly string[]).includes(t.locus)))
+    add("push_the_brief.stretch_territories", "at least one territory must act on something other than the proof itself (locus: decision_criteria, comparison_context or journey_continuity) — otherwise the section is only 'better PDP proof'");
+  terr.forEach((t, i) => {
+    const base = `push_the_brief.stretch_territories[${i}]`;
+    const onlyProof = t.locus === "proof_content" || t.locus === "proof_sequence";
+    const sameSeeds = t.built_from.every((id) => used.has(id));
+    if (onlyProof && sameSeeds)
+      add(`${base}`, "restates the strategic edge: it acts on the proof itself and is built only from the seeds already used in strategic_move — introduce a materially different strategic move");
+    for (const e of p.strategic_edge) {
+      if (jaccard(t.direction, `${e.edge} ${e.beyond_parity}`) > 0.35)
+        add(`${base}.direction`, "too close to a strategic_edge — a territory must introduce a materially different strategic move, not rephrase the edge");
+    }
+  });
+
+  // 3d. Hygiene must not contain parity, nor unsupported market/platform facts.
+  p.category_hygiene.forEach((h, i) => {
+    if (p.parity_catchup.some((x) => jaccard(h, x.item) > 0.45))
+      add(`push_the_brief.category_hygiene[${i}]`, "duplicates a parity_catchup item — keep competitor-evidenced standards in parity_catchup only");
+    if (MARKET_FACT.test(h))
+      add(`push_the_brief.category_hygiene[${i}]`, "asserts a market/platform norm that is not in the supplied evidence — remove it or mark it 'to be confirmed with the client'");
+  });
+
+  // 3e. Seeds that are only an EDGE if a competitor fact holds → owner ask + downgrade rule.
+  const needValidation = STRATEGIC_MOVE_SEEDS.filter(
+    (s) => (s as StrategicMoveSeed).validation_codes && (used.has(s.id) || terr.some((t) => t.built_from.includes(s.id))),
+  );
+  const asks = stage2.execution_owner_asks.join(" \n ").toLowerCase();
+  for (const seed of needValidation) {
+    const codes = (seed as StrategicMoveSeed).validation_codes!;
+    const missing = codes.filter((c) => !asks.includes(c.toLowerCase()));
+    if (missing.length || !asks.includes("competitor") || !asks.includes("parity"))
+      add(
+        "execution_owner_asks",
+        `"${seed.id}" is only an edge if a competitor fact holds: add an owner ask to review the competitor pages and code ${(seed as StrategicMoveSeed).validation_subject} as ${codes.join(" / ")}, stating that if competitors already do it the move is downgraded from edge to parity (missing: ${missing.join(", ") || "competitor/parity wording"})`,
+      );
   }
 
   // 4. People: no physical attributes (that is casting).

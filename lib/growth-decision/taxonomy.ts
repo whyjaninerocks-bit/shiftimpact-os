@@ -120,6 +120,19 @@ export const BASIS = ["evidenced", "hypothesis"] as const;
  * A mechanic is a strategic device, not an idea: ShiftImpact names the device and
  * the opportunity; the execution owner creates the expression.
  */
+/**
+ * What a stretch territory ACTS ON. At least one territory must act on something
+ * other than the content of the proof, otherwise it is only "better PDP proof".
+ */
+export const TERRITORY_LOCI = [
+  "proof_content",       // what the proof says / shows
+  "proof_sequence",      // the order / emphasis of proof the shopper meets
+  "decision_criteria",   // what the shopper uses to decide
+  "comparison_context",  // the comparison the shopper is already making against alternatives
+  "journey_continuity",  // continuity between what brought the shopper here and what the page then does
+] as const;
+export const FRAME_CHALLENGING_LOCI = ["decision_criteria", "comparison_context", "journey_continuity"] as const;
+
 export const PROOF_MECHANICS = [
   "reveal",
   "contrast",

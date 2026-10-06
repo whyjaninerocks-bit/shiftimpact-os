@@ -25,6 +25,14 @@ export type StrategicMoveSeed = {
   weak_default: string;
   /** Why it is more than competent category execution. */
   differs_from_hygiene: string;
+  /**
+   * Some moves are only an EDGE if a cheap fact about competitors holds. When set,
+   * the Blueprint must carry an execution-owner ask to code that fact before
+   * production, and downgrade the move from edge to parity if the answer is "no".
+   */
+  validation_codes?: readonly string[];
+  validation_subject?: string;
+  downgrade_rule?: string;
 };
 
 export const STRATEGIC_MOVE_SEEDS = [
@@ -123,6 +131,10 @@ export const STRATEGIC_MOVE_SEEDS = [
       "A credentialled name beside the claim with no statement of what was assessed or concluded.",
     differs_from_hygiene:
       "Hygiene includes an authority signal; this makes the authority do explanatory work the shopper can check.",
+    validation_subject: "the depth of expert content on each competitor page under review",
+    validation_codes: ["credential-only", "claim endorsement", "mechanism explanation", "decision guidance"],
+    downgrade_rule:
+      "If competitors already carry mechanism explanation or decision guidance, authority-to-explanation is parity, not an edge, and must be moved to parity_catchup.",
   },
   {
     id: "comparison_decision_useful",
@@ -184,6 +196,9 @@ export const STRATEGIC_MOVE_IDS = STRATEGIC_MOVE_SEEDS.map((s) => s.id) as unkno
 export function renderSeedLibrary(): string {
   return STRATEGIC_MOVE_SEEDS.map(
     (s) =>
-      `- id: ${s.id} | ${s.name}\n    job: ${s.strategic_job}\n    useful when: ${s.when_useful}\n    supporting evidence: ${s.supporting_evidence}\n    cannot solve: ${s.cannot_solve}\n    weak default: ${s.weak_default}\n    vs hygiene: ${s.differs_from_hygiene}`,
+      `- id: ${s.id} | ${s.name}\n    job: ${s.strategic_job}\n    useful when: ${s.when_useful}\n    supporting evidence: ${s.supporting_evidence}\n    cannot solve: ${s.cannot_solve}\n    weak default: ${s.weak_default}\n    vs hygiene: ${s.differs_from_hygiene}` +
+      ((s as StrategicMoveSeed).validation_codes
+        ? `\n    VALIDATE BEFORE PRODUCTION: code ${(s as StrategicMoveSeed).validation_subject} as ${(s as StrategicMoveSeed).validation_codes!.join(" / ")}. ${(s as StrategicMoveSeed).downgrade_rule}`
+        : ""),
   ).join("\n");
 }
