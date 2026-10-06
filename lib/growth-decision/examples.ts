@@ -161,7 +161,7 @@ export const EXAMPLES: Record<
       rationale:
         "Illustrative. Order volume held within the agreed limit and margin improved on the bounded set, so reduced promotion depth can be extended to further products, and affiliate budget held flat rather than scaled, before any increase is considered.",
       next_question:
-        "Can usage and reminder content lift repeat purchase on the products where promotion depth was reduced?",
+        "Can stronger product-value content reduce promotional dependence further on the products where offer depth was reduced?",
       test_role: "explore",
     },
   },

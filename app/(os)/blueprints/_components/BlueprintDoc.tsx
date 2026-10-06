@@ -316,6 +316,7 @@ export function BlueprintDoc({ row, variant }: { row: BlueprintRow; variant: Var
               </ul>
             </Row>
             <Row label="Proof required">
+              {s2.proof_required.length === 0 && <p>No new proof is required — this test changes offer depth only.</p>}
               <ul className="space-y-1">
                 {s2.proof_required.map((p, i) => (
                   <li key={i}>
@@ -348,14 +349,20 @@ export function BlueprintDoc({ row, variant }: { row: BlueprintRow; variant: Var
               )}
             </Row>
             <Row label="Asset architecture">
-              <ol className="list-decimal pl-5 space-y-1">
-                {s2.asset_architecture.beats.map((b, i) => (
-                  <li key={i}>
-                    <strong>{human(b.beat)}</strong> — {b.job}
-                  </li>
-                ))}
-              </ol>
-              <p className="mt-1 text-xs text-neutral-500">{s2.asset_architecture.rationale}</p>
+              {s2.asset_architecture ? (
+                <>
+                  <ol className="list-decimal pl-5 space-y-1">
+                    {s2.asset_architecture.beats.map((b, i) => (
+                      <li key={i}>
+                        <strong>{human(b.beat)}</strong> — {b.job}
+                      </li>
+                    ))}
+                  </ol>
+                  <p className="mt-1 text-xs text-neutral-500">{s2.asset_architecture.rationale}</p>
+                </>
+              ) : (
+                <>No asset is changed in this test — the existing content stays as it is.</>
+              )}
             </Row>
             <Row label="Platform role">
               <ul className="space-y-1">

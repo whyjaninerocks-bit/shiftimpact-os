@@ -227,7 +227,8 @@ export const Stage2V = obj({
       basis: oneOf(BASIS),
       evidence_ids: ids(),
     }),
-    { min: 2, max: 5 },
+    // min 0: a pricing / promotion test changes no content, so it requires no new proof.
+    { max: 5 },
   ),
   creator_role: obj({
     applicable: bool(),
@@ -237,10 +238,13 @@ export const Stage2V = obj({
     selection_criteria: optional(arr(str({ min: 5 })), [] as string[]),
     basis: oneOf(BASIS),
   }),
-  asset_architecture: obj({
-    beats: arr(obj({ beat: oneOf(ASSET_BEATS), job: str({ min: 10 }) }), { min: 4, max: 9 }),
-    rationale: str({ min: 20 }),
-  }),
+  // null when the intervention changes no asset (e.g. a pure offer-depth test).
+  asset_architecture: nullable(
+    obj({
+      beats: arr(obj({ beat: oneOf(ASSET_BEATS), job: str({ min: 10 }) }), { min: 4, max: 9 }),
+      rationale: str({ min: 20 }),
+    }),
+  ),
   platform_roles: arr(
     obj({ environment: str({ min: 2 }), role: oneOf(PLATFORM_ROLES), job: str({ min: 10 }) }),
     { min: 1, max: 4 },

@@ -1,0 +1,125 @@
+{
+  "test": {
+    "role": "resolve",
+    "design": "matched_comparison",
+    "design_rationale": "The client cannot pause the affiliate programme business-wide and cannot randomise buyers to treatment or control at the individual level from aggregated/indexed data. A matched_comparison is the strongest design the constraints allow: a client-nominated set of products or regions (the treatment group) has promotion depth reduced, while a matched set of similar products or regions continues at current discount depth (the comparison group). Matching on prior-quarter GMV index, affiliate order index, and discount intensity index — using the same evidence series already supplied — gives the closest available like-for-like. This design can support medium confidence at best, consistent with the evidence grade rules. A split_test would require platform-level buyer randomisation that is not confirmed as available; a holdout would require withholding affiliate promotion entirely from a segment, which conflicts with the client's business constraint. matched_comparison is therefore the strongest honest choice. The window is four weeks, starting after 12.12 demand has normalised and finishing before the pre-Ramadan season; the primary volume read comes inside the window and the repeat read is directional only because of the long re-purchase cycle [ev_6].",
+    "treatment": "On the client-nominated comparison set only: offer / discount depth on affiliate-attributed orders is reduced to one level set by the client finance and commerce teams against a margin recovery target. Nothing else changes: affiliate content approach, creator roster, media weight, price list, stock, SKU set and other promotional mechanics are held as they are, and no new proof or content is added to the listing or the affiliate content. Comparison-set buyers are tagged in the CRM for repeat tracking.",
+    "comparison": "A matched set of products or regions of similar prior-quarter GMV index, affiliate order index, and discount intensity index, continuing to operate at current (unreduced) promotion depth and current affiliate incentive structure throughout the test window. This group is the stable baseline against which the treatment group's volume, margin, and conversion are read.",
+    "duration_weeks": 4,
+    "calendar_confounds": [
+      {
+        "event": "Marketplace 11.11 sale (around 11 November — exact date to be confirmed with the marketplace calendar)",
+        "risk": "Platform-wide promotion and the surrounding traffic surge would swamp any promotion-reduction signal.",
+        "mitigation": "No test activity before 11.11 has fully normalised; the window opens after 12.12."
+      },
+      {
+        "event": "Marketplace 12.12 / Harbolnas (around 12 December — exact date to be confirmed)",
+        "risk": "Same distortion as 11.11. The gap between 11.11 and 12.12 (about four and a half weeks) is too short for a clean test plus run-in, so no window between the two is proposed.",
+        "mitigation": "Start in January, after 12.12 demand has normalised; the client commerce team confirms the clear date from the marketplace calendar."
+      },
+      {
+        "event": "Early-2027 platform sale days and pre-Ramadan / Lebaran demand season (dates not supplied — client to confirm)",
+        "risk": "Month-start platform sale days or the shift in demand ahead of Ramadan could change traffic and volume on either group independently of offer depth.",
+        "mitigation": "The window is kept to four weeks so it can finish before the season begins. The client confirms the full marketplace and brand calendar before launch. Any unplanned event hitting either group makes the result inconclusive."
+      }
+    ],
+    "held_constant": [
+      {
+        "item": "Affiliate content approach and listing content",
+        "how_verified": "Execution owner supplies the current content brief at launch and confirms in writing each week that no new content direction, creative or listing proof was issued for either group; any change is logged as a confound."
+      },
+      {
+        "item": "Price list",
+        "how_verified": "Client commerce team confirms the list price on both groups is unchanged from the prior quarter, and shares a weekly price-list check for the test window."
+      },
+      {
+        "item": "Creator roster on the comparison set",
+        "how_verified": "Execution owner provides a named list of active affiliates at launch; any addition or removal is flagged immediately and logged against the test record."
+      },
+      {
+        "item": "Media weight",
+        "how_verified": "Client commerce team confirms paid media spend and targeting on both groups are unchanged; any unplanned activation is logged and assessed."
+      },
+      {
+        "item": "Stock availability",
+        "how_verified": "Client commerce team confirms stock is sufficient on both groups; any stock-out is flagged, and the affected SKU or region is excluded from the final read."
+      },
+      {
+        "item": "SKU set",
+        "how_verified": "Client commerce team fixes the SKU list for each group at launch; any addition or removal is logged and the SKU is excluded from the read."
+      },
+      {
+        "item": "Affiliate budget (business-wide)",
+        "how_verified": "Client commerce team confirms total affiliate spend is unchanged from the prior-quarter level; execution owner supplies a weekly spend report against the indexed baseline."
+      },
+      {
+        "item": "Other promotional mechanics (vouchers, bundles, platform promotions) where feasible",
+        "how_verified": "Client commerce team shares a promotion log for both groups at launch and weekly; any change is logged and any mechanic that cannot be held is recorded as a deviation."
+      }
+    ]
+  },
+  "measures": [
+    {
+      "key": "affiliate_order_volume_relative_lift",
+      "role": "primary",
+      "label": "Affiliate order volume: treatment vs matched comparison (relative difference)",
+      "definition": "The percentage difference in affiliate-attributed order volume on the treatment group (reduced promotion depth) relative to the matched comparison group (current promotion depth) over the test window. A result at or above the threshold indicates that volume has held within a commercially acceptable range despite the reduction in promotion depth — consistent with demand that is not primarily price-triggered. The proposed threshold of -10% is drawn from the falsification criterion stated in Stage 1 explanation E1 ('volume holds within a commercially acceptable range, e.g. less than 10% decline') and is proposed for client agreement before the test launches; it is not a prediction. The client finance and commerce teams should confirm whether a different tolerance is implied by the margin recovery target set for the test.",
+      "unit": "pct_change",
+      "baseline": null,
+      "baseline_source": null,
+      "comparator": "gte",
+      "threshold": -10,
+      "threshold_status": "proposed",
+      "failure_condition": "The treatment group's affiliate order volume falls more than 10 percent below the matched comparison group's volume over the test window — consistent with demand being primarily price-triggered and the programme being structurally discount-dependent. This would support explanation E1 and indicate that scaling at reduced promotion depth would destroy volume."
+    },
+    {
+      "key": "gross_margin_index_treatment",
+      "role": "guardrail",
+      "label": "Gross margin index on the treatment group: must not fall further below comparison group",
+      "definition": "The gross margin index on the treatment group (reduced promotion depth) relative to the matched comparison group over the test window. The test is designed to recover margin; this guardrail checks that the treatment does not inadvertently worsen margin on the comparison set (for example, through returns, fulfilment costs, or affiliate fee structures that offset the discount reduction). The guardrail passes if the treatment group's margin index is at or above the comparison group's margin index — i.e. the relative margin difference is zero or positive. A proposed threshold of 0 percent relative difference is set: the treatment group's margin must not be lower than the comparison group's margin. This is the minimum condition for the test to be commercially meaningful; if margin does not improve on the treatment group relative to the comparison, the intervention has not achieved its stated purpose.",
+      "unit": "pct_change",
+      "baseline": null,
+      "baseline_source": null,
+      "comparator": "gte",
+      "threshold": 0,
+      "threshold_status": "proposed",
+      "failure_condition": "The treatment group's gross margin index is lower than the matched comparison group's gross margin index over the test window — meaning the promotion-depth reduction has not recovered margin on the comparison set, and the intervention has not delivered its primary commercial rationale."
+    },
+    {
+      "key": "discount_intensity_index_treatment",
+      "role": "guardrail",
+      "label": "Discount intensity index on the treatment group: must be lower than comparison group",
+      "definition": "The discount intensity index on the treatment group relative to the matched comparison group over the test window. This guardrail verifies that the treatment was actually delivered as specified — i.e. that promotion depth on the comparison set was genuinely reduced and did not drift back toward the current level through affiliate-initiated vouchers, platform-run promotions, or other mechanisms. The guardrail passes if the treatment group's discount intensity index is strictly below the comparison group's index. A proposed threshold of -1 percent relative difference is set as the minimum detectable reduction; the client finance and commerce teams should confirm the actual intended reduction depth before the test launches.",
+      "unit": "pct_change",
+      "baseline": null,
+      "baseline_source": null,
+      "comparator": "lte",
+      "threshold": -1,
+      "threshold_status": "proposed",
+      "failure_condition": "The treatment group's discount intensity index is not materially below the matched comparison group's index — meaning the promotion-depth reduction was not delivered as specified, and any volume or margin result cannot be attributed to the treatment. The test result is inconclusive and the treatment delivery must be investigated before any decision is made."
+    },
+    {
+      "key": "repeat_purchase_rate_index_treatment",
+      "role": "guardrail",
+      "label": "Repeat purchase rate index on the treatment group: must not fall below comparison group",
+      "definition": "The repeat purchase rate index on the treatment group (buyers acquired at reduced promotion depth) relative to the matched comparison group (buyers acquired at current promotion depth) over the test window and the subsequent quarter. Given the long re-purchase cycle noted in ev_6, a single-quarter read is acknowledged as insufficient to conclude on loyalty; this guardrail is therefore set as a directional floor — the treatment group's repeat rate must not fall below the comparison group's repeat rate. A proposed threshold of 0 percent relative difference is set: the treatment group's repeat index must be at or above the comparison group's. A result below this threshold would be consistent with the treatment acquiring lower-loyalty buyers even at reduced discount depth, which would be a negative signal for the reshape strategy.",
+      "unit": "pct_change",
+      "baseline": null,
+      "baseline_source": null,
+      "comparator": "gte",
+      "threshold": 0,
+      "threshold_status": "proposed",
+      "failure_condition": "The treatment group's repeat purchase rate index falls below the matched comparison group's repeat rate index over the observation window — consistent with reduced-discount buyers being less likely to return, which would undermine the case for reshaping the programme toward lower-discount mechanics. Note: given the long re-purchase cycle (ev_6), a single-quarter read should be treated as directional only and not as a confirmed loyalty failure."
+    }
+  ],
+  "signals": {
+    "success": "The treatment group's affiliate order volume holds within 10 percent of the matched comparison group (primary measure passes); the treatment group's gross margin index is at or above the comparison group's (margin guardrail passes); the treatment group's discount intensity index is materially below the comparison group's (confirming treatment delivery); and the treatment group's repeat rate index is at or above the comparison group's (repeat guardrail passes). All held-constants verified as unchanged throughout the test window. This pattern is consistent with demand on the comparison set not being primarily price-triggered, and would support a decision to reshape the affiliate programme toward lower-discount mechanics before scaling budget.",
+    "failure": "The treatment group's affiliate order volume falls more than 10 percent below the matched comparison group (primary measure fails) — regardless of whether margin recovers. This pattern is consistent with demand being primarily price-triggered on the comparison set, and would support a decision to reframe the board's scale ambition against a margin-adjusted growth target rather than scaling the current discount-led structure. A failure on the margin guardrail alone (volume holds but margin does not recover) would indicate that the discount reduction is being offset by other cost or incentive mechanisms and the intervention design requires revision before any scale decision.",
+    "inconclusive": "The result should be treated as inconclusive — and the test repeated or redesigned — in any of the following conditions: (1) the matched comparison group is found not to be sufficiently similar to the treatment group on prior-quarter GMV, affiliate order, or discount intensity indices; (2) total volume across both groups is too small to produce a readable relative difference at the proposed threshold; (3) any held-constant is found to have changed during the test window (affiliate content approach, listing content, price list, SKU set, media weight, stock, creator roster, affiliate budget, other promotional mechanics); (4) the discount intensity guardrail shows the treatment was not delivered as specified; (5) a platform-wide sale event (11.11, 12.12, or an unconfirmed calendar event) occurs during the test window and affects either group; (6) the new-versus-repeat customer split (ev_9) or promo-versus-full-price order mix (ev_8) remain unavailable at the time of result read, preventing interpretation of what the volume result means for demand quality."
+  },
+  "decision_rule": {
+    "statement": "A clean pass requires all of the following to hold simultaneously: (1) the primary measure — affiliate order volume on the treatment group — is within 10 percent of the matched comparison group (gte -10%); (2) the gross margin index on the treatment group is at or above the comparison group (gte 0% relative difference); (3) the discount intensity index on the treatment group is materially below the comparison group (lte -1% relative difference), confirming treatment delivery; (4) the repeat purchase rate index on the treatment group is at or above the comparison group (gte 0% relative difference); (5) all held-constants — affiliate content approach, listing content, price list, SKU set, media weight, stock, creator roster, affiliate budget, other promotional mechanics — are verified as unchanged throughout the test window; and (6) the treatment was delivered as specified with no routing errors, stock-outs, or unplanned platform events affecting either group. If any one of these conditions is not met, the result is not a clean pass and the decision owner should not treat it as a basis for scaling or reshaping the programme without further investigation.",
+    "on_pass": "strengthen",
+    "on_fail": "shift"
+  }
+}

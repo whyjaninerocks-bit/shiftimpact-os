@@ -1,0 +1,252 @@
+{
+  "evidence_read": {
+    "known": [
+      {
+        "text": "GMV has grown to index 128 against a prior-quarter baseline of 100, indicating strong top-line momentum.",
+        "evidence_ids": [
+          "ev_1"
+        ]
+      },
+      {
+        "text": "Affiliate-attributed orders have grown faster than GMV (index 140 vs 128), meaning affiliate-attributed volume is outpacing overall revenue growth — implying either lower average order value per affiliate order or a higher share of discounted transactions.",
+        "evidence_ids": [
+          "ev_1",
+          "ev_2"
+        ]
+      },
+      {
+        "text": "Discount intensity has risen to index 118, moving in the same direction as affiliate order growth.",
+        "evidence_ids": [
+          "ev_3"
+        ]
+      },
+      {
+        "text": "Gross margin has contracted to index 93, a 7-point decline against baseline, while GMV grew 28 points — the two are moving in opposite directions.",
+        "evidence_ids": [
+          "ev_1",
+          "ev_5"
+        ]
+      },
+      {
+        "text": "Repeat purchase rate is essentially flat at index 101, showing no meaningful uplift over the measurement period.",
+        "evidence_ids": [
+          "ev_4"
+        ]
+      },
+      {
+        "text": "The category re-purchase cycle is stated to be roughly a quarter or longer, which means one quarter of data is insufficient to observe a full repeat cycle.",
+        "evidence_ids": [
+          "ev_6"
+        ]
+      },
+      {
+        "text": "Affiliate incentives are stated to be largely tied to discount-led offers, structurally linking affiliate activity to promotion depth.",
+        "evidence_ids": [
+          "ev_7"
+        ]
+      }
+    ],
+    "inferred": [
+      {
+        "text": "Inference: The divergence between affiliate order index (140) and GMV index (128) is consistent with affiliate-driven orders carrying a lower average revenue per order than the overall portfolio — likely because they are discount-led. This is an inference from the gap between the two indices, not directly measured.",
+        "evidence_ids": [
+          "ev_1",
+          "ev_2",
+          "ev_3"
+        ]
+      },
+      {
+        "text": "Inference: The simultaneous rise in discount intensity and affiliate orders, combined with margin compression, is consistent with a pattern where promotion depth is the primary demand lever rather than organic brand pull. This is an inference; the data do not isolate causation.",
+        "evidence_ids": [
+          "ev_2",
+          "ev_3",
+          "ev_5",
+          "ev_7"
+        ]
+      },
+      {
+        "text": "Inference: Flat repeat rate alongside strong new-order growth is consistent with the growth being predominantly first-purchase or promotion-triggered rather than loyalty-driven — but the long re-purchase cycle means this cannot be confirmed within one quarter.",
+        "evidence_ids": [
+          "ev_4",
+          "ev_6"
+        ]
+      }
+    ],
+    "unknown": [
+      {
+        "text": "The split between promotional and full-price orders within the growth is not supplied, making it impossible to quantify how much volume is structurally dependent on discounting.",
+        "evidence_ids": [
+          "ev_8"
+        ]
+      },
+      {
+        "text": "The new-versus-repeat customer composition of the growth increment is not supplied; it is unknown whether growth is coming from new customer acquisition, lapsed reactivation, or existing customers buying more.",
+        "evidence_ids": [
+          "ev_9"
+        ]
+      },
+      {
+        "text": "The degree of overlap between affiliate-attributed orders and demand that would have arrived organically (incrementality) is not measurable from the supplied data.",
+        "evidence_ids": [
+          "ev_10"
+        ]
+      },
+      {
+        "text": "Whether the flat repeat rate reflects genuine low loyalty or simply the long re-purchase cycle not yet completing cannot be determined from one quarter of aggregated data.",
+        "evidence_ids": [
+          "ev_4",
+          "ev_6"
+        ]
+      }
+    ],
+    "test_required": [
+      {
+        "text": "Whether order volume holds, declines, or collapses when promotion depth is reduced on a bounded comparison set of products or regions — this is the central commercial question and can only be settled by a controlled test.",
+        "evidence_ids": [
+          "ev_11"
+        ]
+      },
+      {
+        "text": "Whether affiliate-attributed orders that occur at reduced discount depth generate materially better margin and comparable or better repeat behaviour — requires the same bounded test with margin and CRM tracking.",
+        "evidence_ids": [
+          "ev_11",
+          "ev_5",
+          "ev_4"
+        ]
+      },
+      {
+        "text": "The test window must be scheduled outside the 11.11 and 12.12 / Harbolnas platform-wide sale periods, as those events would swamp any promotion-reduction signal on the comparison set.",
+        "evidence_ids": [
+          "ev_11"
+        ]
+      }
+    ]
+  },
+  "explanations": [
+    {
+      "id": "E1",
+      "statement": "Growth is primarily discount-dependent: affiliate volume is being driven by promotion depth rather than brand or product pull, and the programme is structurally eroding margin without building durable demand.",
+      "primary": true,
+      "supports": [
+        {
+          "evidence_id": "ev_2",
+          "why": "Affiliate orders (index 140) are growing faster than GMV (index 128), consistent with affiliate orders being lower-value or more heavily discounted than the portfolio average."
+        },
+        {
+          "evidence_id": "ev_3",
+          "why": "Discount intensity has risen to index 118 in the same period, moving in the same direction as affiliate order growth."
+        },
+        {
+          "evidence_id": "ev_5",
+          "why": "Gross margin has fallen to index 93 despite strong GMV growth, consistent with promotion depth consuming margin faster than volume recovers it."
+        },
+        {
+          "evidence_id": "ev_7",
+          "why": "Affiliate incentives are structurally tied to discount-led offers, creating a direct mechanism linking affiliate activity to promotion depth."
+        },
+        {
+          "evidence_id": "ev_4",
+          "why": "Repeat rate is flat at index 101, consistent with the acquired customers not returning at a higher rate — which would be expected if discount-triggered buyers have lower loyalty."
+        }
+      ],
+      "contradicts": [
+        {
+          "evidence_id": "ev_6",
+          "why": "The long re-purchase cycle means flat repeat rate over one quarter may not yet reflect the true loyalty outcome; it is too early to conclude repeat behaviour is poor."
+        }
+      ],
+      "falsified_if": "In the bounded test, reducing promotion depth on the comparison set causes affiliate order volume to hold within a commercially acceptable range (e.g. less than 10% decline) while margin recovers — showing that demand is not primarily price-triggered.",
+      "basis": "evidenced"
+    },
+    {
+      "id": "E2",
+      "statement": "Growth reflects genuine new-customer acquisition at scale: the affiliate programme is successfully recruiting first-time buyers who will convert to repeat purchasers once the category re-purchase cycle completes, and margin compression is a temporary cost of acquisition.",
+      "primary": false,
+      "supports": [
+        {
+          "evidence_id": "ev_1",
+          "why": "GMV growth of 28 index points is substantial and consistent with a real expansion of the customer base."
+        },
+        {
+          "evidence_id": "ev_6",
+          "why": "The long re-purchase cycle means one quarter is insufficient to observe repeat behaviour; flat repeat rate does not yet falsify a loyalty hypothesis."
+        }
+      ],
+      "contradicts": [
+        {
+          "evidence_id": "ev_5",
+          "why": "If margin compression were a planned acquisition investment, it would typically be tracked against a customer lifetime value model; the evidence shows only that margin is falling, with no indication this is a deliberate and bounded trade-off."
+        },
+        {
+          "evidence_id": "ev_7",
+          "why": "Affiliate incentives tied to discount-led offers suggest the programme is optimised for transaction volume rather than customer quality, which is inconsistent with a deliberate acquisition-for-loyalty strategy."
+        }
+      ],
+      "falsified_if": "When the new-versus-repeat customer split is obtained [ev_9], it shows that the majority of growth increment is coming from existing or lapsed customers rather than genuine new-to-brand buyers — indicating the programme is not primarily recruiting new customers.",
+      "basis": "evidenced"
+    },
+    {
+      "id": "E3",
+      "statement": "A material share of affiliate-attributed orders is cannibalising demand that would have arrived organically anyway: the affiliate programme is paying commission and discount on orders that did not require either incentive, inflating attributed volume while destroying margin with no incremental demand benefit.",
+      "primary": false,
+      "supports": [
+        {
+          "evidence_id": "ev_10",
+          "why": "The overlap between affiliate-attributed orders and organic demand is explicitly unknown, leaving open the possibility that a significant share is non-incremental."
+        },
+        {
+          "evidence_id": "ev_2",
+          "why": "Affiliate-attributed orders at index 140 growing faster than overall GMV at index 128 is consistent with attribution inflation if some organic buyers are being tagged as affiliate-driven."
+        }
+      ],
+      "contradicts": [],
+      "falsified_if": "A holdout or geo-split test shows that regions or products without affiliate promotion generate materially lower order volume than the affiliate-active comparison set, confirming that affiliate activity is generating incremental demand rather than re-attributing organic demand.",
+      "basis": "evidenced"
+    },
+    {
+      "id": "E4",
+      "statement": "The margin decline is primarily driven by category-level cost increases or platform fee changes unrelated to the affiliate programme, and the affiliate programme itself is not the primary cause of margin compression.",
+      "primary": false,
+      "supports": [],
+      "contradicts": [
+        {
+          "evidence_id": "ev_3",
+          "why": "Discount intensity rising to index 118 in the same period as margin falling to index 93 is more directly consistent with promotion depth as a margin driver than an external cost explanation."
+        },
+        {
+          "evidence_id": "ev_7",
+          "why": "Affiliate incentives are structurally tied to discount-led offers, providing a direct internal mechanism for margin compression that does not require an external cost explanation."
+        }
+      ],
+      "falsified_if": "Client finance data shows that cost-of-goods or platform fees rose materially in the same period and account for the majority of the margin index decline, with promotion depth held constant — ruling out discount intensity as the primary driver.",
+      "basis": "hypothesis"
+    }
+  ],
+  "test_role": "resolve",
+  "decision": {
+    "move": "strengthen",
+    "headline": "Strengthen the quality of affiliate demand before scaling budget, by testing whether volume holds at reduced promotion depth on a bounded comparison set.",
+    "rationale": "The evidence presents a consistent pattern: affiliate orders are growing faster than GMV [ev_2 vs ev_1], discount intensity is rising [ev_3], gross margin has contracted to index 93 [ev_5], and affiliate incentives are structurally tied to discount-led offers [ev_7]. Together these are consistent with a programme that is buying volume rather than building demand. Repeat rate is flat [ev_4], though the long re-purchase cycle [ev_6] means this cannot yet be treated as a confirmed loyalty failure. Critically, three of the most important diagnostic facts are absent: the promo-versus-full-price order mix [ev_8], the new-versus-repeat customer split of the growth [ev_9], and the incrementality of affiliate-attributed orders [ev_10]. Scaling budget into this pattern before those questions are resolved risks compounding margin erosion. The commercially safe move is to hold overall affiliate investment at current levels, obtain the missing data cuts [ev_8, ev_9], and run a bounded promotion-depth reduction test on a nominated comparison set of products or regions [ev_11] — scheduled outside the 11.11 and 12.12 platform sale windows where platform-wide promotion would swamp the signal. If the test shows volume holds at reduced discount depth, the programme can be reshaped toward lower-discount affiliate mechanics before any scale decision. If volume collapses, that confirms price sensitivity and the board's scale ambition must be reframed against a margin-adjusted growth target.",
+    "confidence": "medium",
+    "what_changes": [
+      "Affiliate budget is held at current levels rather than scaled next quarter, pending test results.",
+      "A bounded comparison set of products or regions is nominated by the client for a promotion-depth reduction test [ev_11].",
+      "The test is scheduled clear of 11.11 and 12.12 / Harbolnas platform sale events — in practice a window that starts after 12.12 demand has normalised (January), not the gap between 11.11 and 12.12.",
+      "The client commerce and CRM teams are tasked with supplying the promo-versus-full-price order mix [ev_8] and new-versus-repeat customer split of the growth increment [ev_9] before the test launches.",
+      "The affiliate incentive structure [ev_7] is reviewed as a planning exercise only; no incentive mechanic, content approach or creative changes on the test set while the test runs."
+    ],
+    "what_stays": [
+      "The affiliate programme continues to run business-wide at current investment level — it is not paused or reduced across the whole business.",
+      "Offer depth is the only variable that changes. Affiliate content approach, listing content, creator roster, media weight, price list, stock, SKU set and other promotional mechanics are held as they are.",
+      "The board's scale ambition is not rejected — it is deferred to a post-test decision point with better evidence."
+    ],
+    "cannot_conclude": [
+      "That the affiliate programme is definitively causing margin compression — the evidence is consistent with this but does not isolate causation; an external cost driver [E4] has not been ruled out.",
+      "That repeat purchase behaviour is poor — the long re-purchase cycle [ev_6] means one quarter of flat repeat rate [ev_4] is insufficient to conclude loyalty failure.",
+      "That affiliate-attributed orders are incremental — the overlap with organic demand is unknown [ev_10] and incrementality cannot be inferred from the supplied aggregated data.",
+      "That the growth is primarily new-customer acquisition or primarily existing-customer discount-triggered repurchase — the new-versus-repeat split is not supplied [ev_9].",
+      "That reducing promotion depth will hold or collapse volume — this is precisely what the bounded test [ev_11] is designed to resolve and cannot be predicted from current data.",
+      "Any segment-level behaviour (by product, region, or customer cohort) — all supplied evidence is aggregated or indexed at portfolio level."
+    ]
+  }
+}
