@@ -83,6 +83,7 @@ async function runWithRetry<T extends Stage1 | Stage2 | Stage3>(opts: {
 
   while (attempts < 3) {
     attempts += 1;
+    if (process.env.BLUEPRINT_VERBOSE) console.error(`  … attempt ${attempts}/3: calling model`);
     lastRaw = await opts.call({ system: opts.system, messages, max_tokens: opts.maxTokens });
 
     let parsed: unknown;
@@ -101,6 +102,7 @@ async function runWithRetry<T extends Stage1 | Stage2 | Stage3>(opts: {
     const v = opts.validate(parsed);
     if (!v.ok) {
       lastProblems = fmtIssues(v.issues);
+      if (process.env.BLUEPRINT_VERBOSE) console.error(`  … attempt ${attempts} failed schema:\n    - ${lastProblems.join("\n    - ")}`);
       messages.push({ role: "assistant", content: lastRaw });
       messages.push({
         role: "user",
@@ -113,6 +115,7 @@ async function runWithRetry<T extends Stage1 | Stage2 | Stage3>(opts: {
     const violations = opts.lint(enforced);
     if (violations.length) {
       lastProblems = fmtViolations(violations);
+      if (process.env.BLUEPRINT_VERBOSE) console.error(`  … attempt ${attempts} rejected by lint:\n    - ${lastProblems.join("\n    - ")}`);
       messages.push({ role: "assistant", content: lastRaw });
       messages.push({
         role: "user",
