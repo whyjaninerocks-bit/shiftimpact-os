@@ -80,7 +80,7 @@ async function runWithRetry<T extends Stage1 | Stage2 | Stage3>(opts: {
   let lastRaw = "";
   let lastProblems: string[] = [];
 
-  while (attempts < 2) {
+  while (attempts < 3) {
     attempts += 1;
     lastRaw = await opts.call({ system: opts.system, messages, max_tokens: opts.maxTokens });
 

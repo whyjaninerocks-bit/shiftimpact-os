@@ -127,6 +127,8 @@ export function lintInventedNumbers(stageOutput: unknown, inputs: Inputs): Viola
       const isPct = text.slice(m.index! + n.length, m.index! + n.length + 1) === "%";
       // Single-digit counts ("two proof beats", "3 variants") are not claims.
       if (value < 10 && !isPct && !n.includes(".")) continue;
+      // Asset-length bands ("under 60 seconds") are format specifications, not facts.
+      if (/^\s*[-–]?\s*(seconds?|secs?|s\b|minutes?|mins?)/i.test(text.slice(m.index! + n.length, m.index! + n.length + 12))) continue;
       if (!corpus.has(n) && !corpus.has(String(Math.round(value)))) {
         issues.push({ kind: "invented_number", path, detail: `"${n}" does not trace to any supplied input` });
       }
