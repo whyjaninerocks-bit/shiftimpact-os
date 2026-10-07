@@ -108,6 +108,10 @@ export function BlueprintDoc({ row, variant }: { row: BlueprintRow; variant: Var
   const Ids = ({ ids }: { ids?: string[] }) => (executor ? null : <IdsBase ids={ids} />);
   const s1 = c.stage1;
   const s2 = c.stage2;
+  // Rows persisted before the intervention-type layer carry none of these keys (content is stored raw,
+  // not re-parsed), so every access is defaulted here.
+  const deliverables = s2?.agency_deliverables ?? [];
+  const enablers = s2?.client_platform_enablers ?? [];
   const s3 = c.stage3;
   const out = c.outcome;
   const next = c.next;
@@ -324,14 +328,14 @@ export function BlueprintDoc({ row, variant }: { row: BlueprintRow; variant: Var
           </Section>
 
           {/* PRIMARY — what the agency owns and delivers. Kept apart from client / platform enablers. */}
-          {s2.agency_deliverables.length > 0 && (
+          {deliverables.length > 0 && (
             <Section
               title="Agency-owned activation deliverables"
               tone="primary"
               note={`${row.execution_owner_label ?? "The execution owner"} owns and delivers these. The five deliverables are the proposition; the tasks underneath are how they are executed.`}
             >
               <div className="space-y-3">
-                {s2.agency_deliverables.map((d, i) => (
+                {deliverables.map((d, i) => (
                   <div key={d.key} className="bp-card rounded border border-neutral-200 p-3">
                     <div className="flex items-baseline gap-2">
                       <span className="font-mono text-xs text-neutral-400">{i + 1}</span>
@@ -506,7 +510,7 @@ export function BlueprintDoc({ row, variant }: { row: BlueprintRow; variant: Var
                 : "Environments (held constant except the controlled variable)"
             }
           >
-            {(typeOf(s2.intervention_type).applies.creator_role || s2.intervention_type === null) && (
+            {(typeOf(s2.intervention_type).applies.creator_role || !s2.intervention_type) && (
             <Row label="Creator role">
               {s2.creator_role.applicable ? (
                 <>
@@ -527,7 +531,7 @@ export function BlueprintDoc({ row, variant }: { row: BlueprintRow; variant: Var
               )}
             </Row>
             )}
-            {(typeOf(s2.intervention_type).applies.asset_architecture || s2.intervention_type === null) && (
+            {(typeOf(s2.intervention_type).applies.asset_architecture || !s2.intervention_type) && (
             <Row label="Asset architecture">
               {s2.asset_architecture ? (
                 <>
@@ -587,14 +591,14 @@ export function BlueprintDoc({ row, variant }: { row: BlueprintRow; variant: Var
             ))}
           </Section>
 
-          {s2.agency_deliverables.length === 0 && (
+          {deliverables.length === 0 && (
             <Section title="What the execution owner must deliver or confirm">
               <List items={s2.execution_owner_asks} />
             </Section>
           )}
 
           {/* SECONDARY — what the client / platform must enable. Deliberately separate from the agency's deliverables. */}
-          {s2.client_platform_enablers.length > 0 && (
+          {enablers.length > 0 && (
             <Section
               title="Required client / platform enablers"
               tone="secondary"
@@ -611,7 +615,7 @@ export function BlueprintDoc({ row, variant }: { row: BlueprintRow; variant: Var
                     </tr>
                   </thead>
                   <tbody className="align-top">
-                    {s2.client_platform_enablers.map((e, i) => (
+                    {enablers.map((e, i) => (
                       <tr key={i} className="border-t border-neutral-200">
                         <td className="py-1 pr-2 font-medium">{e.enabler}</td>
                         <td className="pr-2">{e.owner}</td>
@@ -633,9 +637,9 @@ export function BlueprintDoc({ row, variant }: { row: BlueprintRow; variant: Var
           <Section title="Test / controlled market action">
             <Row label="Role · design">
               {human(s3.test.role)} · <strong>{human(s3.test.design)}</strong>
-              {s3.test.duration_weeks !== null && <> · {s3.test.duration_weeks} weeks</>}
+              {s3.test.duration_weeks != null && <> · {s3.test.duration_weeks} weeks</>}
             </Row>
-            {s3.test.duration_weeks === null && (
+            {s3.test.duration_weeks == null && (
               <Row label="Window & duration">
                 To be agreed against the actual commercial calendar. Avoid major promotional, platform or seasonal
                 events that would materially confound the read. Duration should be sufficient to produce a readable
