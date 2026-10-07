@@ -1,0 +1,117 @@
+{
+  "test": {
+    "role": "resolve",
+    "design": "matched_comparison",
+    "design_rationale": "The client cannot share row-level data and cannot randomise visitor assignment to treated vs untreated pages, ruling out a randomised or split-test design. The client can nominate a matched set of untreated SKUs with similar prior-period traffic volume and price band, making matched_comparison the strongest design the constraints allow. The treated group is the bounded set of test SKUs with the updated proof architecture; the comparison group is the matched untreated SKU set carrying the existing page architecture throughout the test period. All commercial variables are held constant on both groups. This design can support medium confidence at best; causal attribution is not possible.",
+    "treatment": "The bounded set of client-nominated test SKUs has its product-detail-page proof architecture updated — replacing the hero-image-and-claim-text layout with a layout that places usage demonstration and expert or clinical endorsement high on the page (above the fold or within the first scroll), using the brand's own approved claims and mechanisms. This change is applied on both the brand site and marketplace listing for the test SKUs. No other element — price, discount depth, audience targeting, media weight, retargeting, stock allocation — is changed on these SKUs during the test period.",
+    "comparison": "The matched untreated SKU set, nominated by the client commerce team to have similar prior-period traffic volume and price band to the test SKUs, carrying the existing hero-image-and-claim-text product-page architecture unchanged throughout the test period. PDP-to-purchase conversion on the treated SKUs is read relative to PDP-to-purchase conversion on the untreated SKUs over the same calendar window.",
+    "duration_weeks": null,
+    "calendar_confounds": [
+      {
+        "event": "Commercial, platform and seasonal calendar (not supplied)",
+        "risk": "A major promotional, platform or seasonal event touching either group could change traffic quality or discount depth independently of the product-page proof architecture and make the comparison unreadable.",
+        "mitigation": "Test window to be agreed against the actual commercial calendar. Avoid major promotional, platform or seasonal events that would materially confound the read. Duration should be sufficient to produce a readable sample and should not be hard-coded before a real pilot is scoped. Any platform event that cannot be excluded from the window should be logged as a confound, and the result treated as inconclusive for the affected days."
+      },
+      {
+        "event": "Competitor pricing changes during the test window",
+        "risk": "The client cannot hold competitor pricing constant. A material competitor price move during the test period could shift relative value perception and affect conversion on both groups, but not necessarily symmetrically.",
+        "mitigation": "The execution owner should monitor publicly visible competitor pricing on equivalent SKUs weekly during the test. If a material change is observed, it is logged and the decision rule is applied with that caveat noted. The result is treated as inconclusive if the change is large enough to plausibly affect the comparison group differently from the test group."
+      }
+    ],
+    "held_constant": [
+      {
+        "item": "Price and discount depth on test SKUs",
+        "how_verified": "Client commerce team confirms via pricing and promo log (the same source as ev_5) that no price change or promotional discount is applied to test SKUs during the test window. The execution owner checks the indexed discount depth reading at test start and at test end; any movement beyond index 102 ± 2 on test SKUs is flagged as a breach."
+      },
+      {
+        "item": "Audience targeting parameters and media weight on test SKUs",
+        "how_verified": "Client e-commerce team confirms in writing before test start that no targeting or budget change is made to campaigns driving traffic to test SKUs during the test window. The execution owner reviews campaign settings at mid-test checkpoints and flags any change as a held-constant breach."
+      },
+      {
+        "item": "Retargeting proof and offer on PDP visitors",
+        "how_verified": "Client commerce team and execution owner confirm that retargeting creative and any retargeting offer applied to visitors of test-SKU pages are not changed during the test period. Any retargeting change is logged as a breach and the result is treated as inconclusive."
+      },
+      {
+        "item": "Stock allocation to test SKUs",
+        "how_verified": "Client commerce team monitors stock availability on test SKUs weekly and reports any out-of-stock or low-stock state to the execution owner. If a test SKU goes out of stock for more than 48 consecutive hours during the test window, that SKU's data for the affected period is flagged and may be excluded from the primary measure calculation at reconciliation."
+      }
+    ]
+  },
+  "measures": [
+    {
+      "key": "pdp_to_purchase_conversion_relative_lift",
+      "role": "primary",
+      "label": "PDP-to-purchase conversion: treated vs untreated relative difference",
+      "definition": "The percentage difference in PDP-to-purchase conversion rate between the treated SKU group and the matched untreated SKU group over the same test window, expressed as a relative percent change. Calculated as: ((treated group conversion rate) / (untreated group conversion rate) − 1) × 100. Both rates are derived from the client e-commerce dashboard in indexed or aggregated form consistent with ev_4. The threshold of +10 pct_change is proposed as the minimum relative lift that would be commercially meaningful given the current indexed conversion of 84 vs baseline 100 (ev_4); this threshold is a proposal to be agreed with the client before the test begins and is not a prediction of the effect size.",
+      "unit": "pct_change",
+      "baseline": 84,
+      "baseline_source": "ev_4",
+      "comparator": "gte",
+      "threshold": 10,
+      "threshold_status": "proposed",
+      "failure_condition": "The treated SKU group's PDP-to-purchase conversion rate is less than 10 percent higher (relative) than the untreated SKU group's rate over the test window. A result below this threshold suggests the proof architecture change, as implemented, is not associated with a meaningful conversion difference at this scale and in this window."
+    },
+    {
+      "key": "discount_depth_index_test_skus",
+      "role": "guardrail",
+      "label": "Discount depth index on test SKUs — must not rise during test",
+      "definition": "The indexed discount depth on test SKUs at the end of the test window, using the same pricing and promo log source as ev_5 (baseline index 102). This guardrail checks that no incremental discounting has been applied to test SKUs during the test period, which would confound the proof-architecture effect. The guardrail passes if the index at test end is no greater than 104 (allowing for minor rounding in the indexed reporting). A rise above 104 would indicate that a price incentive, not proof architecture alone, may be driving any observed conversion change.",
+      "unit": "index",
+      "baseline": 102,
+      "baseline_source": "ev_5",
+      "comparator": "lte",
+      "threshold": 104,
+      "threshold_status": "proposed",
+      "failure_condition": "Discount depth index on test SKUs rises above 104 at any point during the test window, indicating that a commercial variable — not proof architecture alone — may be contributing to any conversion movement observed. The primary measure result is not a clean pass if this guardrail is breached."
+    },
+    {
+      "key": "matched_comparison_conversion_stability",
+      "role": "guardrail",
+      "label": "Matched comparison group conversion stability — absolute movement from its pre-test baseline (index points)",
+      "definition": "Matched comparison group conversion must remain within an agreed stability band around its pre-test baseline. The precise band is proposed and must be agreed with the client before launch. For this illustrative demo only, the proposed band is symmetric around the pre-test baseline of 100 (a band of 95–105), read as an absolute movement of no more than 5 index points in either direction. A movement outside the band suggests an external factor (platform event, competitor move, stock issue) has affected the matched comparison group, and the result should be treated as inconclusive.",
+      "unit": "absolute",
+      "baseline": null,
+      "baseline_source": null,
+      "comparator": "lte",
+      "threshold": 5,
+      "threshold_status": "proposed",
+      "failure_condition": "The matched comparison group's conversion moves outside the proposed band (more than 5 index points above or below its pre-test baseline of 100) during the test window, indicating the matched comparison group has been affected by an external variable. The primary measure relative lift cannot be cleanly interpreted and the result is inconclusive."
+    },
+    {
+      "key": "add_to_cart_rate_test_skus",
+      "role": "guardrail",
+      "label": "Add-to-cart rate on test SKUs — must not decline relative to untreated group",
+      "definition": "The add-to-cart rate on test SKUs relative to the untreated SKU group over the test window. This guardrail checks that the proof architecture change does not inadvertently suppress the earlier funnel step — for example, by adding page weight or friction that causes visitors to leave before reaching the add-to-cart action. The guardrail passes if the treated group's add-to-cart rate is no more than 5 percent lower (relative) than the untreated group's rate. The current indexed add-to-cart baseline is 96 (ev_3); a further relative decline on treated SKUs beyond the 5 percent tolerance would suggest the page change is creating friction rather than resolving it.",
+      "unit": "pct_change",
+      "baseline": 96,
+      "baseline_source": "ev_3",
+      "comparator": "gte",
+      "threshold": -5,
+      "threshold_status": "proposed",
+      "failure_condition": "The treated SKU group's add-to-cart rate is more than 5 percent lower (relative) than the untreated SKU group's rate over the test window, suggesting the proof architecture change may be introducing page friction or reducing earlier-funnel engagement rather than resolving decision-point hesitation."
+    },
+    {
+      "key": "held_constants_verified",
+      "role": "guardrail",
+      "label": "All held-constant items verified unbreached at test end",
+      "definition": "A pass/fail check confirming that all four held-constant items — price and discount depth on test SKUs, audience targeting parameters and media weight, retargeting proof and offer, and stock allocation on test SKUs — have been verified as unbreached throughout the test window, per the verification methods stated in the test design. Verified by the execution owner at test close using the mid-test checkpoint records and the end-of-test review.",
+      "unit": "pass_fail",
+      "baseline": null,
+      "baseline_source": null,
+      "comparator": "gte",
+      "threshold": null,
+      "threshold_status": "needs_client_input",
+      "failure_condition": "Any one of the four held-constant items is found to have been breached during the test window. A breach means the test result cannot be attributed to proof architecture alone and the primary measure outcome is not a clean pass regardless of the conversion reading."
+    }
+  ],
+  "signals": {
+    "success": "The treated SKU group's PDP-to-purchase conversion rate is at least 10 percent higher (relative) than the untreated SKU group's rate over the test window; discount depth on test SKUs has not risen above index 104; the matched comparison group's conversion has remained within the agreed stability band around its pre-test baseline (proposed 95–105 on an index where the baseline = 100); the treated group's add-to-cart rate has not fallen more than 5 percent (relative) below the untreated group's rate; and all four held-constant items are verified unbreached. This pattern is consistent with the proof architecture change being associated with a meaningful conversion difference at the decision point, and supports moving to scale the proof architecture change to a broader SKU set before resuming traffic investment.",
+    "failure": "The treated SKU group's PDP-to-purchase conversion rate is less than 10 percent higher (relative) than the untreated group's rate, with all held-constant items verified and the comparison group stable. This pattern suggests the proof architecture change as implemented — usage demonstration and expert or clinical endorsement placed high on the page — is not associated with a meaningful conversion difference in this window, and that the primary explanation E1 (proof gap) either does not account for the conversion decline on its own, or the specific proof elements chosen do not resolve the hesitation that is present. The decision should shift: investigate traffic source mix (ev_10), shopper objections (ev_8) and stock availability (ev_9) before any further proof iteration or traffic investment.",
+    "inconclusive": "The result is inconclusive — and should be treated as a retest rather than a pass or fail — in any of the following conditions: the matched comparison group's conversion moves outside the agreed stability band around its pre-test baseline (proposed 95–105 on an index where the baseline = 100), indicating an external shock to the matched comparison group; any held-constant item is found breached; the test window overlaps with a major promotional, platform or seasonal event (scheduled or unscheduled) that affects either group; the volume of PDP visits on test or untreated SKUs is too small to produce a stable indexed reading (the client commerce team should confirm minimum visit thresholds before the test begins, as row-level data is not available for power calculation); or the treatment is not delivered as specified — for example, the proof elements are not placed above the fold or within the first scroll on both brand site and marketplace listing. In any inconclusive outcome, the test should be rescheduled with the specific confound addressed before a pass/fail decision is made."
+  },
+  "decision_rule": {
+    "statement": "A clean pass requires all of the following to hold simultaneously at the end of the test window: (1) the primary measure — PDP-to-purchase conversion on treated SKUs is at least 10 percent higher (relative) than on untreated SKUs; (2) the discount depth guardrail — test SKU discount depth index has not exceeded 104 at any point; (3) the matched comparison stability guardrail — the matched comparison group's conversion has remained within the agreed stability band around its pre-test baseline (proposed 95–105 on an index where the baseline = 100); (4) the add-to-cart guardrail — treated SKU add-to-cart rate has not fallen more than 5 percent (relative) below the untreated group's rate; and (5) the held-constants verification guardrail — all four held-constant items confirmed unbreached by the execution owner. If any one of these conditions is not met, the result is not a clean pass. If the primary measure passes but one or more guardrails fail, the result is inconclusive and the test must be rerun with the breach addressed. If the primary measure fails and all guardrails hold, the result is a clean failure and the decision shifts to investigating alternative explanations before any further proof iteration or traffic investment.",
+    "on_pass": "scale",
+    "on_fail": "shift"
+  }
+}

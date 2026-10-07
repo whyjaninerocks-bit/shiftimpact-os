@@ -31,11 +31,11 @@ export const EXAMPLE_A_INPUTS: Inputs = {
   objective:
     "Raise the share of product-page visitors who choose and buy, without relying on additional discounting.",
   evidence: [
-    { id: "ev_1", label: "Site traffic", mode: "indexed", class: "known", grade: "aggregated_indexed", metric_key: "traffic", base_period: "prior 4 weeks = 100", baseline: 100, current: 130, unit: "index", text: ILLUSTRATIVE, source_label: "Client e-commerce dashboard (indexed)", source_date: "2026-09-28", owner: "Client e-commerce team" },
-    { id: "ev_2", label: "Product-page (PDP) visits", mode: "indexed", class: "known", grade: "aggregated_indexed", metric_key: "pdp_visits", base_period: "prior 4 weeks = 100", baseline: 100, current: 125, unit: "index", text: ILLUSTRATIVE, source_label: "Client e-commerce dashboard (indexed)", source_date: "2026-09-28", owner: "Client e-commerce team" },
-    { id: "ev_3", label: "Add-to-cart rate", mode: "indexed", class: "known", grade: "aggregated_indexed", metric_key: "add_to_cart_rate", base_period: "prior 4 weeks = 100", baseline: 100, current: 96, unit: "index", text: ILLUSTRATIVE, source_label: "Client e-commerce dashboard (indexed)", source_date: "2026-09-28", owner: "Client e-commerce team" },
-    { id: "ev_4", label: "PDP-to-purchase conversion", mode: "indexed", class: "known", grade: "aggregated_indexed", metric_key: "pdp_to_purchase", base_period: "prior 4 weeks = 100", baseline: 100, current: 84, unit: "index", text: ILLUSTRATIVE, source_label: "Client e-commerce dashboard (indexed)", source_date: "2026-09-28", owner: "Client e-commerce team" },
-    { id: "ev_5", label: "Average discount depth", mode: "indexed", class: "known", grade: "aggregated_indexed", metric_key: "discount_depth", base_period: "prior 4 weeks = 100", baseline: 100, current: 102, unit: "index", text: ILLUSTRATIVE, source_label: "Client pricing/promo log (indexed)", source_date: "2026-09-28", owner: "Client commerce team" },
+    { id: "ev_1", label: "Site traffic", mode: "indexed", class: "known", grade: "aggregated_indexed", metric_key: "traffic", base_period: "prior period = 100", baseline: 100, current: 130, unit: "index", text: ILLUSTRATIVE, source_label: "Client e-commerce dashboard (indexed)", source_date: "2026-09-28", owner: "Client e-commerce team" },
+    { id: "ev_2", label: "Product-page (PDP) visits", mode: "indexed", class: "known", grade: "aggregated_indexed", metric_key: "pdp_visits", base_period: "prior period = 100", baseline: 100, current: 125, unit: "index", text: ILLUSTRATIVE, source_label: "Client e-commerce dashboard (indexed)", source_date: "2026-09-28", owner: "Client e-commerce team" },
+    { id: "ev_3", label: "Add-to-cart rate", mode: "indexed", class: "known", grade: "aggregated_indexed", metric_key: "add_to_cart_rate", base_period: "prior period = 100", baseline: 100, current: 96, unit: "index", text: ILLUSTRATIVE, source_label: "Client e-commerce dashboard (indexed)", source_date: "2026-09-28", owner: "Client e-commerce team" },
+    { id: "ev_4", label: "PDP-to-purchase conversion", mode: "indexed", class: "known", grade: "aggregated_indexed", metric_key: "pdp_to_purchase", base_period: "prior period = 100", baseline: 100, current: 84, unit: "index", text: ILLUSTRATIVE, source_label: "Client e-commerce dashboard (indexed)", source_date: "2026-09-28", owner: "Client e-commerce team" },
+    { id: "ev_5", label: "Average discount depth", mode: "indexed", class: "known", grade: "aggregated_indexed", metric_key: "discount_depth", base_period: "prior period = 100", baseline: 100, current: 102, unit: "index", text: ILLUSTRATIVE, source_label: "Client pricing/promo log (indexed)", source_date: "2026-09-28", owner: "Client commerce team" },
     { id: "ev_6", label: "Content engagement on owned and creator posts", mode: "client_statement", class: "known", grade: "client_reported", metric_key: "", base_period: "", baseline: null, current: null, unit: "text", text: "Client reports engagement is at or above prior-period levels. No figures supplied. " + ILLUSTRATIVE, source_label: "Client brand team statement", source_date: "2026-09-28", owner: "Client brand team" },
     { id: "ev_7", label: "Public proof architecture: this brand's product page vs the two closest competitors' pages", mode: "public_observation", class: "known", grade: "public_observation", metric_key: "", base_period: "", baseline: null, current: null, unit: "text", text: "Both competitor pages show a usage demonstration and a named expert endorsement high on the page; this brand's page leads with a hero image and claim text. Observed publicly by ShiftImpact; not verified with the competitors.", source_label: "ShiftImpact public page review", source_date: "2026-09-30", owner: "ShiftImpact" },
     { id: "ev_8", label: "Shopper objections / reasons for hesitation", mode: "client_statement", class: "unknown", grade: "client_reported", metric_key: "", base_period: "", baseline: null, current: null, unit: "text", text: "No review analysis, support-ticket themes or shopper research supplied.", source_label: "Gap — nothing supplied", source_date: "2026-09-28", owner: "Client" },
@@ -44,8 +44,8 @@ export const EXAMPLE_A_INPUTS: Inputs = {
     { id: "ev_11", label: "Whether a proof-led product page changes decision-point conversion with price and discount held constant", mode: "client_statement", class: "test_required", grade: "client_reported", metric_key: "", base_period: "", baseline: null, current: null, unit: "text", text: "Cannot be settled from existing data; requires a comparison.", source_label: "Test required", source_date: "2026-09-30", owner: "ShiftImpact" },
   ],
   calendar: [
-    { label: "Marketplace 11.11 sale", window: "around 11 Nov (confirm exact marketplace calendar)", effect: "Platform-wide discounting and traffic surge would swamp a product-page proof test." },
-    { label: "Marketplace 12.12 / Harbolnas", window: "around 12 Dec (confirm exact marketplace calendar)", effect: "Same: promotion-driven traffic distorts conversion comparisons." },
+    // Market-neutral: no named event or window is assumed before a real pilot is scoped.
+    { label: "Commercial, platform and seasonal calendar", window: "to be agreed against the actual commercial calendar (not supplied)", effect: "Major promotional, platform or seasonal events would materially confound a product-page proof read." },
   ],
   holdable: ["price", "discount depth on test SKUs", "audience targeting", "media weight on test SKUs", "stock allocation"],
   not_holdable: ["marketplace-run sale events", "competitor pricing"],
@@ -90,7 +90,7 @@ export const EXAMPLE_B_INPUTS: Inputs = {
   client_constraints: [
     "Cannot pause the affiliate programme business-wide; can vary offer depth on a bounded subset of products or regions.",
     "Indexed or aggregated figures only; no raw order-level data shared.",
-    "Client can nominate a comparison set of similar products/regions.",
+    "Client can nominate a treatment set and a matched comparison set of similar products/regions.",
   ],
 };
 
@@ -114,6 +114,9 @@ export const EXAMPLES: Record<
     primaryActual: 14,
     primaryActuals: [],
     guardrailActuals: [
+      // Matched-comparison stability is read as absolute movement from its pre-test baseline (index points).
+      // A fictional 2-point drift, comfortably inside the proposed +/-5 band (95-105 around a baseline of 100).
+      { match: /stabil/i, value: 2 },
       { match: /margin/i, value: -0.5 },
       { match: /volume.*(retain|share)|(retain|share).*volume/i, value: 0.93 },
       { match: /discount/i, value: 101 },
@@ -154,7 +157,7 @@ export const EXAMPLES: Record<
       { match: /brand|search|demand/i, value: 0 },
     ],
     interpretation:
-      "Illustrative outcome. On the bounded comparison set, reducing promotion depth retained order volume within the agreed limit while improving contribution margin beyond the threshold. This is consistent with part of the recent growth being promotion-dependent without being fully lost when depth is reduced; it does not by itself show how much of the affiliate volume is incremental.",
+      "Illustrative outcome. On the bounded treatment set, reducing promotion depth retained order volume within the agreed limit while improving gross margin beyond the threshold, compared with the matched comparison set. This is consistent with part of the recent growth being promotion-dependent without being fully lost when depth is reduced; it does not by itself show how much of the affiliate volume is incremental.",
     next: {
       is_authored: true,
       move: "strengthen",

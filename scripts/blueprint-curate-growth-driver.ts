@@ -64,7 +64,7 @@ s1 = mapStrings(s1, (t) => {
 }
 
 // ─── Stage 2: commercial / pricing-led intervention ───
-const s2 = read(2);
+let s2 = read(2);
 const def = INTERVENTION_TYPE_DEFS.commercial_pricing_led;
 s2.intervention_type = def.type;
 s2.intervention = {
@@ -110,7 +110,7 @@ s2.platform_roles = [
   { environment: "Short-form affiliate video (comparison set)", role: "conversion", job: "Held constant: existing affiliate content continues unchanged. Only the offer depth the buyer meets at purchase differs between the comparison set and the matched set." },
   { environment: "Marketplace product listing (comparison set)", role: "product_evaluation", job: "Held constant: no new proof or content is added. The listing shows the reduced offer on the comparison set and the current offer on the matched set; nothing else changes." },
   { environment: "CRM / repeat-purchase tracking layer", role: "retention", job: "Held constant and observation-only: tracks whether buyers acquired at reduced offer depth return, read directionally because of the long re-purchase cycle." },
-  { environment: "Affiliate programme (business-wide, outside the comparison set)", role: "conversion", job: "Continues at current offer depth and incentive structure so the business keeps its volume and the comparison has a stable baseline." },
+  { environment: "Affiliate programme (business-wide, outside the comparison set)", role: "conversion", job: "Continues at current offer depth and incentive structure so the business keeps its volume and the matched comparison set has a stable baseline." },
 ];
 // Client / platform-controlled levers live in client_platform_enablers, not here.
 s2.commerce_roles = [];
@@ -226,15 +226,67 @@ const s3n = mapStrings(s3, (t) =>
     .replace(/11\.11|12\.12|Harbolnas/g, "major promotional or platform event"),
 ) as typeof s3;
 
+// ─── Basis: the two design choices that rest on a design judgement, not an evidenced finding ───
+for (const q of [
+  "Should the test change anything other than offer depth?",
+  "Should one reduced offer depth be tested or several at once?",
+]) {
+  const c = s2.execution_choices.find((x: { question: string }) => x.question === q);
+  if (!c) throw new Error(`execution choice not found: ${q}`);
+  c.basis = "hypothesis";
+}
+
+// ─── Gross-margin guardrail: the treatment set's gross margin is compared with the matched comparison set's ───
+{
+  const m = s3n.measures.find((x: { key: string }) => x.key === "gross_margin_index_treatment");
+  if (!m) throw new Error("gross margin measure not found");
+  m.label = "Gross margin index: treatment set compared with matched comparison set — must not be lower";
+  m.definition =
+    "The gross margin index on the treatment set (reduced offer depth) compared with the matched comparison set (current offer depth) over the test window, expressed as a relative difference. The test is designed to recover margin; this guardrail checks that the treatment set's gross margin is not lower than the matched comparison set's (for example, because returns, fulfilment costs or affiliate fee structures offset the discount reduction). A proposed threshold of 0 percent relative difference is set: the treatment set's gross margin must be at or above the matched comparison set's. This is the minimum condition for the test to be commercially meaningful; if gross margin on the treatment set falls below that of the matched comparison set, the intervention has not achieved its stated purpose.";
+  m.failure_condition =
+    "The treatment set's gross margin index is lower than the matched comparison set's gross margin index over the test window, meaning the offer-depth reduction has not recovered margin and the intervention has not delivered its primary commercial rationale.";
+}
+// Stage 3 design rationale: name the two groups once, in the standard terms.
+s3n.test.design_rationale = replaceIn(
+  s3n.test.design_rationale,
+  "a client-nominated set of products or regions (the treatment group) has promotion depth reduced, while a matched set of similar products or regions continues at current discount depth (the comparison group).",
+  "a client-nominated treatment set of products or regions has promotion depth reduced, while a matched comparison set of similar products or regions continues at current discount depth.",
+  "design_rationale group naming",
+);
+
+// ─── Group terminology: treatment set = reduced offer depth; matched comparison set = current offer depth ───
+// In this design the bare words "comparison set" only ever meant the treated group, which is the ambiguity
+// being removed. Order matters: normalise the explicit "comparison group" forms first.
+const groupTerms = (t: string): string =>
+  t
+    .replace(/affiliate-active comparison set/g, "affiliate-active regions or products")
+    .replace(/\bmatched comparison group(['’]s)?/g, (_m, p) => `matched comparison set${p ?? ""}`)
+    .replace(/(?<!matched )\b(the )?comparison group(['’]s)?/g, (_m, the, p) => `${the ?? ""}matched comparison set${p ?? ""}`)
+    .replace(/\btreatment group(['’]s)?/g, (_m, p) => `treatment set${p ?? ""}`)
+    .replace(/(?<!matched )\bComparison-set\b/g, "Treatment-set")
+    .replace(/(?<!matched )\bcomparison[- ]set\b/g, "treatment set")
+    .replace(/(?<!comparison )\bmatched (sets?)\b/g, (_m, x) => `matched comparison ${x}`)
+    .replace(/relative to the comparison, the intervention/g, "relative to the matched comparison set, the intervention");
+s1 = mapStrings(s1, groupTerms) as typeof s1;
+s2 = mapStrings(s2, groupTerms) as typeof s2;
+const s3g = mapStrings(s3n, groupTerms) as typeof s3n;
+
+// Guard: nothing may call the treated group a "comparison set", and no looser group names remain.
+for (const [n, v] of [[1, s1], [2, s2], [3, s3g]] as const) {
+  const txt = JSON.stringify(v);
+  const bad = txt.match(/(?<!matched )comparison[- ]set|(?<!matched )comparison group|treatment group|\bmatched sets?\b|contribution margin|(?<!matched )(?<!the matched )\bthe comparison\b(?!["'])/i);
+  if (bad) throw new Error(`Stage ${n}: residual group wording "${bad[0]}"`);
+}
+
 // ─── Guard: no named events or hard-coded window anywhere in the curated stages ───
 const BANNED = /11\.11|12\.12|Harbolnas|Ramadan|Lebaran|January|pre-Ramadan|\b(?:four|4|six|6)[- ]weeks?\b/i;
-for (const [n, v] of [[1, s1], [2, s2], [3, s3n]] as const) {
+for (const [n, v] of [[1, s1], [2, s2], [3, s3g]] as const) {
   const hit = JSON.stringify(v).match(BANNED);
   if (hit) throw new Error(`Stage ${n} still contains "${hit[0]}" — timing must stay market-neutral`);
 }
 
 // ─── Validate and write ───
-const results = [Stage1V.parse(s1), Stage2V.parse(s2), Stage3V.parse(s3n)];
+const results = [Stage1V.parse(s1), Stage2V.parse(s2), Stage3V.parse(s3g)];
 results.forEach((v, i) => {
   if (!v.ok) {
     console.error(`Stage ${i + 1} failed validation:\n` + v.issues.map((x) => ` - ${x.path} ${x.message}`).join("\n"));
@@ -244,5 +296,5 @@ results.forEach((v, i) => {
 fs.mkdirSync(OUT, { recursive: true });
 fs.writeFileSync(`${OUT}/growth_driver.stage1.json`, JSON.stringify(s1, null, 2));
 fs.writeFileSync(`${OUT}/growth_driver.stage2.json`, JSON.stringify(s2, null, 2));
-fs.writeFileSync(`${OUT}/growth_driver.stage3.json`, JSON.stringify(s3n, null, 2));
+fs.writeFileSync(`${OUT}/growth_driver.stage3.json`, JSON.stringify(s3g, null, 2));
 console.log(`curated growth_driver stages written to ${OUT}/ (raw draws untouched in ${IN}/)`);

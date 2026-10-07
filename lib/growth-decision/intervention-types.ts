@@ -116,7 +116,7 @@ export const INTERVENTION_TYPE_DEFS: Record<InterventionType, InterventionTypeDe
         purpose:
           "How the test is set up and rolled out across commerce, affiliate, media and platform teams so that treatment and comparison are clean.",
         tasks: [
-          "Treatment vs comparison setup: comparison set and matched set defined, eligibility rules and SKU / region lists locked",
+          "Treatment vs matched comparison setup: treatment set and matched comparison set defined, eligibility rules and SKU / region lists locked",
           "Channel and affiliate rollout sequencing, so both groups switch cleanly",
           "Coordination model across commerce, affiliate, media and platform teams, with a named contact in each",
         ],
@@ -125,11 +125,11 @@ export const INTERVENTION_TYPE_DEFS: Record<InterventionType, InterventionTypeDe
       {
         key: "readiness_control_gate",
         purpose:
-          "A go / no-go gate. Nothing launches until each held-constant is confirmed and the treatment is verified live on the comparison set only.",
+          "A go / no-go gate. Nothing launches until each held-constant is confirmed and the treatment is verified live on the treatment set only.",
         tasks: [
           "Execution checklist: pre-launch, in-flight and close-out",
           "Held-constant control plan: who confirms each item, how, and how often",
-          "Deployment confirmation: evidence the reduced offer is live on the comparison set and nowhere else before the read starts",
+          "Deployment confirmation: evidence the reduced offer is live on the treatment set and nowhere else before the read starts",
         ],
         done_when: "Every enabler is confirmed in writing and deployment evidence is on file.",
       },

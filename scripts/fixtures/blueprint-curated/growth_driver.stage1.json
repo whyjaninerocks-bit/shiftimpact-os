@@ -101,7 +101,7 @@
     ],
     "test_required": [
       {
-        "text": "Whether order volume holds, declines, or collapses when promotion depth is reduced on a bounded comparison set of products or regions — this is the central commercial question and can only be settled by a controlled test.",
+        "text": "Whether order volume holds, declines, or collapses when promotion depth is reduced on a bounded treatment set of products or regions — this is the central commercial question and can only be settled by a controlled test.",
         "evidence_ids": [
           "ev_11"
         ]
@@ -155,7 +155,7 @@
           "why": "The long re-purchase cycle means flat repeat rate over one quarter may not yet reflect the true loyalty outcome; it is too early to conclude repeat behaviour is poor."
         }
       ],
-      "falsified_if": "In the bounded test, reducing promotion depth on the comparison set causes affiliate order volume to hold within a commercially acceptable range (e.g. less than 10% decline) while margin recovers — showing that demand is not primarily price-triggered.",
+      "falsified_if": "In the bounded test, reducing promotion depth on the treatment set causes affiliate order volume to hold within a commercially acceptable range (e.g. less than 10% decline) while margin recovers — showing that demand is not primarily price-triggered.",
       "basis": "evidenced"
     },
     {
@@ -200,7 +200,7 @@
         }
       ],
       "contradicts": [],
-      "falsified_if": "A holdout or geo-split test shows that regions or products without affiliate promotion generate materially lower order volume than the affiliate-active comparison set, confirming that affiliate activity is generating incremental demand rather than re-attributing organic demand.",
+      "falsified_if": "A holdout or geo-split test shows that regions or products without affiliate promotion generate materially lower order volume than the affiliate-active regions or products, confirming that affiliate activity is generating incremental demand rather than re-attributing organic demand.",
       "basis": "evidenced"
     },
     {
@@ -225,12 +225,12 @@
   "test_role": "resolve",
   "decision": {
     "move": "strengthen",
-    "headline": "Strengthen the quality of affiliate demand before scaling budget, by testing whether volume holds at reduced promotion depth on a bounded comparison set.",
-    "rationale": "The evidence presents a consistent pattern: affiliate orders are growing faster than GMV [ev_2 vs ev_1], discount intensity is rising [ev_3], gross margin has contracted to index 93 [ev_5], and affiliate incentives are structurally tied to discount-led offers [ev_7]. Together these are consistent with a programme that is buying volume rather than building demand. Repeat rate is flat [ev_4], though the long re-purchase cycle [ev_6] means this cannot yet be treated as a confirmed loyalty failure. Critically, three of the most important diagnostic facts are absent: the promo-versus-full-price order mix [ev_8], the new-versus-repeat customer split of the growth [ev_9], and the incrementality of affiliate-attributed orders [ev_10]. Scaling budget into this pattern before those questions are resolved risks compounding margin erosion. The commercially safe move is to hold overall affiliate investment at current levels, obtain the missing data cuts [ev_8, ev_9], and run a bounded promotion-depth reduction test on a nominated comparison set of products or regions [ev_11] — scheduled against the actual commercial calendar, clear of events that would confound the read. If the test shows volume holds at reduced discount depth, the programme can be reshaped toward lower-discount affiliate mechanics before any scale decision. If volume collapses, that confirms price sensitivity and the board's scale ambition must be reframed against a margin-adjusted growth target.",
+    "headline": "Strengthen the quality of affiliate demand before scaling budget, by testing whether volume holds at reduced promotion depth on a bounded treatment set.",
+    "rationale": "The evidence presents a consistent pattern: affiliate orders are growing faster than GMV [ev_2 vs ev_1], discount intensity is rising [ev_3], gross margin has contracted to index 93 [ev_5], and affiliate incentives are structurally tied to discount-led offers [ev_7]. Together these are consistent with a programme that is buying volume rather than building demand. Repeat rate is flat [ev_4], though the long re-purchase cycle [ev_6] means this cannot yet be treated as a confirmed loyalty failure. Critically, three of the most important diagnostic facts are absent: the promo-versus-full-price order mix [ev_8], the new-versus-repeat customer split of the growth [ev_9], and the incrementality of affiliate-attributed orders [ev_10]. Scaling budget into this pattern before those questions are resolved risks compounding margin erosion. The commercially safe move is to hold overall affiliate investment at current levels, obtain the missing data cuts [ev_8, ev_9], and run a bounded promotion-depth reduction test on a nominated treatment set of products or regions [ev_11] — scheduled against the actual commercial calendar, clear of events that would confound the read. If the test shows volume holds at reduced discount depth, the programme can be reshaped toward lower-discount affiliate mechanics before any scale decision. If volume collapses, that confirms price sensitivity and the board's scale ambition must be reframed against a margin-adjusted growth target.",
     "confidence": "medium",
     "what_changes": [
       "Affiliate budget is held at current levels rather than scaled next quarter, pending test results.",
-      "A bounded comparison set of products or regions is nominated by the client for a promotion-depth reduction test [ev_11].",
+      "A bounded treatment set of products or regions is nominated by the client for a promotion-depth reduction test [ev_11].",
       "The test window is agreed against the actual commercial calendar, avoiding major promotional, platform or seasonal events that would materially confound the read.",
       "The client commerce and CRM teams are tasked with supplying the promo-versus-full-price order mix [ev_8] and new-versus-repeat customer split of the growth increment [ev_9] before the test launches.",
       "The affiliate incentive structure [ev_7] is reviewed as a planning exercise only; no incentive mechanic, content approach or creative changes on the test set while the test runs."

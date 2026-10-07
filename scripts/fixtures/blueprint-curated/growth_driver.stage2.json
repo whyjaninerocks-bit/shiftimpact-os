@@ -4,7 +4,7 @@
     "secondary": [
       "reduce_price_dependence"
     ],
-    "statement": "Give the Commercial Director a structured read on whether affiliate-driven volume holds when promotion depth is reduced on a bounded comparison set — so the scale-vs-hold decision is made on observed demand elasticity rather than on a pattern that is consistent with price dependency but not yet confirmed as such.",
+    "statement": "Give the Commercial Director a structured read on whether affiliate-driven volume holds when promotion depth is reduced on a bounded treatment set — so the scale-vs-hold decision is made on observed demand elasticity rather than on a pattern that is consistent with price dependency but not yet confirmed as such.",
     "basis": "hypothesis",
     "evidence_ids": [
       "ev_2",
@@ -15,8 +15,8 @@
     ]
   },
   "intervention": {
-    "statement": "Reduce offer / discount depth on a client-nominated comparison set of products or regions, against a matched set that stays at current depth, so the single variable of promotion depth can be read against volume, margin and repeat behaviour. The client holds the commercial lever; the agency owns the activation architecture around it. Nothing else changes: affiliate content approach, listing content, creator roster, media weight, price list, stock, SKU set, affiliate budget and other promotional mechanics are held as they are.",
-    "controlled_variable": "Offer / discount depth on the affiliate-attributed comparison set (one reduced level, approved by the client)",
+    "statement": "Reduce offer / discount depth on a client-nominated treatment set of products or regions, against a matched comparison set that stays at current depth, so the single variable of promotion depth can be read against volume, margin and repeat behaviour. The client holds the commercial lever; the agency owns the activation architecture around it. Nothing else changes: affiliate content approach, listing content, creator roster, media weight, price list, stock, SKU set, affiliate budget and other promotional mechanics are held as they are.",
+    "controlled_variable": "Offer / discount depth on the affiliate-attributed treatment set (one reduced level, approved by the client)",
     "preservation_constraints": [
       {
         "item": "Affiliate content approach and listing content",
@@ -62,7 +62,7 @@
   "content_roles": [
     {
       "role": "conversion",
-      "job": "Existing affiliate content continues unchanged on the comparison set and carries buyers to purchase as it does today. It is not a lever in this test: any change to its approach, creative or proof would add a second variable to the offer-depth read.",
+      "job": "Existing affiliate content continues unchanged on the treatment set and carries buyers to purchase as it does today. It is not a lever in this test: any change to its approach, creative or proof would add a second variable to the offer-depth read.",
       "basis": "evidenced",
       "evidence_ids": [
         "ev_7",
@@ -82,14 +82,14 @@
   "asset_architecture": null,
   "platform_roles": [
     {
-      "environment": "Short-form affiliate video (comparison set)",
+      "environment": "Short-form affiliate video (treatment set)",
       "role": "conversion",
-      "job": "Held constant: existing affiliate content continues unchanged. Only the offer depth the buyer meets at purchase differs between the comparison set and the matched set."
+      "job": "Held constant: existing affiliate content continues unchanged. Only the offer depth the buyer meets at purchase differs between the treatment set and the matched comparison set."
     },
     {
-      "environment": "Marketplace product listing (comparison set)",
+      "environment": "Marketplace product listing (treatment set)",
       "role": "product_evaluation",
-      "job": "Held constant: no new proof or content is added. The listing shows the reduced offer on the comparison set and the current offer on the matched set; nothing else changes."
+      "job": "Held constant: no new proof or content is added. The listing shows the reduced offer on the treatment set and the current offer on the matched comparison set; nothing else changes."
     },
     {
       "environment": "CRM / repeat-purchase tracking layer",
@@ -97,9 +97,9 @@
       "job": "Held constant and observation-only: tracks whether buyers acquired at reduced offer depth return, read directionally because of the long re-purchase cycle."
     },
     {
-      "environment": "Affiliate programme (business-wide, outside the comparison set)",
+      "environment": "Affiliate programme (business-wide, outside the treatment set)",
       "role": "conversion",
-      "job": "Continues at current offer depth and incentive structure so the business keeps its volume and the comparison has a stable baseline."
+      "job": "Continues at current offer depth and incentive structure so the business keeps its volume and the matched comparison set has a stable baseline."
     }
   ],
   "commerce_roles": [],
@@ -109,7 +109,7 @@
       "recommended": "No. Offer depth is the only controlled variable; affiliate content approach, creative, listing content, creator roster, media weight, price list, stock, SKU set and affiliate budget stay as they are.",
       "why": "The decision is whether volume is promotion-dependent. A second change would make any volume movement consistent with either change, so the test could not settle the decision.",
       "alternative_not_chosen": "Pairing the reduction with new value-led content or new listing proof",
-      "basis": "evidenced",
+      "basis": "hypothesis",
       "evidence_ids": [
         "ev_7",
         "ev_11"
@@ -117,10 +117,10 @@
     },
     {
       "question": "Should one reduced offer depth be tested or several at once?",
-      "recommended": "One reduced depth on the comparison set, approved by the client finance team against its own margin recovery target.",
-      "why": "Several depths would split the comparison set further and thin each cell, which is hard to read from aggregated indexed data, the only format the client can share.",
+      "recommended": "One reduced depth on the treatment set, approved by the client finance team against its own margin recovery target.",
+      "why": "Several depths would split the treatment set further and thin each cell, which is hard to read from aggregated indexed data, the only format the client can share.",
       "alternative_not_chosen": "Several depths tested simultaneously across sub-sets",
-      "basis": "evidenced",
+      "basis": "hypothesis",
       "evidence_ids": [
         "ev_11"
       ]
@@ -129,7 +129,7 @@
       "question": "Should the affiliate incentive mechanic be restructured or only the offer depth reduced within it?",
       "recommended": "Reduce depth within the existing mechanic; do not restructure commission or incentive terms during this test.",
       "why": "Restructuring the incentive at the same time would change creator motivation alongside offer depth. The incentive review stays a planning exercise until the result is known.",
-      "alternative_not_chosen": "Shifting to a full-price or lower-discount commission structure on the comparison set at the same time",
+      "alternative_not_chosen": "Shifting to a full-price or lower-discount commission structure on the treatment set at the same time",
       "basis": "evidenced",
       "evidence_ids": [
         "ev_7",
@@ -160,7 +160,7 @@
   ],
   "execution_owner_asks": [
     "Lead the decision-framing and test-design conversations with the client, and record the agreed decision question, tolerance, sets and single reduced depth before anything launches.",
-    "Run the Readiness & Control Gate as a go / no-go: no launch until every enabler is confirmed in writing and deployment is verified on the comparison set only.",
+    "Run the Readiness & Control Gate as a go / no-go: no launch until every enabler is confirmed in writing and deployment is verified on the treatment set only.",
     "Hold the control plan for every held-constant, keep the deviation log, and escalate the same day a condition moves.",
     "Deliver the activation readout (delivery and test conditions only, not the verdict) and a next-activation recommendation that is conditional on the reconciled result."
   ],
@@ -181,7 +181,7 @@
       "key": "activation_architecture",
       "purpose": "How the test is set up and rolled out across commerce, affiliate, media and platform teams so that treatment and comparison are clean.",
       "tasks": [
-        "Treatment vs comparison setup: comparison set and matched set defined, eligibility rules and SKU / region lists locked",
+        "Treatment vs matched comparison setup: treatment set and matched comparison set defined, eligibility rules and SKU / region lists locked",
         "Channel and affiliate rollout sequencing, so both groups switch cleanly",
         "Coordination model across commerce, affiliate, media and platform teams, with a named contact in each"
       ],
@@ -189,11 +189,11 @@
     },
     {
       "key": "readiness_control_gate",
-      "purpose": "A go / no-go gate. Nothing launches until each held-constant is confirmed and the treatment is verified live on the comparison set only.",
+      "purpose": "A go / no-go gate. Nothing launches until each held-constant is confirmed and the treatment is verified live on the treatment set only.",
       "tasks": [
         "Execution checklist: pre-launch, in-flight and close-out",
         "Held-constant control plan: who confirms each item, how, and how often",
-        "Deployment confirmation: evidence the reduced offer is live on the comparison set and nowhere else before the read starts"
+        "Deployment confirmation: evidence the reduced offer is live on the treatment set and nowhere else before the read starts"
       ],
       "done_when": "Every enabler is confirmed in writing and deployment evidence is on file."
     },

@@ -1,0 +1,206 @@
+{
+  "evidence_read": {
+    "known": [
+      {
+        "text": "Site traffic has grown to index 130 versus the prior-period baseline of 100, indicating a meaningful increase in visitors reaching the brand's properties.",
+        "evidence_ids": [
+          "ev_1"
+        ]
+      },
+      {
+        "text": "Product-page visits have grown to index 125, broadly tracking the traffic increase, suggesting most of the additional traffic is reaching the PDP rather than dropping off earlier in the funnel.",
+        "evidence_ids": [
+          "ev_2"
+        ]
+      },
+      {
+        "text": "Add-to-cart rate has declined to index 96, meaning the share of PDP visitors who add the product to cart is slightly below the prior-period level despite more visitors arriving.",
+        "evidence_ids": [
+          "ev_3"
+        ]
+      },
+      {
+        "text": "PDP-to-purchase conversion has declined to index 84, a materially larger drop than the add-to-cart decline, indicating that the breakdown is concentrated at or after the decision point on the product page.",
+        "evidence_ids": [
+          "ev_4"
+        ]
+      },
+      {
+        "text": "Average discount depth is essentially flat at index 102, meaning the conversion decline is not explained by a reduction in promotional incentive.",
+        "evidence_ids": [
+          "ev_5"
+        ]
+      },
+      {
+        "text": "Content engagement on owned and creator posts is reported at or above prior-period levels, suggesting that interest and attention at the top of the funnel have not weakened.",
+        "evidence_ids": [
+          "ev_6"
+        ]
+      },
+      {
+        "text": "A public page review found that both closest competitors lead their product pages with a usage demonstration and a named expert endorsement placed high on the page, while this brand's page leads with a hero image and claim text — a structurally different proof architecture at the decision point.",
+        "evidence_ids": [
+          "ev_7"
+        ]
+      }
+    ],
+    "inferred": [
+      {
+        "text": "Inference: The funnel break is concentrated at the PDP decision point, not at traffic acquisition or early-funnel engagement. Traffic is arriving (+30 index points), PDP visits are following (+25), but add-to-cart is slightly negative and PDP-to-purchase is materially negative (-16 index points). This pattern is consistent with a problem at the moment of product evaluation, not at awareness or reach.",
+        "evidence_ids": [
+          "ev_1",
+          "ev_2",
+          "ev_3",
+          "ev_4"
+        ]
+      },
+      {
+        "text": "Inference: Because discount depth is flat and engagement is stable, price reduction and loss of interest are unlikely primary drivers of the conversion decline in this period.",
+        "evidence_ids": [
+          "ev_5",
+          "ev_6"
+        ]
+      },
+      {
+        "text": "Inference: The gap between this brand's proof architecture (hero image + claim text) and competitors' proof architecture (usage demonstration + named expert endorsement high on page) is consistent with shoppers arriving at the decision point and not finding the type of evidence that resolves purchase hesitation — though this inference cannot be confirmed without shopper-level data.",
+        "evidence_ids": [
+          "ev_7",
+          "ev_4"
+        ]
+      }
+    ],
+    "unknown": [
+      {
+        "text": "What specific objections, hesitations or questions shoppers have at the product page — no review analysis, support-ticket themes or shopper research has been supplied.",
+        "evidence_ids": [
+          "ev_8"
+        ]
+      },
+      {
+        "text": "Whether stock availability issues on key SKUs during the period contributed independently to the conversion decline.",
+        "evidence_ids": [
+          "ev_9"
+        ]
+      },
+      {
+        "text": "Whether the traffic source mix has shifted toward lower-intent or less-qualified audiences, which would explain conversion decline independently of page content quality.",
+        "evidence_ids": [
+          "ev_10"
+        ]
+      }
+    ],
+    "test_required": [
+      {
+        "text": "Whether changing the proof architecture on the product page — specifically adding usage demonstration and credible expert or clinical endorsement high on the page, with price and discount held constant — changes the share of PDP visitors who choose and buy, relative to a matched untreated SKU set.",
+        "evidence_ids": [
+          "ev_11"
+        ]
+      }
+    ]
+  },
+  "explanations": [
+    {
+      "id": "E1",
+      "statement": "The product page does not carry the type of proof — usage demonstration and credible expert or clinical endorsement — that shoppers need to resolve hesitation at the decision point. Competitors provide this proof high on the page; this brand does not. As more traffic arrives, the proportion of visitors who are not yet convinced by claim text alone grows, and conversion falls.",
+      "primary": true,
+      "supports": [
+        {
+          "evidence_id": "ev_7",
+          "why": "Competitors' pages lead with usage demonstration and named expert endorsement; this brand's page leads with hero image and claim text — a structural difference in proof at the decision point that is consistent with a proof gap."
+        },
+        {
+          "evidence_id": "ev_4",
+          "why": "PDP-to-purchase conversion has declined to index 84, indicating the break is at the product evaluation stage where proof architecture operates."
+        },
+        {
+          "evidence_id": "ev_5",
+          "why": "Flat discount depth rules out price incentive reduction as the driver, leaving content/proof as a candidate explanation."
+        },
+        {
+          "evidence_id": "ev_6",
+          "why": "Stable engagement suggests interest exists but is not converting, consistent with a decision-point proof gap rather than a top-of-funnel interest problem."
+        }
+      ],
+      "contradicts": [],
+      "falsified_if": "In a controlled test with price and discount held constant, treated SKUs (proof-led page) show no meaningful difference in PDP-to-purchase conversion rate compared to matched untreated SKUs over the same period.",
+      "basis": "evidenced"
+    },
+    {
+      "id": "E2",
+      "statement": "The traffic increase has brought in a materially lower-intent or less-qualified audience mix — for example, from broader or less targeted paid channels — and the conversion decline reflects audience quality degradation rather than a product-page problem.",
+      "primary": false,
+      "supports": [
+        {
+          "evidence_id": "ev_1",
+          "why": "A 30-index-point traffic increase in a short period is large enough that the source mix may have changed, even if this is not confirmed."
+        }
+      ],
+      "contradicts": [
+        {
+          "evidence_id": "ev_6",
+          "why": "Stable content engagement suggests the audience arriving at owned and creator content is still interacting, which is weakly inconsistent with a wholesale shift to disengaged, low-intent audiences — though engagement and purchase intent are not the same thing."
+        }
+      ],
+      "falsified_if": "A traffic-source breakdown shows the channel and audience mix is materially unchanged from the prior period, or a test shows that conversion on the same traffic source declines even when audience targeting parameters are held constant.",
+      "basis": "hypothesis"
+    },
+    {
+      "id": "E3",
+      "statement": "Stock availability constraints on key SKUs during the period have suppressed conversion independently of page content or audience quality — shoppers arrive, intend to buy, but cannot complete purchase due to out-of-stock or limited-availability states.",
+      "primary": false,
+      "supports": [],
+      "contradicts": [
+        {
+          "evidence_id": "ev_3",
+          "why": "Add-to-cart rate has declined only slightly (index 96), whereas a stock availability problem would more typically suppress add-to-cart more sharply if products were visibly unavailable before cart; however, the evidence does not fully separate this."
+        }
+      ],
+      "falsified_if": "SKU-level stock availability data shows no meaningful out-of-stock or low-stock periods on the affected SKUs during the conversion decline window.",
+      "basis": "hypothesis"
+    },
+    {
+      "id": "E4",
+      "statement": "The conversion decline is a temporary statistical artefact of the indexed measurement window — the prior-period baseline was unusually high due to a short-term promotional or seasonal event, making the current period appear weaker by comparison even if underlying conversion is stable.",
+      "primary": false,
+      "supports": [],
+      "contradicts": [
+        {
+          "evidence_id": "ev_5",
+          "why": "Discount depth is flat at index 102, making a prior-period promotional spike an unlikely explanation for an inflated baseline, since promotions typically accompany deeper discounting."
+        }
+      ],
+      "falsified_if": "A longer time-series view of PDP-to-purchase conversion shows the current period is within normal historical variance and the prior-period baseline was anomalously elevated.",
+      "basis": "hypothesis"
+    }
+  ],
+  "test_role": "resolve",
+  "decision": {
+    "move": "strengthen",
+    "headline": "Strengthen the product-page proof architecture before buying more traffic.",
+    "rationale": "The funnel data shows traffic and PDP visits rising while PDP-to-purchase conversion has fallen to index 84 [ev_4], with add-to-cart only marginally softer [ev_3]. Discount depth is flat [ev_5] and content engagement is stable [ev_6], which together make price reduction and top-of-funnel interest loss unlikely primary explanations. The most structurally supported explanation is that the product page does not carry the proof — usage demonstration and credible expert or clinical endorsement placed high on the page — that shoppers need to resolve hesitation at the decision point. A public page review found both closest competitors provide exactly this proof architecture high on their pages, while this brand leads with hero image and claim text [ev_7]. Buying more traffic into an unconverted decision point would compound the problem and increase cost-per-purchase further. The right commercial move is to strengthen the proof the shopper meets at the PDP, run a controlled comparison against matched untreated SKUs [ev_11] with price and discount held constant [ev_5], and evaluate whether the proof change shifts conversion before resuming traffic investment. The test window must be agreed against the actual commercial calendar, avoiding major promotional, platform or seasonal events that would distort conversion comparisons. Traffic source mix [ev_10], shopper objections [ev_8] and stock availability [ev_9] remain unresolved and should be checked in parallel, as any one of them could be a confounding or co-contributing factor.",
+    "confidence": "directional",
+    "what_changes": [
+      "The proof architecture on a bounded set of test SKUs' product pages is updated to place usage demonstration and credible expert or clinical endorsement (using the brand's own approved claims and mechanisms) high on the page, above the fold or within the first scroll.",
+      "A matched set of untreated SKUs with similar traffic volume and price band is nominated as the comparison group.",
+      "The test window is agreed against the actual commercial calendar, avoiding major promotional, platform or seasonal events that would materially confound the read.",
+      "Traffic source mix data is requested from the client e-commerce team to rule in or out audience quality degradation as a co-driver [ev_10].",
+      "SKU-level stock availability during the decline period is requested to rule in or out availability as a co-driver [ev_9]."
+    ],
+    "what_stays": [
+      "Price and discount depth on test SKUs are held constant throughout the test period [ev_5].",
+      "Audience targeting parameters and media weight on test SKUs are held constant.",
+      "Stock allocation to test SKUs is held constant where operationally possible.",
+      "Traffic investment level is not increased until the test produces a readable result."
+    ],
+    "cannot_conclude": [
+      "That the proof architecture gap is causally responsible for the conversion decline — the evidence is consistent with this explanation but cannot establish causality.",
+      "That fixing the product page will recover conversion to prior-period levels — the magnitude of any effect is unknown before the test.",
+      "That audience quality has not changed — traffic source mix data has not been supplied [ev_10] and this explanation cannot be ruled out.",
+      "That stock availability is not a contributing factor — this data has not been supplied [ev_9].",
+      "What specific objections or hesitations shoppers have at the decision point — no shopper research, review analysis or support-ticket data exists in the supplied evidence [ev_8].",
+      "That the conversion decline is uniform across SKUs, price bands or traffic sources — only aggregated indexed figures are available.",
+      "That competitor page proof architecture is the direct cause of their conversion performance — the public page review is observational only [ev_7].",
+      "Incrementality of any traffic investment — no holdout or incrementality measurement has been described in the supplied evidence."
+    ]
+  }
+}
