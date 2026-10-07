@@ -15,8 +15,8 @@
     ]
   },
   "intervention": {
-    "statement": "Reduce offer / discount depth on a client-nominated comparison set of products or regions, against a matched set that stays at current depth, so the single variable of promotion depth can be read against volume, margin and repeat behaviour. Nothing else changes: affiliate content approach, creator roster, media weight, price list, stock, SKU set and other promotional mechanics are held as they are.",
-    "controlled_variable": "Offer / discount depth on the affiliate-attributed comparison set (one reduced level, set by the client)",
+    "statement": "Reduce offer / discount depth on a client-nominated comparison set of products or regions, against a matched set that stays at current depth, so the single variable of promotion depth can be read against volume, margin and repeat behaviour. The client holds the commercial lever; the agency owns the activation architecture around it. Nothing else changes: affiliate content approach, listing content, creator roster, media weight, price list, stock, SKU set, affiliate budget and other promotional mechanics are held as they are.",
+    "controlled_variable": "Offer / discount depth on the affiliate-attributed comparison set (one reduced level, approved by the client)",
     "preservation_constraints": [
       {
         "item": "Affiliate content approach and listing content",
@@ -102,32 +102,11 @@
       "job": "Continues at current offer depth and incentive structure so the business keeps its volume and the comparison has a stable baseline."
     }
   ],
-  "commerce_roles": [
-    {
-      "role": "product_assignment",
-      "job": "Nominate the products or regions that form the comparison set and the matched set, and fix the SKU set for the test window.",
-      "controlled_by": "Client commerce team"
-    },
-    {
-      "role": "offer",
-      "job": "Set the single reduced offer depth on the comparison set against a margin recovery target; the depth is a client finance and commerce decision, not an execution decision.",
-      "controlled_by": "Client finance and commerce team"
-    },
-    {
-      "role": "handoff_to_purchase",
-      "job": "Make sure affiliate links and codes on the comparison set route to the correct listing at the test offer depth; a routing error would corrupt the read.",
-      "controlled_by": "Execution owner (affiliate tracking) and client commerce team (listing)"
-    },
-    {
-      "role": "retention",
-      "job": "Tag comparison-set buyers in the CRM so repeat behaviour can be tracked separately from the business-wide affiliate cohort.",
-      "controlled_by": "Client CRM team"
-    }
-  ],
+  "commerce_roles": [],
   "execution_choices": [
     {
       "question": "Should the test change anything other than offer depth?",
-      "recommended": "No. Offer depth is the only controlled variable; affiliate content approach, creative, listing content, creator roster, media weight, price list, stock and SKU set stay as they are.",
+      "recommended": "No. Offer depth is the only controlled variable; affiliate content approach, creative, listing content, creator roster, media weight, price list, stock, SKU set and affiliate budget stay as they are.",
       "why": "The decision is whether volume is promotion-dependent. A second change would make any volume movement consistent with either change, so the test could not settle the decision.",
       "alternative_not_chosen": "Pairing the reduction with new value-led content or new listing proof",
       "basis": "evidenced",
@@ -138,7 +117,7 @@
     },
     {
       "question": "Should one reduced offer depth be tested or several at once?",
-      "recommended": "One reduced depth on the comparison set, set by the client finance team against a margin recovery target.",
+      "recommended": "One reduced depth on the comparison set, approved by the client finance team against its own margin recovery target.",
       "why": "Several depths would split the comparison set further and thin each cell, which is hard to read from aggregated indexed data, the only format the client can share.",
       "alternative_not_chosen": "Several depths tested simultaneously across sub-sets",
       "basis": "evidenced",
@@ -169,22 +148,130 @@
       ]
     },
     {
-      "question": "When should the test run?",
-      "recommended": "Start after 12.12 / Harbolnas demand has normalised (January) and finish before the pre-Ramadan season; exact dates come from the marketplace calendar.",
-      "why": "11.11 and 12.12 are about four and a half weeks apart, too close for a clean test plus run-in between them, and both would swamp a promotion-reduction signal.",
-      "alternative_not_chosen": "A window between 11.11 and 12.12",
-      "basis": "evidenced",
+      "question": "When should the test run, and for how long?",
+      "recommended": "Test window to be agreed against the actual commercial calendar. Avoid major promotional, platform or seasonal events that would materially confound the read. Duration should be sufficient to produce a readable sample and should not be hard-coded before a real pilot is scoped.",
+      "why": "The calendar, and what counts as a readable sample, can only be judged against a real pilot's commercial calendar and volumes. Fixing either now would be a guess.",
+      "alternative_not_chosen": "Fixing a start date and duration before a real pilot is scoped",
+      "basis": "hypothesis",
       "evidence_ids": [
         "ev_11"
       ]
     }
   ],
   "execution_owner_asks": [
-    "Confirm the client-nominated comparison set and matched set, the fixed SKU set for the test window, and the single reduced offer depth the client finance team has approved. The execution owner cannot determine any of these and must not proceed without them.",
-    "Confirm the test window dates: a January start after 12.12 demand has normalised and an end before the pre-Ramadan season. Obtain the exact marketplace calendar, including any platform sale days, and document that none overlaps.",
-    "Confirm in writing that affiliate content approach, listing content, creator roster, media weight, price list, stock and SKU set are unchanged on both groups, and log every other promotional mechanic that changes or cannot be held.",
-    "Confirm that affiliate tracking tags comparison-set buyers separately from the business-wide cohort, and that no creator or programme term forces a different offer depth on the comparison set; flag any such term before launch.",
-    "Obtain from the client commerce and CRM teams the promo-versus-full-price order mix [ev_8] and the new-versus-repeat customer split [ev_9] before launch; both are needed to interpret the result."
+    "Lead the decision-framing and test-design conversations with the client, and record the agreed decision question, tolerance, sets and single reduced depth before anything launches.",
+    "Run the Readiness & Control Gate as a go / no-go: no launch until every enabler is confirmed in writing and deployment is verified on the comparison set only.",
+    "Hold the control plan for every held-constant, keep the deviation log, and escalate the same day a condition moves.",
+    "Deliver the activation readout (delivery and test conditions only, not the verdict) and a next-activation recommendation that is conditional on the reconciled result."
   ],
-  "push_the_brief": null
+  "push_the_brief": null,
+  "intervention_type": "commercial_pricing_led",
+  "agency_deliverables": [
+    {
+      "key": "commercial_activation_brief",
+      "purpose": "The agreed brief for the commercial test: the decision it serves, the single variable, what is held constant, and what each team applies. Co-authored with the client; the depth and thresholds are the client's.",
+      "tasks": [
+        "Activation plan: sequence, owners, dates and dependencies, with the test window to be agreed against the actual commercial calendar",
+        "Offer-depth implementation brief: exactly what each team applies, where, from when, to which set (depth value supplied by the client)",
+        "Record the agreed decision question and tolerance before launch"
+      ],
+      "done_when": "The client has agreed the brief in writing, including the decision question and tolerance."
+    },
+    {
+      "key": "activation_architecture",
+      "purpose": "How the test is set up and rolled out across commerce, affiliate, media and platform teams so that treatment and comparison are clean.",
+      "tasks": [
+        "Treatment vs comparison setup: comparison set and matched set defined, eligibility rules and SKU / region lists locked",
+        "Channel and affiliate rollout sequencing, so both groups switch cleanly",
+        "Coordination model across commerce, affiliate, media and platform teams, with a named contact in each"
+      ],
+      "done_when": "Both groups, the rollout order and every team's contact are documented and agreed."
+    },
+    {
+      "key": "readiness_control_gate",
+      "purpose": "A go / no-go gate. Nothing launches until each held-constant is confirmed and the treatment is verified live on the comparison set only.",
+      "tasks": [
+        "Execution checklist: pre-launch, in-flight and close-out",
+        "Held-constant control plan: who confirms each item, how, and how often",
+        "Deployment confirmation: evidence the reduced offer is live on the comparison set and nowhere else before the read starts"
+      ],
+      "done_when": "Every enabler is confirmed in writing and deployment evidence is on file."
+    },
+    {
+      "key": "in_market_stewardship",
+      "purpose": "Running the test cleanly in market: tracking what is delivered and held, and escalating the moment a condition moves.",
+      "tasks": [
+        "Weekly activation status: deployed, held, deviated",
+        "Deviation log: every change to a held-constant item or promotional mechanic, with date, group and affected SKUs",
+        "Execution QA: routing, tagging, listing-state and offer-display checks on both groups"
+      ],
+      "done_when": "Weekly status issued each week and every deviation logged and escalated."
+    },
+    {
+      "key": "activation_readout_next_move",
+      "purpose": "What was delivered, what held, and whether the conditions were clean, then the next activation, conditional on the reconciled result. It does not give the causal verdict.",
+      "tasks": [
+        "End-of-test activation readout: delivery, held-constants, deviations, test-condition cleanliness",
+        "Next activation recommendation, conditional on the reconciled result (not pre-decided)",
+        "Hand the conditions record to ShiftImpact for reconciliation"
+      ],
+      "done_when": "The readout is delivered and the conditions record has been handed to reconciliation."
+    }
+  ],
+  "client_platform_enablers": [
+    {
+      "enabler": "Pricing / discount approval (the single reduced depth)",
+      "owner": "Client finance and commerce",
+      "makes_valid": "The one controlled variable exists and is accountable to the client.",
+      "if_missing": "Test cannot launch."
+    },
+    {
+      "enabler": "SKU eligibility and a fixed SKU set",
+      "owner": "Client commerce",
+      "makes_valid": "Comparison and matched groups are defined and stable.",
+      "if_missing": "Groups cannot be defined."
+    },
+    {
+      "enabler": "Stock availability on both groups",
+      "owner": "Client commerce / supply",
+      "makes_valid": "Volume reflects demand, not supply.",
+      "if_missing": "Affected SKUs excluded; result may be inconclusive."
+    },
+    {
+      "enabler": "Price-list stability",
+      "owner": "Client commerce",
+      "makes_valid": "Offer depth is not confounded with a list-price change.",
+      "if_missing": "Result inconclusive."
+    },
+    {
+      "enabler": "Affiliate budget approval, held at current level",
+      "owner": "Client commerce",
+      "makes_valid": "Budget is not a second variable.",
+      "if_missing": "Budget change contaminates the read."
+    },
+    {
+      "enabler": "Marketplace configuration (applying the offer-depth change)",
+      "owner": "Client / platform",
+      "makes_valid": "The treatment is actually delivered.",
+      "if_missing": "No deployment, so no test."
+    },
+    {
+      "enabler": "Platform permissions and access to listings and tracking",
+      "owner": "Platform",
+      "makes_valid": "Deployment confirmation and execution QA can be done.",
+      "if_missing": "Treatment delivery cannot be verified."
+    },
+    {
+      "enabler": "Data return (volume, margin, discount intensity, repeat, promotion log)",
+      "owner": "Client finance, commerce and CRM",
+      "makes_valid": "Reconciliation can run on client-supplied figures.",
+      "if_missing": "No reconciliation, so no verdict."
+    },
+    {
+      "enabler": "Commercial calendar constraints",
+      "owner": "Client commerce",
+      "makes_valid": "The window can be agreed clear of events that would confound the read.",
+      "if_missing": "Window cannot be set."
+    }
+  ]
 }

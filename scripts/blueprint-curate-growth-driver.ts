@@ -2,61 +2,75 @@
 // ============================================================================
 // Growth Driver — deterministic curation of the saved production draw.
 // ============================================================================
-// Growth Driver is a commercial pricing / promotion-dependency test, NOT a
-// content test. The controlled variable is offer / discount depth only. This
-// script takes the raw drafted stages (scripts/fixtures/blueprint-prod) and:
-//   • removes the Push the Brief layer and every content / proof / creative change
-//     from the active intervention (no second controlled variable),
-//   • holds constant: affiliate content approach, listing content, creator roster,
-//     media weight, price list, stock, SKU set, other promotional mechanics,
-//   • replaces the 6-week window that straddled 11.11 / 12.12 with a post-12.12
-//     (January) 4-week window that finishes before the pre-Ramadan season,
-//   • drops baselines on relative-difference measures (units must match).
+// Growth Driver is a commercial / pricing-led intervention, NOT a content test.
+//   • controlled variable = offer / discount depth only (held by the client)
+//   • the AGENCY owns the activation architecture around it: five client-facing deliverables
+//     (see intervention-types.ts), kept separate from what the client / platform must enable
+//   • no new content, PDP proof, creator strategy or listing content (later decisions only)
+//   • timing is market-neutral: no named events, no hard-coded window or duration
+//   • relative-difference measures carry no index baselines (units must match)
 // Raw draws are left untouched; curated copies go to scripts/fixtures/blueprint-curated.
 //
 //   npx tsx scripts/blueprint-curate-growth-driver.ts
 import fs from "node:fs";
 import { Stage1V, Stage2V, Stage3V } from "../lib/growth-decision/schema";
+import { INTERVENTION_TYPE_DEFS } from "../lib/growth-decision/intervention-types";
 
 const IN = "scripts/fixtures/blueprint-prod";
 const OUT = "scripts/fixtures/blueprint-curated";
 const read = (n: number) => JSON.parse(fs.readFileSync(`${IN}/growth_driver.stage${n}.json`, "utf8"));
-const must = <T>(v: T | undefined | null, what: string): T => {
-  if (v === undefined || v === null) throw new Error(`curation anchor missing: ${what}`);
+const replaceIn = (s: string, from: string, to: string, what: string) => {
+  if (!s.includes(from)) throw new Error(`curation anchor not found: ${what}`);
+  return s.replace(from, to);
+};
+/** Apply fn to every string leaf. */
+const mapStrings = (v: unknown, fn: (s: string) => string): unknown => {
+  if (typeof v === "string") return fn(v);
+  if (Array.isArray(v)) return v.map((x) => mapStrings(x, fn));
+  if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, mapStrings(x, fn)]));
   return v;
 };
-const replaceIn = (s: string, from: string | RegExp, to: string, what: string) => {
-  const out = s.replace(from, to);
-  if (out === s) throw new Error(`curation anchor not found: ${what}`);
-  return out;
-};
 
-// ─── Stage 1: keep the evidence read; make the decision consistent with one controlled variable ───
-const s1 = read(1);
+const TIMING_STATEMENT =
+  "Test window to be agreed against the actual commercial calendar. Avoid major promotional, platform or seasonal events that would materially confound the read. Duration should be sufficient to produce a readable sample and should not be hard-coded before a real pilot is scoped.";
+
+// ─── Stage 1: keep the evidence read; one controlled variable; market-neutral timing ───
+let s1 = read(1);
+s1 = mapStrings(s1, (t) => {
+  t = t.replace(
+    /The test window must be scheduled outside the 11\.11 and 12\.12 \/ Harbolnas platform-wide sale periods, as those events would swamp any promotion-reduction signal on the comparison set\./,
+    "The test window is to be agreed against the actual commercial calendar, avoiding major promotional, platform or seasonal events that would materially confound the read.",
+  );
+  t = t.replace(
+    /scheduled outside the 11\.11 and 12\.12 platform sale windows where platform-wide promotion would swamp the signal/,
+    "scheduled against the actual commercial calendar, clear of events that would confound the read",
+  );
+  return t;
+}) as typeof s1;
 {
   const d = s1.decision;
   d.what_changes = d.what_changes.map((x: string) => {
     if (x.startsWith("Affiliate incentive structure"))
       return "The affiliate incentive structure [ev_7] is reviewed as a planning exercise only; no incentive mechanic, content approach or creative changes on the test set while the test runs.";
     if (x.startsWith("The test is scheduled"))
-      return "The test is scheduled clear of 11.11 and 12.12 / Harbolnas platform sale events — in practice a window that starts after 12.12 demand has normalised (January), not the gap between 11.11 and 12.12.";
+      return "The test window is agreed against the actual commercial calendar, avoiding major promotional, platform or seasonal events that would materially confound the read.";
     return x;
   });
   d.what_stays = d.what_stays.map((x: string) =>
     x.startsWith("Media weight")
-      ? "Offer depth is the only variable that changes. Affiliate content approach, listing content, creator roster, media weight, price list, stock, SKU set and other promotional mechanics are held as they are."
+      ? "Offer depth is the only variable that changes. Affiliate content approach, listing content, creator roster, media weight, price list, stock, SKU set, affiliate budget and other promotional mechanics are held as they are."
       : x,
   );
-  must(d.what_stays.find((x: string) => x.startsWith("Offer depth")), "what_stays rewrite");
-  must(d.what_changes.find((x: string) => x.startsWith("The affiliate incentive structure")), "what_changes rewrite");
 }
 
-// ─── Stage 2: offer-depth-only intervention; no content / proof / creator change ───
+// ─── Stage 2: commercial / pricing-led intervention ───
 const s2 = read(2);
+const def = INTERVENTION_TYPE_DEFS.commercial_pricing_led;
+s2.intervention_type = def.type;
 s2.intervention = {
   statement:
-    "Reduce offer / discount depth on a client-nominated comparison set of products or regions, against a matched set that stays at current depth, so the single variable of promotion depth can be read against volume, margin and repeat behaviour. Nothing else changes: affiliate content approach, creator roster, media weight, price list, stock, SKU set and other promotional mechanics are held as they are.",
-  controlled_variable: "Offer / discount depth on the affiliate-attributed comparison set (one reduced level, set by the client)",
+    "Reduce offer / discount depth on a client-nominated comparison set of products or regions, against a matched set that stays at current depth, so the single variable of promotion depth can be read against volume, margin and repeat behaviour. The client holds the commercial lever; the agency owns the activation architecture around it. Nothing else changes: affiliate content approach, listing content, creator roster, media weight, price list, stock, SKU set, affiliate budget and other promotional mechanics are held as they are.",
+  controlled_variable: "Offer / discount depth on the affiliate-attributed comparison set (one reduced level, approved by the client)",
   preservation_constraints: [
     { item: "Affiliate content approach and listing content", why: "Any new content direction, creative or listing proof would add a second variable, and a volume change could then be consistent with either the content or the offer depth." },
     { item: "Creator roster", why: "A change in who is active would alter reach and audience quality alongside offer depth, so the two could not be separated." },
@@ -70,6 +84,7 @@ s2.intervention = {
   basis: "evidenced",
   evidence_ids: ["ev_7", "ev_11", "ev_3", "ev_5"],
 };
+// Content-specific sections do not apply to this type; they are held constant.
 s2.content_roles = [
   {
     role: "conversion",
@@ -94,16 +109,12 @@ s2.platform_roles = [
   { environment: "CRM / repeat-purchase tracking layer", role: "retention", job: "Held constant and observation-only: tracks whether buyers acquired at reduced offer depth return, read directionally because of the long re-purchase cycle." },
   { environment: "Affiliate programme (business-wide, outside the comparison set)", role: "conversion", job: "Continues at current offer depth and incentive structure so the business keeps its volume and the comparison has a stable baseline." },
 ];
-s2.commerce_roles = [
-  { role: "product_assignment", job: "Nominate the products or regions that form the comparison set and the matched set, and fix the SKU set for the test window.", controlled_by: "Client commerce team" },
-  { role: "offer", job: "Set the single reduced offer depth on the comparison set against a margin recovery target; the depth is a client finance and commerce decision, not an execution decision.", controlled_by: "Client finance and commerce team" },
-  { role: "handoff_to_purchase", job: "Make sure affiliate links and codes on the comparison set route to the correct listing at the test offer depth; a routing error would corrupt the read.", controlled_by: "Execution owner (affiliate tracking) and client commerce team (listing)" },
-  { role: "retention", job: "Tag comparison-set buyers in the CRM so repeat behaviour can be tracked separately from the business-wide affiliate cohort.", controlled_by: "Client CRM team" },
-];
+// Client / platform-controlled levers live in client_platform_enablers, not here.
+s2.commerce_roles = [];
 s2.execution_choices = [
   {
     question: "Should the test change anything other than offer depth?",
-    recommended: "No. Offer depth is the only controlled variable; affiliate content approach, creative, listing content, creator roster, media weight, price list, stock and SKU set stay as they are.",
+    recommended: "No. Offer depth is the only controlled variable; affiliate content approach, creative, listing content, creator roster, media weight, price list, stock, SKU set and affiliate budget stay as they are.",
     why: "The decision is whether volume is promotion-dependent. A second change would make any volume movement consistent with either change, so the test could not settle the decision.",
     alternative_not_chosen: "Pairing the reduction with new value-led content or new listing proof",
     basis: "evidenced",
@@ -111,7 +122,7 @@ s2.execution_choices = [
   },
   {
     question: "Should one reduced offer depth be tested or several at once?",
-    recommended: "One reduced depth on the comparison set, set by the client finance team against a margin recovery target.",
+    recommended: "One reduced depth on the comparison set, approved by the client finance team against its own margin recovery target.",
     why: "Several depths would split the comparison set further and thin each cell, which is hard to read from aggregated indexed data, the only format the client can share.",
     alternative_not_chosen: "Several depths tested simultaneously across sub-sets",
     basis: "evidenced",
@@ -134,59 +145,54 @@ s2.execution_choices = [
     evidence_ids: ["ev_3", "ev_11"],
   },
   {
-    question: "When should the test run?",
-    recommended: "Start after 12.12 / Harbolnas demand has normalised (January) and finish before the pre-Ramadan season; exact dates come from the marketplace calendar.",
-    why: "11.11 and 12.12 are about four and a half weeks apart, too close for a clean test plus run-in between them, and both would swamp a promotion-reduction signal.",
-    alternative_not_chosen: "A window between 11.11 and 12.12",
-    basis: "evidenced",
+    question: "When should the test run, and for how long?",
+    recommended: TIMING_STATEMENT,
+    why: "The calendar, and what counts as a readable sample, can only be judged against a real pilot's commercial calendar and volumes. Fixing either now would be a guess.",
+    alternative_not_chosen: "Fixing a start date and duration before a real pilot is scoped",
+    basis: "hypothesis",
     evidence_ids: ["ev_11"],
   },
 ];
+// Agency actions only. Anything the client or platform supplies is in client_platform_enablers.
 s2.execution_owner_asks = [
-  "Confirm the client-nominated comparison set and matched set, the fixed SKU set for the test window, and the single reduced offer depth the client finance team has approved. The execution owner cannot determine any of these and must not proceed without them.",
-  "Confirm the test window dates: a January start after 12.12 demand has normalised and an end before the pre-Ramadan season. Obtain the exact marketplace calendar, including any platform sale days, and document that none overlaps.",
-  "Confirm in writing that affiliate content approach, listing content, creator roster, media weight, price list, stock and SKU set are unchanged on both groups, and log every other promotional mechanic that changes or cannot be held.",
-  "Confirm that affiliate tracking tags comparison-set buyers separately from the business-wide cohort, and that no creator or programme term forces a different offer depth on the comparison set; flag any such term before launch.",
-  "Obtain from the client commerce and CRM teams the promo-versus-full-price order mix [ev_8] and the new-versus-repeat customer split [ev_9] before launch; both are needed to interpret the result.",
+  "Lead the decision-framing and test-design conversations with the client, and record the agreed decision question, tolerance, sets and single reduced depth before anything launches.",
+  "Run the Readiness & Control Gate as a go / no-go: no launch until every enabler is confirmed in writing and deployment is verified on the comparison set only.",
+  "Hold the control plan for every held-constant, keep the deviation log, and escalate the same day a condition moves.",
+  "Deliver the activation readout (delivery and test conditions only, not the verdict) and a next-activation recommendation that is conditional on the reconciled result.",
 ];
 s2.push_the_brief = null;
+// The execution package for this intervention type: five agency deliverables, and — separately —
+// the client / platform enablers. Materialised from the authored library so the Blueprint is a
+// self-contained record.
+s2.agency_deliverables = def.deliverables.map((d) => ({ ...d }));
+s2.client_platform_enablers = def.enablers.map((e) => ({ ...e }));
 
-// ─── Stage 3: offer-depth-only treatment, January window, price list held, unit-consistent measures ───
+// ─── Stage 3: offer-depth-only treatment, market-neutral timing, price list held, unit-consistent measures ───
 const s3 = read(3);
 s3.test.treatment =
-  "On the client-nominated comparison set only: offer / discount depth on affiliate-attributed orders is reduced to one level set by the client finance and commerce teams against a margin recovery target. Nothing else changes: affiliate content approach, creator roster, media weight, price list, stock, SKU set and other promotional mechanics are held as they are, and no new proof or content is added to the listing or the affiliate content. Comparison-set buyers are tagged in the CRM for repeat tracking.";
-s3.test.design_rationale = s3.test.design_rationale + " The window is four weeks, starting after 12.12 demand has normalised and finishing before the pre-Ramadan season; the primary volume read comes inside the window and the repeat read is directional only because of the long re-purchase cycle [ev_6].";
-s3.test.duration_weeks = 4;
+  "On the client-nominated comparison set only: offer / discount depth on affiliate-attributed orders is reduced to one level approved by the client finance and commerce teams against their own margin recovery target. Nothing else changes: affiliate content approach, listing content, creator roster, media weight, price list, stock, SKU set, affiliate budget and other promotional mechanics are held as they are, and no new proof or content is added to the listing or the affiliate content. Comparison-set buyers are tagged in the CRM for repeat tracking.";
+s3.test.design_rationale = s3.test.design_rationale + " " + TIMING_STATEMENT + " The primary volume read comes inside the window; the repeat read is directional only because of the long re-purchase cycle [ev_6].";
+s3.test.duration_weeks = null;
 s3.test.calendar_confounds = [
   {
-    event: "Marketplace 11.11 sale (around 11 November — exact date to be confirmed with the marketplace calendar)",
-    risk: "Platform-wide promotion and the surrounding traffic surge would swamp any promotion-reduction signal.",
-    mitigation: "No test activity before 11.11 has fully normalised; the window opens after 12.12.",
-  },
-  {
-    event: "Marketplace 12.12 / Harbolnas (around 12 December — exact date to be confirmed)",
-    risk: "Same distortion as 11.11. The gap between 11.11 and 12.12 (about four and a half weeks) is too short for a clean test plus run-in, so no window between the two is proposed.",
-    mitigation: "Start in January, after 12.12 demand has normalised; the client commerce team confirms the clear date from the marketplace calendar.",
-  },
-  {
-    event: "Early-2027 platform sale days and pre-Ramadan / Lebaran demand season (dates not supplied — client to confirm)",
-    risk: "Month-start platform sale days or the shift in demand ahead of Ramadan could change traffic and volume on either group independently of offer depth.",
-    mitigation: "The window is kept to four weeks so it can finish before the season begins. The client confirms the full marketplace and brand calendar before launch. Any unplanned event hitting either group makes the result inconclusive.",
+    event: "Commercial, platform and seasonal calendar (not supplied)",
+    risk: "A major promotional, platform or seasonal event touching either group could change traffic and volume independently of offer depth and swamp the read.",
+    mitigation: TIMING_STATEMENT + " Any unplanned event that hits either group makes the result inconclusive.",
   },
 ];
 s3.test.held_constant = [
   { item: "Affiliate content approach and listing content", how_verified: "Execution owner supplies the current content brief at launch and confirms in writing each week that no new content direction, creative or listing proof was issued for either group; any change is logged as a confound." },
-  { item: "Price list", how_verified: "Client commerce team confirms the list price on both groups is unchanged from the prior quarter, and shares a weekly price-list check for the test window." },
+  { item: "Price list", how_verified: "Client commerce team confirms the list price on both groups is unchanged, and shares a weekly price-list check for the test window." },
   { item: "Creator roster on the comparison set", how_verified: "Execution owner provides a named list of active affiliates at launch; any addition or removal is flagged immediately and logged against the test record." },
   { item: "Media weight", how_verified: "Client commerce team confirms paid media spend and targeting on both groups are unchanged; any unplanned activation is logged and assessed." },
   { item: "Stock availability", how_verified: "Client commerce team confirms stock is sufficient on both groups; any stock-out is flagged, and the affected SKU or region is excluded from the final read." },
   { item: "SKU set", how_verified: "Client commerce team fixes the SKU list for each group at launch; any addition or removal is logged and the SKU is excluded from the read." },
-  { item: "Affiliate budget (business-wide)", how_verified: "Client commerce team confirms total affiliate spend is unchanged from the prior-quarter level; execution owner supplies a weekly spend report against the indexed baseline." },
+  { item: "Affiliate budget (business-wide)", how_verified: "Client commerce team confirms total affiliate spend is unchanged from its prior level; execution owner supplies a weekly spend report against the indexed baseline." },
   { item: "Other promotional mechanics (vouchers, bundles, platform promotions) where feasible", how_verified: "Client commerce team shares a promotion log for both groups at launch and weekly; any change is logged and any mechanic that cannot be held is recorded as a deviation." },
 ];
 for (const m of s3.measures) {
-  // Relative-difference measures carry no index baseline: a 93 / 101 / 118 index baseline on a
-  // pct_change measure is a unit mismatch.
+  // Relative-difference measures carry no index baseline: an index baseline on a pct_change
+  // measure is a unit mismatch.
   if (m.unit === "pct_change" || m.unit === "pct_points") {
     m.baseline = null;
     m.baseline_source = null;
@@ -199,25 +205,41 @@ s3.signals.inconclusive = replaceIn(
   `any held-constant is found to have changed during the test window (${held})`,
   "signals.inconclusive held-constant list",
 );
+s3.signals.inconclusive = s3.signals.inconclusive.replace(
+  /\(11\.11, 12\.12, or an unconfirmed calendar event\)/,
+  "(or any unplanned promotional, platform or seasonal event)",
+);
 s3.decision_rule.statement = replaceIn(
   s3.decision_rule.statement,
   "all held-constants — affiliate budget, media weight, price list, stock, creator roster — are verified",
   `all held-constants — ${held} — are verified`,
   "decision_rule held-constant list",
 );
+// Any other residual named event in Stage 3 free text: neutralise.
+const s3n = mapStrings(s3, (t) =>
+  t
+    .replace(/\s*\((?:around )?(?:11 November|12 December)[^)]*\)/g, "")
+    .replace(/(?:the )?11\.11 and 12\.12(?: \/ Harbolnas)?(?: platform(?:-wide)? sale(?: periods| windows| events)?)?/g, "major promotional or platform events")
+    .replace(/11\.11|12\.12|Harbolnas/g, "major promotional or platform event"),
+) as typeof s3;
+
+// ─── Guard: no named events or hard-coded window anywhere in the curated stages ───
+const BANNED = /11\.11|12\.12|Harbolnas|Ramadan|Lebaran|January|pre-Ramadan|\b(?:four|4|six|6)[- ]weeks?\b/i;
+for (const [n, v] of [[1, s1], [2, s2], [3, s3n]] as const) {
+  const hit = JSON.stringify(v).match(BANNED);
+  if (hit) throw new Error(`Stage ${n} still contains "${hit[0]}" — timing must stay market-neutral`);
+}
 
 // ─── Validate and write ───
-const v1 = Stage1V.parse(s1);
-const v2 = Stage2V.parse(s2);
-const v3 = Stage3V.parse(s3);
-for (const [n, v] of [[1, v1], [2, v2], [3, v3]] as const) {
+const results = [Stage1V.parse(s1), Stage2V.parse(s2), Stage3V.parse(s3n)];
+results.forEach((v, i) => {
   if (!v.ok) {
-    console.error(`Stage ${n} failed validation:\n` + v.issues.map((i) => ` - ${i.path} ${i.message}`).join("\n"));
+    console.error(`Stage ${i + 1} failed validation:\n` + v.issues.map((x) => ` - ${x.path} ${x.message}`).join("\n"));
     process.exit(1);
   }
-}
+});
 fs.mkdirSync(OUT, { recursive: true });
 fs.writeFileSync(`${OUT}/growth_driver.stage1.json`, JSON.stringify(s1, null, 2));
 fs.writeFileSync(`${OUT}/growth_driver.stage2.json`, JSON.stringify(s2, null, 2));
-fs.writeFileSync(`${OUT}/growth_driver.stage3.json`, JSON.stringify(s3, null, 2));
+fs.writeFileSync(`${OUT}/growth_driver.stage3.json`, JSON.stringify(s3n, null, 2));
 console.log(`curated growth_driver stages written to ${OUT}/ (raw draws untouched in ${IN}/)`);

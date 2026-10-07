@@ -63,7 +63,7 @@ function specificityReport(s2: Stage2): { ok: boolean; lines: string[] } {
     `evidenced vs hypothesis: ${evd} evidenced / ${hyp} hypothesis`,
     `distinct evidence ids cited: ${evidenceCited}`,
     `execution choices that reject an alternative: ${choicesWithAlt}/${s2.execution_choices.length}`,
-    `asset beats: ${s2.asset_architecture.beats.map((b) => b.beat).join(" → ")}`,
+    `asset beats: ${s2.asset_architecture ? s2.asset_architecture.beats.map((b) => b.beat).join(" → ") : "none (no asset changed)"}`,
     `creator role applicable: ${s2.creator_role.applicable}${s2.creator_role.role ? ` (${s2.creator_role.role}, not ${s2.creator_role.not_role ?? "n/a"})` : ""}`,
   ];
   // Flags for a human read — the real gate is YOU reading it cold.

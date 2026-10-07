@@ -49,6 +49,7 @@ import {
   UNITS,
 } from "./taxonomy";
 import { STRATEGIC_MOVE_IDS } from "./strategic-moves";
+import { AGENCY_DELIVERABLE_KEYS, INTERVENTION_TYPES } from "./intervention-types";
 
 const ids = () => optional(arr(str({ min: 1 })), [] as string[]);
 
@@ -277,6 +278,35 @@ export const Stage2V = obj({
   // Optional at parse time so rows drafted before this layer still load; the
   // drafting route (draft.ts) REQUIRES it for any newly drafted Stage 2.
   push_the_brief: nullable(PushTheBriefV),
+  // ── Intervention-type architecture ────────────────────────────────────────
+  // The execution package follows the type of intervention. Rows drafted before this layer have
+  // null / [] here and render as content-led. The agency's role (five deliverables) and what the
+  // client / platform must enable are kept in SEPARATE fields and never mixed.
+  intervention_type: nullable(oneOf(INTERVENTION_TYPES)),
+  agency_deliverables: optional(
+    arr(
+      obj({
+        key: oneOf(AGENCY_DELIVERABLE_KEYS),
+        purpose: str({ min: 20 }),
+        tasks: arr(str({ min: 5 }), { min: 1 }),
+        done_when: str({ min: 10 }),
+      }),
+      { max: 5 },
+    ),
+    [] as { key: (typeof AGENCY_DELIVERABLE_KEYS)[number]; purpose: string; tasks: string[]; done_when: string }[],
+  ),
+  client_platform_enablers: optional(
+    arr(
+      obj({
+        enabler: str({ min: 5 }),
+        owner: str({ min: 2 }),
+        makes_valid: str({ min: 10 }),
+        if_missing: str({ min: 5 }),
+      }),
+      { max: 12 },
+    ),
+    [] as { enabler: string; owner: string; makes_valid: string; if_missing: string }[],
+  ),
 });
 
 // ─── Stage 3 — test design, structured measures, decision rule ──────────────
@@ -302,7 +332,9 @@ export const Stage3V = obj({
     design_rationale: str({ min: 20 }),
     treatment: str({ min: 10 }),
     comparison: str({ min: 10 }),
-    duration_weeks: num(),
+    // null = window and duration are to be agreed against the actual commercial calendar when a real
+    // pilot is scoped; nothing is hard-coded before that.
+    duration_weeks: nullable(num()),
     calendar_confounds: optional(
       arr(obj({ event: str({ min: 2 }), risk: str({ min: 5 }), mitigation: str({ min: 5 }) })),
       [] as { event: string; risk: string; mitigation: string }[],

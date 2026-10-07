@@ -11,6 +11,8 @@ import { reconcile } from "@/lib/growth-decision/reconcile";
 import type { BlueprintRow, Inputs, Measure } from "@/lib/growth-decision/schema";
 import { InputsV } from "@/lib/growth-decision/schema";
 import { TERRITORY_TEMPLATES, type Territory } from "@/lib/growth-decision/taxonomy";
+import { AGENCY_DELIVERABLE_NAMES, typeOf } from "@/lib/growth-decision/intervention-types";
+import { guidanceFor, withOwner } from "@/lib/growth-decision/execution-guidance";
 
 export type Variant = "internal" | "executor" | "receipt";
 
@@ -43,14 +45,31 @@ function IdsBase({ ids }: { ids?: string[] }) {
   return <span className="ml-1 text-[10px] text-neutral-400">[{ids.join(", ")}]</span>;
 }
 
-function Section({ title, children, note }: { title: string; children: React.ReactNode; note?: string }) {
+function Section({
+  title,
+  children,
+  note,
+  tone = "default",
+}: {
+  title: string;
+  children: React.ReactNode;
+  note?: string;
+  /** primary = what the agency owns; secondary = what the client / platform must enable. Never mixed. */
+  tone?: "default" | "primary" | "secondary";
+}) {
+  const box =
+    tone === "primary"
+      ? "border-2 border-neutral-900 bg-white"
+      : tone === "secondary"
+        ? "border border-dashed border-neutral-300 bg-neutral-50"
+        : "border border-neutral-200 bg-white";
+  const h =
+    tone === "primary" ? "text-neutral-900" : tone === "secondary" ? "text-neutral-500" : "text-neutral-500";
   return (
     <section className="mt-6">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">{title}</h2>
+      <h2 className={`text-sm font-semibold uppercase tracking-wide ${h}`}>{title}</h2>
       {note && <p className="mt-0.5 text-xs text-neutral-400">{note}</p>}
-      <div className="mt-2 rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-800 space-y-2">
-        {children}
-      </div>
+      <div className={`mt-2 rounded-lg p-4 text-sm text-neutral-800 space-y-2 ${box}`}>{children}</div>
     </section>
   );
 }
@@ -304,6 +323,157 @@ export function BlueprintDoc({ row, variant }: { row: BlueprintRow; variant: Var
             </Row>
           </Section>
 
+          {/* PRIMARY — what the agency owns and delivers. Kept apart from client / platform enablers. */}
+          {s2.agency_deliverables.length > 0 && (
+            <Section
+              title="Agency-owned activation deliverables"
+              tone="primary"
+              note={`${row.execution_owner_label ?? "The execution owner"} owns and delivers these. The five deliverables are the proposition; the tasks underneath are how they are executed.`}
+            >
+              <div className="space-y-3">
+                {s2.agency_deliverables.map((d, i) => (
+                  <div key={d.key} className="bp-card rounded border border-neutral-200 p-3">
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-mono text-xs text-neutral-400">{i + 1}</span>
+                      <h3 className="font-semibold text-neutral-900">{AGENCY_DELIVERABLE_NAMES[d.key]}</h3>
+                    </div>
+                    <p className="mt-1">{d.purpose}</p>
+                    <div className="mt-2 text-xs text-neutral-500 font-medium">Execution tasks</div>
+                    <ul className="list-disc pl-5 space-y-0.5 text-xs text-neutral-600">
+                      {d.tasks.map((t, j) => (
+                        <li key={j}>{t}</li>
+                      ))}
+                    </ul>
+                    <p className="mt-2 text-xs text-neutral-600">
+                      <strong>Done when:</strong> {d.done_when}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {/* AUTHORED GUIDANCE — reusable by intervention type; not model output. Not shown on the receipt. */}
+          {!receipt &&
+            (() => {
+              const g = guidanceFor(s2.intervention_type);
+              if (!g) return null;
+              const eo = row.execution_owner_label;
+              const w = (t: string) => withOwner(t, eo);
+              return (
+                <Section
+                  title="Guidance for the execution owner"
+                  note="Authored by ShiftImpact for this intervention type. Commercial design is not an agency's home ground, so this is how it leads the client conversation as a commercial partner, not a coordinator."
+                >
+                  <p>{w(g.role_framing)}</p>
+
+                  <Row label="Lead, don't coordinate">
+                    <ul className="space-y-1">
+                      {g.coordinator_vs_partner.map((p, i) => (
+                        <li key={i} className="text-xs">
+                          <span className="text-neutral-400 line-through">{p.instead_of}</span> → {p.do}
+                        </li>
+                      ))}
+                    </ul>
+                  </Row>
+
+                  <Row label="Five client conversations">
+                    <div className="space-y-2">
+                      {g.conversations.map((c, i) => (
+                        <div key={i} className="bp-card rounded border border-neutral-100 p-3">
+                          <div className="flex flex-wrap items-baseline gap-2">
+                            <strong>{c.name}</strong>
+                            <span className="text-[11px] text-neutral-500">
+                              {c.when} · with {c.who}
+                            </span>
+                          </div>
+                          <p className="text-xs text-neutral-500">Serves: {AGENCY_DELIVERABLE_NAMES[c.supports]}</p>
+                          <p className="mt-1">{c.purpose}</p>
+                          <ul className="mt-1 list-disc pl-5 text-xs text-neutral-700 space-y-0.5">
+                            {c.ask.map((q, j) => (
+                              <li key={j}>{w(q)}</li>
+                            ))}
+                          </ul>
+                          <p className="mt-1 text-xs text-neutral-600">
+                            <strong>Good looks like:</strong> {c.good_looks_like}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </Row>
+
+                  <Row label="Commercial primer">
+                    <ul className="space-y-1">
+                      {g.primer.map((p, i) => (
+                        <li key={i}>
+                          <strong>{p.term}</strong> — {p.plain_language}
+                        </li>
+                      ))}
+                    </ul>
+                  </Row>
+
+                  <Row label="Likely objections">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="text-neutral-500">
+                          <tr>
+                            <th className="py-1 pr-3 w-1/3">Client says</th>
+                            <th>Response</th>
+                          </tr>
+                        </thead>
+                        <tbody className="align-top">
+                          {g.objections.map((o, i) => (
+                            <tr key={i} className="border-t border-neutral-100">
+                              <td className="py-1 pr-3">“{o.client_says}”</td>
+                              <td className="py-1">{w(o.response)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Row>
+
+                  <Row label="Decision rights">
+                    <ul className="mb-2 list-disc pl-5 space-y-0.5 font-medium">
+                      {g.decision_rights.summary.map((s, i) => (
+                        <li key={i}>{w(s)}</li>
+                      ))}
+                    </ul>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="text-neutral-500">
+                          <tr>
+                            <th className="py-1 pr-2">Decision</th>
+                            <th className="pr-2">Client</th>
+                            <th className="pr-2">{eo ?? "Execution owner"}</th>
+                            <th>ShiftImpact</th>
+                          </tr>
+                        </thead>
+                        <tbody className="align-top">
+                          {g.decision_rights.rows.map((r, i) => (
+                            <tr key={i} className="border-t border-neutral-100">
+                              <td className="py-1 pr-2 font-medium">{r.decision}</td>
+                              <td className="pr-2">{r.client}</td>
+                              <td className="pr-2">{r.execution_owner}</td>
+                              <td>{r.shiftimpact}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Row>
+
+                  <Row label="Escalate immediately if">
+                    <List items={g.escalation_triggers} />
+                  </Row>
+                  <Row label="Boundaries">
+                    <List items={g.boundaries.map(w)} />
+                  </Row>
+                </Section>
+              );
+            })()}
+
+          {(typeOf(s2.intervention_type).applies.content_roles || typeOf(s2.intervention_type).applies.proof_required) && (
           <Section title="Content role & proof required">
             <Row label="Content role">
               <ul className="space-y-1">
@@ -327,8 +497,16 @@ export function BlueprintDoc({ row, variant }: { row: BlueprintRow; variant: Var
               </ul>
             </Row>
           </Section>
+          )}
 
-          <Section title="Creator role, asset architecture & platform role">
+          <Section
+            title={
+              typeOf(s2.intervention_type).applies.creator_role || typeOf(s2.intervention_type).applies.asset_architecture
+                ? "Creator role, asset architecture & platform role"
+                : "Environments (held constant except the controlled variable)"
+            }
+          >
+            {(typeOf(s2.intervention_type).applies.creator_role || s2.intervention_type === null) && (
             <Row label="Creator role">
               {s2.creator_role.applicable ? (
                 <>
@@ -348,6 +526,8 @@ export function BlueprintDoc({ row, variant }: { row: BlueprintRow; variant: Var
                 <>Not applicable. {s2.creator_role.job}</>
               )}
             </Row>
+            )}
+            {(typeOf(s2.intervention_type).applies.asset_architecture || s2.intervention_type === null) && (
             <Row label="Asset architecture">
               {s2.asset_architecture ? (
                 <>
@@ -364,6 +544,7 @@ export function BlueprintDoc({ row, variant }: { row: BlueprintRow; variant: Var
                 <>No asset is changed in this test — the existing content stays as it is.</>
               )}
             </Row>
+            )}
             <Row label="Platform role">
               <ul className="space-y-1">
                 {s2.platform_roles.map((p, i) => (
@@ -406,9 +587,43 @@ export function BlueprintDoc({ row, variant }: { row: BlueprintRow; variant: Var
             ))}
           </Section>
 
-          <Section title="What the execution owner must deliver or confirm">
-            <List items={s2.execution_owner_asks} />
-          </Section>
+          {s2.agency_deliverables.length === 0 && (
+            <Section title="What the execution owner must deliver or confirm">
+              <List items={s2.execution_owner_asks} />
+            </Section>
+          )}
+
+          {/* SECONDARY — what the client / platform must enable. Deliberately separate from the agency's deliverables. */}
+          {s2.client_platform_enablers.length > 0 && (
+            <Section
+              title="Required client / platform enablers"
+              tone="secondary"
+              note="Secondary. These are not agency deliverables: they must be in place for the activation to be valid, and the Readiness & Control Gate confirms them."
+            >
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="text-neutral-500">
+                    <tr>
+                      <th className="py-1 pr-2">Enabler</th>
+                      <th className="pr-2">Owner</th>
+                      <th className="pr-2">Makes valid</th>
+                      <th>If missing</th>
+                    </tr>
+                  </thead>
+                  <tbody className="align-top">
+                    {s2.client_platform_enablers.map((e, i) => (
+                      <tr key={i} className="border-t border-neutral-200">
+                        <td className="py-1 pr-2 font-medium">{e.enabler}</td>
+                        <td className="pr-2">{e.owner}</td>
+                        <td className="pr-2">{e.makes_valid}</td>
+                        <td>{e.if_missing}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Section>
+          )}
         </>
       )}
 
@@ -417,8 +632,16 @@ export function BlueprintDoc({ row, variant }: { row: BlueprintRow; variant: Var
         <>
           <Section title="Test / controlled market action">
             <Row label="Role · design">
-              {human(s3.test.role)} · <strong>{human(s3.test.design)}</strong> · {s3.test.duration_weeks} weeks
+              {human(s3.test.role)} · <strong>{human(s3.test.design)}</strong>
+              {s3.test.duration_weeks !== null && <> · {s3.test.duration_weeks} weeks</>}
             </Row>
+            {s3.test.duration_weeks === null && (
+              <Row label="Window & duration">
+                To be agreed against the actual commercial calendar. Avoid major promotional, platform or seasonal
+                events that would materially confound the read. Duration should be sufficient to produce a readable
+                sample and is not set before a real pilot is scoped.
+              </Row>
+            )}
             <Row label="Why this design">{s3.test.design_rationale}</Row>
             <Row label="Treatment">{s3.test.treatment}</Row>
             <Row label="Comparison">{s3.test.comparison}</Row>

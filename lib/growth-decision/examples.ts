@@ -82,10 +82,10 @@ export const EXAMPLE_B_INPUTS: Inputs = {
     { id: "ev_11", label: "Whether volume holds when promotion depth is reduced on a bounded set of products", mode: "client_statement", class: "test_required", grade: "client_reported", metric_key: "", base_period: "", baseline: null, current: null, unit: "text", text: "Requires a bounded comparison; cannot be inferred from existing data.", source_label: "Test required", source_date: "2026-09-30", owner: "ShiftImpact" },
   ],
   calendar: [
-    { label: "Marketplace 11.11 sale", window: "around 11 Nov (confirm exact marketplace calendar)", effect: "Platform-wide promotion would swamp a promotion-reduction test." },
-    { label: "Marketplace 12.12 / Harbolnas", window: "around 12 Dec (confirm exact marketplace calendar)", effect: "Same: promotion-driven demand distorts the comparison." },
+    // Market-neutral: no named event or window is assumed before a real pilot is scoped.
+    { label: "Commercial, platform and seasonal calendar", window: "to be agreed against the actual commercial calendar (not supplied)", effect: "Major promotional, platform or seasonal events would materially confound a promotion-reduction read." },
   ],
-  holdable: ["media weight", "price list", "stock", "creator roster"],
+  holdable: ["affiliate content approach", "listing content", "media weight", "price list", "stock", "SKU set", "affiliate budget", "creator roster"],
   not_holdable: ["marketplace-run sale events"],
   client_constraints: [
     "Cannot pause the affiliate programme business-wide; can vary offer depth on a bounded subset of products or regions.",
