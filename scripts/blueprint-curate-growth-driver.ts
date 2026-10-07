@@ -81,9 +81,12 @@ s2.intervention = {
     { item: "Affiliate budget", why: "The programme continues business-wide at current investment; varying budget alongside offer depth would leave the result consistent with either." },
     { item: "Other promotional mechanics (vouchers, bundles, platform promotions) where feasible", why: "A second promotional change on either group would blur the read of offer depth; any that cannot be held are logged as deviations." },
   ],
-  basis: "evidenced",
+  // The evidence supports TESTING for promotional dependence, not confirming it.
+  basis: "hypothesis",
   evidence_ids: ["ev_7", "ev_11", "ev_3", "ev_5"],
 };
+// "Reduce price dependence" is a secondary job of the same hypothesis; it is not evidenced either.
+s2.behavioural_job.basis = "hypothesis";
 // Content-specific sections do not apply to this type; they are held constant.
 s2.content_roles = [
   {

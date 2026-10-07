@@ -66,12 +66,12 @@ export const EXECUTION_GUIDANCE: Record<InterventionType, ExecutionGuidance> = {
     intervention_type: "commercial_pricing_led",
     status: "authored",
     role_framing:
-      "{EO} leads this as the client's commercial partner: it frames the decision with the client, brings the test logic into the room, holds the controls, and owns what the result means for activation. It does not chase teams for updates.",
+      "{EO} leads this as the client's commercial partner: it frames the decision with the client, brings the test logic into the room, and holds the controls. ShiftImpact determines what the evidence supports. {EO} owns translating the reconciled result into the next activation with the client. It does not chase teams for updates.",
     coordinator_vs_partner: [
       { instead_of: "Chasing teams for confirmations", do: "Run the Readiness & Control Gate as a go / no-go the client signs" },
       { instead_of: "Passing along a pricing request", do: "Lead the decision-framing session and agree the question and tolerance before anything is scoped" },
       { instead_of: "Reporting that things happened", do: "Present delivery, held-constants and test-condition cleanliness as a readout the client can trust" },
-      { instead_of: "Waiting to be told what is next", do: "Recommend the next activation, conditional on the reconciled result" },
+      { instead_of: "Waiting to be told what is next", do: "Translate the reconciled result into the next activation with the client" },
     ],
     conversations: [
       {
@@ -131,7 +131,7 @@ export const EXECUTION_GUIDANCE: Record<InterventionType, ExecutionGuidance> = {
         supports: "activation_readout_next_move",
         when: "At the end of the test",
         who: "Commercial director, finance",
-        purpose: "Present delivery and conditions, then the next activation, conditional on the reconciled result.",
+        purpose: "Present delivery and conditions, then work with the client to translate the reconciled result into the next activation.",
         ask: [
           "Here is what was delivered, what held, what moved, and whether the conditions were clean. Does the client agree?",
           "Given the reconciled result, what would the next activation be?",
@@ -195,7 +195,7 @@ export const EXECUTION_GUIDANCE: Record<InterventionType, ExecutionGuidance> = {
         {
           decision: "Next commercial move",
           client: "Decides",
-          execution_owner: "Recommends the next activation",
+          execution_owner: "Translates the reconciled result into the next activation with the client",
           shiftimpact: "Supplies the reconciled evidence and next-decision logic",
         },
       ],

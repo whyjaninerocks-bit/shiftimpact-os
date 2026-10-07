@@ -152,10 +152,10 @@ export function BlueprintDoc({ row, variant }: { row: BlueprintRow; variant: Var
           Decision loop: Commercial pressure → Decision question → Evidence → Competing explanations → Decision →
           Activation Blueprint → Test / controlled market action → Execution → KPI / actuals → Reconciliation → Next decision
         </p>
-        {executor && (
+        {executor && s2 && typeOf(s2.intervention_type).executor_boundary && (
           <p className="mt-2 rounded bg-neutral-50 border border-neutral-200 p-2 text-xs text-neutral-600">
-            Boundary: ShiftImpact specifies the <strong>job</strong> the execution must perform and what is held constant.
-            Scripts, concepts, storyboards, casting and production belong to the execution owner.
+            <strong>Boundary:</strong>{" "}
+            {withOwner(typeOf(s2.intervention_type).executor_boundary!, row.execution_owner_label)}
           </p>
         )}
       </header>

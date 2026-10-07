@@ -66,6 +66,12 @@ export type InterventionTypeDef = {
    * preservation constraints).
    */
   applies: { content_roles: boolean; proof_required: boolean; creator_role: boolean; asset_architecture: boolean };
+  /**
+   * The boundary line shown at the top of the Executor view. It is specific to the type: the
+   * script / concept / casting boundary belongs to content work, not to a pricing test.
+   * {EO} = execution owner's name. null = none authored yet (stub types).
+   */
+  executor_boundary: string | null;
   deliverables: AgencyDeliverable[];
   enablers: ClientPlatformEnabler[];
 };
@@ -79,6 +85,8 @@ export const INTERVENTION_TYPE_DEFS: Record<InterventionType, InterventionTypeDe
     description: "The intervention is what the content shows and proves (roles, proof, asset architecture, creator role).",
     status: "stub",
     applies: { content_roles: true, proof_required: true, creator_role: true, asset_architecture: true },
+    executor_boundary:
+      "ShiftImpact specifies the job the execution must perform and what is held constant. Scripts, concepts, storyboards, casting and production belong to the execution owner.",
     deliverables: [],
     enablers: [],
   },
@@ -89,6 +97,8 @@ export const INTERVENTION_TYPE_DEFS: Record<InterventionType, InterventionTypeDe
       "The controlled variable is a commercial lever (offer or discount depth) held by the client. The agency owns the activation architecture around it.",
     status: "authored",
     applies: { content_roles: false, proof_required: false, creator_role: false, asset_architecture: false },
+    executor_boundary:
+      "ShiftImpact defines the decision logic, test architecture and reconciliation. {EO} leads the activation and the client conversation. The client retains approval and accountability for pricing, margin thresholds and commercial decisions.",
     deliverables: [
       {
         key: "commercial_activation_brief",
@@ -164,6 +174,7 @@ export const INTERVENTION_TYPE_DEFS: Record<InterventionType, InterventionTypeDe
     description: "The intervention is the listing, handoff or product-data experience at the point of purchase.",
     status: "stub",
     applies: { ...STUB_APPLIES, proof_required: true },
+    executor_boundary: null,
     deliverables: [],
     enablers: [],
   },
@@ -173,6 +184,7 @@ export const INTERVENTION_TYPE_DEFS: Record<InterventionType, InterventionTypeDe
     description: "The intervention is where, when and how weight is deployed across platforms and media.",
     status: "stub",
     applies: STUB_APPLIES,
+    executor_boundary: null,
     deliverables: [],
     enablers: [],
   },
@@ -182,6 +194,7 @@ export const INTERVENTION_TYPE_DEFS: Record<InterventionType, InterventionTypeDe
     description: "The intervention is the creator role, selection and briefing.",
     status: "stub",
     applies: { ...STUB_APPLIES, creator_role: true },
+    executor_boundary: null,
     deliverables: [],
     enablers: [],
   },

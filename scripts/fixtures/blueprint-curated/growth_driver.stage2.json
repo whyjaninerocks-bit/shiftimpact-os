@@ -5,7 +5,7 @@
       "reduce_price_dependence"
     ],
     "statement": "Give the Commercial Director a structured read on whether affiliate-driven volume holds when promotion depth is reduced on a bounded comparison set — so the scale-vs-hold decision is made on observed demand elasticity rather than on a pattern that is consistent with price dependency but not yet confirmed as such.",
-    "basis": "evidenced",
+    "basis": "hypothesis",
     "evidence_ids": [
       "ev_2",
       "ev_3",
@@ -51,7 +51,7 @@
         "why": "A second promotional change on either group would blur the read of offer depth; any that cannot be held are logged as deviations."
       }
     ],
-    "basis": "evidenced",
+    "basis": "hypothesis",
     "evidence_ids": [
       "ev_7",
       "ev_11",
