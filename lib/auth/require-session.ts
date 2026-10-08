@@ -89,6 +89,50 @@ export async function requireShiftImpactSession(): Promise<NextResponse | null> 
 }
 
 /**
+ * Route-level guard for admin/service-only routes (Security remediation,
+ * 8 Oct 2026): requires a ShiftImpact org session AND role = 'Admin' on
+ * user_profiles. Used for operator config, storage writes/deletes, bulk
+ * imports, the frozen orchestrator, seeds, and the lead list.
+ *
+ * No session → 401. Session but not ShiftImpact Admin → 403.
+ */
+export async function requireShiftImpactAdmin(): Promise<NextResponse | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("org_type, role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profile?.org_type !== "ShiftImpact" || profile?.role !== "Admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  return null;
+}
+
+/**
+ * Standard response for routes disabled by the Security remediation
+ * (8 Oct 2026). Returns 410 Gone so callers fail loudly and clearly.
+ * The original handler code is kept below the early return so the route
+ * can be re-enabled by deleting one line.
+ */
+export function routeDisabled(reason: string): NextResponse {
+  return NextResponse.json(
+    { error: "This endpoint is disabled.", reason },
+    { status: 410 },
+  );
+}
+
+/**
  * Throwing variant of requireSession(), for use inside Server Actions
  * (lib/actions.ts style) rather than route handlers. Server Actions can't
  * return a NextResponse — they should throw, and the caller/UI handles the
