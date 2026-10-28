@@ -7,7 +7,7 @@
 // Flow:
 //   1. Load company (name, linkedin_url, website, industry, market_code)
 //   2. Parallel scrape:
-//      a. anchor/linkedin-company-detail-scraper (if linkedin_url exists + APIFY_TOKEN)
+//      a. johnvc/linkedin-company-api (if linkedin_url exists + APIFY_TOKEN)
 //      b. apify/rag-web-browser — company profile + headcount search
 //   3. Haiku tool_use → structured enrichment fields
 //   4. PATCH company record (only non-null fields overwrite)
@@ -130,9 +130,8 @@ export async function POST(req: NextRequest) {
   const [liItems, ragItems] = await Promise.all([
     // LinkedIn company detail scraper (only if URL + token)
     (company.linkedin_url && APIFY_TOKEN)
-      ? runApifyActor("anchor/linkedin-company-detail-scraper", {
-          startUrls: [{ url: company.linkedin_url }],
-          maxResults: 1,
+      ? runApifyActor("johnvc/linkedin-company-api", {
+          companyUrls: [company.linkedin_url],
         }, 25, 1).catch(() => [] as Record<string, unknown>[])
       : Promise.resolve([] as Record<string, unknown>[]),
 
@@ -146,15 +145,15 @@ export async function POST(req: NextRequest) {
   ]);
 
   // Process LinkedIn scraper output
-  if (liItems.length > 0) {
-    const li = liItems[0];
+  const li = liItems.find(item => !item.error_type);
+  if (li) {
     const liText = [
       li.description,
-      li.tagline,
-      li.specialities,
-      li.employeeCount ? `Employee count: ${li.employeeCount}` : null,
+      li.slogan,
+      li.specialties,
+      li.employeesInLinkedin ? `Employee count: ${li.employeesInLinkedin}` : null,
       li.founded ? `Founded: ${li.founded}` : null,
-      li.websiteUrl ? `Website: ${li.websiteUrl}` : null,
+      li.website ? `Website: ${li.website}` : null,
     ].filter(Boolean).join("\n");
     if (liText) rawChunks.push(`[LinkedIn Company Profile — ${company.linkedin_url}]\n${liText.slice(0, 1500)}`);
   }

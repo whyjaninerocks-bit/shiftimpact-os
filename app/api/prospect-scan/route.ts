@@ -253,9 +253,8 @@ export async function POST(req: NextRequest) {
   const [liItems, newsItems, rssChunks, gnItems] = await Promise.all([
     // 1. LinkedIn company page scraper (needs Apify token; 20s)
     linkedinUrl && APIFY_TOKEN
-      ? runApifyActor("anchor/linkedin-company-detail-scraper", {
-          startUrls: [{ url: linkedinUrl }],
-          maxResults: 1,
+      ? runApifyActor("johnvc/linkedin-company-api", {
+          companyUrls: [linkedinUrl],
         }, 20, 1).catch(() => [] as Record<string, unknown>[])
       : Promise.resolve([] as Record<string, unknown>[]),
 
@@ -282,14 +281,14 @@ export async function POST(req: NextRequest) {
 
   try {
     // Process LinkedIn
-    if (liItems.length > 0) {
-      const li = liItems[0];
+    const li = liItems.find(item => !item.error_type);
+    if (li) {
       const text = [
         li.description,
-        li.specialities,
-        `Employees: ${li.employeeCount}`,
+        li.specialties,
+        `Employees: ${li.employeesInLinkedin}`,
         `Founded: ${li.founded}`,
-        li.tagline,
+        li.slogan,
       ].filter(Boolean).join(" | ");
       if (text) rawChunks.push(`[LinkedIn Company Profile]\n${(text as string).slice(0, 1000)}`);
     }
